@@ -51,6 +51,14 @@ WLOSDE uses WinLook-owned ordinary UI surfaces. It must not imitate or replace n
 ## 8. WLT and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- GSMTC exposes Windows media sessions; show playback type, metadata, provider thumbnails, timeline and controls only when the session supplies them.
+- Keep Core Audio session-volume controls distinct from GSMTC transport controls. Browser media-session granularity is provider-controlled; do not assume one session per tab.
+- Modern File Explorer context-menu commands use `IExplorerCommand` with package-identity/manifest registration requirements.
+- Deep styling of navigation, command bar, tabs, address/search and other Explorer chrome is an opt-in per-build adapter, not a universal public Shell API. Retest after feature and cumulative updates.
+- Explorer remains the actual Shell/file-operation host. Never modify or replace `explorer.exe` on disk.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

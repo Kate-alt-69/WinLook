@@ -51,6 +51,14 @@ WLOSDE uses WinLook-owned ordinary UI surfaces. It must not imitate or replace n
 ## 8. WLT and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- Vista has Core Audio base session/endpoint interfaces, including `IAudioSessionManager` and `ISimpleAudioVolume`; controls are possible where shared-mode session identity is available.
+- Do not use `IAudioSessionManager2` as a Vista baseline: Microsoft documents that interface from Windows 7. Full live per-app enumeration needs separate validation.
+- GSMTC is unavailable. Now Playing metadata, artwork and transport use explicit supported-player adapters.
+- `IShellView` supports custom namespace views from XP onward. `IExplorerCommand` is not the Vista context-menu baseline. Deep Explorer chrome styling is a separate build-specific experimental adapter.
+- Never modify or replace `explorer.exe`; preserve native Shell and file-operation ownership.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

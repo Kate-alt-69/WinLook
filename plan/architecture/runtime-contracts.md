@@ -25,6 +25,8 @@ These are logical roles, not a requirement to create one executable per row. Con
 | WLDE Runtime | Wallpapers, widgets, desktop presentation, Groups and resource policy | Interactive user session | Falls back to static/native desktop presentation |
 | WLOSDE surfaces | WinLook notifications, popups and OSD | Interactive user session | Surfaces disappear; native security UI is unaffected |
 | WLDM adapter | Monitor discovery/topology and approved display changes | User context by default | Retains or restores safe display configuration |
+| Audio & Media adapter | Audio endpoints/sessions and provider-backed media metadata/transport | User context; ordinary controls do not require elevation | Native audio/player operation continues; unsupported controls are omitted |
+| Explorer presentation adapter | Optional Explorer styling/Shell extension coordination | Separate opt-in, build-specific component with out-of-process coordinator | Quarantine/disable adapter; native Explorer and file operations continue |
 | Optional Service | Only narrowly scoped operations requiring elevated privilege | Service session | Privileged actions become unavailable; interactive UI continues |
 | In-process module | Optional target-specific WLWM integration | Target process security context | Module failure must not terminate/corrupt target |
 | Extension host | Untrusted widgets and interactive content | Restricted process/capability sandbox | Extension can be stopped independently |
@@ -39,6 +41,9 @@ These are logical roles, not a requirement to create one executable per row. Con
 | Window observations, rules and layout decisions | WLWM |
 | Desktop presentation and wallpaper playback | WLDE |
 | Monitor topology and display-profile state | WLDM |
+| Audio endpoint/session control state | Audio & Media adapter |
+| Media metadata and transport requests | OS media-session provider or explicit player adapter |
+| Explorer theme and presentation policy | Appearance Engine / Explorer customization subsystem |
 | Notification queue and presentation policy | WLOSDE |
 | Animation primitives/timing semantics | wl_animate and wl_Lanimate |
 | Original values and change journal | Restoration subsystem |
@@ -122,7 +127,7 @@ A supervisor may restart a crashed non-critical component but must not loop on a
 - Native code is not a normal WLT customization payload.
 - In-process modules obey process mitigations and may not bypass them.
 - DWM, authentication/security-critical and protected processes are excluded.
-- Explorer is not modified on disk; Explorer-targeted injection remains excluded by default.
+- Explorer is never modified on disk or replaced. Documented Shell extensions and any deep presentation adapter follow the dedicated Explorer policy; the latter is opt-in, per-build, isolated and recoverable, not general WLWM injection.
 - Logs and crash reports require user control and data minimization.
 
 ## 9. Cross-version adapter contract

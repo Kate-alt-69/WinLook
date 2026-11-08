@@ -54,6 +54,13 @@ WLOSDE must use WinLook-owned ordinary UI surfaces. It must not imitate or repla
 ## 8. WLT, assets and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, avoid modern runtime requirements, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- XP has no Vista Core Audio session model and no GSMTC. WinLook still provides its own UI, but only verified global/device mixer controls are promised; no generic per-process volume.
+- Media metadata, thumbnails and transport require adapters for explicitly supported player/version combinations.
+- `IShellView` is documented from Windows XP for a custom namespace folder view; it does not reskin all standard Explorer folders/panes. `IExplorerCommand` is not the XP command route.
+- Deep chrome styling requires a separate XP-specific research/prototype path. Never modify or replace `explorer.exe`.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

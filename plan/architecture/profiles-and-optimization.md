@@ -11,12 +11,12 @@ A Template is a portable package that may contain selected Profiles, themes, eng
 ## 2. Profile contents
 
 A profile may declare:
-- Appearance and icon theme selections.
+- Appearance and icon theme selections, including an optional File Explorer presentation preset and its approved customization layers.
 - WLDE wallpaper, widget layout, Group visibility and quality policy.
 - WLWM window rules, layout preferences and logical workspace settings.
 - WLDM monitor-role preferences and supported per-display settings, including color profile selection where the OS/driver exposes it.
 - WLOSDE notification category, quiet-hours and animation policy.
-- Audio global/per-app preferences through the Audio Experience where supported.
+- Audio endpoint/per-app session preferences and supported player preferences through Audio & Media; media playback position, active media and thumbnails are transient and are not profile state.
 - Clipboard privacy, retention, exclusions and palette preferences.
 - Animation and reduced-motion settings.
 - Resource targets: FPS/quality preference, background-work policy, Game Mode and suspend/optimize behaviour.

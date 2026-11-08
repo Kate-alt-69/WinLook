@@ -21,6 +21,8 @@ Proposed layout:
     +-------------------+-------------------------------------------+
     | Home              | Page title                 Page actions   |
     | Appearance        | Short page summary                         |
+    | Audio & Media     |                                           |
+    | File Explorer     |                                           |
     | Icons             |                                           |
     | WLDE              | Page-specific groups/cards/settings       |
     | WLWM              |                                           |
@@ -98,6 +100,8 @@ Proposed structure:
         HOME/
         APPEARANCE/
         ICONS/
+        AUDIO_MEDIA/
+        FILE_EXPLORER/
         WLDE/
         WLWM/
         WLDM/
@@ -157,6 +161,8 @@ Parity means the same concepts, labels, categories and expected user outcomes. I
 ## 9. Acceptance criteria
 
 - [ ] Every page belongs to one clear navigation destination.
+- [ ] Audio & Media separates audio-session volume from media-session transport.
+- [ ] File Explorer settings distinguish documented Shell integration from experimental per-build styling and expose independent recovery.
 - [ ] Settings are split into independent page modules and reusable components.
 - [ ] Pages use public APIs, not engine-private implementation modules.
 - [ ] A broken page cannot crash or corrupt unrelated engine logic.

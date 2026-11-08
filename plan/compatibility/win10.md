@@ -51,6 +51,14 @@ WLOSDE uses WinLook-owned ordinary UI surfaces. It must not imitate or replace n
 ## 8. WLT and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- Core Audio provides endpoint and per-application session controls.
+- GSMTC is available only on Windows 10 version 1809 (build 17763) and later. Earlier Windows 10 releases use player adapters; the Manager must report that the system media-session API is unavailable.
+- Media playback type, title, provider thumbnail, timeline and transport commands are optional/provider-controlled.
+- `IExplorerCommand` and other documented Shell handlers are the native integration layer. Deep styling of navigation/address/search/tabs/command bar requires an opt-in build-specific adapter.
+- Adapter signature failure or Explorer crash must quarantine the adapter and preserve native Explorer.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

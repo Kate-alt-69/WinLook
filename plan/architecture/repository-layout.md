@@ -85,13 +85,15 @@ C and Rust should have the same high-level feature map:
 | Display manager | C/WLDM | rust/WLDM | C public header and Rust crate/WLDM |
 | Window manager | C/WLWM | rust/WLWM | C public header and Rust crate/WLWM |
 | On-screen display | C/WLOSDE | rust/WLOSDE | C public header and Rust crate/WLOSDE |
+| Audio & Media | Directory/acronym pending | Directory/acronym pending | Separate public contract; keep audio and media session models distinct |
+| File Explorer customization | Appearance Engine submodule | Appearance Engine submodule | Shell handlers plus separate presentation adapter; not a second file manager |
 | Background worker | C/BGW | rust/BGW | Language-specific BGW API |
 | Templates | C/WLT | rust/WLT | Language-specific parser/manifest API |
 | Appearance engine | C/APPEARANCEENGINE | rust/APPEARANCEENGINE | Language-specific API |
 | Icon engine | C/ICONENGINE | rust/ICONENGINE | Language-specific API |
 | Application UI | C/UI | rust/UI | Platform-appropriate UI entry point |
 
-The symmetry is organizational and conceptual. A module may have fewer files or features on an older OS. A feature unsupported by that OS should be absent or report unsupported, not be represented by a fake implementation.
+The symmetry is organizational and conceptual. The Audio & Media acronym/source-directory name remains undecided; do not create a path before approval. Explorer customization is initially an Appearance Engine submodule, not a second Shell or file-manager engine. A module may have fewer files or features on an older OS. A feature unsupported by that OS should be absent or report unsupported, not be represented by a fake implementation.
 
 Use uppercase names for acronym feature directories consistently. Keep source file names and language-specific symbols idiomatic where useful; the uppercase rule is primarily a directory/navigation convention.
 
