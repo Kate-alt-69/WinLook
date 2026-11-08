@@ -20,6 +20,12 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Source ledger: [references/SOURCES.md](references/SOURCES.md)
 - Durable workspace notes: [workspace.md](workspace.md)
 
+
+## Initial code prototypes
+- Modern Rust animation crate: [`crates/wl_animate`](../crates/wl_animate/README.md)
+- Legacy C animation library: [`wl_Lanimate`](../legacy/wl_Lanimate/README.md)
+- Implementation status and verification limits: [Animation Suite](architecture/animation-suite.md)
+
 ## Resume rules
 1. Re-read the current user request and current repository files. This index is navigation, not authority over new instructions.
 2. Distinguish accepted product decisions, proposals, verified platform facts and unresolved research.

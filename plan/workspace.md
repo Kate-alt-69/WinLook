@@ -52,6 +52,15 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Legacy pre-Vista session/lock detection mechanisms.
 - Fancy Groups and cross-machine item resolution.
 
+
+## Initial implementation checkpoint — animation primitives
+- Added `crates/wl_animate`: renderer-independent Rust primitives for interpolation, easing, caller-driven tweens, playback state, keyframes and sampling. It is intended as a reusable crate for WinLook and third-party integrations. Initial version is alpha; API is not stable.
+- Added `legacy/wl_Lanimate`: C89-compatible legacy library with corresponding concepts, caller-owned storage and no per-frame heap allocation in the library core.
+- Exact C host test: `cd legacy/wl_Lanimate && make clean && make test`; passed with GCC 14.2.0 and `-std=c89 -Wall -Wextra -Werror -pedantic -O2`.
+- Rust verification: not run because `rustc` and `cargo` are unavailable in the current execution environment.
+- Windows/legacy runtime verification: not run. In particular, no Open Watcom build, Windows 95 VM test, Win32/DWM/GDI backend, BGW integration or injection is included yet.
+- No compiled artifacts are committed. See [animation-suite.md](architecture/animation-suite.md) for implementation scope and next gates.
+
 ## Repository state
 - Root-level Plan.md was moved to plan/Plan.md in commit bd1b7281af700e7efa4dcda67f994ab79dde43f5.
 - Per-OS compatibility pages, subsystem architecture docs, source ledger and workspace index/memory were added in that documentation change.

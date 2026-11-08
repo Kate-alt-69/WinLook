@@ -3,7 +3,7 @@
 > **Document type:** Living planning checklist and architecture decisions  
 > **Project:** WinLook  
 > **Repository:** [Kate-alt-69/WinLook](https://github.com/Kate-alt-69/WinLook)  
-> **Status:** Planning — implementation has not started unless a task is explicitly verified elsewhere  
+> **Status:** Planning plus early portable animation prototypes; see implementation checkpoints for tested and unverified work.  
 > **Primary document:** `Plan.md`  
 > **Future consolidated specification:** `Final-Plan.md`
 
@@ -636,6 +636,41 @@ One .wl.t file contains one Template. A ZIP containing several .wl.t files is a 
 ## Excluded product ideas
 
 WinCheck, WLCC, a separate Launcher, a separate Scene Engine, a separate Creator Studio and a separate general Input Customization Engine are out of scope. Creation tools belong in WinLook Manager. Community Store/catalogues should support independent sources rather than requiring one central WinLook-operated service.
+
+
+## Initial implementation slice — portable animation primitives (alpha.1)
+
+The first code slice establishes the renderer-independent timing/value layer only. It is deliberately **not** the complete OS animation suite: no Win32 window hooks, process injection, BGW integration, DWM/D3D/DirectComposition, GDI drawing, overlay presentation, timer loop, or Windows backend is included yet.
+
+### Rust: `wl_animate`
+
+- Crate: [`crates/wl_animate`](`../../crates/wl_animate/README.md`)
+- Public concepts: `Interpolate`, `Easing`, `Tween<T>`, `PlaybackState`, `Keyframe<T>`, `KeyframeTrack<T>`, `Point2` and `Rgba`.
+- Host-driven timing: consumers provide elapsed `std::time::Duration`; the crate creates no scheduler, worker thread, timer, window, graphics context or hook.
+- Sampling does not allocate internally for the built-in fixed-size value types. A third-party `Interpolate` implementation may allocate inside its own `Clone` implementation; the crate cannot guarantee otherwise.
+- Initial version: `0.1.0-alpha.1`. Public API is provisional.
+
+### Legacy C: `wl_Lanimate`
+
+- Library sources: [`legacy/wl_Lanimate`](`../../legacy/wl_Lanimate/README.md`)
+- C89-compatible header and implementation; caller-owned tween/keyframe storage; no heap allocation in the per-frame path.
+- Includes scalar tween state, linear/quadratic/cubic easing, Point2/RGBA interpolation and timestamped keyframe sampling.
+- The library core has no internal worker thread, timer, message pump, DWM, DirectComposition, D3D or modern Win32 imports. OS-specific scheduling and drawing belong in separate adapters.
+
+### Verification evidence
+
+- **C host compile/test: passed** with GCC 14.2.0 using `make clean && make test` and `-std=c89 -Wall -Wextra -Werror -pedantic -O2`. This validates the portable C source against a C89 compiler mode; it does not prove Open Watcom, Windows 95, or any other Windows runtime compatibility.
+- **Rust compile/test: not run.** This execution environment does not have `rustc` or `cargo` installed. Install/use a Rust toolchain and run `cargo fmt --check`, `cargo test` and `cargo clippy --all-targets --all-features` before treating the crate as build-verified.
+- **Windows runtime/backend tests: not run.** No Win32/DWM/GDI backend or injection integration exists in this slice.
+- No compiled test executable or other build output is committed.
+
+### Next implementation gates
+
+1. Build and test `wl_animate` with the selected minimum Rust toolchain.
+2. Verify `wl_Lanimate` with the selected Open Watcom compiler/linker and actual legacy target imports.
+3. Define the stable shared conceptual API and the C ABI before promising third-party compatibility.
+4. Add platform schedulers/renderers behind capability-detected adapters, retaining native fallbacks.
+5. Add frame-time, allocation, CPU/GPU and GDI-resource benchmarks before optimizing compiler-specific paths.
 
 ## Detailed references
 
