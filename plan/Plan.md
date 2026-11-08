@@ -688,3 +688,20 @@ The first code slice establishes the renderer-independent timing/value layer onl
 - [Restoration and clean uninstallation](architecture/restoration.md)
 - [Technical source ledger](references/SOURCES.md)
 - [Workspace index](index.md)
+
+# 17. Detailed planning package
+
+These are planning specifications and proposals, not implementation claims.
+
+- [Detailed roadmap](roadmap.md): dependency order, phases, deliverables and exit gates.
+- [Repository layout](architecture/repository-layout.md): parallel C/Rust trees, public API locations, reusable library ownership and migration gates.
+- [Manager UI architecture](architecture/ui-architecture.md): clean WinToys-inspired navigation, isolated pages/components and C/Rust UI parity.
+- [Runtime contracts](architecture/runtime-contracts.md): process ownership, IPC, capability results, lifecycle, privilege and cross-version adapter rules.
+- [Documentation standards](architecture/documentation-standard.md): extensive application, engine and public API documentation.
+- [Compatibility test strategy](compatibility/test-strategy.md): evidence labels, support tiers, test layers and exact environment records.
+- Expanded [WLWM](architecture/wlwm.md), [WLDE](architecture/wlde.md), [WLT](architecture/wlt.md), [WLOSDE/WLDM](architecture/wlosde-wldm.md), [restoration](architecture/restoration.md) and [compatibility matrix](compatibility/matrix.md) contracts.
+
+## Planning boundary
+
+The actual source tree has not been reorganized. The initial portable animation prototypes remain at their current paths until the repository-layout decision is approved and a separate migration is planned. Do not start engine/application implementation merely because the planning documents now contain more detailed contracts. The next work is to resolve the open decisions and approve the target structure.
+
