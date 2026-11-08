@@ -644,7 +644,7 @@ The first code slice establishes the renderer-independent timing/value layer onl
 
 ### Rust: `wl_animate`
 
-- Crate: [`crates/wl_animate`](`../../crates/wl_animate/README.md`)
+- Crate: [`crates/wl_animate`](../crates/wl_animate/README.md)
 - Public concepts: `Interpolate`, `Easing`, `Tween<T>`, `PlaybackState`, `Keyframe<T>`, `KeyframeTrack<T>`, `Point2` and `Rgba`.
 - Host-driven timing: consumers provide elapsed `std::time::Duration`; the crate creates no scheduler, worker thread, timer, window, graphics context or hook.
 - Sampling does not allocate internally for the built-in fixed-size value types. A third-party `Interpolate` implementation may allocate inside its own `Clone` implementation; the crate cannot guarantee otherwise.
@@ -652,7 +652,7 @@ The first code slice establishes the renderer-independent timing/value layer onl
 
 ### Legacy C: `wl_Lanimate`
 
-- Library sources: [`legacy/wl_Lanimate`](`../../legacy/wl_Lanimate/README.md`)
+- Library sources: [`legacy/wl_Lanimate`](../legacy/wl_Lanimate/README.md)
 - C89-compatible header and implementation; caller-owned tween/keyframe storage; no heap allocation in the per-frame path.
 - Includes scalar tween state, linear/quadratic/cubic easing, Point2/RGBA interpolation and timestamped keyframe sampling.
 - The library core has no internal worker thread, timer, message pump, DWM, DirectComposition, D3D or modern Win32 imports. OS-specific scheduling and drawing belong in separate adapters.
