@@ -35,3 +35,46 @@ Planning matrix only; not a release-support promise.
 - [Dynamic code policy](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-process_mitigation_dynamic_code_policy)
 - [Session 0 isolation](https://learn.microsoft.com/en-us/windows/win32/services/service-changes-for-windows-vista)
 - [Open Watcom linker guide](https://open-watcom.github.io/open-watcom-v2-wikidocs/lguide.html)
+
+## Capability interpretation by subsystem
+
+The existing matrix gives the broad platform baseline. This table clarifies the intended design route. These are architecture expectations, not proof that a WinLook adapter works.
+
+| OS group | Core implementation route | Desktop/graphics baseline | Window/workspace model | High-risk areas |
+|---|---|---|---|---|
+| Windows 95 / 98 / Me | Separate legacy C builds; test each release independently | USER/GDI; no DWM | Logical WLWM workspaces; OS-specific observation adapter | Process observation/injection, desktop icon presentation, display, optional accessibility RDK |
+| NT 4.0 | Separate legacy C target; do not reuse Win9x assumptions | USER/GDI; no DWM | Logical workspaces; NT-specific process/session adapter | Service/runtime compatibility, event source, injection and Shell |
+| Windows 2000 / XP | Legacy C target unless another runtime is separately verified | USER/GDI; no DWM | Logical workspaces; documented APIs only where minimums match | Runtime/CRT, process bitness, Shell and display variation |
+| Vista / 7 | Modern Rust candidate only after toolchain proof | DWM exists; composition/driver/session state matters | Logical workspaces unless native operation is proven | Session 0 split, DWM availability, driver and power |
+| Windows 8 / 8.1 | Modern Rust candidate | DWM always on; DirectComposition interface is version-sensitive | Logical workspace baseline; native interface use is feature-scoped | Composition minimums, app model, mitigations |
+| Windows 10 / 11 | Modern Rust target candidate; record exact build/architecture | DWM always on; modern Shell/display capabilities | Native public operations only for documented scope; research remaining gaps | Build changes, process mitigations, protected targets, graphics and display |
+
+## Feature-level planning matrix
+
+| Feature | Win9x / NT4 | 2000 / XP | Vista / 7 | 8 / 8.1 | 10 / 11 |
+|---|---|---|---|---|---|
+| Core Manager/Agent | Legacy UI/runtime research | Legacy runtime research | Modern runtime candidate; verify | Modern runtime candidate; verify | Primary modern target candidate |
+| Native appearance | USER/GDI/Shell adapter per OS | USER/GDI/Shell adapter per OS | Shell/theme/DWM as available | Shell/DWM per release | Shell/DWM per build |
+| Wallpaper | Static GDI-first candidate | Static GDI-first candidate | DWM coexistence; driver fallback | DWM coexistence | Modern renderer candidate |
+| Widgets | Restricted low-resource subset only after isolation | Restricted legacy subset | Isolated runtime candidate | Isolated runtime candidate | Isolated runtime candidate |
+| Desktop Groups | Disabled until native icon recovery proven | Disabled until recovery proven | Disabled until recovery proven | Disabled until recovery proven | Disabled until recovery proven |
+| Animation | wl_Lanimate + GDI/USER adapter | wl_Lanimate + OS adapter | wl_animate + capability-selected adapter | wl_animate; DComp version-specific | wl_animate + verified adapters |
+| WLWM layouts | Legacy observation and USER window APIs | Legacy observation and USER window APIs | Modern observation candidate | Modern observation candidate | Modern observation candidate |
+| Native workspaces | Logical unless public API proves otherwise | Logical unless public API proves otherwise | Logical baseline | Logical baseline | Public API only for documented operations; remaining WLWM logic researched |
+| WLWM injection | Research only; no default injection | Research only; no default injection | Target-specific review | Target-specific review | Target-specific review and mitigations |
+| WLOSDE | Ordinary WinLook-owned windows | Ordinary WinLook-owned windows | Ordinary WinLook-owned surfaces | Ordinary WinLook-owned surfaces | Ordinary WinLook-owned surfaces |
+| WLDM | Basic read-only geometry first | Per-OS display adapter | Display API/driver dependent | Display API/driver dependent | Display API/driver dependent |
+| WLT | Bounded parser and supported fields only | Legacy-safe parser/subset | Full manifest candidate | Full manifest candidate | Full manifest candidate |
+| Store/catalogue | Offline/local import first | Offline/local import first | Optional catalogue client | Optional catalogue client | Optional catalogue client |
+
+## Reading the matrix
+
+- Candidate is a research route, not a feature that currently works.
+- Modern runtime candidate requires exact Rust standard library/dependency support for the OS; it is not inferred from the language alone.
+- Legacy subset means a deliberately reduced feature set, not an imitation of unsupported modern APIs.
+- Groups stay disabled until recovery of native icons is verified on the exact OS.
+- WLWM injection is not a baseline requirement for layouts or rules.
+- High-risk operations need exact target, OS, driver and recovery test records.
+
+Each per-version page remains authoritative. Update it, this matrix and the [test strategy](test-strategy.md) together when evidence changes.
+
