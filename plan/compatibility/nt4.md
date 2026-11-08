@@ -54,6 +54,13 @@ WLOSDE must use WinLook-owned ordinary UI surfaces. It must not imitate or repla
 ## 8. WLT, assets and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, avoid modern runtime requirements, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- NT 4.0 predates Vista Core Audio and GSMTC. WinLook still needs its own mixer/media interface, but only expose controls provided by verified NT 4.0 device/driver APIs; no generic per-process session mixer is assumed.
+- Media metadata and commands require explicit supported-player adapters.
+- Explorer customization is limited to classic Shell capabilities established for the exact NT 4.0 service pack. Do not assume XP-era `IShellView` or later `IExplorerCommand`.
+- Deep visual adapters require a separate NT 4.0-specific investigation and must never modify/replace `explorer.exe`.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

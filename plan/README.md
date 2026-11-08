@@ -7,9 +7,11 @@ This directory is the source of truth for WinLook's living plan, compatibility r
 2. [Compatibility guide](compatibility/README.md) — how Windows compatibility is evaluated.
 3. [Compatibility matrix](compatibility/matrix.md) — cross-generation summary.
 4. [Architecture overview](architecture/overview.md) — subsystem relationships and process model.
-5. [Appearance Engine](architecture/appearance-engine.md), [standby/security](architecture/standby-security.md) and [extensions](architecture/extensions.md) — detailed designs.
-6. [Source ledger](references/SOURCES.md) — primary API/OS references and third-party project sources.
-7. [Agent index](index.md) and [workspace memory](workspace.md) — compact navigation and durable context.
+5. [Appearance Engine](architecture/appearance-engine.md), [File Explorer Customization](architecture/explorer-customization.md) and [Audio & Media Experience](architecture/audio-experience.md) — appearance, Shell and media architecture.
+6. [Clipboard Experience](architecture/clipboard-experience.md) and [Profiles and Optimization](architecture/profiles-and-optimization.md) — coordinated settings and portable profile design.
+7. [Standby/security](architecture/standby-security.md) and [extensions](architecture/extensions.md) — lifecycle, ecosystem and package trust.
+8. [Source ledger](references/SOURCES.md) — primary API/OS references and third-party project sources.
+9. [Agent index](index.md) and [workspace memory](workspace.md) — compact navigation and durable context.
 
 ## Structure
 - Plan.md: current living plan; do not replace it with an implementation specification.

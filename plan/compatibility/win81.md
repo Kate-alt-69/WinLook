@@ -51,6 +51,13 @@ WLOSDE uses WinLook-owned ordinary UI surfaces. It must not imitate or replace n
 ## 8. WLT and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- Core Audio session enumeration/notifications use `IAudioSessionManager2`.
+- GSMTC is unavailable; Now Playing metadata and transport require supported-player adapters.
+- Documented Shell integrations are the baseline. Deep styling of navigation, address/search, tabs and command bar remains per-build research.
+- Keep presentation adapters optional and recoverable; never modify or replace `explorer.exe`.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

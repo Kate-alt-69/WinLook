@@ -51,6 +51,13 @@ WLOSDE uses WinLook-owned ordinary UI surfaces. It must not imitate or replace n
 ## 8. WLT and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- Core Audio includes `IAudioSessionManager2` session enumeration and notifications on Windows 7.
+- GSMTC is unavailable; Now Playing relies on explicit player integrations/adapters and the WinLook-owned UI.
+- `IExplorerCommand` is supported from Windows 7 for Shell commands. It does not expose all menu chrome styling or the full Explorer interface.
+- Deep Explorer visual customization remains a separate per-build adapter, opt-in and recoverable. Never modify or replace `explorer.exe`.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

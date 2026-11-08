@@ -244,3 +244,24 @@ Every feature has a named owner and data contract; OS/API/runtime requirements; 
 10. Select the first reversible vertical slice.
 
 Do not begin broad implementation while these decisions materially affect safety, compatibility or public API shape.
+
+## Accepted Audio & Media and File Explorer workstreams
+
+These product workstreams enter the roadmap after the shared runtime, capability and restoration foundations. This adds dependencies; it does not commit release dates or claim support.
+
+### Audio & Media
+1. Verify Vista Core Audio base session interfaces and the Windows 7 `IAudioSessionManager2` enumeration boundary.
+2. Verify GSMTC on Windows 10 version 1809+ and document provider-controlled media type, metadata, thumbnails, transport and timeline.
+3. Define audio-session/media-session identity correlation and multi-session UI behaviour.
+4. Define a legacy player-adapter contract; test named player/version pairs on systems without GSMTC.
+5. Prototype endpoint/session controls and Now Playing UI without recording, virtual drivers or broad application injection.
+
+### File Explorer
+1. Map documented Shell extension APIs and registration requirements per Windows version.
+2. Prototype Shell commands and item handlers without blocking Explorer.
+3. Document the strict scope of namespace extensions and custom `IShellView` views.
+4. Select one exact modern Windows build for an opt-in Explorer presentation-adapter proof of concept.
+5. Implement out-of-band disable, crash quarantine, safe mode and recovery before enabling deeper styling.
+6. Expand surface coverage only after build-specific tests for context menus, navigation, address/search, tabs, command bar and views.
+
+Each workstream needs its own bounded prototype plan, compatibility evidence and risk review before application implementation.

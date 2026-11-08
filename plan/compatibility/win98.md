@@ -54,6 +54,13 @@ WLOSDE must use WinLook-owned ordinary UI surfaces. It must not imitate or repla
 ## 8. WLT, assets and restoration
 WLT import must validate the archive, reject unsafe paths/collisions, cap file counts/sizes/compression ratios, avoid modern runtime requirements, apply only supported components and report skipped items. Fonts/assets require licensing and user consent. The uninstaller must restore WinLook-owned changes and preserve original user files/shortcuts.
 
+## Audio & Media and File Explorer notes
+
+- Windows 98 predates Vista Core Audio and GSMTC. Keep the WinLook-owned UI, but provide only global/device mixer controls proven for the exact edition and driver. Do not promise generic per-process volume.
+- Media metadata, artwork and playback controls require named player adapters; there is no system-wide Now Playing API equivalent to GSMTC.
+- Explorer customization must use classic Shell capabilities verified on this OS. Do not assume XP-era `IShellView`, Windows 7 `IExplorerCommand` or Windows 11 modern context-menu registration.
+- Deep Explorer presentation work must remain a separately tested compatibility adapter and must never patch/replace `explorer.exe`.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.
