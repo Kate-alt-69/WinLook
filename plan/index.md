@@ -21,6 +21,8 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Profiles and Optimization: [architecture/profiles-and-optimization.md](architecture/profiles-and-optimization.md)
 - WLWM: [architecture/wlwm.md](architecture/wlwm.md)
 - Animation libraries: [architecture/animation-suite.md](architecture/animation-suite.md)
+- Vector animation and SVG contract: [architecture/vector-animation.md](architecture/vector-animation.md)
+- CPUv/GPUv resource-governor architecture: [architecture/resource-governors.md](architecture/resource-governors.md)
 - WLDE: [architecture/wlde.md](architecture/wlde.md)
 - WLT: [architecture/wlt.md](architecture/wlt.md)
 - WLOSDE / WLDM: [architecture/wlosde-wldm.md](architecture/wlosde-wldm.md)
@@ -35,6 +37,8 @@ Read this index first when resuming work, then open only the relevant sections/f
 ## Initial code prototypes
 - Modern Rust animation crate: [`crates/wl_animate`](../crates/wl_animate/README.md)
 - Legacy C animation library: [`wl_Lanimate`](../legacy/wl_Lanimate/README.md)
+- Vector/SVG API design: [Vector Animation](architecture/vector-animation.md)
+- Shared CPU/GPU governors are planned as `wl_cpuv`/`wl_gpuv` and `wl_Lcpuv`/`wl_Lgpuv`; the current repository branch does not yet contain releasable implementations.
 - Implementation status and verification limits: [Animation Suite](architecture/animation-suite.md)
 
 ## Resume rules

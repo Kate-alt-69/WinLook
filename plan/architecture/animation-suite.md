@@ -15,10 +15,10 @@ wl_animate is intended for WinLook modules and third-party developers creating a
 Window open/minimize/restore/close, move/resize/snap/focus, workspace changes, desktop icon/Group interactions, wallpaper/widget transitions, WLOSDE notification/OSD transitions, WinLook Manager controls and third-party UI.
 
 ## Shared conceptual features
-The suite is intended to cover duration/delay, easing, interpolation, keyframes, timelines, sequences, parallel groups, pause/resume/cancel, interruption handling, progress/state callbacks, frame pacing, target FPS, reduced-motion, resource budgets and deterministic disposal. The first alpha prototypes establish primitive signatures; the stable cross-language contract, C ABI, scheduler, sequencing and callback model still require design review.
+The suite is intended to cover duration/delay, easing, interpolation, keyframes, timelines, sequences, parallel groups, pause/resume/cancel, interruption handling, progress/state events, frame pacing, target FPS, reduced-motion and deterministic disposal. Its vector geometry, SVG, color/alpha and render contracts are specified separately in [vector-animation.md](vector-animation.md). CPU and GPU admission/budgeting is centralized in the planned [CPUv/GPUv resource governors](resource-governors.md), not reimplemented inside animation.
 
 ## Modern wl_animate
-For Windows 10+ Rust/MSVC builds, candidate presentation backends include Win32 window/message observation, DWM, D3D11, DirectComposition and independent layered/overlay surfaces where appropriate. Capability detection must select a backend at runtime. DWM and some graphics interfaces have lower documented API minimums, but those minimums do not lower the current Rust/MSVC executable target floor. **No presentation backend is included in either library core yet.**
+For Windows 10+ Rust/MSVC builds, candidate presentation backends include Direct2D geometry and Windows.UI.Composition, with a capability-selected CPU raster fallback. Do not select an API solely from its minimum OS version: Windows 10 guidance recommends Windows.UI.Composition instead of DirectComposition for app composition. Device loss, pressure and resource accounting must be handled by the separate renderer adapter and GPUv. **No presentation backend is included in either library core yet.**
 
 Sources: [DwmIsCompositionEnabled](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmiscompositionenabled), [IDCompositionDesktopDevice](https://learn.microsoft.com/en-us/windows/win32/api/dcomp/nn-dcomp-idcompositiondesktopdevice).
 
@@ -38,7 +38,7 @@ Sources: [AnimateWindow](https://learn.microsoft.com/en-us/windows/win32/api/win
 Publish Rust API docs/examples and semver once stable. Define a C ABI for legacy consumers. Provide capability queries, bounded sequences, cancellation and errors. Third-party code must not be able to deadlock the BGW or Manager. WLT may include animation configuration/assets, not arbitrary native code disguised as an animation profile.
 
 
-## Current implementation — alpha.2
+## Verified implementation checkpoint — alpha.2 (historical)
 
 The first buildable library slice now provides a paired Rust crate and C static library. Both target Windows 10 first. They deliberately remain renderer-independent: neither library owns a scheduler, timer, message loop, window, graphics context, hook or process-injection path.
 
@@ -66,8 +66,8 @@ The first buildable library slice now provides a paired Rust crate and C static 
 - **GCC C89 Make build and tests: passed** with GCC 14.2.0, `-std=c89 -Wall -Wextra -Werror -pedantic -O2`; this built `libwl_Lanimate.a` and ran the full C test program.
 - **GCC CMake build and CTest: passed** with CMake 3.31.6; 1/1 CTest target passed.
 - **Clang C89 + AddressSanitizer + UndefinedBehaviorSanitizer: passed** for the C test executable.
-- **Rust compile/test: not run locally** because this execution environment has no `rustc`, `cargo` or `rustfmt`. A Windows MSVC GitHub Actions workflow is added to run formatting, tests, Clippy and rustdoc for Rust, and CMake/CTest for C.
-- **Windows 10 client runtime: not run.** A Windows CI build/test is compiler/runtime evidence for its hosted runner, not a Windows 10 client VM/hardware test.
+- **Windows MSVC CI: passed** on GitHub Actions run [42513514864](https://github.com/Kate-alt-69/WinLook/actions/runs/42513514864): Rust formatting, 10 tests, Clippy and API docs; CMake/MSVC static-library build and CTest (1/1). The local host did not have a Rust toolchain, so no local Rust command was run.
+- **Windows 10 client runtime: not run.** The CI host was Windows Server 2022, not a Windows 10 client VM/hardware test.
 - No build artifacts are committed.
 
 ### Next implementation gates
@@ -85,3 +85,11 @@ The long-term layout proposal places reusable WinLook-owned libraries under the 
 - `wl_Lanimate` → `lib/wl_Lanimate` (C).
 
 The current source paths remain unchanged until a dedicated layout migration updates manifests, imports, tests, build workflows and documentation links together.
+
+
+## Current beta planning status — 2026-11-09
+
+The crate manifest currently carries `0.2.0-beta.1` and the branch includes initial `vector.rs`/`svg.rs` source files. That version string is not a release-quality assertion: these modules are not yet wired into the crate's public exports, and the vector/SVG parser still needs the grammar, alpha, document-import and stress-test gates in [vector-animation.md](vector-animation.md). Do not publish or advertise a completed beta until those gates pass.
+
+The user has paused further source implementation to continue planning. The next source pass should be driven by [vector-animation.md](vector-animation.md) and [resource-governors.md](resource-governors.md). Those docs define the intended contract; planned API entries are not available features yet.
+

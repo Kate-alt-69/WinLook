@@ -1,6 +1,6 @@
 # WinLook Technical Source Ledger
 
-Last verified: 2026-11-08. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
+Last verified: 2026-11-09. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
 
 ## Microsoft Windows / Win32
 
@@ -57,6 +57,25 @@ Last verified: 2026-11-08. These citations support platform or upstream-project 
 |---|---|---|---|
 | TOOLCHAIN-001 | [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) | Official Rust/MSVC Windows target support floor | Windows 10+ for client installs; this is toolchain documentation, not a WinLook runtime test |
 | TOOLCHAIN-002 | [Rust GNU target support](https://doc.rust-lang.org/rustc/platform-support/windows-gnu.html) | Current documentation state for Rust GNU Windows targets | Page is a stub with no target maintainers and no supported old-client minimum; not evidence of pre-Windows-10 support |
+
+
+| CPU-001 | [Windows thread-pool creation](https://learn.microsoft.com/en-us/windows/win32/api/threadpoolapiset/nf-threadpoolapiset-createthreadpool) | A Windows thread pool can be configured with explicit minimum/maximum thread counts and has its own lifecycle | Windows Vista+; actual scheduling remains owned by Windows |
+| CPU-002 | [Job Object CPU rate control](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_cpu_rate_control_information) | Job Objects expose weight-based, hard-cap and min/max CPU-rate control modes | Hard-cap can stop all threads in a job for the rest of a scheduling interval; use only for WinLook-owned helper jobs, not as a default UI throttle |
+| GPU-001 | [DXGI_QUERY_VIDEO_MEMORY_INFO](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_4/ns-dxgi1_4-dxgi_query_video_memory_info) | OS reports per-process GPU memory budget, usage, available reservation and current reservation | The budget is the target; exceeding it can cause stutter/eviction pressure |
+| GPU-002 | [IDXGIAdapter3::QueryVideoMemoryInfo](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_4/nf-dxgi1_4-idxgiadapter3-queryvideomemoryinfo) | Budget query is per node and local/non-local memory segment | Adapter/node/segment identity must remain separate |
+| GPU-003 | [IDXGIAdapter3::SetVideoMemoryReservation](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_4/nf-dxgi1_4-idxgiadapter3-setvideomemoryreservation) | Reservation communicates an application's minimum memory need to the OS | A hint, not a guaranteed private VRAM partition or an increased budget |
+| GPU-004 | [Video-memory budget-change notification](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_4/nf-dxgi1_4-idxgiadapter3-registervideomemorybudgetchangenotificationevent) | DXGI can signal a CPU event when the video-memory budget changes | Unregister notification handles during adapter/device shutdown |
+| GPU-005 | [D3D12 residency](https://learn.microsoft.com/en-us/windows/win32/direct3d12/residency) | DXGI reservation is a minimum-working-set hint and does not increase the application's normal budget | Reservation may not be available when the app is not foreground; still handle budget and residency changes |
+
+## Vector graphics and SVG
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| SVG-001 | [SVG 2 Paths](https://www.w3.org/TR/SVG/paths.html) | Path geometry, subpaths, current-point behavior and the path-data grammar | Parser must implement repeated groups, relative coordinates, arcs and specified error behavior |
+| SVG-002 | [SVG 2 Rendering Model](https://www.w3.org/TR/SVG/render.html) | Overall/group opacity is distinct from fill-opacity, stroke-opacity and stop-opacity | Group opacity must be applied at the group compositing boundary |
+| SVG-003 | [Direct2D SVG support](https://learn.microsoft.com/en-us/windows/win32/direct2d/svg-support) | Windows 10 Creators Update and newer Direct2D can render a documented subset of SVG 1.1 elements and presentation attributes | Not full SVG; unsupported elements/attributes are ignored by Direct2D, so WinLook needs its own feature report and fallback policy |
+| VECTOR-001 | [Direct2D geometries overview](https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-geometries-overview) | Direct2D provides path, primitive, composite and transformed geometry; geometry can be reused and used for hit/clip regions | Device-independent geometry must remain separate from device-dependent renderer resources |
+| COMPOSITION-001 | [DirectComposition best practices](https://learn.microsoft.com/en-us/windows/win32/directcomp/best-practices-for-directcomposition) | Device loss requires validation/recovery; create only needed visuals and remove hidden visuals instead of setting opacity to zero | Microsoft recommends Windows.UI.Composition instead of DirectComposition for Windows 10 app composition; validate the chosen Windows 10 path |
 
 ## Legacy toolchain
 

@@ -58,6 +58,10 @@ The following is the intended direction, not a frozen file-by-file manifest:
       lib/
         wl_animate/
         wl_Lanimate/
+        wl_cpuv/
+        wl_gpuv/
+        wl_Lcpuv/
+        wl_Lgpuv/
       docs/
         APP/
         API/
@@ -187,12 +191,16 @@ All WinLook-owned reusable custom libraries live under ROOT/lib. They have their
 
 Initial mapping:
 
-| Existing prototype path | Proposed target | Language |
-|---|---|---|
-| crates/wl_animate | lib/wl_animate | Rust |
-| legacy/wl_Lanimate | lib/wl_Lanimate | C |
+| Existing prototype path / planned library | Proposed target | Language | Status |
+|---|---|---|---|
+| crates/wl_animate | lib/wl_animate | Rust | Existing implementation; separate migration required |
+| legacy/wl_Lanimate | lib/wl_Lanimate | C | Existing implementation; separate migration required |
+| planned wl_cpuv | lib/wl_cpuv | Rust | Architecture only; not implemented |
+| planned wl_gpuv | lib/wl_gpuv | Rust | Architecture only; not implemented |
+| planned wl_Lcpuv | lib/wl_Lcpuv | C | Architecture only; not implemented |
+| planned wl_Lgpuv | lib/wl_Lgpuv | C | Architecture only; not implemented |
 
-Do not move these prototypes as part of planning alone. When the layout is approved, migrate paths in a dedicated repository-structure change and update manifests, imports, tests, documentation links and build workflows together.
+Do not move the existing prototypes or create the planned resource-governor libraries as part of a documentation-only layout change. Once the full library set and public contracts are accepted, migrate/create paths in a dedicated repository-structure change and update manifests, imports, tests, documentation links and build workflows together.
 
 A library is not engine source. Engine directories may depend on a library through its public contract, but must not copy its implementation into WLDE/WLWM or fork it per subsystem without a documented reason.
 
@@ -219,7 +227,7 @@ A configuration tab should be independently editable without changing the naviga
 - Reusable library root: lib.
 - Rust API crate root: rust/crate.
 - Engine/acronym directories: uppercase, e.g. WLDE, WLDM, WLWM, WLOSDE and BGW.
-- Library identities retain their established names: wl_animate and wl_Lanimate.
+- Library identities retain their established names: wl_animate, wl_Lanimate, wl_cpuv, wl_gpuv, wl_Lcpuv and wl_Lgpuv.
 - Public C headers use clear engine names and stable include paths.
 - Source filenames remain language-idiomatic; do not force uppercase filenames unless a compiler or established convention requires it.
 
