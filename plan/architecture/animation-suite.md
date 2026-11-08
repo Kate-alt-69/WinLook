@@ -18,7 +18,7 @@ Window open/minimize/restore/close, move/resize/snap/focus, workspace changes, d
 The suite is intended to cover duration/delay, easing, interpolation, keyframes, timelines, sequences, parallel groups, pause/resume/cancel, interruption handling, progress/state callbacks, frame pacing, target FPS, reduced-motion, resource budgets and deterministic disposal. The first alpha prototypes establish primitive signatures; the stable cross-language contract, C ABI, scheduler, sequencing and callback model still require design review.
 
 ## Modern wl_animate
-Candidate backends: Win32 window/message observation, DWM APIs (Vista+), D3D11, DirectComposition (selected interfaces have Windows 8.1+ minimums) and independent layered/overlay surfaces where appropriate. Capability detection must select backend at runtime.
+For current official Rust/MSVC Windows builds (Windows 10+), candidate presentation backends include Win32 window/message observation, DWM, D3D11, DirectComposition and independent layered/overlay surfaces where appropriate. Capability detection must select a backend at runtime. DWM itself dates to Vista and selected DirectComposition desktop interfaces have Windows 8.1 minimums, but those API minimums do not lower the current Rust/MSVC executable target floor. Pre-Windows-10 builds use the C `wl_Lanimate` implementation and their own USER/GDI/DWM adapters.
 
 Sources: [DwmIsCompositionEnabled](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmiscompositionenabled), [IDCompositionDesktopDevice](https://learn.microsoft.com/en-us/windows/win32/api/dcomp/nn-dcomp-idcompositiondesktopdevice).
 

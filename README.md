@@ -78,7 +78,7 @@ cargo test --manifest-path crates/wl_animate/Cargo.toml
 make -C legacy/wl_Lanimate test
 ```
 
-These commands test portable library code on the host. They do not build a WinLook application or prove compatibility with Windows 95–11. The C Makefile requires `make` and a C89-capable compiler; Open Watcom/Windows runtime verification is a separate gate.
+These commands test portable library code on the host. They do not build a WinLook application or prove compatibility with Windows 95–11. The C Makefile requires `make`, a C89-capable compiler and a shell environment compatible with its POSIX-style commands; Open Watcom/Windows runtime verification is a separate gate.
 
 ## Development status
 

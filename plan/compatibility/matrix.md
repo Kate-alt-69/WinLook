@@ -10,10 +10,10 @@ Planning matrix only; not a release-support promise.
 | NT 4.0 | NT | USER/GDI; no DWM | MSAA 1.3 from SP6; RDK earlier | WLWM logical | wl_Lanimate/GDI | Research + legacy prototype |
 | Windows 2000 | NT 5.0 | USER/GDI; no DWM | SetWinEventHook and AnimateWindow documented | WLWM logical | wl_Lanimate | Candidate |
 | Windows XP | NT 5.1/5.2 | USER/GDI; no DWM | MSAA 2.0 built in | WLWM logical | wl_Lanimate | Candidate |
-| Windows Vista | NT 6.0 | DWM introduced; composition conditional | Session 0 isolation begins | WLWM logical | wl_animate + fallback | Candidate |
-| Windows 7 | NT 6.1 | DWM/Aero; composition conditional | MSAA 3.0 built in | WLWM logical | wl_animate + fallback | Candidate |
-| Windows 8 | NT 6.2 | DWM always on | Modern Store app/window separation | WLWM logical | wl_animate; DComp interface differs | Candidate |
-| Windows 8.1 | NT 6.3 | DWM always on; DirectComposition DesktopDevice documented | Dynamic code policy documented | WLWM logical/native query where useful | wl_animate; DComp optional | Candidate |
+| Windows Vista | NT 6.0 | DWM introduced; composition conditional | Session 0 isolation begins | WLWM logical | wl_Lanimate + GDI/DWM adapter when available | C target planned |
+| Windows 7 | NT 6.1 | DWM/Aero; composition conditional | MSAA 3.0 built in | WLWM logical | wl_Lanimate + GDI/DWM adapter when available | C target planned |
+| Windows 8 | NT 6.2 | DWM always on | Modern Store app/window separation | WLWM logical | wl_Lanimate + version-appropriate graphics adapter | C target planned |
+| Windows 8.1 | NT 6.3 | DWM always on; DirectComposition DesktopDevice documented | Dynamic code policy documented | WLWM logical/native query where useful | wl_Lanimate + optional DirectComposition adapter | C target planned |
 | Windows 10 | NT 10.0 | DWM always on | IVirtualDesktopManager documented | Native window/desktop queries+moves; remaining ops researched | wl_animate | Candidate |
 | Windows 11 | NT 10.0 build family | DWM always on; modern Shell | Mitigation/build variability | Public IVirtualDesktopManager scope; per-build testing | wl_animate | Candidate |
 
