@@ -43,3 +43,54 @@ If the current value differs from the value last applied by WinLook, assume the 
 
 ## Acceptance tests
 Crash WLDE while Groups active; crash BGW with modules loaded; uninstall while target apps open; interrupt theme apply; user changes settings externally; monitor disconnect before restoration; interrupted uninstall and reboot; verify original shortcuts/files remain unchanged.
+
+## Detailed journal and transaction model
+
+### Proposed journal entry
+
+Every WinLook-owned change should record transaction ID, ordered operation index, component and adapter ID/version, setting/resource identifier, machine/user/profile scope, previous value and ownership state, requested value, value successfully applied, observed post-apply value, timestamp, operation status, restoration method/capability, external-change state, backup reference/hash and error/recovery reason.
+
+Sensitive values must not be copied into the journal. Use references to protected backups where needed and permitted.
+
+### Transaction states
+
+Proposed states: Prepared, SnapshotSaved, Applying, Applied, Verified, Committed, RollingBack, Restored, PartialRestore, Conflict and Failed.
+
+A transaction is not committed merely because an API call returned success. Verify observable state before marking it Verified/Committed.
+
+### External-change conflict rule
+
+Before restoring:
+- If current value still matches the last value WinLook recorded as applied, restore the saved previous value.
+- If current value differs, treat it as an external change and do not overwrite blindly.
+- Offer a user choice to keep the external value, reapply WinLook's value, or restore the earlier snapshot when safe and understood.
+- Record the decision and result.
+
+This prevents WinLook from undoing a change the user made after applying a theme.
+
+### Ordering and recovery
+
+- Snapshot required state before mutation.
+- Apply one reversible operation at a time in explicit dependency order.
+- Persist progress at boundaries where a crash could leave ambiguity.
+- Roll back completed operations in reverse dependency order.
+- Make recovery idempotent; rerunning it must not compound a change.
+- If rollback is incomplete, enter PartialRestore and provide a manual report.
+
+### Uninstall contract
+
+The uninstaller removes WinLook-owned services, startup entries, files and configuration from an explicit inventory. It restores settings only when ownership and external-change checks allow it. It preserves user templates, downloaded assets and logs when the user chooses to retain them. It never deletes unrelated shortcuts, original desktop items or user files.
+
+### Irreversible or conditional operations
+
+An operation without a reliable restoration path is not eligible for normal automatic application. Redesign it, label it experimental with explicit approval and independent recovery, or exclude it.
+
+### Acceptance gates
+
+- [ ] Journal schema is versioned and crash-safe.
+- [ ] Every adapter declares snapshot, verify and restore behaviour.
+- [ ] External user changes are detected and preserved.
+- [ ] Fault injection at each transaction boundary is recoverable.
+- [ ] Partial restore has a visible, actionable report.
+- [ ] Clean uninstall is tested after normal use and simulated crashes.
+
