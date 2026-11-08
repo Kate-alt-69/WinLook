@@ -4,10 +4,15 @@ Read this index first when resuming work, then open only the relevant sections/f
 
 ## Authoritative documents
 - Living project plan: [Plan.md](Plan.md)
+- Detailed dependency-ordered roadmap: [roadmap.md](roadmap.md)
 - Compatibility methodology: [compatibility/README.md](compatibility/README.md)
 - Compatibility matrix: [compatibility/matrix.md](compatibility/matrix.md)
 - Per-version pages: [win95](compatibility/win95.md), [win98](compatibility/win98.md), [winme](compatibility/winme.md), [nt4](compatibility/nt4.md), [win2000](compatibility/win2000.md), [winxp](compatibility/winxp.md), [vista](compatibility/vista.md), [win7](compatibility/win7.md), [win8](compatibility/win8.md), [win81](compatibility/win81.md), [win10](compatibility/win10.md), [win11](compatibility/win11.md)
 - Architecture overview: [architecture/overview.md](architecture/overview.md)
+- Proposed repository layout: [architecture/repository-layout.md](architecture/repository-layout.md)
+- Manager UI architecture: [architecture/ui-architecture.md](architecture/ui-architecture.md)
+- Runtime/process/IPC contracts: [architecture/runtime-contracts.md](architecture/runtime-contracts.md)
+- Documentation standards: [architecture/documentation-standard.md](architecture/documentation-standard.md)
 - Appearance/Icon Engine: [architecture/appearance-engine.md](architecture/appearance-engine.md)
 - WLWM: [architecture/wlwm.md](architecture/wlwm.md)
 - Animation libraries: [architecture/animation-suite.md](architecture/animation-suite.md)
@@ -17,6 +22,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Standby/session security: [architecture/standby-security.md](architecture/standby-security.md)
 - Extensions/community ecosystem: [architecture/extensions.md](architecture/extensions.md)
 - Restoration/uninstaller: [architecture/restoration.md](architecture/restoration.md)
+- Compatibility test strategy: [compatibility/test-strategy.md](compatibility/test-strategy.md)
 - Source ledger: [references/SOURCES.md](references/SOURCES.md)
 - Durable workspace notes: [workspace.md](workspace.md)
 
