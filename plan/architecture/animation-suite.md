@@ -78,3 +78,12 @@ The first code slice establishes the renderer-independent timing/value layer onl
 
 ## Verification
 Profile frame times, CPU/GPU usage, allocations, GDI handle leaks, cancellation, target destruction, display changes, reduced-motion, low power, concurrency, legacy VM/hardware and third-party ABI compatibility.
+
+## Planned repository location
+
+The long-term layout proposal places reusable WinLook-owned libraries under the root lib directory:
+- wl_animate → lib/wl_animate (Rust).
+- wl_Lanimate → lib/wl_Lanimate (C).
+
+The existing prototypes remain in their current repository paths until the layout is approved and a dedicated migration updates manifests, imports, tests, build workflows and documentation links. This is a planned path mapping, not a completed move.
+
