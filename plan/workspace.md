@@ -70,3 +70,16 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Technical citations are maintained in [references/SOURCES.md](references/SOURCES.md); per-OS research is under [compatibility/](compatibility/README.md).
 - User explicitly authorized direct commits to main for this work.
 - These documents are planning/research; they do not claim that code is implemented or tested.
+
+## Detailed planning checkpoint — 2026-11-08
+
+- User confirmed this task remains in planning/specification; do not implement engines, UI or move source files yet.
+- Proposed source layout: parallel C/ and rust/ source trees; uppercase acronym engine directories; a dedicated, split UI/ under each language; public Rust engine crates under rust/crate/; C public headers plus a proposed C/index.c umbrella; reusable WinLook libraries under root lib/.
+- Existing animation prototypes are planned to move from crates/wl_animate and legacy/wl_Lanimate to lib/wl_animate and lib/wl_Lanimate only after structure approval and a separate migration plan.
+- The exact purpose of the root wllook/ directory is unresolved; current proposal reserves it for product/packaging metadata and shared assets, not duplicate engine source.
+- Manager UI direction: WinToys-inspired clear left navigation and focused pages, familiar/native controls, split pages and reusable components. Do not copy its implementation or commit to WinUI 3 for legacy targets.
+- Added [repository layout](architecture/repository-layout.md), [UI architecture](architecture/ui-architecture.md), [documentation standards](architecture/documentation-standard.md), [runtime contracts](architecture/runtime-contracts.md), [roadmap](roadmap.md) and [compatibility test strategy](compatibility/test-strategy.md).
+- Expanded detailed contracts for WLWM target lifecycle/cache/injection policy, WLDE wallpaper/resource/Game Mode/Groups, WLT import/export/security, WLOSDE/WLDM lifecycle, restoration journaling and compatibility planning.
+- No source files were moved and no product implementation was added in this planning update.
+- The installed Research Companion skills and GitHub connector were used. Dedicated local Research Companion helper scripts are not exposed in this session; no claim is made that they ran.
+
