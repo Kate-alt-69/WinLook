@@ -14,7 +14,8 @@ WinLook is an additive Windows customization platform. It extends the user-facin
 |---|---|
 | WinLook Manager | Settings, previews, import/export, apply and restore |
 | Main BGW / Agent | Session/process monitoring, WLWM compatibility cache, injection orchestration and health |
-| Appearance Engine | Taskbar, Start Menu, window surfaces and supported system appearance |
+| Appearance Engine | Taskbar, Start Menu, File Explorer presentation/Shell integration, window surfaces and supported system appearance |
+| Audio & Media Experience | Global/per-app audio controls plus provider-backed Now Playing metadata, thumbnails, transport and timeline |
 | Icon Engine | System/file/folder/drive/application/shortcut icons |
 | WLDE | Desktop, wallpaper runtime/library/Store, widgets, Groups and adaptive rendering |
 | WLWM | Window policy/layouts/rules/workspaces, compatibility analysis and injection |
@@ -28,7 +29,7 @@ WinLook is an additive Windows customization platform. It extends the user-facin
 ## DWM and Windows Shell
 DWM APIs are documented from Windows Vista. Vista/7 composition can vary by theme/driver/session; query it and provide fallback. Windows 8 and later keep DWM composition always on and apps cannot disable it. Windows 95 through XP have no DWM and use USER/GDI/Shell adapters.
 
-DWM is not the application launcher. Windows Shell/application activation launches apps; WLWM manages windows after creation. Do not patch or replace Explorer.exe on disk. Supported Shell APIs are allowed; Explorer-targeted injection is excluded by default until separately reviewed. DWM and credential/security-critical processes are never injection targets.
+DWM is not the application launcher. Windows Shell/application activation launches apps; WLWM manages windows after creation. Do not patch or replace Explorer.exe on disk. Supported Shell APIs are the baseline; deep Explorer presentation customization is a separate opt-in, per-build adapter with independent recovery, not ordinary WLWM injection. Windows retains filesystem and Shell operations. DWM and credential/security-critical processes are never injection targets.
 
 Sources: [DwmIsCompositionEnabled](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmiscompositionenabled), [Windows 8 DWM always on](https://learn.microsoft.com/en-us/windows/win32/w8cookbook/desktop-window-manager-is-always-on).
 
@@ -48,7 +49,7 @@ WinLook Manager and the interactive Agent/BGW run in the user session. Any optio
 A cache hit is not permission to skip current safety checks. Do not run slow analysis or network operations while holding loader locks.
 
 ## Further reading
-[Appearance Engine](appearance-engine.md) · [WLWM](wlwm.md) · [Animation suite](animation-suite.md) · [WLDE](wlde.md) · [WLT](wlt.md) · [WLOSDE/WLDM](wlosde-wldm.md) · [Standby/security](standby-security.md) · [Extensions](extensions.md) · [Restoration](restoration.md) · [Compatibility](../compatibility/README.md) · [Sources](../references/SOURCES.md)
+[Appearance Engine](appearance-engine.md) · [File Explorer Customization](explorer-customization.md) · [Audio & Media Experience](audio-experience.md) · [WLWM](wlwm.md) · [Animation suite](animation-suite.md) · [WLDE](wlde.md) · [WLT](wlt.md) · [WLOSDE/WLDM](wlosde-wldm.md) · [Standby/security](standby-security.md) · [Extensions](extensions.md) · [Restoration](restoration.md) · [Compatibility](../compatibility/README.md) · [Sources](../references/SOURCES.md)
 
 ## Repository, UI and documentation architecture
 

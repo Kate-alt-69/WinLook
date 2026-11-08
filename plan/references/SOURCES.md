@@ -24,6 +24,30 @@ Last verified: 2026-11-08. These citations support platform or upstream-project 
 | DWM-003 | [DWM overview](https://learn.microsoft.com/en-us/windows/win32/dwm/dwm-overview) | DWM compositor architecture | Vista+; retain fallback on older systems |
 | DWM-004 | [DWM window attributes](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute) | Supported DWM window attributes | Attribute support differs by Windows release |
 
+## Audio and media
+
+| ID | Source | Claim supported | Scope / limit |
+|---|---|---|---|
+| AUDIO-001 | [IAudioSessionManager](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager) | Core Audio session manager baseline | Vista minimum; distinct from IAudioSessionManager2 |
+| AUDIO-002 | [IAudioSessionManager2](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager2) | Audio-session enumeration and notifications | Windows 7 minimum |
+| AUDIO-003 | [ISimpleAudioVolume](https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nn-audioclient-isimpleaudiovolume) | Shared-mode audio-session volume and mute | Does not control exclusive-mode streams |
+| AUDIO-004 | [IAudioEndpointVolume](https://learn.microsoft.com/en-us/windows/win32/api/endpointvolume/nn-endpointvolume-iaudioendpointvolume) | Audio endpoint master volume/mute | Vista minimum |
+| MEDIA-001 | [GSMTC session manager](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager) | System media-session discovery and change events | Windows 10 version 1809 / build 17763 |
+| MEDIA-002 | [GSMTC session](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssession) | Source app ID, transport requests, timeline and events | Provider may omit metadata or decline commands |
+| MEDIA-003 | [GSMTC media properties](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmediaproperties) | Audio/video type, metadata and provider thumbnail | Source-session supplied; completeness is not guaranteed |
+| MEDIA-004 | [GSMTC timeline properties](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessiontimelineproperties) | Position and seek timeline information | Use only when exposed by the session |
+
+## File Explorer and Shell customization
+
+| ID | Source | Claim supported | Scope / limit |
+|---|---|---|---|
+| SHELL-003 | [Shell namespace extensions](https://learn.microsoft.com/en-us/windows/win32/shell/nse-works) | Namespace extension provides its own virtual folder; its view is highly customizable while tree-view control is limited | Not a global Explorer skin |
+| SHELL-004 | [Implementing a folder view](https://learn.microsoft.com/en-us/windows/win32/lwef/nse-folderview) | IShellView supplies a child view and can contribute folder-specific menu/toolbar/status behaviour | Custom view trade-offs versus default DefView must be evaluated |
+| SHELL-005 | [IShellView](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishellview) | Namespace folder-view interface | Windows XP minimum |
+| SHELL-006 | [File Explorer context-menu integration](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/integrate-packaged-app-with-file-explorer) | IExplorerCommand registration and modern context-menu requirements | Modern menu registration has package identity/manifest requirements |
+| SHELL-007 | [Windows 11 context-menu developer guidance](https://blogs.windows.com/windowsdeveloper/2021/07/19/extending-the-context-menu-and-share-dialog-in-windows-11/) | IExplorerCommand support dates to Windows 7; describes Windows 11 menu grouping | Not a universal menu chrome customization API |
+| SHELL-008 | [Windhawk File Explorer Styler](https://windhawksoftware.com/mods/windows-11-file-explorer-styler/) | Third-party demonstration of selected Explorer surface styling | Feasibility example only; not a Microsoft API or universal support guarantee |
+
 ## Legacy toolchain
 
 | ID | Source | Claim supported | Scope / caveat |

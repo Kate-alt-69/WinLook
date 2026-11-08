@@ -13,7 +13,7 @@ It is not a replacement Windows shell and does not own window composition. WLWM 
 1. **Adapter per platform generation.** Windows 95/98/ME, older NT releases, Vista/7, 8/8.1 and 10/11 expose different Shell, USER/GDI, theme, composition and Settings capabilities. A modern API's existence in a current SDK does not make it available on an old system.
 2. **Capability-based feature selection.** A component must declare its required OS/API/runtime capabilities. WinLook reports unsupported or partially supported components instead of silently substituting unrelated behaviour.
 3. **User-owned state remains user-owned.** Save original values and apply changes transactionally. Detect external changes before restoration; do not overwrite a later user change blindly.
-4. **No Explorer binary modification.** WinLook must not patch, replace, rewrite or become dependent on a modified \`explorer.exe\`. Any Explorer-targeted process integration is excluded by default and requires separate review, recovery design and explicit approval.
+4. **Explorer remains the native Shell.** WinLook must never patch, replace, rewrite or depend on a modified \`explorer.exe\`. Supported Shell extensions are the baseline; deep Explorer presentation customization belongs to a separate opt-in, build-specific adapter with its own compatibility and recovery policy. See [File Explorer Customization](explorer-customization.md).
 5. **No DWM replacement.** WLWM and WLDE coexist with the existing Windows composition stack. DWM remains intact wherever present.
 6. **Independent failure and rollback.** A failed taskbar adapter must not prevent the user from restoring icons or opening WinLook Manager.
 
@@ -34,6 +34,10 @@ It is not a replacement Windows shell and does not own window composition. WLWM 
 - If native customization is insufficient, an independent WinLook-owned surface may be evaluated. It must not require replacing Explorer or DWM and must have a reliable native fallback.
 - Start Menu implementations differ substantially between classic directory-backed menus and later Shell/packaged-app experiences. Define adapters rather than one universal implementation.
 - Source entry points: [Windows Shell interfaces](https://learn.microsoft.com/en-us/windows/win32/shell/interfaces) and [Shell links/shortcuts](https://learn.microsoft.com/en-us/windows/win32/shell/links).
+
+### File Explorer customization
+
+The Appearance Engine owns the visible Explorer customization layer: Shell handlers and item presentation, plus a separately isolated optional per-build presentation adapter for Explorer chrome that documented APIs do not expose. The goal is to customize the existing Explorer interface deeply without replacing its Shell or file-operation responsibilities. See [File Explorer Customization](explorer-customization.md).
 
 ### Universal Icon Engine
 
@@ -76,7 +80,7 @@ See [Restoration and clean uninstallation](restoration.md).
 
 WLWM's main background worker (BGW) owns process detection, target classification, compatibility-cache lookup, injection orchestration and module health. The Appearance Engine may request an application-specific icon or appearance integration, but it must go through WLWM's approved target policy.
 
-Injection is an optional implementation technique, not a blanket permission to modify every process. Exclude DWM, authentication/security-critical processes and protected targets. Explorer remains excluded by default. Cache hits do not replace per-launch identity checks or runtime safety validation.
+Injection is an optional implementation technique, not blanket permission to modify every process. Exclude DWM, authentication/security-critical processes and protected targets. Explorer presentation customization is not routed through ordinary WLWM injection: any in-process Explorer adapter is governed by the separate File Explorer policy, opt-in and per-build verification. Cache hits do not replace per-launch identity checks or runtime safety validation.
 
 ## Template integration
 

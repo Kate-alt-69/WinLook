@@ -67,6 +67,35 @@ The existing matrix gives the broad platform baseline. This table clarifies the 
 | WLT | Bounded parser and supported fields only | Legacy-safe parser/subset | Full manifest candidate | Full manifest candidate | Full manifest candidate |
 | Store/catalogue | Offline/local import first | Offline/local import first | Optional catalogue client | Optional catalogue client | Optional catalogue client |
 
+## Audio & Media and File Explorer feature baselines
+
+This table separates documented API baselines from WinLook implementation/support status. It is not a release-support promise.
+
+| Windows generation | Audio mixing | Now Playing / media controls | Explorer customization |
+|---|---|---|---|
+| 95 / 98 / Me / NT4 / 2000 / XP | No Vista Core Audio session model; legacy device/mixer controls only where the exact OS/driver provides them; no generic per-process guarantee | No GSMTC; WinLook UI plus explicit supported-player adapters | Classic Shell handlers researched/tested per OS; no modern command-menu assumptions |
+| Vista | Core Audio base session/endpoint interfaces; no Windows 7 `IAudioSessionManager2` enumerator guarantee | No GSMTC; explicit player adapters | Legacy Shell handlers; custom namespace `IShellView` from XP |
+| 7 | `IAudioSessionManager2` enumeration and notifications | No GSMTC; explicit player adapters | `IExplorerCommand` supported |
+| 8 / 8.1 | Core Audio enumeration/notifications | No GSMTC; explicit player adapters | Shell handlers and namespace views; deep chrome styling per-build research |
+| 10 before 1809 | Core Audio | No GSMTC; player adapters | Shell handlers plus build-specific presentation research |
+| 10 version 1809+ | Core Audio | GSMTC media sessions, playback type, metadata, provider thumbnail, transport and timeline where exposed | Shell handlers plus build-specific presentation research |
+| 11 | Core Audio | GSMTC as above | Modern context-menu registration has package-identity/manifest requirements; optional build-specific presentation adapter |
+
+### Audio & Media interpretation
+
+- Vista is not a no-session platform: `IAudioSessionManager` and `ISimpleAudioVolume` are documented from Vista. The later `IAudioSessionManager2` enumeration surface is documented from Windows 7.
+- GSMTC starts with Windows 10 version 1809 (build 17763). Earlier systems use WinLook's own UI plus explicit supported-player adapters.
+- A legacy interface does not imply a universal legacy per-process volume API. Global/device mixer controls and player-owned volume must be labelled separately.
+- GSMTC media sessions and Core Audio sessions are distinct; correlation is best-effort.
+
+### Explorer interpretation
+
+- `IExplorerCommand` is supported from Windows 7; Windows 11 modern context-menu integration adds package-identity/manifest requirements.
+- `IShellView` is available from Windows XP for custom namespace folder views. It controls the extension's own namespace view, not every ordinary folder or all Explorer chrome.
+- Deep navigation/address/search/tab/command-bar styling requires a separate tested build-specific adapter or remains partial/unsupported. Do not infer stable support from one build or one third-party mod.
+
+Sources: [IAudioSessionManager](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager), [IAudioSessionManager2](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager2), [GSMTC session manager](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager), [Windows 11 File Explorer context menu](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/integrate-packaged-app-with-file-explorer), [Shell namespace extensions](https://learn.microsoft.com/en-us/windows/win32/shell/nse-works), [IShellView](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishellview).
+
 ## Reading the matrix
 
 - Candidate is a research route, not a feature that currently works.

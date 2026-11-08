@@ -10,7 +10,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Windows windowing and DWM remain intact. WLWM augments Windows; it does not replace DWM.
 - WLWM may inject/hook compatible apps. Main BGW coordinates process detection, compatibility checks/cache, injection and module health.
 - WLWM classifies applications before injection and caches compatibility results locally in a binary format. Cache identity/invalidation includes target binary/version/hash, architecture, OS/build, relevant mitigations, WLWM module and compatibility DB versions. Cache hits never skip runtime safety checks.
-- Explorer.exe must not be modified/replaced on disk. Explorer-targeted injection is excluded by default pending a separate reversible policy. DWM and authentication/security-critical processes are excluded.
+- Explorer.exe must never be patched/replaced on disk. Deep Explorer customization is accepted scope: documented Shell extensions plus a separate opt-in, per-build presentation adapter for UI surfaces without public APIs. This is not general WLWM injection; Windows retains native Shell/filesystem operations. DWM and authentication/security-critical processes are excluded.
 - WLWM Settings are in WinLook Manager and can be included in WLT; no standalone WLWM config language required.
 - wl_animate is the reusable Rust animation crate/API for modern WinLook and third-party integrations. wl_Lanimate is the C counterpart for legacy systems. The suite serves WLWM, WLDE, WLOSDE and Manager UI.
 - WLDE (WinLook Desktop Engine, WALDE) owns wallpaper playback, library/community Store, widgets, Rainmeter compatibility, desktop icon presentation, virtual Groups, occlusion-aware rendering, adaptive resource control and Game Mode.
@@ -83,3 +83,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - No source files were moved and no product implementation was added in this planning update.
 - The installed Research Companion skills and GitHub connector were used. Dedicated local Research Companion helper scripts are not exposed in this session; no claim is made that they ran.
 
+## Audio & Media and Explorer scope — 2026-11-08
+
+- Audio & Media is one accepted WinLook-owned experience: endpoint controls, per-app audio sessions where supported, and Now Playing metadata/artwork/video thumbnails/transport/timeline where the provider exposes them.
+- Audio-session controls and media-session controls are distinct. Vista has the base Core Audio session interface; `IAudioSessionManager2` enumeration starts with Windows 7. GSMTC media sessions begin with Windows 10 version 1809 (build 17763).
+- Vista and older systems still receive the WinLook UI. Systems without GSMTC use explicit supported-player adapters. Pre-Vista generic per-process volume is not promised; label legacy global/device controls and player-owned volume separately.
+- Explorer deep customization is accepted product scope for the actual File Explorer interface, including context menus, navigation, address/search, command bar, tabs, views, panes, icons and thumbnails. Windows keeps filesystem, Shell namespace, file-operation, activation and security responsibilities.
+- Never modify/replace `explorer.exe` on disk and never build a replacement file manager. Shell extensions and namespace views have limited documented scopes. Deep chrome styling without public APIs is a separate opt-in, per-build adapter, independent from WLWM injection, with out-of-band disable, quarantine and recovery.
+- Profiles can coordinate Audio & Media preferences and Explorer presentation presets. WLT stores selected portable settings/assets only, not active media, clipboard content, process handles, cache state, hardware serials or Explorer implementation details.
+- RGB/peripheral lighting remains delegated to external apps; startup-app management remains out of scope.
+- Detailed specs: [audio-experience.md](architecture/audio-experience.md), [explorer-customization.md](architecture/explorer-customization.md), [profiles-and-optimization.md](architecture/profiles-and-optimization.md).

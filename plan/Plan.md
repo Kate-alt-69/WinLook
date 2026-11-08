@@ -36,6 +36,8 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - **wl_animate:** reusable Rust animation crate/API for modern WinLook modules and third-party integrations.
 - **wl_Lanimate:** corresponding legacy C animation library.
 - **WLT — WinLook Template:** portable settings/assets package using the proposed .wl.t archive.
+- **Audio & Media Experience:** global/per-app audio controls plus provider-backed Now Playing; final module name remains open.
+- **File Explorer Customization:** deep customization of the visible interface of the existing Explorer while Windows retains Shell/filesystem responsibilities.
 - **Wallpaper Store:** integrated WLDE feature and community catalogue client, not a separate Wallpaper Engine product.
 - **WinCheck is permanently out of scope and will never be a WinLook product.**
 
@@ -53,8 +55,9 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 ## Non-negotiable safety and stability rules
 
 - [x] Protect the Windows shell from direct executable modification as a core design requirement.
-- [ ] **Never patch, replace, binary-modify, or make WinLook dependent on a modified `explorer.exe`.**
-- [ ] Do not inject arbitrary code into Explorer as a normal customization strategy.
+- [x] **Never patch, replace, binary-modify, or make WinLook dependent on a modified `explorer.exe`.**
+- [x] Keep the real Explorer/Shell responsible for filesystem, namespace, file-operation, activation and security behaviour; WinLook customizes its visible interface.
+- [ ] Deep Explorer presentation adapters may use narrowly scoped in-process techniques only as an independently gated, opt-in, per-build integration with automatic quarantine and recovery. This is not general WLWM injection.
 - [ ] Prefer documented Windows APIs, supported personalization settings, separate processes, and version-specific adapters.
 - [ ] Keep shell integrations optional and isolated so a failure can be disabled without taking down the desktop.
 - [ ] Never capture, store, transmit, simulate, or process the user's Windows password or PIN.
@@ -426,7 +429,7 @@ Restoration is a core requirement. Users must be able to undo WinLook changes an
 
 # 10. Security, privacy, and trust
 
-Process injection is an accepted WLWM technique for compatible targets. The main BGW coordinates compatibility classification, cache lookup and injection. Protected/authentication processes, DWM and security-critical targets remain excluded. Explorer.exe must never be modified on disk or replaced; Explorer-targeted injection is excluded by default and requires a separately reviewed compatibility/recovery design. See [architecture/wlwm.md](architecture/wlwm.md).
+Process injection is an accepted WLWM technique for compatible targets. The main BGW coordinates WLWM compatibility classification, cache lookup and injection. Protected/authentication processes, DWM and security-critical targets remain excluded. Explorer.exe must never be modified on disk or replaced. Deep Explorer presentation customization is a separate opt-in, build-specific Appearance Engine adapter—not ordinary WLWM injection—and must preserve native Shell/file-operation ownership. See [architecture/explorer-customization.md](architecture/explorer-customization.md) and [architecture/wlwm.md](architecture/wlwm.md).
 
 
 - [ ] Threat-model the Manager, Agent, Service, WLDE, Store, and extension runtime.
@@ -454,6 +457,8 @@ WinLook Manager is where users configure and load subsystem settings, import/exp
 - [ ] Design theme browsing, preview, apply, and rollback flows.
 - [ ] Design icon management and per-category previews.
 - [ ] Design taskbar and Start Menu customization pages.
+- [ ] Design Audio & Media's full page and compact mixer/Now Playing popup.
+- [ ] Design the File Explorer page with surface-specific controls, capability states and out-of-band safe mode.
 - [ ] Design WLDE wallpaper library and integrated Wallpaper Store screens.
 - [ ] Design monitor layout and per-monitor wallpaper controls.
 - [ ] Design resource/performance controls and live WLDE status.
@@ -589,7 +594,8 @@ These are not silently treated as finalized:
 - [ ] Exact Store backend, hosting, creator, payment, and moderation model.
 - [ ] Exact meaning and measurement of “other system resource usage above 90%” (CPU, GPU, memory, VRAM, or any constrained resource); the intended behaviour is to stop WLDE animation/rendering under sustained severe pressure.
 - [ ] Default game detection policy and whether each game defaults to Optimize or Suspend.
-- [ ] Which deep customization integrations are acceptable when a supported Windows API does not expose the desired visual change.
+- [x] Accept deep customization of Explorer's visible interface as a product goal while preserving Windows-owned Shell and filesystem behaviour.
+- [ ] Research which Explorer surfaces can be customized per Windows build and which must remain partial/experimental.
 - [ ] Official Rainmeter compatibility target and whether an external Rainmeter installation may be used as an optional backend.
 - [ ] Exact legacy OS/toolchain support after prototype testing.
 
@@ -619,7 +625,7 @@ This section records the latest user-approved decisions and supersedes any earli
 
 ## DWM, Windows and injection
 
-DWM and the Windows windowing system remain intact. WLWM augments Windows rather than replacing DWM. Process injection and hooks are acceptable techniques for compatible targets and are coordinated by the main BGW. A compatibility layer classifies targets before injection and maintains a local binary cache; the cache must be invalidated when target/environment/module identity changes and cannot replace per-launch safety checks. Explorer.exe must not be modified on disk or replaced; Explorer-targeted injection is excluded by default until a distinct, reversible design is reviewed. DWM and authentication/security-critical processes are excluded.
+DWM and the Windows windowing system remain intact. WLWM augments Windows rather than replacing DWM. Process injection and hooks are acceptable techniques for compatible targets and are coordinated by the main BGW. A compatibility layer classifies targets before injection and maintains a local binary cache; the cache must be invalidated when target/environment/module identity changes and cannot replace per-launch safety checks. Explorer.exe must not be modified on disk or replaced. Explorer may receive a separate, opt-in and per-build-verified presentation adapter under [the dedicated Explorer policy](architecture/explorer-customization.md); it is not a general WLWM injection target. DWM and authentication/security-critical processes are excluded.
 
 ## Animation suite
 
@@ -678,6 +684,10 @@ The first code slice establishes the renderer-independent timing/value layer onl
 - [Windows compatibility matrix](compatibility/matrix.md)
 - [Architecture overview](architecture/overview.md)
 - [Appearance and Icon Engine](architecture/appearance-engine.md)
+- [File Explorer Customization](architecture/explorer-customization.md)
+- [Audio & Media Experience](architecture/audio-experience.md)
+- [Clipboard Experience](architecture/clipboard-experience.md)
+- [Profiles and Optimization](architecture/profiles-and-optimization.md)
 - [WLWM](architecture/wlwm.md)
 - [Animation suite](architecture/animation-suite.md)
 - [WLDE](architecture/wlde.md)
@@ -705,3 +715,33 @@ These are planning specifications and proposals, not implementation claims.
 
 The actual source tree has not been reorganized. The initial portable animation prototypes remain at their current paths until the repository-layout decision is approved and a separate migration is planned. Do not start engine/application implementation merely because the planning documents now contain more detailed contracts. The next work is to resolve the open decisions and approve the target structure.
 
+# 18. Accepted Audio & Media and File Explorer customization direction
+
+The following decisions were confirmed by the user on 2026-11-08. They are accepted product scope; implementation and support have not yet been verified.
+
+## Audio & Media Experience
+
+- One WinLook-owned experience combines global output controls, per-application audio controls where supported, and a Now Playing/media-control surface.
+- Audio-session volume/mute and media-session playback controls are separate state models. Their relationship is best-effort and must not be guessed from display names.
+- Vista provides base Core Audio session/endpoint interfaces. Windows 7 adds the `IAudioSessionManager2` enumeration/notification interface. GSMTC media sessions begin with Windows 10 version 1809.
+- Now Playing identifies Audio versus Video when supplied, displays player/browser-provided metadata and thumbnails, and exposes only supported transport/timeline controls.
+- Vista and older Windows receive the WinLook-owned UI. Systems without GSMTC use explicit supported-player adapters. A universal pre-Vista per-process audio mixer is not promised.
+- No virtual audio driver, recording feature or blanket application injection is needed.
+- Detailed design: [Audio & Media Experience](architecture/audio-experience.md).
+
+## File Explorer Customization
+
+- The goal is to deeply customize the existing Explorer interface: context menus, navigation pane, address/breadcrumb, search, command bar/toolbar, tabs, folder views, details/status/preview surfaces, icons/thumbnails and other visible controls.
+- Explorer remains the actual Shell/file manager. Windows retains filesystem/namespace work, file operations, activation, search/index, cloud providers and security responsibilities.
+- WinLook must not create a replacement file manager, replace the Shell, modify `explorer.exe` on disk or take over core file-operation logic.
+- Use documented Shell extensions where possible. Namespace extensions/custom `IShellView` implementations apply to their own virtual namespace/view; they are not a universal Explorer reskin API.
+- Deep styling of surfaces without public APIs is an optional, separately governed, per-build presentation adapter. It must be opt-in, independently disableable, build-verified, quarantined after failures and recoverable without depending on Explorer's own UI.
+- Full visible-interface customization remains the product goal; exact per-OS/build surface coverage remains research/test work.
+- Detailed design: [File Explorer Customization](architecture/explorer-customization.md).
+
+## Cross-feature coordination
+
+- Profiles may coordinate audio preferences, Explorer presentation presets, clipboard options, display profiles, WLDE, WLWM and WLOSDE through their public APIs.
+- WLT exports selected portable settings/assets, not active media, clipboard payloads, process handles, caches, hardware serials or Explorer implementation addresses.
+- RGB/peripheral lighting remains delegated to existing third-party applications; optional integration requires a documented interface.
+- Startup-application management remains out of scope.

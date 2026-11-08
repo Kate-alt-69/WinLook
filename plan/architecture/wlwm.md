@@ -10,7 +10,7 @@ References: [Hyprland](https://hypr.land/), [window rules](https://wiki.hypr.lan
 - Windows continues to create/activate applications and owns native input/focus/z-order fundamentals.
 - WLWM adds policy and optional visual integrations over eligible windows.
 - If WLWM stops or a target is incompatible, native Windows behaviour remains the fallback.
-- Do not patch/replace Explorer.exe on disk. Explorer-targeted injection is excluded by default and needs separate review.
+- Do not patch/replace Explorer.exe on disk. Deep Explorer presentation customization is handled by a separate opt-in, per-build Appearance Engine adapter; it is not a normal WLWM target-injection feature.
 - Never inject DWM or credential/authentication/security-critical processes.
 
 ## Features
@@ -107,7 +107,7 @@ Supported is scoped to a specific module contract, not all WLWM features.
 
 - Separate process observation from code injection; observation may be available while injection is not.
 - DWM, authentication/security-critical processes and protected targets are excluded.
-- Explorer-targeted injection remains excluded by default; Explorer executable files must never be modified or replaced.
+- General WLWM injection into Explorer remains disallowed. A dedicated Explorer presentation adapter may use a narrowly scoped in-process technique only under its own opt-in, per-build compatibility and recovery policy; Explorer executable files must never be modified or replaced.
 - Respect target process mitigations and access-control decisions. Never bypass them.
 - Do not perform network operations or expensive analysis under loader locks.
 - Target continues natively if integration cannot load, initialize, handshake or remain healthy.
