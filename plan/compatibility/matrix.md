@@ -4,18 +4,18 @@ Planning matrix only; not a release-support promise.
 
 | OS | Family | Graphics/composition | Event/accessibility baseline | Workspace strategy | Animation backend | Classification |
 |---|---|---|---|---|---|---|
-| Windows 95 | Win9x | USER/GDI; no DWM | No built-in MSAA; 1.3 RDK route | WLWM logical | wl_Lanimate/GDI | Research + legacy prototype |
-| Windows 98/SE | Win9x | USER/GDI; no DWM | MSAA 1.1 initially; 2.0 RDK route | WLWM logical | wl_Lanimate/GDI | Research + legacy prototype |
-| Windows Me | Win9x | USER/GDI; no DWM | MSAA 1.3 built in | WLWM logical | wl_Lanimate/GDI | Research + legacy prototype |
-| NT 4.0 | NT | USER/GDI; no DWM | MSAA 1.3 from SP6; RDK earlier | WLWM logical | wl_Lanimate/GDI | Research + legacy prototype |
-| Windows 2000 | NT 5.0 | USER/GDI; no DWM | SetWinEventHook and AnimateWindow documented | WLWM logical | wl_Lanimate | Candidate |
-| Windows XP | NT 5.1/5.2 | USER/GDI; no DWM | MSAA 2.0 built in | WLWM logical | wl_Lanimate | Candidate |
-| Windows Vista | NT 6.0 | DWM introduced; composition conditional | Session 0 isolation begins | WLWM logical | wl_Lanimate + GDI/DWM adapter when available | C target planned |
-| Windows 7 | NT 6.1 | DWM/Aero; composition conditional | MSAA 3.0 built in | WLWM logical | wl_Lanimate + GDI/DWM adapter when available | C target planned |
-| Windows 8 | NT 6.2 | DWM always on | Modern Store app/window separation | WLWM logical | wl_Lanimate + version-appropriate graphics adapter | C target planned |
-| Windows 8.1 | NT 6.3 | DWM always on; DirectComposition DesktopDevice documented | Dynamic code policy documented | WLWM logical/native query where useful | wl_Lanimate + optional DirectComposition adapter | C target planned |
-| Windows 10 | NT 10.0 | DWM always on | IVirtualDesktopManager documented | Native window/desktop queries+moves; remaining ops researched | wl_animate | Candidate |
-| Windows 11 | NT 10.0 build family | DWM always on; modern Shell | Mitigation/build variability | Public IVirtualDesktopManager scope; per-build testing | wl_animate | Candidate |
+| Windows 95 | Win9x | USER/GDI; no DWM | No built-in MSAA; 1.3 RDK route | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
+| Windows 98/SE | Win9x | USER/GDI; no DWM | MSAA 1.1 initially; 2.0 RDK route | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
+| Windows Me | Win9x | USER/GDI; no DWM | MSAA 1.3 built in | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
+| NT 4.0 | NT | USER/GDI; no DWM | MSAA 1.3 from SP6; RDK earlier | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
+| Windows 2000 | NT 5.0 | USER/GDI; no DWM | SetWinEventHook and AnimateWindow documented | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
+| Windows XP | NT 5.1/5.2 | USER/GDI; no DWM | MSAA 2.0 built in | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
+| Windows Vista | NT 6.0 | DWM introduced; composition conditional | Session 0 isolation begins | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
+| Windows 7 | NT 6.1 | DWM/Aero; composition conditional | MSAA 3.0 built in | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
+| Windows 8 | NT 6.2 | DWM always on | Modern Store app/window separation | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
+| Windows 8.1 | NT 6.3 | DWM always on; DirectComposition DesktopDevice documented | Dynamic code policy documented | WLWM logical/native query where useful | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
+| Windows 10 | NT 10.0 | DWM always on | IVirtualDesktopManager documented | Native window/desktop queries+moves; remaining ops researched | wl_animate (Rust) + wl_Lanimate (C); renderer-independent core | Initial library baseline; runtime testing pending |
+| Windows 11 | NT 10.0 build family | DWM always on; modern Shell | Mitigation/build variability | Public IVirtualDesktopManager scope; per-build testing | Rust/C animation cores; per-build adapters pending | Future verification |
 
 ## Important interpretation
 - APIs with Windows 2000 minimum are not assumed on 95/98/ME.
@@ -58,7 +58,7 @@ The existing matrix gives the broad platform baseline. This table clarifies the 
 | Wallpaper | Static GDI-first candidate | Static GDI-first candidate | DWM coexistence; driver fallback | DWM coexistence | Modern renderer candidate |
 | Widgets | Restricted low-resource subset only after isolation | Restricted legacy subset | Isolated runtime candidate | Isolated runtime candidate | Isolated runtime candidate |
 | Desktop Groups | Disabled until native icon recovery proven | Disabled until recovery proven | Disabled until recovery proven | Disabled until recovery proven | Disabled until recovery proven |
-| Animation | wl_Lanimate + GDI/USER adapter | wl_Lanimate + OS adapter | wl_animate + capability-selected adapter | wl_animate; DComp version-specific | wl_animate + verified adapters |
+| Animation | Outside initial Windows 10 baseline; future C compatibility work | Outside initial Windows 10 baseline; future C compatibility work | Outside initial Windows 10 baseline; future C compatibility work | Outside initial Windows 10 baseline; future C compatibility work | wl_animate (Rust) + wl_Lanimate (C) core; renderer adapters not included |
 | WLWM layouts | Legacy observation and USER window APIs | Legacy observation and USER window APIs | Modern observation candidate | Modern observation candidate | Modern observation candidate |
 | Native workspaces | Logical unless public API proves otherwise | Logical unless public API proves otherwise | Logical baseline | Logical baseline | Public API only for documented operations; remaining WLWM logic researched |
 | WLWM injection | Research only; no default injection | Research only; no default injection | Target-specific review | Target-specific review | Target-specific review and mitigations |
@@ -100,7 +100,7 @@ Sources: [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-sup
 
 - Candidate is a research route, not a feature that currently works.
 - Current official Rust/MSVC Windows client target requires Windows 10+. A Rust GNU target page that is a stub is not evidence of older-Windows support.
-- The C path is the planned default for pre-Windows-10 builds; it still requires exact OS/compiler/runtime verification.
+- The broader application architecture may use C for pre-Windows-10 work, but these first animation-library implementations target Windows 10. Any later C port/runtime for older Windows must be separately designed and verified.
 - Legacy subset means a deliberately reduced feature set, not an imitation of unsupported modern APIs.
 - Groups stay disabled until recovery of native icons is verified on the exact OS.
 - WLWM injection is not a baseline requirement for layouts or rules.

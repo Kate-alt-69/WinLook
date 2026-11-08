@@ -1,6 +1,6 @@
 # WinLook Workspace Memory
 
-> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-08. Current user instructions and repository source take precedence.
+> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-09. Current user instructions and repository source take precedence.
 
 ## Project identity
 WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
@@ -12,7 +12,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - WLWM classifies applications before injection and caches compatibility results locally in a binary format. Cache identity/invalidation includes target binary/version/hash, architecture, OS/build, relevant mitigations, WLWM module and compatibility DB versions. Cache hits never skip runtime safety checks.
 - Explorer.exe must never be patched/replaced on disk. Deep Explorer customization is accepted scope: documented Shell extensions plus a separate opt-in, per-build presentation adapter for UI surfaces without public APIs. This is not general WLWM injection; Windows retains native Shell/filesystem operations. DWM and authentication/security-critical processes are excluded.
 - WLWM Settings are in WinLook Manager and can be included in WLT; no standalone WLWM config language required.
-- wl_animate is the reusable Rust animation crate/API for modern WinLook and third-party integrations. wl_Lanimate is the C counterpart for legacy systems. The suite serves WLWM, WLDE, WLOSDE and Manager UI.
+- wl_animate is the reusable Rust animation crate/API for modern WinLook and third-party integrations. wl_Lanimate is its C counterpart. The current implementation baseline for both libraries is Windows 10; C89 is a source-language constraint, not evidence of pre-Windows-10 runtime support. The suite is intended to serve WLWM, WLDE, WLOSDE and Manager UI.
 - WLDE (WinLook Desktop Engine, WALDE) owns wallpaper playback, library/community Store, widgets, Rainmeter compatibility, desktop icon presentation, virtual Groups, occlusion-aware rendering, adaptive resource control and Game Mode.
 - WLDE Groups are virtual visual objects, never filesystem folders. Original Shell items remain in place and launch normally. A custom Group icon opens a borderless popup with original items. Grouping is disabled by default. Local Groups are machine-specific and never exported in WLT. Fancy Groups are separate and not yet specified.
 - WLT is WinLook Template (.wl.t): proposed TAR.GZ-style archive with config and assets. ZIP containing multiple .wl.t files is a Template Group, imported independently. Proposed subdirs include rmskin/, wl/taskbar/, wl/&FONT_FILE&/, wl/wallpaper/, wl/icons/, wl/cursors/, wl/sounds/, wl/desktop/, wl/wlwm/ and wl/display/.
@@ -53,13 +53,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Fancy Groups and cross-machine item resolution.
 
 
-## Initial implementation checkpoint — animation primitives
+## Initial implementation checkpoint — alpha.1 prototype (historical)
 - Added `crates/wl_animate`: renderer-independent Rust primitives for interpolation, easing, caller-driven tweens, playback state, keyframes and sampling. It is intended as a reusable crate for WinLook and third-party integrations. Initial version is alpha; API is not stable.
 - Added `legacy/wl_Lanimate`: C89-compatible legacy library with corresponding concepts, caller-owned storage and no per-frame heap allocation in the library core.
 - Exact C host test: `cd legacy/wl_Lanimate && make clean && make test`; passed with GCC 14.2.0 and `-std=c89 -Wall -Wextra -Werror -pedantic -O2`.
 - Rust verification: not run because `rustc` and `cargo` are unavailable in the current execution environment.
 - Windows/legacy runtime verification: not run. In particular, no Open Watcom build, Windows 95 VM test, Win32/DWM/GDI backend, BGW integration or injection is included yet.
-- No compiled artifacts are committed. See [animation-suite.md](architecture/animation-suite.md) for implementation scope and next gates.
+- No compiled artifacts from that prototype checkpoint were committed. See [animation-suite.md](architecture/animation-suite.md) for current implementation scope and next gates.
 
 ## Repository state
 - Root-level Plan.md was moved to plan/Plan.md in commit bd1b7281af700e7efa4dcda67f994ab79dde43f5.
@@ -71,9 +71,9 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - User explicitly authorized direct commits to main for this work.
 - These documents are planning/research; they do not claim that code is implemented or tested.
 
-## Detailed planning checkpoint — 2026-11-08
+## Detailed planning checkpoint — 2026-11-08 (historical; superseded for animation libraries)
 
-- User confirmed this task remains in planning/specification; do not implement engines, UI or move source files yet.
+- At that point the user confirmed the task remained in planning/specification; the later explicit implementation request supersedes that restriction for the two animation libraries only. Do not infer permission to implement the other engines/UI or to migrate the source layout.
 - Proposed source layout: parallel C/ and rust/ source trees; uppercase acronym engine directories; a dedicated, split UI/ under each language; public Rust engine crates under rust/crate/; C public headers plus a proposed C/index.c umbrella; reusable WinLook libraries under root lib/.
 - Existing animation prototypes are planned to move from crates/wl_animate and legacy/wl_Lanimate to lib/wl_animate and lib/wl_Lanimate only after structure approval and a separate migration plan.
 - The exact purpose of the root wllook/ directory is unresolved; current proposal reserves it for product/packaging metadata and shared assets, not duplicate engine source.
@@ -103,3 +103,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Vista's `IAudioSessionManager` can retrieve controls for known sessions but does not provide the later `IAudioSessionManager2` live enumerator. Windows 7+ session lists should combine initial enumeration with notification callbacks; do not treat one enumeration snapshot as complete.
 - GSMTC media-session access requires the `globalMediaControl` app capability and Windows 10 version 1809+.
 - Canonical source ledger: [references/SOURCES.md](references/SOURCES.md); toolchain/OS facts also appear in [compatibility/README.md](compatibility/README.md) and [compatibility/matrix.md](compatibility/matrix.md).
+
+
+## Animation library implementation pass — 2026-11-09
+
+- User authorized starting implementation of the two paired libraries: Rust `wl_animate` and C `wl_Lanimate`. The first target baseline for **both** is Windows 10. C89 remains a language/source constraint only; no pre-Windows-10 compatibility claim is made.
+- Kept existing paths `crates/wl_animate` and `legacy/wl_Lanimate`; the planned `lib/` migration was not part of this task.
+- Alpha `0.1.0-alpha.2` adds delay-aware tweens, pause/resume/cancel/restart, progress/state inspection, 13 easing curves, Point2/RGBA interpolation, strict keyframe validation and sampled tracks. Rust track lookup uses binary search. C now builds a static archive via Make and a native static library via CMake/MSVC. Fixed the C RGBA alpha-channel interpolation defect.
+- Added focused Rust unit tests and C coverage for tween lifecycle/delay, easing, all RGBA channels, keyframe order and invalid timestamps.
+- Local C verification: GCC 14.2 C89 Make build + tests passed; GCC/CMake 3.31.6 build + CTest passed (1/1); Clang C89 build with AddressSanitizer and UndefinedBehaviorSanitizer passed. Build artifacts were cleaned and not committed.
+- Local Rust verification is unavailable in this environment because `rustc`, `cargo` and `rustfmt` are absent. Added `.github/workflows/animation-libraries.yml` to verify Rust formatting/tests/Clippy/docs and C MSVC/CMake/CTest on a Windows runner. Workflow success and actual Windows 10 client runtime tests remain pending.
+- No rendering backend, scheduler, Win32/GDI/DWM integration, process injection, manager or engine code was added. The core remains renderer-independent. Follow-up API scope includes timelines, sequences, parallel groups, interruption policies, callbacks and reduced-motion/resource controls.

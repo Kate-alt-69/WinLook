@@ -13,8 +13,8 @@ impl Interpolate for f64 {
 
 impl Interpolate for f32 {
     fn interpolate(&self, end: &Self, progress: f64) -> Self {
-        let p = clamp_progress(progress) as f32;
-        self + (end - self) * p
+        let progress = clamp_progress(progress) as f32;
+        self + (end - self) * progress
     }
 }
 
@@ -26,7 +26,9 @@ pub struct Point2 {
 }
 
 impl Point2 {
-    pub const fn new(x: f64, y: f64) -> Self { Self { x, y } }
+    pub const fn new(x: f64, y: f64) -> Self {
+        Self { x, y }
+    }
 }
 
 impl Interpolate for Point2 {
@@ -48,7 +50,9 @@ pub struct Rgba {
 }
 
 impl Rgba {
-    pub const fn new(r: f64, g: f64, b: f64, a: f64) -> Self { Self { r, g, b, a } }
+    pub const fn new(r: f64, g: f64, b: f64, a: f64) -> Self {
+        Self { r, g, b, a }
+    }
 }
 
 impl Interpolate for Rgba {

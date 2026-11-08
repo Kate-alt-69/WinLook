@@ -1,5 +1,7 @@
 #include "wl_Lanimate.h"
 
+#include <float.h>
+
 static double wl_Lanimate_clamp01(double value)
 {
     if (value != value) return 0.0;
@@ -13,16 +15,25 @@ static double wl_Lanimate_lerp(double from_value, double to_value, double progre
     return from_value + (to_value - from_value) * wl_Lanimate_clamp01(progress);
 }
 
+static int wl_Lanimate_valid_timestamp(double value)
+{
+    return value >= 0.0 && value <= DBL_MAX;
+}
+
 wl_Lanimate_result wl_Lanimate_track_init(wl_Lanimate_track *track,
                                            const wl_Lanimate_keyframe *keyframes,
                                            unsigned int count)
 {
     unsigned int i;
-    if (track == 0 || keyframes == 0 || count == 0) return WL_LANIMATE_INVALID_ARGUMENT;
-    for (i = 1; i < count; ++i) {
-        if (keyframes[i - 1].at_ms >= keyframes[i].at_ms) {
-            track->keyframes = 0;
-            track->count = 0;
+    if (track == 0) return WL_LANIMATE_INVALID_ARGUMENT;
+    track->keyframes = 0;
+    track->count = 0;
+    if (keyframes == 0 || count == 0) return WL_LANIMATE_INVALID_ARGUMENT;
+    for (i = 0; i < count; ++i) {
+        if (!wl_Lanimate_valid_timestamp(keyframes[i].at_ms)) {
+            return WL_LANIMATE_INVALID_KEYFRAME_TIME;
+        }
+        if (i > 0 && keyframes[i - 1].at_ms >= keyframes[i].at_ms) {
             return WL_LANIMATE_INVALID_KEYFRAME_ORDER;
         }
     }
@@ -39,8 +50,12 @@ double wl_Lanimate_track_sample(const wl_Lanimate_track *track, double at_ms)
     double span;
     double progress;
     if (track == 0 || track->keyframes == 0 || track->count == 0) return 0.0;
-    if (at_ms <= track->keyframes[0].at_ms) return track->keyframes[0].value;
-    if (at_ms >= track->keyframes[track->count - 1].at_ms) return track->keyframes[track->count - 1].value;
+    if (at_ms != at_ms || at_ms <= track->keyframes[0].at_ms) {
+        return track->keyframes[0].value;
+    }
+    if (at_ms >= track->keyframes[track->count - 1].at_ms) {
+        return track->keyframes[track->count - 1].value;
+    }
     for (i = 0; i + 1 < track->count; ++i) {
         left = &track->keyframes[i];
         right = &track->keyframes[i + 1];

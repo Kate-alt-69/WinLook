@@ -7,9 +7,9 @@
 | wl_animate | Rust crate | Modern reusable animation engine and public developer API |
 | wl_Lanimate | C library | Legacy animation engine/library |
 
-wl_animate is meant for WinLook modules and third-party developers creating apps or integrations for WinLook. wl_Lanimate provides corresponding conceptual functionality for legacy Windows. They need not share source code or implementation details.
+wl_animate is intended for WinLook modules and third-party developers creating apps or integrations. wl_Lanimate provides the corresponding C library surface. The two implementations share concepts and observable behavior, not source code or a requirement to use identical runtimes.
 
-For WinLook Windows binaries built with the current official Rust/MSVC target, the documented client OS floor is Windows 10. The portable Rust timing/value crate itself has no Windows API dependency, but that does not establish that a current Rust/MSVC binary can run on Vista, Windows 7, 8 or 8.1. The C library is the planned older-Windows path; each compiler/runtime combination still requires testing.
+**Initial target baseline for both libraries: Windows 10.** The Rust Windows build uses the current official Rust/MSVC target. The C implementation is kept C89-compatible, but that language constraint does not establish support on Windows 95 through 8.1. Older Windows compatibility is a separate future validation effort and is not part of this alpha baseline.
 
 ## Whole-OS suite scope
 Window open/minimize/restore/close, move/resize/snap/focus, workspace changes, desktop icon/Group interactions, wallpaper/widget transitions, WLOSDE notification/OSD transitions, WinLook Manager controls and third-party UI.
@@ -18,20 +18,14 @@ Window open/minimize/restore/close, move/resize/snap/focus, workspace changes, d
 The suite is intended to cover duration/delay, easing, interpolation, keyframes, timelines, sequences, parallel groups, pause/resume/cancel, interruption handling, progress/state callbacks, frame pacing, target FPS, reduced-motion, resource budgets and deterministic disposal. The first alpha prototypes establish primitive signatures; the stable cross-language contract, C ABI, scheduler, sequencing and callback model still require design review.
 
 ## Modern wl_animate
-For current official Rust/MSVC Windows builds (Windows 10+), candidate presentation backends include Win32 window/message observation, DWM, D3D11, DirectComposition and independent layered/overlay surfaces where appropriate. Capability detection must select a backend at runtime. DWM itself dates to Vista and selected DirectComposition desktop interfaces have Windows 8.1 minimums, but those API minimums do not lower the current Rust/MSVC executable target floor. Pre-Windows-10 builds use the C `wl_Lanimate` implementation and their own USER/GDI/DWM adapters.
+For Windows 10+ Rust/MSVC builds, candidate presentation backends include Win32 window/message observation, DWM, D3D11, DirectComposition and independent layered/overlay surfaces where appropriate. Capability detection must select a backend at runtime. DWM and some graphics interfaces have lower documented API minimums, but those minimums do not lower the current Rust/MSVC executable target floor. **No presentation backend is included in either library core yet.**
 
 Sources: [DwmIsCompositionEnabled](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmiscompositionenabled), [IDCompositionDesktopDevice](https://learn.microsoft.com/en-us/windows/win32/api/dcomp/nn-dcomp-idcompositiondesktopdevice).
 
-## Legacy wl_Lanimate
-Optimize specifically for selected compiler/linker/runtime, CPU baseline, GDI/USER APIs and old hardware. Research:
-- calling convention and C ABI;
-- minimal imports/CRT assumptions;
-- bounded allocation and no per-frame heap churn;
-- GDI off-screen bitmaps/dirty rectangles;
-- timer/message-loop scheduling;
-- resource cleanup for DCs, bitmaps, regions and windows;
-- fixed-point arithmetic only when measured beneficial;
-- static/no-animation fallback.
+## C `wl_Lanimate`
+The current C implementation is a renderer-independent static library with a C89-compatible public header and implementation. Its first build/test baseline is Windows 10/MSVC plus portable host compilers. C89 compatibility is not an older-Windows support statement. Any future older-OS target must separately validate its compiler, linker, runtime, imports, graphics adapter and recovery behavior.
+
+Platform drawing, GDI resources, timers and window lifecycle are not included in the core. They belong in separately tested OS adapters. The portable core uses caller-owned tween and keyframe storage and does not allocate in its per-frame path.
 
 Open Watcom documents Win95 and NT target variants: [Linker Guide](https://open-watcom.github.io/open-watcom-v2-wikidocs/lguide.html). That is toolchain evidence, not a tested support statement.
 
@@ -44,48 +38,50 @@ Sources: [AnimateWindow](https://learn.microsoft.com/en-us/windows/win32/api/win
 Publish Rust API docs/examples and semver once stable. Define a C ABI for legacy consumers. Provide capability queries, bounded sequences, cancellation and errors. Third-party code must not be able to deadlock the BGW or Manager. WLT may include animation configuration/assets, not arbitrary native code disguised as an animation profile.
 
 
-## Initial implementation slice — portable animation primitives (alpha.1)
+## Current implementation — alpha.2
 
-The first code slice establishes the renderer-independent timing/value layer only. It is deliberately **not** the complete OS animation suite: no Win32 window hooks, process injection, BGW integration, DWM/D3D/DirectComposition, GDI drawing, overlay presentation, timer loop, or Windows backend is included yet.
+The first buildable library slice now provides a paired Rust crate and C static library. Both target Windows 10 first. They deliberately remain renderer-independent: neither library owns a scheduler, timer, message loop, window, graphics context, hook or process-injection path.
 
 ### Rust: `wl_animate`
 
-- Crate: [`crates/wl_animate`](../../crates/wl_animate/README.md)
-- Public concepts: `Interpolate`, `Easing`, `Tween<T>`, `PlaybackState`, `Keyframe<T>`, `KeyframeTrack<T>`, `Point2` and `Rgba`.
-- Host-driven timing: consumers provide elapsed `std::time::Duration`; the crate creates no scheduler, worker thread, timer, window, graphics context or hook.
-- Sampling does not allocate internally for the built-in fixed-size value types. A third-party `Interpolate` implementation may allocate inside its own `Clone` implementation; the crate cannot guarantee otherwise.
-- Initial version: `0.1.0-alpha.1`. Public API is provisional.
+- Crate: [`crates/wl_animate`](../../crates/wl_animate/README.md), version `0.1.0-alpha.2`.
+- Public API: `Interpolate`, `Easing`, `Tween<T>`, `PlaybackState`, `Keyframe<T>`, `KeyframeTrack<T>`, `TrackError`, `Point2` and `Rgba`.
+- Built-in interpolation: `f32`, `f64`, 2D points and four-channel RGBA values.
+- Easing: linear, quadratic, cubic, sine and quartic in/out/in-out curves.
+- Tweens support delay, host-driven elapsed-time advancement, pause/resume, cancellation, restart, progress and state inspection.
+- Keyframe tracks validate strictly increasing timestamps and use binary search for sampling.
+- The crate forbids unsafe Rust. No external dependencies are required.
 
-### Legacy C: `wl_Lanimate`
+### C: `wl_Lanimate`
 
-- Library sources: [`legacy/wl_Lanimate`](../../legacy/wl_Lanimate/README.md)
-- C89-compatible header and implementation; caller-owned tween/keyframe storage; no heap allocation in the per-frame path.
-- Includes scalar tween state, linear/quadratic/cubic easing, Point2/RGBA interpolation and timestamped keyframe sampling.
-- The library core has no internal worker thread, timer, message pump, DWM, DirectComposition, D3D or modern Win32 imports. OS-specific scheduling and drawing belong in separate adapters.
+- Sources: [`legacy/wl_Lanimate`](../../legacy/wl_Lanimate/README.md), version `0.1.0-alpha.2`.
+- C89-compatible public header and implementation; matching easing family and scalar tween/keyframe concepts.
+- Point2 and RGBA interpolation helpers. The alpha-channel interpolation defect from the previous prototype is fixed and covered by a dedicated test.
+- Caller-owned tween/keyframe storage; no allocation in the per-frame core.
+- Make and CMake build paths produce a static library. MSVC uses the native `.lib` output; host Make builds use the platform archiver.
+- CMake exposes the public include directory and builds a focused CTest target.
 
 ### Verification evidence
 
-- **C host compile/test: passed** with GCC 14.2.0 using `make clean && make test` and `-std=c89 -Wall -Wextra -Werror -pedantic -O2`. This validates the portable C source against a C89 compiler mode; it does not prove Open Watcom, Windows 95, or any other Windows runtime compatibility.
-- **Rust compile/test: not run in the original prototype checkpoint.** That execution environment did not have `rustc` or `cargo` installed. Install/use a Rust toolchain and run `cargo fmt --check`, `cargo test` and `cargo clippy --all-targets --all-features` before treating the crate as build-verified.
-- **Windows runtime/backend tests: not run.** No Win32/DWM/GDI backend or injection integration exists in this slice.
-- No compiled test executable or other build output is committed.
+- **GCC C89 Make build and tests: passed** with GCC 14.2.0, `-std=c89 -Wall -Wextra -Werror -pedantic -O2`; this built `libwl_Lanimate.a` and ran the full C test program.
+- **GCC CMake build and CTest: passed** with CMake 3.31.6; 1/1 CTest target passed.
+- **Clang C89 + AddressSanitizer + UndefinedBehaviorSanitizer: passed** for the C test executable.
+- **Rust compile/test: not run locally** because this execution environment has no `rustc`, `cargo` or `rustfmt`. A Windows MSVC GitHub Actions workflow is added to run formatting, tests, Clippy and rustdoc for Rust, and CMake/CTest for C.
+- **Windows 10 client runtime: not run.** A Windows CI build/test is compiler/runtime evidence for its hosted runner, not a Windows 10 client VM/hardware test.
+- No build artifacts are committed.
 
 ### Next implementation gates
 
-1. Build and test `wl_animate` with the selected Rust toolchain; separately verify the Windows 10+ MSVC runtime baseline and do not infer pre-Windows-10 runtime support.
-2. Verify `wl_Lanimate` with the selected Open Watcom compiler/linker and actual legacy target imports.
-3. Define the stable shared conceptual API and the C ABI before promising third-party compatibility.
-4. Add platform schedulers/renderers behind capability-detected adapters, retaining native fallbacks.
-5. Add frame-time, allocation, CPU/GPU and GDI-resource benchmarks before optimizing compiler-specific paths.
-
-## Verification
-Profile frame times, CPU/GPU usage, allocations, GDI handle leaks, cancellation, target destruction, display changes, reduced-motion, low power, concurrency, legacy VM/hardware and third-party ABI compatibility.
+1. Obtain a completed green Windows Rust/MSVC and C/MSVC workflow run.
+2. Test the resulting libraries on an actual Windows 10 client VM and, later, representative physical hardware.
+3. Review and expand the public API for timelines, sequences, parallel groups, interruption policies, callbacks, reduced motion and resource budgets.
+4. Add platform schedulers/presentation adapters separately, with capability detection and native fallbacks.
+5. Benchmark frame-time overhead, allocations, CPU/GPU use and platform resource cleanup before tuning.
 
 ## Planned repository location
 
-The long-term layout proposal places reusable WinLook-owned libraries under the root lib directory:
-- wl_animate → lib/wl_animate (Rust).
-- wl_Lanimate → lib/wl_Lanimate (C).
+The long-term layout proposal places reusable WinLook-owned libraries under the root `lib` directory:
+- `wl_animate` → `lib/wl_animate` (Rust).
+- `wl_Lanimate` → `lib/wl_Lanimate` (C).
 
-The existing prototypes remain in their current repository paths until the layout is approved and a dedicated migration updates manifests, imports, tests, build workflows and documentation links. This is a planned path mapping, not a completed move.
-
+The current source paths remain unchanged until a dedicated layout migration updates manifests, imports, tests, build workflows and documentation links together.

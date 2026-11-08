@@ -2,7 +2,7 @@
 
 > Status: research baseline, not a release-support claim.  
 > OS family: Windows NT. Version scope: NT 10.0; record exact release/build.  
-> Last reviewed: 2026-11-08.
+> Last reviewed: 2026-11-09.
 
 ## 1. Purpose
 This page describes what WinLook must consider on Windows 10 before selecting APIs, compiler/linker flags, runtime dependencies, process techniques, rendering paths or installer behaviour. Read it before writing platform-specific code.
@@ -26,7 +26,7 @@ Primary references:
 These links support only the claims they document. They do not prove WinLook code has been tested on this OS.
 
 ## 3. Toolchain and runtime strategy
-The current official Rust/MSVC target documents Windows 10 or later as the minimum client OS, so it is the planned Rust route for this target. This target-level fact is not a WinLook runtime test: verify the exact Windows build, architecture, API imports, dependencies, graphics drivers and process mitigations. The C implementation may also be built where a shared legacy path is useful.
+The first implementation baseline for **both** animation libraries is Windows 10. The Rust crate is built with the current official Rust/MSVC target; the C library is built as a C89-compatible static library with MSVC (and separately tested with host compilers). C89 is a source-language constraint, not a claim of support on Windows 95–8.1. These compiler/build facts do not yet constitute a WinLook runtime test: verify the exact Windows 10 client build, architecture, API imports, dependencies, graphics drivers and process mitigations.
 
 ## 4. WLWM compatibility
 Use IVirtualDesktopManager where its public contract fits. For create/switch/current-desktop selection, keep separate adapters and do not treat undocumented interfaces as stable. BGW cache includes OS build and target binary identity. Respect mitigations, architecture and exclusions.
@@ -34,9 +34,7 @@ Use IVirtualDesktopManager where its public contract fits. For create/switch/cur
 WLWM's local binary compatibility cache is an analysis cache. Every launch still validates current target identity, architecture, OS/build and relevant mitigation state. Unknown or partially supported targets must retain native Windows behaviour unless an explicitly enabled, reviewed experimental route is used.
 
 ## 5. Animation suite
-wl_animate Rust implementation can use DWM, D3D11 and DirectComposition backends selected by runtime/driver capability. Injection/hook integrations remain target-specific and may be blocked by mitigations/security software.
-
-wl_animate is the modern Rust crate; wl_Lanimate is the legacy C library. Their conceptual APIs should align where possible, but backends and implementation details are version-specific. Do not assume API availability from headers alone.
+Both `wl_animate` (Rust) and `wl_Lanimate` (C) currently provide renderer-independent animation primitives. Neither contains a Windows drawing backend, timer loop, scheduler, overlay, injection or hook integration. Future DWM, D3D11, DirectComposition, GDI or USER adapters must be separate, capability-selected and tested on the exact Windows build. The two libraries should retain aligned conceptual APIs, but C89 does not imply pre-Windows-10 runtime support.
 
 ## 6. WLDE desktop and wallpaper
 Modern DWM desktop composition; implement exposed-region clipping only after profiling and verifying occlusion knowledge. Video decoding cost remains separate from final composition.
@@ -64,7 +62,9 @@ WLT import must validate the archive, reject unsafe paths/collisions, cap file c
 - [ ] Compiler/linker/runtime and imported DLLs recorded.
 - [ ] API/redistributable probes recorded.
 - [ ] WLWM window/event/injection/fallback tests run.
-- [ ] wl_animate or wl_Lanimate backend profiled.
+- [ ] Both animation libraries pass Windows toolchain builds/tests.
+- [ ] Both animation libraries pass a Windows 10 client VM/runtime test.
+- [ ] Any platform presentation backend is profiled separately.
 - [ ] WLDE desktop/wallpaper/Group recovery tested.
 - [ ] WLDM/WLOSDE capability and fallback tested.
 - [ ] WLT import and clean uninstall tested.

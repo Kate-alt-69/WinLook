@@ -8,15 +8,15 @@ The project aims to cover Windows 95 and later, but that ambition is not a relea
 
 ## Project status
 
-**Early planning and portable prototypes.**
+**Early product planning; animation libraries in active alpha implementation.**
 
 This repository is not yet a complete Windows application. It currently contains the living architecture/compatibility plan and the first renderer-independent animation-library prototypes. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
 
-The animation prototypes are intentionally narrow:
-- [`wl_animate`](crates/wl_animate/README.md) — Rust timing, interpolation and keyframe primitives; no Windows renderer/backend.
-- [`wl_Lanimate`](legacy/wl_Lanimate/README.md) — C89-compatible counterpart with caller-owned storage; no OS-specific drawing or scheduler.
+The first implementation work is focused on the paired animation libraries, both using **Windows 10 as their initial target baseline**:
+- [`wl_animate`](crates/wl_animate/README.md) — Rust animation primitives and public crate API.
+- [`wl_Lanimate`](legacy/wl_Lanimate/README.md) — C89-compatible counterpart with caller-owned storage and static-library builds.
 
-See the [Animation Suite plan](plan/architecture/animation-suite.md) for recorded verification status and remaining gates.
+Both cores are renderer-independent: no Windows drawing backend, timer, scheduler, window hook or process injection is included yet. C89 is a source-language constraint, not a claim of support on pre-Windows-10 releases. See the [Animation Suite plan](plan/architecture/animation-suite.md) for implementation status and remaining gates.
 
 ## Design principles
 
@@ -69,19 +69,28 @@ Start with these canonical documents:
 
 Detailed specifications live in [`plan/architecture/`](plan/architecture/overview.md); per-version research lives in [`plan/compatibility/`](plan/compatibility/README.md).
 
-## Working with the current prototypes
+## Building the animation libraries
 
-There is no root application build command yet. The two portable library prototypes can be tested independently when the required tools are installed:
+There is no root application build command yet. Build and test the Rust crate with:
 
 ```sh
+cargo fmt --manifest-path crates/wl_animate/Cargo.toml -- --check
 cargo test --manifest-path crates/wl_animate/Cargo.toml
+cargo clippy --manifest-path crates/wl_animate/Cargo.toml --all-targets --all-features -- -D warnings
+```
+
+Build the C static library and run its host tests with:
+
+```sh
+make -C legacy/wl_Lanimate clean
+make -C legacy/wl_Lanimate all
 make -C legacy/wl_Lanimate test
 ```
 
-These commands test portable library code on the host. They do not build a WinLook application or prove compatibility with Windows 95–11. The C Makefile requires `make`, a C89-capable compiler and a shell environment compatible with its POSIX-style commands; Open Watcom/Windows runtime verification is a separate gate.
+The C library also provides a CMake build for MSVC; see its [build instructions](legacy/wl_Lanimate/README.md). A dedicated GitHub Actions workflow checks Rust/MSVC and C/MSVC builds. Host C tests validate the portable core, not a Windows 10 client runtime. The Windows CI runner is a build/test environment, not a substitute for the planned Windows 10 client VM/hardware verification.
 
 ## Development status
 
 Planning documents distinguish accepted product scope, proposals, documented API facts and tested implementation behaviour. Do not mark a feature supported from an SDK reference alone. Before implementing a feature, read its per-OS page, confirm toolchain/API minimums, and define fallback, recovery, privacy and acceptance tests.
 
-The target repository layout and public documentation structure are still proposals. Do not move the animation prototypes into `lib/` or create the complete `C/`, `rust/` engine trees until the layout gates in [repository-layout.md](plan/architecture/repository-layout.md) are accepted.
+The target repository layout and public documentation structure are still proposals. The animation libraries remain in their current paths; do not move them into `lib/` or create the complete `C/`, `rust/` engine trees until the layout gates in [repository-layout.md](plan/architecture/repository-layout.md) are accepted.
