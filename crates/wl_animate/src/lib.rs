@@ -24,12 +24,7 @@ mod tests {
 
     #[test]
     fn tween_advances_and_finishes() {
-        let mut tween = Tween::new(
-            0.0_f64,
-            10.0,
-            Duration::from_millis(100),
-            Easing::Linear,
-        );
+        let mut tween = Tween::new(0.0_f64, 10.0, Duration::from_millis(100), Easing::Linear);
         assert_eq!(tween.state(), PlaybackState::Pending);
         assert_eq!(tween.advance(Duration::from_millis(25)), 2.5);
         assert_eq!(tween.advance(Duration::from_millis(100)), 10.0);
@@ -75,12 +70,7 @@ mod tests {
 
     #[test]
     fn pause_and_resume_preserve_elapsed_time() {
-        let mut tween = Tween::new(
-            0.0_f64,
-            1.0,
-            Duration::from_secs(1),
-            Easing::Linear,
-        );
+        let mut tween = Tween::new(0.0_f64, 1.0, Duration::from_secs(1), Easing::Linear);
         tween.advance(Duration::from_millis(200));
         tween.pause();
         assert_eq!(tween.advance(Duration::from_millis(500)), 0.2);
@@ -106,12 +96,7 @@ mod tests {
 
     #[test]
     fn cancel_freezes_current_value_and_restart_resets() {
-        let mut tween = Tween::new(
-            0.0_f64,
-            1.0,
-            Duration::from_secs(1),
-            Easing::Linear,
-        );
+        let mut tween = Tween::new(0.0_f64, 1.0, Duration::from_secs(1), Easing::Linear);
         assert_eq!(tween.advance(Duration::from_millis(250)), 0.25);
         tween.cancel();
         assert_eq!(tween.advance(Duration::from_millis(500)), 0.25);
