@@ -32,6 +32,7 @@ Never infer API availability from a modern header or SDK alone. Late-bind option
 - IDCompositionDesktopDevice minimum is Windows 8.1.
 - IVirtualDesktopManager is documented for Windows 10 and does not provide every create/switch operation WLWM may want.
 - PROCESS_MITIGATION_DYNAMIC_CODE_POLICY is documented from Windows 8.1; ProhibitDynamicCode blocks dynamic code generation/executable-code modification.
+- WTSRegisterSessionNotification is documented with Windows Vista as its minimum client. It cannot be the universal Win95-to-Win11 session notification mechanism; pre-Vista adapters need separately verified event/polling routes.
 - Session 0 becomes reserved for services/non-interactive processes from Vista.
 - Open Watcom documents distinct Win95 and NT/Win32 targets; runtime compatibility remains test-dependent.
 

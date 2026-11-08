@@ -3,7 +3,7 @@
 > Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-08. Current user instructions and repository source take precedence.
 
 ## Project identity
-WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: plan/Plan.md. Final-Plan.md has not been created.
+WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
 
 ## Agreed architecture decisions
 - Modern implementation: Rust. Legacy implementation: separate C implementation/toolchain per OS family. Shared conceptual APIs/contracts, not one binary.
@@ -31,8 +31,11 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - IDCompositionDesktopDevice minimum Windows 8.1.
 - IVirtualDesktopManager documented for Windows 10 and supports window desktop queries/moves; not the whole create/switch functionality WLWM may want.
 - PROCESS_MITIGATION_DYNAMIC_CODE_POLICY documented from Windows 8.1; ProhibitDynamicCode blocks dynamic code generation or executable code modification.
+- WTSRegisterSessionNotification is Vista+ only; legacy lock/session detection must use separately verified adapters.
 - Session 0 becomes reserved for services/non-interactive processes from Vista; before Vista first user also shared Session 0.
+- Winlogon desktop has restricted access; WinLook must leave authentication and secure desktop UI to Windows.
 - Open Watcom documents separate Win95 and NT/Win32 targets; no guarantee every runtime works on every release.
+- Rainmeter .rmskin is a modified ZIP with package metadata; a normal renamed ZIP is not an equivalent package.
 
 ## Open questions
 - Support tiers/release sequence per OS.
@@ -46,10 +49,15 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Wallpaper formats and rendering backends.
 - WLDM capabilities and rollback by OS/driver.
 - Rainmeter compatibility level and licensing.
+- Legacy pre-Vista session/lock detection mechanisms.
+- Fancy Groups and cross-machine item resolution.
 
 ## Repository state
 - Root-level Plan.md was moved to plan/Plan.md in commit bd1b7281af700e7efa4dcda67f994ab79dde43f5.
-- Per-OS compatibility pages, subsystem architecture docs, source ledger and workspace index/memory were added to main in that documentation change.
-- Follow-up documentation/source-link pass: `35f8deab45f354cce2e96ebce31ba6874e081f3c` updated the plan navigation, architecture references, source ledger and index links. This is the latest audited main head for this planning pass.
+- Per-OS compatibility pages, subsystem architecture docs, source ledger and workspace index/memory were added in that documentation change.
+- Follow-up plan/source/index pass: 35f8deab45f354cce2e96ebce31ba6874e081f3c.
+- Workspace state refresh: 613b46bf0faff10a59686320e92ab5385944818c.
+- Architecture detail pages cover appearance/icon customization, standby/session security, extension/community formats, WLDE, WLWM, WLT, WLOSDE/WLDM, animations and restoration.
+- Technical citations are maintained in [references/SOURCES.md](references/SOURCES.md); per-OS research is under [compatibility/](compatibility/README.md).
 - User explicitly authorized direct commits to main for this work.
 - These documents are planning/research; they do not claim that code is implemented or tested.
