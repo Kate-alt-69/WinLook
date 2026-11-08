@@ -50,5 +50,6 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 ## Repository state
 - Root-level Plan.md was moved to plan/Plan.md in commit bd1b7281af700e7efa4dcda67f994ab79dde43f5.
 - Per-OS compatibility pages, subsystem architecture docs, source ledger and workspace index/memory were added to main in that documentation change.
+- Follow-up documentation/source-link pass: `35f8deab45f354cce2e96ebce31ba6874e081f3c` updated the plan navigation, architecture references, source ledger and index links. This is the latest audited main head for this planning pass.
 - User explicitly authorized direct commits to main for this work.
 - These documents are planning/research; they do not claim that code is implemented or tested.
