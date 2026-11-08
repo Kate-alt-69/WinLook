@@ -24,7 +24,7 @@ Never infer API availability from a modern header or SDK alone. Late-bind option
 - Research required: plausible approach, not yet supported by adequate source or runtime evidence.
 - Unsupported: known unavailable or intentionally excluded.
 
-## Verified API facts
+## Verified API and toolchain facts
 - SetWinEventHook minimum documented client is Windows 2000; Microsoft separately notes Active Accessibility 1.3 RDK for Windows 95 and NT4 SP6.
 - Active Accessibility table: Win95 did not include MSAA; Win98 initially 1.1; Me/2000 1.3; NT4 from SP6 1.3; XP/Vista 2.0; Windows 7 3.0.
 - AnimateWindow minimum documented client is Windows 2000.
@@ -35,6 +35,9 @@ Never infer API availability from a modern header or SDK alone. Late-bind option
 - WTSRegisterSessionNotification is documented with Windows Vista as its minimum client. It cannot be the universal Win95-to-Win11 session notification mechanism; pre-Vista adapters need separately verified event/polling routes.
 - Session 0 becomes reserved for services/non-interactive processes from Vista.
 - Open Watcom documents distinct Win95 and NT/Win32 targets; runtime compatibility remains test-dependent.
+- The current official Rust `*-pc-windows-msvc` target documentation requires Windows 10 or later for client installs. This is a compiler/standard-library target baseline, not a WinLook test result.
+- The Rust `*-windows-gnu` target page is currently a stub, notes that the target has no maintainers, and gives no older-client minimum. Do not treat it as evidence of Vista/7/8/8.1 support.
+- Under this current toolchain policy, use the C implementation as the default path for Windows 95 through 8.1. Any pinned older Rust toolchain requires its own compiler/stdlib/linker/runtime and exact-OS verification record.
 
 ## Required platform test record
 Record exact edition/build/service pack/architecture, hardware or VM, compiler/linker/runtime, API/redistributable probes, feature/module, expected/observed behaviour, evidence/log location, limitations and test date. VM success does not prove all graphics drivers or anti-cheat/hardware combinations.
@@ -53,4 +56,4 @@ Record exact edition/build/service pack/architecture, hardware or VM, compiler/l
 - [Windows 10](win10.md)
 - [Windows 11](win11.md)
 
-See the [matrix](matrix.md) and [source ledger](../references/SOURCES.md).
+See the [matrix](matrix.md), [test strategy](test-strategy.md) and [source ledger](../references/SOURCES.md).

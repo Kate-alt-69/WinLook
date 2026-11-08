@@ -45,15 +45,15 @@ The existing matrix gives the broad platform baseline. This table clarifies the 
 | Windows 95 / 98 / Me | Separate legacy C builds; test each release independently | USER/GDI; no DWM | Logical WLWM workspaces; OS-specific observation adapter | Process observation/injection, desktop icon presentation, display, optional accessibility RDK |
 | NT 4.0 | Separate legacy C target; do not reuse Win9x assumptions | USER/GDI; no DWM | Logical workspaces; NT-specific process/session adapter | Service/runtime compatibility, event source, injection and Shell |
 | Windows 2000 / XP | Legacy C target unless another runtime is separately verified | USER/GDI; no DWM | Logical workspaces; documented APIs only where minimums match | Runtime/CRT, process bitness, Shell and display variation |
-| Vista / 7 | Modern Rust candidate only after toolchain proof | DWM exists; composition/driver/session state matters | Logical workspaces unless native operation is proven | Session 0 split, DWM availability, driver and power |
-| Windows 8 / 8.1 | Modern Rust candidate | DWM always on; DirectComposition interface is version-sensitive | Logical workspace baseline; native interface use is feature-scoped | Composition minimums, app model, mitigations |
-| Windows 10 / 11 | Modern Rust target candidate; record exact build/architecture | DWM always on; modern Shell/display capabilities | Native public operations only for documented scope; research remaining gaps | Build changes, process mitigations, protected targets, graphics and display |
+| Vista / 7 | C implementation is the planned default; Rust/MSVC is not the current supported target baseline | DWM exists; composition/driver/session state matters | Logical workspaces unless native operation is proven | Session 0 split, DWM availability, driver and power |
+| Windows 8 / 8.1 | C implementation is the planned default; Rust/MSVC is not the current supported target baseline | DWM always on; DirectComposition interface is version-sensitive | Logical workspace baseline; native interface use is feature-scoped | Composition minimums, app model, mitigations |
+| Windows 10 / 11 | Rust/MSVC target candidate (documented Windows 10+ client floor); WinLook still requires exact-build tests | DWM always on; modern Shell/display capabilities | Native public operations only for documented scope; research remaining gaps | Build changes, process mitigations, protected targets, graphics and display |
 
 ## Feature-level planning matrix
 
 | Feature | Win9x / NT4 | 2000 / XP | Vista / 7 | 8 / 8.1 | 10 / 11 |
 |---|---|---|---|---|---|
-| Core Manager/Agent | Legacy UI/runtime research | Legacy runtime research | Modern runtime candidate; verify | Modern runtime candidate; verify | Primary modern target candidate |
+| Core Manager/Agent | C/toolchain research | C/toolchain research | C/toolchain baseline; current Rust/MSVC target does not cover this OS | C/toolchain baseline; current Rust/MSVC target does not cover this OS | Rust/MSVC primary target candidate; verify WinLook runtime |
 | Native appearance | USER/GDI/Shell adapter per OS | USER/GDI/Shell adapter per OS | Shell/theme/DWM as available | Shell/DWM per release | Shell/DWM per build |
 | Wallpaper | Static GDI-first candidate | Static GDI-first candidate | DWM coexistence; driver fallback | DWM coexistence | Modern renderer candidate |
 | Widgets | Restricted low-resource subset only after isolation | Restricted legacy subset | Isolated runtime candidate | Isolated runtime candidate | Isolated runtime candidate |
@@ -74,8 +74,8 @@ This table separates documented API baselines from WinLook implementation/suppor
 | Windows generation | Audio mixing | Now Playing / media controls | Explorer customization |
 |---|---|---|---|
 | 95 / 98 / Me / NT4 / 2000 / XP | No Vista Core Audio session model; legacy device/mixer controls only where the exact OS/driver provides them; no generic per-process guarantee | No GSMTC; WinLook UI plus explicit supported-player adapters | Classic Shell handlers researched/tested per OS; no modern command-menu assumptions |
-| Vista | Core Audio base session/endpoint interfaces; no Windows 7 `IAudioSessionManager2` enumerator guarantee | No GSMTC; explicit player adapters | Legacy Shell handlers; custom namespace `IShellView` from XP |
-| 7 | `IAudioSessionManager2` enumeration and notifications | No GSMTC; explicit player adapters | `IExplorerCommand` supported |
+| Vista | Core Audio endpoint and known-session controls; no generic `IAudioSessionManager2` live per-app enumeration | No GSMTC; explicit player adapters | Legacy Shell handlers; custom namespace `IShellView` from XP; `IExplorerCommand` API minimum is Vista |
+| 7 | `IAudioSessionManager2` enumeration and notifications | No GSMTC; explicit player adapters | `IExplorerCommand` and classic Shell registration routes |
 | 8 / 8.1 | Core Audio enumeration/notifications | No GSMTC; explicit player adapters | Shell handlers and namespace views; deep chrome styling per-build research |
 | 10 before 1809 | Core Audio | No GSMTC; player adapters | Shell handlers plus build-specific presentation research |
 | 10 version 1809+ | Core Audio | GSMTC media sessions, playback type, metadata, provider thumbnail, transport and timeline where exposed | Shell handlers plus build-specific presentation research |
@@ -90,16 +90,17 @@ This table separates documented API baselines from WinLook implementation/suppor
 
 ### Explorer interpretation
 
-- `IExplorerCommand` is supported from Windows 7; Windows 11 modern context-menu integration adds package-identity/manifest requirements.
+- `IExplorerCommand` has a documented Windows Vista minimum. Windows 11 modern File Explorer context-menu integration additionally requires app identity and manifest registration; the API minimum and modern registration model are separate facts.
 - `IShellView` is available from Windows XP for custom namespace folder views. It controls the extension's own namespace view, not every ordinary folder or all Explorer chrome.
 - Deep navigation/address/search/tab/command-bar styling requires a separate tested build-specific adapter or remains partial/unsupported. Do not infer stable support from one build or one third-party mod.
 
-Sources: [IAudioSessionManager](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager), [IAudioSessionManager2](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager2), [GSMTC session manager](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager), [Windows 11 File Explorer context menu](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/integrate-packaged-app-with-file-explorer), [Shell namespace extensions](https://learn.microsoft.com/en-us/windows/win32/shell/nse-works), [IShellView](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishellview).
+Sources: [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html), [Rust GNU target support](https://doc.rust-lang.org/rustc/platform-support/windows-gnu.html), [IExplorerCommand](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iexplorercommand), [IAudioSessionManager](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager), [IAudioSessionManager2](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager2), [GSMTC session manager](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager), [Windows 11 File Explorer context menu](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/integrate-packaged-app-with-file-explorer), [Shell namespace extensions](https://learn.microsoft.com/en-us/windows/win32/shell/nse-works), [IShellView](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishellview).
 
 ## Reading the matrix
 
 - Candidate is a research route, not a feature that currently works.
-- Modern runtime candidate requires exact Rust standard library/dependency support for the OS; it is not inferred from the language alone.
+- Current official Rust/MSVC Windows client target requires Windows 10+. A Rust GNU target page that is a stub is not evidence of older-Windows support.
+- The C path is the planned default for pre-Windows-10 builds; it still requires exact OS/compiler/runtime verification.
 - Legacy subset means a deliberately reduced feature set, not an imitation of unsupported modern APIs.
 - Groups stay disabled until recovery of native icons is verified on the exact OS.
 - WLWM injection is not a baseline requirement for layouts or rules.

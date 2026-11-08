@@ -4,8 +4,10 @@
 WinLook is an additive Windows customization platform. It extends the user-facing appearance, desktop experience, window management and application integration while leaving Windows responsible for its native responsibilities.
 
 ## Platform split
-- Modern builds: Rust, using version-appropriate Win32/COM bindings and graphics APIs.
-- Legacy builds: separate C implementation selected for the exact OS family/compiler/runtime.
+- Current Windows 10+ builds: Rust using the official Rust/MSVC target baseline and version-appropriate Win32/COM bindings.
+- Pre-Windows-10 builds: separate C implementation selected for the exact OS family/compiler/runtime; this includes Vista, Windows 7, 8 and 8.1 as well as older systems under the current Rust target policy.
+- The current Rust GNU target page is a stub without an older-client support baseline; do not use it to claim supported Rust binaries on pre-Windows-10 releases.
+- These are toolchain routes, not WinLook support claims. Every OS/build still requires an exact runtime test record.
 - Share conceptual APIs and portable data contracts where possible; do not force one binary or library set across Win9x and NT systems.
 
 ## Subsystems

@@ -58,7 +58,7 @@ WLT import must validate the archive, reject unsafe paths/collisions, cap file c
 
 - Windows Me predates Vista Core Audio and GSMTC. Provide WinLook's own interface but expose only verified global/device mixer functionality; no generic per-process volume promise.
 - Player metadata/artwork/transport requires explicit adapters for named player versions.
-- Use only classic Shell extension routes verified on Windows Me. XP `IShellView`, Windows 7 `IExplorerCommand` and Windows 11 menu registration are not assumed.
+- Use only classic Shell extension routes verified on Windows Me. XP `IShellView`, Vista+ `IExplorerCommand` and Windows 11 menu registration are not assumed.
 - Deeper Explorer styling requires an isolated OS-specific prototype, safe fallback and no modification/replacement of `explorer.exe`.
 
 ## 9. Required verification

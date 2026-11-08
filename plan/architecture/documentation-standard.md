@@ -150,6 +150,7 @@ Every subsystem page should contain:
 - Keep planning, design proposal, implementation and tested behaviour visibly separate.
 - Never document an unimplemented feature as available.
 - Put the exact OS/build/runtime scope next to compatibility claims.
+- Distinguish the language MSRV from the OS/runtime baseline of each official compiler target. For Rust on Windows, cite the selected target's current support page; do not infer minimum Windows support from Rust language portability or a crate's `rust-version` alone.
 - Update public API docs in the same change as public contract changes.
 - Include migration notes for changed APIs, configuration schemas and WLT manifests.
 - Give every example a version and verification state.
@@ -167,6 +168,6 @@ Before a module release:
 - [ ] C ABI details are complete for every supported compiler target.
 - [ ] Rust crate documentation builds without missing public-item documentation warnings where practical.
 - [ ] Examples are compiled/tested or explicitly marked unverified.
-- [ ] Per-OS pages state capability and test evidence.
+- [ ] Per-OS pages state capability and test evidence, including compiler/standard-library target floors and whether the planned language implementation is official, experimental or unsupported.
 - [ ] Security, permission, recovery and uninstall documentation matches behaviour.
 - [ ] Navigation indexes and links are valid.

@@ -13,7 +13,7 @@ Keep the repository easy to navigate for both contributors and tooling:
 - Public APIs are separated from implementation details.
 - UI code is separated from engine logic and split into maintainable pages/components.
 - Documentation explains the application, each subsystem and every public API surface.
-- Legacy C and modern Rust remain distinct build targets; similar structure does not mean one binary or identical platform capabilities.
+- The current Rust/MSVC Windows target baseline is Windows 10+; the C implementation is the planned route for pre-Windows-10 releases. Both language trees may remain structurally parallel, but similar folders do not mean one binary, identical APIs or equal platform capabilities.
 
 ## 2. Proposed repository tree
 
@@ -99,7 +99,9 @@ Use uppercase names for acronym feature directories consistently. Keep source fi
 
 ## 4. Rust layout and crate exports
 
-The rust directory contains the modern implementation source.
+The rust directory contains the modern Windows implementation source. Under the currently documented official Rust/MSVC target baseline, WinLook's Rust Windows binaries target Windows 10 and later. The Rust GNU target page is currently a stub and does not state a supported old-client baseline.
+
+For Vista, Windows 7, 8 and 8.1, the C implementation is the planned default unless a separate pinned Rust toolchain/runtime has been proven on the exact OS. This does not prohibit portable Rust libraries or non-Windows host tests; it limits the supported Windows binary/runtime claim.
 
 - rust/WLDE, rust/WLDM, rust/WLWM and the other engine directories contain the actual engine logic, adapters, internal state and tests.
 - rust/crate contains the public crate/facade surface for each engine. Each planned public engine crate has its own directory and API documentation.

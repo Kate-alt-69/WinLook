@@ -93,3 +93,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Profiles can coordinate Audio & Media preferences and Explorer presentation presets. WLT stores selected portable settings/assets only, not active media, clipboard content, process handles, cache state, hardware serials or Explorer implementation details.
 - RGB/peripheral lighting remains delegated to external apps; startup-app management remains out of scope.
 - Detailed specs: [audio-experience.md](architecture/audio-experience.md), [explorer-customization.md](architecture/explorer-customization.md), [profiles-and-optimization.md](architecture/profiles-and-optimization.md).
+
+## Toolchain and API baseline refinement — 2026-11-08
+
+- Current official Rust/MSVC Windows targets document Windows 10 or later as the minimum client OS. The Rust GNU Windows target page is currently a stub and does not establish a pre-Windows-10 support baseline.
+- Planned product route: Rust/MSVC for Windows 10+; separate C implementation/toolchain adapters for Windows 95 through 8.1. Older pinned Rust toolchains remain research-only until exact compiler, standard library, linker/runtime and OS tests pass.
+- A crate's `rust-version` is a Rust compiler/language MSRV, not a Windows OS minimum.
+- `IExplorerCommand` has a documented Vista minimum. Windows 11's modern Explorer context-menu registration adds app-identity/manifest requirements; keep those two facts separate.
+- Vista's `IAudioSessionManager` can retrieve controls for known sessions but does not provide the later `IAudioSessionManager2` live enumerator. Windows 7+ session lists should combine initial enumeration with notification callbacks; do not treat one enumeration snapshot as complete.
+- GSMTC media-session access requires the `globalMediaControl` app capability and Windows 10 version 1809+.
+- Canonical source ledger: [references/SOURCES.md](references/SOURCES.md); toolchain/OS facts also appear in [compatibility/README.md](compatibility/README.md) and [compatibility/matrix.md](compatibility/matrix.md).

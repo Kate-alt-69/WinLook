@@ -3,6 +3,7 @@
 Read this index first when resuming work, then open only the relevant sections/files.
 
 ## Authoritative documents
+- Repository landing page: [README.md](../README.md)
 - Living project plan: [Plan.md](Plan.md)
 - Detailed dependency-ordered roadmap: [roadmap.md](roadmap.md)
 - Compatibility methodology: [compatibility/README.md](compatibility/README.md)

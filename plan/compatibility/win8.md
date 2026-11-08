@@ -26,7 +26,7 @@ Primary references:
 These links support only the claims they document. They do not prove WinLook code has been tested on this OS.
 
 ## 3. Toolchain and runtime strategy
-Use a Rust build only when the selected compiler, standard library and dependencies officially support the exact Windows release. Otherwise use an approved legacy C implementation. Avoid importing APIs whose minimum supported version exceeds the target. Detect optional DLL exports and capabilities at runtime. Keep architecture/bitness-specific modules separate.
+Use the C implementation as the planned default for this pre-Windows-10 target. The current official Rust/MSVC target requires Windows 10 or later for client installs; a pinned older Rust toolchain remains experimental until its compiler, standard library, linker/runtime and exact-OS VM behaviour are verified. Detect optional APIs at runtime and keep architecture/bitness-specific modules separate.
 
 ## 4. WLWM compatibility
 WLWM manages desktop app windows and treats Store/immersive app surfaces as a distinct category. Use logical workspaces. Do not rely on undocumented desktop-manager COM interfaces.

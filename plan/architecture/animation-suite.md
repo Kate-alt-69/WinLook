@@ -9,6 +9,8 @@
 
 wl_animate is meant for WinLook modules and third-party developers creating apps or integrations for WinLook. wl_Lanimate provides corresponding conceptual functionality for legacy Windows. They need not share source code or implementation details.
 
+For WinLook Windows binaries built with the current official Rust/MSVC target, the documented client OS floor is Windows 10. The portable Rust timing/value crate itself has no Windows API dependency, but that does not establish that a current Rust/MSVC binary can run on Vista, Windows 7, 8 or 8.1. The C library is the planned older-Windows path; each compiler/runtime combination still requires testing.
+
 ## Whole-OS suite scope
 Window open/minimize/restore/close, move/resize/snap/focus, workspace changes, desktop icon/Group interactions, wallpaper/widget transitions, WLOSDE notification/OSD transitions, WinLook Manager controls and third-party UI.
 
@@ -64,13 +66,13 @@ The first code slice establishes the renderer-independent timing/value layer onl
 ### Verification evidence
 
 - **C host compile/test: passed** with GCC 14.2.0 using `make clean && make test` and `-std=c89 -Wall -Wextra -Werror -pedantic -O2`. This validates the portable C source against a C89 compiler mode; it does not prove Open Watcom, Windows 95, or any other Windows runtime compatibility.
-- **Rust compile/test: not run.** This execution environment does not have `rustc` or `cargo` installed. Install/use a Rust toolchain and run `cargo fmt --check`, `cargo test` and `cargo clippy --all-targets --all-features` before treating the crate as build-verified.
+- **Rust compile/test: not run in the original prototype checkpoint.** That execution environment did not have `rustc` or `cargo` installed. Install/use a Rust toolchain and run `cargo fmt --check`, `cargo test` and `cargo clippy --all-targets --all-features` before treating the crate as build-verified.
 - **Windows runtime/backend tests: not run.** No Win32/DWM/GDI backend or injection integration exists in this slice.
 - No compiled test executable or other build output is committed.
 
 ### Next implementation gates
 
-1. Build and test `wl_animate` with the selected minimum Rust toolchain.
+1. Build and test `wl_animate` with the selected Rust toolchain; separately verify the Windows 10+ MSVC runtime baseline and do not infer pre-Windows-10 runtime support.
 2. Verify `wl_Lanimate` with the selected Open Watcom compiler/linker and actual legacy target imports.
 3. Define the stable shared conceptual API and the C ABI before promising third-party compatibility.
 4. Add platform schedulers/renderers behind capability-detected adapters, retaining native fallbacks.

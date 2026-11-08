@@ -26,7 +26,7 @@ Primary references:
 These links support only the claims they document. They do not prove WinLook code has been tested on this OS.
 
 ## 3. Toolchain and runtime strategy
-Use a Rust build only when the selected compiler, standard library and dependencies officially support the exact Windows release. Otherwise use an approved legacy C implementation. Avoid importing APIs whose minimum supported version exceeds the target. Detect optional DLL exports and capabilities at runtime. Keep architecture/bitness-specific modules separate.
+The current official Rust/MSVC target documents Windows 10 or later as the minimum client OS, so it is the planned Rust route for this target. This target-level fact is not a WinLook runtime test: verify the exact Windows build, architecture, API imports, dependencies, graphics drivers and process mitigations. The C implementation may also be built where a shared legacy path is useful.
 
 ## 4. WLWM compatibility
 Use IVirtualDesktopManager where its public contract fits. For create/switch/current-desktop selection, keep separate adapters and do not treat undocumented interfaces as stable. BGW cache includes OS build and target binary identity. Respect mitigations, architecture and exclusions.

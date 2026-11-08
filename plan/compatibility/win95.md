@@ -58,7 +58,7 @@ WLT import must validate the archive, reject unsafe paths/collisions, cap file c
 
 - This OS predates Vista Core Audio and GSMTC. WinLook still supplies its mixer/media UI, but only offer global/device mixer controls actually exposed by the selected driver. Do not promise generic per-process volume.
 - Media metadata, artwork and transport require adapters for named players and versions; there is no system-wide Now Playing API equivalent to GSMTC.
-- Explorer customization must use classic Shell capabilities verified on Windows 95. Do not assume XP-era `IShellView`, Windows 7 `IExplorerCommand` or Windows 11 context-menu registration.
+- Explorer customization must use classic Shell capabilities verified on Windows 95. Do not assume XP-era `IShellView`, Vista+ `IExplorerCommand` or Windows 11 context-menu registration.
 - Any deep visual adapter is experimental until tested on the exact Shell build and must not patch or replace `explorer.exe`.
 
 ## 9. Required verification

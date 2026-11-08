@@ -36,9 +36,9 @@ Never bind a media card to a volume slider based only on display-name similarity
 
 ### Windows API generations
 
-**Vista:** Core Audio provides `IAudioSessionManager`, `IAudioSessionControl`, `ISimpleAudioVolume` and `IAudioEndpointVolume`. The base session manager is documented from Vista. It does not provide the later `IAudioSessionManager2` enumerator/notification surface, so a complete live per-app list must not be assumed from Vista's base interface alone.
+**Vista:** Core Audio provides `IAudioSessionManager`, `IAudioSessionControl`, `ISimpleAudioVolume` and `IAudioEndpointVolume`. The base manager can retrieve controls for a known session, but it does not provide the later `IAudioSessionManager2` enumerator/notification surface. A generic system-wide live per-app volume list is therefore not available from this base interface alone; expose only controls whose session identity is actually known, plus endpoint controls.
 
-**Windows 7 and later:** `IAudioSessionManager2` adds session enumeration and notifications. Correctly maintain the enumerator and event lifecycle.
+**Windows 7 and later:** `IAudioSessionManager2` adds session enumeration and notifications. The enumerator alone can miss newly created sessions; Microsoft documents that applications should maintain their own session list using notification callbacks after enumeration starts. Reconcile the initial enumeration, add/remove notifications and endpoint changes rather than treating one snapshot as complete.
 
 **Windows 95 through XP:** these systems predate Core Audio. WinLook still supplies its own UI, but generic per-process volume is not assumed. Legacy mixer/device APIs may expose global or hardware/driver controls; exact capability must be tested per OS, driver and device. A player-owned volume control is not an OS-level per-process mixer and must be labelled separately.
 
@@ -52,7 +52,7 @@ Primary references:
 
 ### Modern Windows: GSMTC
 
-Windows 10 version 1809 (build 17763) introduces `GlobalSystemMediaTransportControlsSessionManager`. For applications publishing a Windows media session, WinLook can enumerate sessions, observe changes, identify the source App User Model ID, read playback state and available controls, retrieve playback type (including Audio or Video), title/subtitle and available metadata, retrieve the provider thumbnail, read the timeline, request a seek, and request play/pause/previous/next/stop/fast-forward/rewind when supported.
+Windows 10 version 1809 (build 17763) introduces `GlobalSystemMediaTransportControlsSessionManager`; access requires the `globalMediaControl` app capability. For applications publishing a Windows media session, WinLook can enumerate sessions, observe changes, identify the source App User Model ID, read playback state and available controls, retrieve playback type (including Audio or Video), title/subtitle and available metadata, retrieve the provider thumbnail, read the timeline, request a seek, and request play/pause/previous/next/stop/fast-forward/rewind when supported.
 
 A YouTube video can appear as a Video item with the thumbnail supplied by the browser/player. A music application can appear as Audio with album artwork. This does not require scraping the website's UI.
 
@@ -109,7 +109,7 @@ Do not store transient title, thumbnail cache, current playback position, proces
 | Windows generation | Audio controls | Now Playing/media controls |
 |---|---|---|
 | 95 / 98 / Me / NT4 / 2000 / XP | Legacy global/device mixer only where verified; no generic per-process guarantee | WinLook UI plus explicit supported-player adapters |
-| Vista | Core Audio endpoint and base session interfaces; no `IAudioSessionManager2` enumerator guarantee | WinLook UI plus player adapters; no GSMTC |
+| Vista | Core Audio endpoint and known-session controls; no generic live `IAudioSessionManager2` enumeration | WinLook UI plus player adapters; no GSMTC |
 | 7 / 8 / 8.1 | Core Audio session enumeration/notifications through `IAudioSessionManager2` | WinLook UI plus player adapters; no GSMTC |
 | 10 before 1809 | Core Audio | Player adapters; GSMTC unavailable |
 | 10 version 1809+ / 11 | Core Audio | GSMTC sessions, metadata, provider thumbnails, controls/timeline where published |
@@ -119,10 +119,12 @@ This is an API baseline, not a WinLook support claim. Per-version evidence must 
 ## 9. Acceptance gates
 
 - [ ] Endpoint volume and per-session volume remain separate.
+- [ ] Vista does not advertise a generic live per-app list without a separately verified discovery adapter.
+- [ ] Windows 7+ maintains session state using both initial enumeration and session notifications; enumerator snapshots alone are not treated as complete.
 - [ ] Vista/Windows 7 Core Audio interface boundaries are detected correctly.
 - [ ] Windows 7+ session events handle creation/end and PID reuse.
 - [ ] Exclusive-mode streams are not advertised as session-controllable.
-- [ ] GSMTC discovery is gated to Windows 10 version 1809+.
+- [ ] GSMTC discovery is gated to Windows 10 version 1809+ and the required `globalMediaControl` app capability is declared.
 - [ ] Audio/video type, title, metadata, artwork/thumbnail and timeline are shown only when provided.
 - [ ] Transport/seek controls match the session's supported commands.
 - [ ] Browser grouping ambiguity cannot bind the wrong volume control to a media item.

@@ -24,6 +24,12 @@ let mut fade = Tween::new(0.0_f32, 1.0, Duration::from_millis(180), Easing::Ease
 let opacity = fade.advance(Duration::from_millis(16));
 ```
 
+## Windows target boundary
+
+The crate's `rust-version = 1.56` manifest field describes its minimum Rust compiler version, not its minimum Windows version. The current official Rust/MSVC Windows target documentation requires Windows 10 or later for client installs. A portable crate that avoids Win32 APIs does not by itself make a current Rust/MSVC application binary compatible with Vista, Windows 7, 8 or 8.1. The planned older-Windows implementation uses `wl_Lanimate` unless a historical Rust toolchain is independently verified.
+
+See [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) and [WinLook's toolchain compatibility policy](../../plan/compatibility/README.md).
+
 ## Scope boundary
 
 This is an API foundation, not the complete OS animation suite. Win32 window observation, injection/hooking, DWM, D3D11, DirectComposition, overlay-window presentation, frame scheduling and resource management belong in separate backend crates/modules. A backend must be selected through OS/driver capability detection and retain a native fallback.

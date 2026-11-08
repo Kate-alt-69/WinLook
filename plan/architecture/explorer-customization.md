@@ -22,7 +22,7 @@ WinLook customizes presentation, layout, visual themes and selected interactions
 
 Use supported Shell handlers where they match the target OS/feature: context-menu commands; property pages/handlers; icons, thumbnails, preview handlers and infotips; Details columns/metadata; icon/thumbnail overlays; and drag/drop handlers only when ownership/failure behaviour is understood.
 
-For modern context-menu commands, investigate `IExplorerCommand`. Windows 11 modern context-menu integration has package-identity/manifest registration requirements; older extensions may appear in the legacy menu. Use the correct classic Shell route for older OS targets.
+`IExplorerCommand` is documented with a Windows Vista minimum client. The API minimum does not mean registration or visual context-menu behaviour is identical across releases. Windows 11 modern context-menu integration additionally requires app identity and package-manifest registration (including a sparse-package route for unpackaged Win32 apps); older releases use their corresponding classic Shell registration path.
 
 Shell extensions may execute in Explorer's process or UI path. Keep discovery/state/icon callbacks fast and deterministic. Never block Explorer on network access, package parsing or slow filesystem work. Hand long operations to an out-of-process broker after explicit invocation.
 
@@ -78,13 +78,13 @@ Do not put raw pointers, control addresses, private process state or arbitrary s
 
 | Windows generation | Planned route | Important limit |
 |---|---|---|
-| 95 / 98 / Me / NT4 / 2000 | Research classic Shell extension points and test each OS independently | No modern `IExplorerCommand` or Windows 11 menu assumptions |
-| XP / Vista | Legacy Shell handlers; custom namespace `IShellView` from XP | Not a universal redesign of normal folders or all Explorer chrome |
-| 7 / 8 / 8.1 | Supported Shell handlers including `IExplorerCommand` where available | Deep chrome styling remains per-build research |
+| 95 / 98 / Me / NT4 / 2000 / XP | Research classic Shell extension points and test each OS independently; `IExplorerCommand` is not available | Do not assume Vista+ command interfaces or modern menu registration |
+| Vista | Legacy Shell handlers, `IExplorerCommand` API, custom namespace `IShellView` from XP | API availability does not provide a universal Explorer redesign |
+| 7 / 8 / 8.1 | Supported Shell handlers including `IExplorerCommand` | Deep chrome styling remains per-build research |
 | 10 | Supported Shell handlers plus build-specific presentation research | Do not assume Windows 11 XAML/WinUI control structures |
 | 11 | Modern context-menu integration plus supported handlers; optional build-specific adapter | Internal control trees change with feature/cumulative updates |
 
-A modern SDK symbol is not proof of runtime availability on an older OS. See [the compatibility matrix](../compatibility/matrix.md) and [source ledger](../references/SOURCES.md).
+`IExplorerCommand` is documented from Vista; Windows 11 modern context-menu registration adds package-identity/manifest requirements. Neither fact implies all Explorer chrome is publicly themeable. See [the compatibility matrix](../compatibility/matrix.md) and [source ledger](../references/SOURCES.md).
 
 ## 7. Failure isolation and recovery
 

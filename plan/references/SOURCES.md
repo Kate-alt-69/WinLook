@@ -32,10 +32,12 @@ Last verified: 2026-11-08. These citations support platform or upstream-project 
 | AUDIO-002 | [IAudioSessionManager2](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nn-audiopolicy-iaudiosessionmanager2) | Audio-session enumeration and notifications | Windows 7 minimum |
 | AUDIO-003 | [ISimpleAudioVolume](https://learn.microsoft.com/en-us/windows/win32/api/audioclient/nn-audioclient-isimpleaudiovolume) | Shared-mode audio-session volume and mute | Does not control exclusive-mode streams |
 | AUDIO-004 | [IAudioEndpointVolume](https://learn.microsoft.com/en-us/windows/win32/api/endpointvolume/nn-endpointvolume-iaudioendpointvolume) | Audio endpoint master volume/mute | Vista minimum |
+| AUDIO-005 | [IAudioSessionManager2::GetSessionEnumerator](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nf-audiopolicy-iaudiosessionmanager2-getsessionenumerator) | Creates a session enumerator for the current audio session manager | The enumerator may miss sessions created around enumeration time; maintain the live list using session notifications |
 | MEDIA-001 | [GSMTC session manager](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager) | System media-session discovery and change events | Windows 10 version 1809 / build 17763 |
 | MEDIA-002 | [GSMTC session](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssession) | Source app ID, transport requests, timeline and events | Provider may omit metadata or decline commands |
 | MEDIA-003 | [GSMTC media properties](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmediaproperties) | Audio/video type, metadata and provider thumbnail | Source-session supplied; completeness is not guaranteed |
 | MEDIA-004 | [GSMTC timeline properties](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessiontimelineproperties) | Position and seek timeline information | Use only when exposed by the session |
+| MEDIA-005 | [GSMTC session manager](https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager) | Access to the system media-session manager | Declares the `globalMediaControl` capability requirement; Windows 10 version 1809+ |
 
 ## File Explorer and Shell customization
 
@@ -45,8 +47,16 @@ Last verified: 2026-11-08. These citations support platform or upstream-project 
 | SHELL-004 | [Implementing a folder view](https://learn.microsoft.com/en-us/windows/win32/lwef/nse-folderview) | IShellView supplies a child view and can contribute folder-specific menu/toolbar/status behaviour | Custom view trade-offs versus default DefView must be evaluated |
 | SHELL-005 | [IShellView](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishellview) | Namespace folder-view interface | Windows XP minimum |
 | SHELL-006 | [File Explorer context-menu integration](https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/integrate-packaged-app-with-file-explorer) | IExplorerCommand registration and modern context-menu requirements | Modern menu registration has package identity/manifest requirements |
-| SHELL-007 | [Windows 11 context-menu developer guidance](https://blogs.windows.com/windowsdeveloper/2021/07/19/extending-the-context-menu-and-share-dialog-in-windows-11/) | IExplorerCommand support dates to Windows 7; describes Windows 11 menu grouping | Not a universal menu chrome customization API |
+| SHELL-007 | [Windows 11 context-menu developer guidance](https://blogs.windows.com/windowsdeveloper/2021/07/19/extending-the-context-menu-and-share-dialog-in-windows-11/) | Describes Windows 11 modern context-menu grouping and developer extension direction | Not a universal menu chrome customization API |
 | SHELL-008 | [Windhawk File Explorer Styler](https://windhawksoftware.com/mods/windows-11-file-explorer-styler/) | Third-party demonstration of selected Explorer surface styling | Feasibility example only; not a Microsoft API or universal support guarantee |
+| SHELL-009 | [IExplorerCommand](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iexplorercommand) | Explorer command-extension interface | Documented minimum client is Windows Vista; API minimum is separate from Windows 11 package-identity/manifest registration |
+
+## Language and Windows target support
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| TOOLCHAIN-001 | [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) | Official Rust/MSVC Windows target support floor | Windows 10+ for client installs; this is toolchain documentation, not a WinLook runtime test |
+| TOOLCHAIN-002 | [Rust GNU target support](https://doc.rust-lang.org/rustc/platform-support/windows-gnu.html) | Current documentation state for Rust GNU Windows targets | Page is a stub with no target maintainers and no supported old-client minimum; not evidence of pre-Windows-10 support |
 
 ## Legacy toolchain
 

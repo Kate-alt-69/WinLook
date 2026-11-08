@@ -26,10 +26,10 @@ Primary references:
 These links support only the claims they document. They do not prove WinLook code has been tested on this OS.
 
 ## 3. Toolchain and runtime strategy
-Use a Rust build only when the selected compiler, standard library and dependencies officially support the exact Windows release. Otherwise use an approved legacy C implementation. Avoid importing APIs whose minimum supported version exceeds the target. Detect optional DLL exports and capabilities at runtime. Keep architecture/bitness-specific modules separate.
+Use the C implementation as the planned default for Vista. The current official Rust/MSVC target requires Windows 10 or later for client installs; an older pinned Rust toolchain is research-only until its compiler, standard library, linker/runtime and Vista VM behaviour are verified. Avoid imports newer than the target and detect optional APIs at runtime.
 
 ## 4. WLWM compatibility
-Rust toolchain must be pinned to a version that actually supports the selected Vista target; do not assume a current toolchain/runtime supports it. Process APIs and hook backends need their own minimum checks. WLWM should retain logical workspaces. Use DWM only when composition state says available; maintain non-DWM fallback.
+The current Rust/MSVC target is not the supported Vista route. Use the C build unless a separately reviewed historical Rust toolchain proves Vista runtime compatibility. Process APIs and hook backends need their own minimum checks. WLWM should retain logical workspaces. Use DWM only when composition state says available; maintain non-DWM fallback.
 
 WLWM's local binary compatibility cache is an analysis cache. Every launch still validates current target identity, architecture, OS/build and relevant mitigation state. Unknown or partially supported targets must retain native Windows behaviour unless an explicitly enabled, reviewed experimental route is used.
 
@@ -56,7 +56,7 @@ WLT import must validate the archive, reject unsafe paths/collisions, cap file c
 - Vista has Core Audio base session/endpoint interfaces, including `IAudioSessionManager` and `ISimpleAudioVolume`; controls are possible where shared-mode session identity is available.
 - Do not use `IAudioSessionManager2` as a Vista baseline: Microsoft documents that interface from Windows 7. Full live per-app enumeration needs separate validation.
 - GSMTC is unavailable. Now Playing metadata, artwork and transport use explicit supported-player adapters.
-- `IShellView` supports custom namespace views from XP onward. `IExplorerCommand` is not the Vista context-menu baseline. Deep Explorer chrome styling is a separate build-specific experimental adapter.
+- `IShellView` supports custom namespace views from XP onward. `IExplorerCommand` has a documented Vista minimum; verify the appropriate Vista Shell registration route. Deep Explorer chrome styling is a separate build-specific experimental adapter.
 - Never modify or replace `explorer.exe`; preserve native Shell and file-operation ownership.
 
 ## 9. Required verification

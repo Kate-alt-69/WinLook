@@ -70,12 +70,13 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 
 # 2. Core architecture — hybrid Windows implementations
 
-The intended architecture uses Rust for modern Windows and a separate C implementation for legacy Windows. They share conceptual APIs and data contracts where feasible, but not one executable or identical runtime capabilities. The main WinLook background worker (BGW) coordinates WLWM process detection, compatibility evaluation/cache, injection and module health.
+The intended architecture uses Rust for current Windows 10+ builds and a separate C implementation for older Windows generations. They share conceptual APIs and data contracts where feasible, but not one executable or identical runtime capabilities. The current official Rust/MSVC target documentation requires Windows 10 or later for client installs; the planned C implementation is therefore the default route for Windows 95 through 8.1 unless a separately pinned older Rust toolchain is proven on the exact OS. The Rust GNU target documentation is currently a stub and is not an older-Windows support guarantee. The main WinLook background worker (BGW) coordinates WLWM process detection, compatibility evaluation/cache, injection and module health.
 
 ## Modern implementation — Rust
 
-- [x] Define Rust as the modern core implementation.
+- [x] Define Rust as the modern core implementation for current Windows 10+ builds using the official Rust/MSVC target baseline.
 - [x] Identify the Microsoft `windows` / `windows-sys` bindings as candidates for native Windows APIs.
+- [ ] Keep Windows 95–8.1 on the separate C implementation unless a pinned Rust toolchain/runtime is explicitly validated; do not infer older-OS support from language portability.
 - [ ] Choose the supported Rust toolchain, editions, minimum OS versions, and target triples.
 - [ ] Define the process model and boundaries between Manager, per-user Agent, rendering workers, and optional Service.
 - [ ] Define native UI and rendering technology; evaluate low-overhead options rather than assuming a browser-heavy shell.
@@ -85,8 +86,9 @@ The intended architecture uses Rust for modern Windows and a separate C implemen
 
 ## Legacy implementation — ANSI C / lightweight C++
 
-- [x] Define a separate legacy companion implementation.
+- [x] Define a separate C companion implementation for pre-Windows-10 targets (including Win9x and older NT releases).
 - [x] Identify older toolchains such as Open Watcom or Visual Studio 6-era tooling for investigation.
+- [ ] Preserve the option to build selected C adapters on newer Windows where shared code or compatibility testing makes that useful.
 - [ ] Verify compiler, linker, runtime, CPU, and API compatibility for each intended legacy OS.
 - [ ] Define the exact first legacy targets (Windows 95 / 98 / ME) and investigate NT-family versions separately.
 - [ ] Define the legacy UI, GDI rendering, configuration parser, and installer constraints.

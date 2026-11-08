@@ -26,10 +26,10 @@ Primary references:
 These links support only the claims they document. They do not prove WinLook code has been tested on this OS.
 
 ## 3. Toolchain and runtime strategy
-Use a Rust build only when the selected compiler, standard library and dependencies officially support the exact Windows release. Otherwise use an approved legacy C implementation. Avoid importing APIs whose minimum supported version exceeds the target. Detect optional DLL exports and capabilities at runtime. Keep architecture/bitness-specific modules separate.
+Use the C implementation as the planned default for Windows 7. The current official Rust/MSVC target requires Windows 10 or later for client installs; a pinned older Rust toolchain is experimental until its exact compiler, standard library, linker/runtime and Windows 7 VM behaviour are verified. Detect optional APIs and keep architecture/bitness-specific modules separate.
 
 ## 4. WLWM compatibility
-Use documented window/event APIs and logical workspaces. DWM visual effects only if composition is enabled. Session 0 remains isolated. Pin Rust toolchain/API target; if selected compiler/runtime does not support Windows 7, use an approved compatible build path.
+Use documented window/event APIs and logical workspaces. DWM visual effects only if composition is enabled. Session 0 remains isolated. The C build is the planned Windows 7 route under the current toolchain policy; do not assume the current official Rust/MSVC target runs here.
 
 WLWM's local binary compatibility cache is an analysis cache. Every launch still validates current target identity, architecture, OS/build and relevant mitigation state. Unknown or partially supported targets must retain native Windows behaviour unless an explicitly enabled, reviewed experimental route is used.
 
@@ -55,7 +55,7 @@ WLT import must validate the archive, reject unsafe paths/collisions, cap file c
 
 - Core Audio includes `IAudioSessionManager2` session enumeration and notifications on Windows 7.
 - GSMTC is unavailable; Now Playing relies on explicit player integrations/adapters and the WinLook-owned UI.
-- `IExplorerCommand` is supported from Windows 7 for Shell commands. It does not expose all menu chrome styling or the full Explorer interface.
+- `IExplorerCommand` has a documented Vista minimum and is available at the API level on Windows 7. It adds Shell commands, not universal menu-chrome or Explorer-interface styling.
 - Deep Explorer visual customization remains a separate per-build adapter, opt-in and recoverable. Never modify or replace `explorer.exe`.
 
 ## 9. Required verification
