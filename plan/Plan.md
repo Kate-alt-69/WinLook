@@ -4,19 +4,19 @@
 > **Project:** WinLook  
 > **Repository:** [Kate-alt-69/WinLook](https://github.com/Kate-alt-69/WinLook)  
 > **Status:** Planning — implementation has not started unless a task is explicitly verified elsewhere  
-> **Primary document:** \`Plan.md\`  
-> **Future consolidated specification:** \`Final-Plan.md\`
+> **Primary document:** `Plan.md`  
+> **Future consolidated specification:** `Final-Plan.md`
 
 This file records the full scope discussed for WinLook. It is intentionally broader than the Desktop Engine alone: it covers the Windows appearance system, icons, shell integrations, desktop rendering, wallpapers and their Store, widgets, extensions, Standby, security, compatibility, restoration, testing, and releases.
 
 ## How to use this checklist
 
-- \`[x]\` means the initial planning/design point has been discussed and captured in this conversation. **It does not mean code has been implemented or tested.**
-- \`[ ]\` means the item still needs research, a decision, a specification, implementation, or verification.
+- `[x]` means the initial planning/design point has been discussed and captured in this conversation. **It does not mean code has been implemented or tested.**
+- `[ ]` means the item still needs research, a decision, a specification, implementation, or verification.
 - When an item is completed, add evidence where useful (document path, decision, test, or PR).
 - Keep this file as the evolving checklist. Do not turn it into the final specification prematurely.
-- Once the major architecture and unresolved decisions are settled, consolidate the approved decisions into \`Final-Plan.md\`.
-- Detailed designs can live in focused files under \`docs/\`; research and compatibility evidence can live under \`research/\`.
+- Once the major architecture and unresolved decisions are settled, consolidate the approved decisions into `Final-Plan.md`.
+- Detailed designs can live in focused files under `docs/`; research and compatibility evidence can live under `research/`.
 
 ---
 
@@ -30,8 +30,14 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 
 - **WinLook:** The main Windows customization platform and manager.
 - **WLDE — WinLook Desktop Engine** (pronounced **WALDE**): WinLook's integrated desktop, wallpaper, widget, rendering, and desktop-content engine.
-- **Wallpaper Store:** A Store experience that is part of WLDE. It is not a separate Wallpaper Engine product and does not depend on the Steam Wallpaper Engine application.
-- **WinCheck:** Possible companion diagnostic/compatibility/recovery utility. Its separate-product status and exact scope are still undecided.
+- **WLWM — WinLook Window Manager (WELMO):** augments Windows window management while leaving the Windows windowing system and DWM intact.
+- **WLDM — WinLook Display Manager:** monitor/display discovery, profiles and settings.
+- **WLOSDE — WinLook On-Screen Display Engine:** customizable WinLook notifications, popups and OSD.
+- **wl_animate:** reusable Rust animation crate/API for modern WinLook modules and third-party integrations.
+- **wl_Lanimate:** corresponding legacy C animation library.
+- **WLT — WinLook Template:** portable settings/assets package using the proposed .wl.t archive.
+- **Wallpaper Store:** integrated WLDE feature and community catalogue client, not a separate Wallpaper Engine product.
+- **WinCheck is permanently out of scope and will never be a WinLook product.**
 
 ## Core principles
 
@@ -40,14 +46,14 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - [ ] Define what “full customization” means for each OS generation.
 - [ ] Define a feature-capability matrix so unavailable features are reported honestly.
 - [ ] Define the boundary between supported/native customization and optional experimental integrations.
-- [ ] Define project naming, branding, and whether WinCheck ships separately or as a WinLook component.
+- [ ] Finalize product branding and release names for the agreed subsystems.
 - [ ] Define supported hardware/performance tiers, including low-end systems.
 - [ ] Define accessibility requirements and high-contrast/reduced-motion behaviour.
 
 ## Non-negotiable safety and stability rules
 
 - [x] Protect the Windows shell from direct executable modification as a core design requirement.
-- [ ] **Never patch, replace, binary-modify, or make WinLook dependent on a modified \`explorer.exe\`.**
+- [ ] **Never patch, replace, binary-modify, or make WinLook dependent on a modified `explorer.exe`.**
 - [ ] Do not inject arbitrary code into Explorer as a normal customization strategy.
 - [ ] Prefer documented Windows APIs, supported personalization settings, separate processes, and version-specific adapters.
 - [ ] Keep shell integrations optional and isolated so a failure can be disabled without taking down the desktop.
@@ -61,12 +67,12 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 
 # 2. Core architecture — hybrid Windows implementations
 
-The intended architecture uses a modern Rust implementation for modern Windows and a separate lightweight C implementation for legacy Windows generations. They share compatible configuration contracts where feasible; they are not expected to share one executable or identical runtime capabilities.
+The intended architecture uses Rust for modern Windows and a separate C implementation for legacy Windows. They share conceptual APIs and data contracts where feasible, but not one executable or identical runtime capabilities. The main WinLook background worker (BGW) coordinates WLWM process detection, compatibility evaluation/cache, injection and module health.
 
 ## Modern implementation — Rust
 
 - [x] Define Rust as the modern core implementation.
-- [x] Identify the Microsoft \`windows\` / \`windows-sys\` bindings as candidates for native Windows APIs.
+- [x] Identify the Microsoft `windows` / `windows-sys` bindings as candidates for native Windows APIs.
 - [ ] Choose the supported Rust toolchain, editions, minimum OS versions, and target triples.
 - [ ] Define the process model and boundaries between Manager, per-user Agent, rendering workers, and optional Service.
 - [ ] Define native UI and rendering technology; evaluate low-overhead options rather than assuming a browser-heavy shell.
@@ -98,6 +104,11 @@ The intended architecture uses a modern Rust implementation for modern Windows a
 - [ ] Define update compatibility between Manager, Agent, Service, legacy companion, and packages.
 
 ## Proposed process responsibilities
+
+- [ ] Specify the main Background Worker (BGW) as owner of WLWM target detection, compatibility evaluation/cache, injection orchestration, module health and exclusions.
+- [ ] Define the local binary-encoded WLWM compatibility cache, including binary identity, architecture, OS/build, relevant mitigations, module versions, invalidation and confidence/reason codes.
+- [ ] Ensure cache hits never bypass per-launch identity and safety checks.
+- [ ] Keep injected modules small, versioned and recovery-aware.
 
 - [ ] Specify **WinLook Manager**: user-facing settings, theme management, library, and Store UI.
 - [ ] Specify **WinLook Agent**: per-user desktop, appearance, and session integration.
@@ -195,9 +206,14 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 
 ## Desktop composition and rendering
 
+- [ ] Design Local desktop Groups as virtual visual objects, never filesystem folders.
+- [ ] Keep original desktop shortcuts/items in place; visually substitute a custom Group icon and open a borderless popup containing the original items.
+- [ ] Keep Grouping disabled by default.
+- [ ] Keep Local Groups machine-specific and excluded from WLT exports; define Fancy Groups separately before supporting portable groups.
+
 - [x] Design the Desktop Engine as a core subsystem.
 - [ ] Define the desktop composition architecture and rendering backend per Windows generation.
-- [ ] Define how WLDE integrates with the desktop without modifying \`explorer.exe\`.
+- [ ] Define how WLDE integrates with the desktop without modifying `explorer.exe`.
 - [ ] Design visible-region / occlusion detection.
 - [ ] Design partial-region rendering so WLDE draws only wallpaper regions that are actually exposed where the platform and renderer permit it.
 - [ ] Design clipping and dirty-region updates for partially covered desktop areas.
@@ -210,6 +226,9 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 - [ ] Define low-memory and software-rendering fallbacks.
 
 ## Wallpaper formats and rendering capabilities
+
+- [ ] Specify .wl.wp as the normal wallpaper asset/package format with source-quality preservation.
+- [ ] Specify .wl.i.wp as an interactive wallpaper archive that may contain the wallpaper media, scripts, assets, manifest, preview and declared permissions.
 
 - [ ] Define a renderer abstraction so formats can be added without redesigning WLDE.
 - [ ] Support static image wallpapers (PNG, JPEG, WebP, BMP, and other formats selected after codec review).
@@ -293,9 +312,9 @@ WLDE should be a good desktop citizen. Foreground applications and games take pr
 
 ## Rainmeter compatibility
 
-- [x] Identify \`.rmskin\` as a target compatibility format.
+- [x] Identify `.rmskin` as a target compatibility format.
 - [x] Establish that package extraction/parsing alone does not equal full Rainmeter runtime compatibility.
-- [ ] Research the \`.rmskin\` package structure and manifest variations.
+- [ ] Research the `.rmskin` package structure and manifest variations.
 - [ ] Design safe package extraction and path traversal protection.
 - [ ] Parse Rainmeter skin INI files and referenced assets.
 - [ ] Research and implement compatibility for measures, meters, variables, bangs/actions, plugins, and other required runtime behaviour.
@@ -307,7 +326,7 @@ WLDE should be a good desktop citizen. Foreground applications and games take pr
 
 ## Other extension formats
 
-- [ ] Research legacy Windows Gadget (\`.gadget\`) format and security implications.
+- [ ] Research legacy Windows Gadget (`.gadget`) format and security implications.
 - [ ] Decide which formats are imported, converted, rendered natively, or simply linked to external runtimes.
 - [x] Design the WinLook extension package concept.
 - [x] Design extension permission boundaries.
@@ -334,8 +353,8 @@ Standby is a custom idle/standby experience, **not a replacement Windows authent
 - [ ] On Windows lock, hide/stop the WinLook Standby surface and allow native Windows secure sign-in to own the screen.
 - [ ] On unlock, safely resume the user's desktop/Standby state without handling credentials.
 - [ ] Use supported session notifications and verify behaviour on each target OS.
-- [ ] Research the \`NoLockScreen\` policy only as an optional OS policy/compatibility topic; never treat it as a way to put an ordinary WinLook window on the secure desktop.
-- [ ] Do not rely on a normal topmost kiosk window being underneath or appearing above \`LogonUI\`.
+- [ ] Research the `NoLockScreen` policy only as an optional OS policy/compatibility topic; never treat it as a way to put an ordinary WinLook window on the secure desktop.
+- [ ] Do not rely on a normal topmost kiosk window being underneath or appearing above `LogonUI`.
 - [ ] Do not install a custom Credential Provider as part of the initial design.
 - [ ] Define safe keyboard/mouse wake behaviour without recording typed content or global keystrokes.
 - [ ] Test lock/unlock, fast user switching, remote sessions, sleep/wake, multiple displays, and crashes.
@@ -344,6 +363,9 @@ Standby is a custom idle/standby experience, **not a replacement Windows authent
 ---
 
 # 8. Compatibility strategy — Windows 95 and later
+
+Detailed platform compatibility is maintained under [compatibility/](compatibility/README.md). Read the per-OS page before choosing APIs, compilers, imports, event mechanisms, rendering techniques or process integration for that OS. See the [compatibility matrix](compatibility/matrix.md) and [technical source ledger](references/SOURCES.md).
+
 
 Feature availability varies significantly across the Windows 9x and NT families. Each OS adapter must expose capabilities, not claim universal feature parity.
 
@@ -380,6 +402,9 @@ Feature availability varies significantly across the Windows 9x and NT families.
 
 # 9. Snapshots, rollback, and Windows restoration
 
+The clean uninstaller must reverse all WinLook-owned changes where safely possible, including Local Group icon presentation, WLWM integrations, WLDE state, WLOSDE surfaces, WLDM display settings, Appearance/Icon Engine changes and installed assets. See [architecture/restoration.md](architecture/restoration.md).
+
+
 Restoration is a core requirement. Users must be able to undo WinLook changes and return to their prior appearance without reinstalling Windows.
 
 - [x] Define Windows default restoration as a product capability.
@@ -401,6 +426,9 @@ Restoration is a core requirement. Users must be able to undo WinLook changes an
 
 # 10. Security, privacy, and trust
 
+Process injection is an accepted WLWM technique for compatible targets. The main BGW coordinates compatibility classification, cache lookup and injection. Protected/authentication processes, DWM and security-critical targets remain excluded. Explorer.exe must never be modified on disk or replaced; Explorer-targeted injection is excluded by default and requires a separately reviewed compatibility/recovery design. See [architecture/wlwm.md](architecture/wlwm.md).
+
+
 - [ ] Threat-model the Manager, Agent, Service, WLDE, Store, and extension runtime.
 - [ ] Define least-privilege requirements and elevation prompts.
 - [ ] Define package integrity verification and signing.
@@ -417,6 +445,9 @@ Restoration is a core requirement. Users must be able to undo WinLook changes an
 ---
 
 # 11. Manager UI and user experience
+
+WinLook Manager is where users configure and load subsystem settings, import/export Templates and manage installed content. A taskbar icon/background process may keep WinLook available; there is no separate WLCC Control Center. A custom Launcher is not in scope for now. Creation tools belong inside WinLook itself rather than a separate Creator Studio.
+
 
 - [ ] Design the WinLook Manager information architecture.
 - [ ] Design the dashboard and active-theme status.
@@ -477,16 +508,19 @@ Restoration is a core requirement. Users must be able to undo WinLook changes an
 
 # 14. Documentation and planning workflow
 
-- [ ] Keep this \`Plan.md\` updated as decisions and research change.
-- [ ] Add \`Final-Plan.md\` only when the core architecture and major decisions are approved.
-- [ ] Add \`docs/ARCHITECTURE.md\` for the approved high-level architecture.
-- [ ] Add \`docs/APPEARANCE-ENGINE.md\` for themes, shell, and icon customization.
-- [ ] Add \`docs/WLDE.md\` for desktop composition, wallpapers, Store, and resource management.
-- [ ] Add \`docs/STANDBY-AND-SECURITY.md\` for session lifecycle and authentication boundaries.
-- [ ] Add \`docs/EXTENSIONS.md\` for widgets, Rainmeter compatibility, package formats, and permissions.
-- [ ] Add \`docs/RESTORATION.md\` for snapshots, rollback, and uninstall restoration.
-- [ ] Add \`docs/COMPATIBILITY.md\` for the OS support matrix.
-- [ ] Add \`research/\` notes for version-specific APIs, toolchains, rendering, and compatibility evidence.
+Substantial technical claims must include direct links to official API/OS documentation or upstream third-party projects. Keep the claim, scope, confidence and verification date in [references/SOURCES.md](references/SOURCES.md). Maintain [index.md](index.md) and [workspace.md](workspace.md) for agent navigation and durable project context.
+
+
+- [ ] Keep this `Plan.md` updated as decisions and research change.
+- [ ] Add `Final-Plan.md` only when the core architecture and major decisions are approved.
+- [ ] Add `docs/ARCHITECTURE.md` for the approved high-level architecture.
+- [ ] Add `docs/APPEARANCE-ENGINE.md` for themes, shell, and icon customization.
+- [ ] Add `docs/WLDE.md` for desktop composition, wallpapers, Store, and resource management.
+- [ ] Add `docs/STANDBY-AND-SECURITY.md` for session lifecycle and authentication boundaries.
+- [ ] Add `docs/EXTENSIONS.md` for widgets, Rainmeter compatibility, package formats, and permissions.
+- [ ] Add `docs/RESTORATION.md` for snapshots, rollback, and uninstall restoration.
+- [ ] Maintain compatibility/README.md, compatibility/matrix.md and one detailed page per Windows target.
+- [ ] Add `research/` notes for version-specific APIs, toolchains, rendering, and compatibility evidence.
 - [ ] Record the source and confidence level for version-specific technical claims.
 - [ ] Separate confirmed facts, design decisions, hypotheses, and unresolved questions.
 - [ ] Review this plan after each major research phase and revise scope where evidence requires it.
@@ -519,7 +553,7 @@ The following preserves the checklist and completion statuses supplied during th
 ## Desktop and extensions
 
 - [x] Design Desktop Engine
-- [x] Research \`.rmskin\` compatibility at the package/format level
+- [x] Research `.rmskin` compatibility at the package/format level
 - [x] Design widget rendering and isolation
 - [x] Design extension package format
 - [x] Design extension permissions
@@ -548,7 +582,7 @@ The following preserves the checklist and completion statuses supplied during th
 These are not silently treated as finalized:
 
 - [ ] Official release support policy: Windows 95 through 11 all at launch, or phased modern-first releases with legacy support developed/tested separately.
-- [ ] Whether WinCheck is a separate companion product, a diagnostics page inside WinLook, or not part of the first release.
+- [x] WinCheck is permanently out of scope.
 - [ ] Exact modern UI toolkit and rendering backend.
 - [ ] Exact shared configuration format and migration strategy.
 - [ ] Exact list of supported wallpaper formats/codecs.
@@ -564,3 +598,55 @@ These are not silently treated as finalized:
 ## Planning rule
 
 Do not begin high-risk shell modifications, secure-desktop work, or broad system-wide customization before the relevant compatibility research, threat model, backup/rollback design, and test strategy are documented. Prefer a small proof of concept behind an isolated adapter before committing to a platform-wide implementation.
+
+
+---
+
+# Current approved architecture clarifications (2026-11-08)
+
+This section records the latest user-approved decisions and supersedes any earlier wording that conflicts with them.
+
+## Subsystem identity
+
+- **WLDE (WALDE):** WinLook Desktop Engine. Wallpaper runtime, wallpaper library and community Store belong inside it.
+- **WLWM (WELMO):** WinLook Window Manager. Adds Hyprland-inspired layouts, window rules, workspaces and visual behaviour over the existing Windows windowing stack and DWM.
+- **WLDM:** WinLook Display Manager. Monitor discovery, display profiles and settings.
+- **WLOSDE:** WinLook On-Screen Display Engine. Notifications, temporary popups and highly customizable OSD.
+- **wl_animate:** public/reusable Rust crate and modern animation API for WinLook modules and third-party developers.
+- **wl_Lanimate:** corresponding C animation library for legacy builds.
+- **WLT:** WinLook Template. Portable profile and bundled asset format.
+- **Main BGW:** coordinates WLWM detection, compatibility classification/cache, injection and health/recovery.
+
+## DWM, Windows and injection
+
+DWM and the Windows windowing system remain intact. WLWM augments Windows rather than replacing DWM. Process injection and hooks are acceptable techniques for compatible targets and are coordinated by the main BGW. A compatibility layer classifies targets before injection and maintains a local binary cache; the cache must be invalidated when target/environment/module identity changes and cannot replace per-launch safety checks. Explorer.exe must not be modified on disk or replaced; Explorer-targeted injection is excluded by default until a distinct, reversible design is reviewed. DWM and authentication/security-critical processes are excluded.
+
+## Animation suite
+
+The animation suite is reusable across WLWM, WLDE, WLOSDE, Manager UI and third-party integrations. Rust and C implementations provide equivalent concepts where the platform allows, with compiler- and OS-specific optimization.
+
+## Desktop Groups
+
+WLDE Groups are virtual presentation objects, never physical folders. Original desktop Shell items remain in place and retain their targets. WLDE displays a custom Group icon and opens a borderless popup showing original items. Grouping is disabled by default. Local Groups are machine-specific and are not exported in WLT. Fancy Groups are a separate portable concept and must not be conflated with Local Groups.
+
+## WLT and wallpaper packages
+
+One .wl.t file contains one Template. A ZIP containing several .wl.t files is a Template Group and imports them independently. WLT may contain rmskin/, wl/taskbar/, wl/&FONT_FILE&/, wl/wallpaper/, wl/icons/, wl/cursors/, wl/sounds/, wl/desktop/, wl/wlwm/ and wl/display/ content. The special &FONT_FILE& directory is part of the proposed layout. .wl.wp is the normal wallpaper asset/package; .wl.i.wp is an interactive wallpaper archive that can include media and supporting scripts/assets. Preserve source quality and validate archive paths, permissions and licensing. Local desktop Groups are excluded from WLT.
+
+## Excluded product ideas
+
+WinCheck, WLCC, a separate Launcher, a separate Scene Engine, a separate Creator Studio and a separate general Input Customization Engine are out of scope. Creation tools belong in WinLook Manager. Community Store/catalogues should support independent sources rather than requiring one central WinLook-operated service.
+
+## Detailed references
+
+- [Compatibility methodology](compatibility/README.md)
+- [Windows compatibility matrix](compatibility/matrix.md)
+- [Architecture overview](architecture/overview.md)
+- [WLWM](architecture/wlwm.md)
+- [Animation suite](architecture/animation-suite.md)
+- [WLDE](architecture/wlde.md)
+- [WLT](architecture/wlt.md)
+- [WLOSDE and WLDM](architecture/wlosde-wldm.md)
+- [Restoration and clean uninstallation](architecture/restoration.md)
+- [Technical source ledger](references/SOURCES.md)
+- [Workspace index](index.md)
