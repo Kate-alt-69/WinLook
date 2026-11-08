@@ -48,4 +48,4 @@ WinLook Manager and the interactive Agent/BGW run in the user session. Any optio
 A cache hit is not permission to skip current safety checks. Do not run slow analysis or network operations while holding loader locks.
 
 ## Further reading
-[WLWM](wlwm.md) · [Animation suite](animation-suite.md) · [WLDE](wlde.md) · [WLT](wlt.md) · [WLOSDE/WLDM](wlosde-wldm.md) · [Restoration](restoration.md) · [Compatibility](../compatibility/README.md) · [Sources](../references/SOURCES.md)
+[Appearance Engine](appearance-engine.md) · [WLWM](wlwm.md) · [Animation suite](animation-suite.md) · [WLDE](wlde.md) · [WLT](wlt.md) · [WLOSDE/WLDM](wlosde-wldm.md) · [Standby/security](standby-security.md) · [Extensions](extensions.md) · [Restoration](restoration.md) · [Compatibility](../compatibility/README.md) · [Sources](../references/SOURCES.md)

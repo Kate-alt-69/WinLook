@@ -38,3 +38,15 @@ For every new source record its exact claim, publisher, affected version, last-v
 
 ## Open research
 Win9x toolchain/runtime combinations; safe desktop icon suppression/recovery; process creation/injection compatibility; legacy display APIs; desktop wallpaper placement without Explorer modification; modern DWM/DirectComposition differences; WLWM workspace APIs beyond the public IVirtualDesktopManager interface.
+
+
+## Additional subsystem/API entry points
+
+| ID | Source | Claim / purpose | Scope / caveat |
+|---|---|---|---|
+| WTS-001 | [WTSRegisterSessionNotification](https://learn.microsoft.com/en-us/windows/win32/api/wtsapi32/nf-wtsapi32-wtsregistersessionnotification) | Registers a window to receive session change notifications | Minimum OS, service prerequisites and event behaviour must be verified for each WinLook target before implementation |
+| WTS-002 | [WM_WTSSESSION_CHANGE](https://learn.microsoft.com/en-us/windows/win32/termserv/wm-wtssession_change) | Message delivered for registered session changes | Do not assume available on Win9x or without required registration/runtime |
+| SHELL-001 | [Windows Shell interfaces](https://learn.microsoft.com/en-us/windows/win32/shell/interfaces) | Overview of Shell COM interfaces for file/desktop integration | Each interface has its own minimum OS and behaviour |
+| SHELL-002 | [Shell links and shortcuts](https://learn.microsoft.com/en-us/windows/win32/shell/links) | Shell link model and shortcut integration | Does not imply a universal running-taskbar icon replacement API |
+| DWM-003 | [DWM overview](https://learn.microsoft.com/en-us/windows/win32/dwm/dwm-overview) | DWM compositor architecture | Vista+; retain fallback on older systems |
+| DWM-004 | [DWM window attributes](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute) | Supported DWM window attributes | Attribute support differs by Windows release |

@@ -16,7 +16,7 @@ This file records the full scope discussed for WinLook. It is intentionally broa
 - When an item is completed, add evidence where useful (document path, decision, test, or PR).
 - Keep this file as the evolving checklist. Do not turn it into the final specification prematurely.
 - Once the major architecture and unresolved decisions are settled, consolidate the approved decisions into `Final-Plan.md`.
-- Detailed designs can live in focused files under `docs/`; research and compatibility evidence can live under `research/`.
+- Detailed designs live under `architecture/`; per-Windows research lives under `compatibility/`; technical evidence lives in `references/SOURCES.md`.
 
 ---
 
@@ -511,17 +511,17 @@ WinLook Manager is where users configure and load subsystem settings, import/exp
 Substantial technical claims must include direct links to official API/OS documentation or upstream third-party projects. Keep the claim, scope, confidence and verification date in [references/SOURCES.md](references/SOURCES.md). Maintain [index.md](index.md) and [workspace.md](workspace.md) for agent navigation and durable project context.
 
 
-- [ ] Keep this `Plan.md` updated as decisions and research change.
+- [ ] Keep this `Plan.md` updated as decisions and research change, after user approval for plan edits.
 - [ ] Add `Final-Plan.md` only when the core architecture and major decisions are approved.
-- [ ] Add `docs/ARCHITECTURE.md` for the approved high-level architecture.
-- [ ] Add `docs/APPEARANCE-ENGINE.md` for themes, shell, and icon customization.
-- [ ] Add `docs/WLDE.md` for desktop composition, wallpapers, Store, and resource management.
-- [ ] Add `docs/STANDBY-AND-SECURITY.md` for session lifecycle and authentication boundaries.
-- [ ] Add `docs/EXTENSIONS.md` for widgets, Rainmeter compatibility, package formats, and permissions.
-- [ ] Add `docs/RESTORATION.md` for snapshots, rollback, and uninstall restoration.
-- [ ] Maintain compatibility/README.md, compatibility/matrix.md and one detailed page per Windows target.
-- [ ] Add `research/` notes for version-specific APIs, toolchains, rendering, and compatibility evidence.
-- [ ] Record the source and confidence level for version-specific technical claims.
+- [x] Maintain [architecture/overview.md](architecture/overview.md) for the approved high-level architecture.
+- [x] Maintain [architecture/appearance-engine.md](architecture/appearance-engine.md) for themes, shell and icon customization.
+- [x] Maintain [architecture/wlde.md](architecture/wlde.md) for desktop composition, wallpapers, Store and resource management.
+- [x] Maintain [architecture/standby-security.md](architecture/standby-security.md) for session lifecycle and authentication boundaries.
+- [x] Maintain [architecture/extensions.md](architecture/extensions.md) for widgets, Rainmeter compatibility, package formats and permissions.
+- [x] Maintain [architecture/restoration.md](architecture/restoration.md) for snapshots, rollback and uninstall restoration.
+- [x] Maintain [compatibility/README.md](compatibility/README.md), [compatibility/matrix.md](compatibility/matrix.md) and one detailed page per Windows target.
+- [x] Maintain version-specific API, toolchain, rendering and compatibility evidence in [compatibility/](compatibility/README.md) and [references/SOURCES.md](references/SOURCES.md).
+- [x] Record the source and confidence level for version-specific technical claims in [references/SOURCES.md](references/SOURCES.md).
 - [ ] Separate confirmed facts, design decisions, hypotheses, and unresolved questions.
 - [ ] Review this plan after each major research phase and revise scope where evidence requires it.
 
@@ -642,11 +642,14 @@ WinCheck, WLCC, a separate Launcher, a separate Scene Engine, a separate Creator
 - [Compatibility methodology](compatibility/README.md)
 - [Windows compatibility matrix](compatibility/matrix.md)
 - [Architecture overview](architecture/overview.md)
+- [Appearance and Icon Engine](architecture/appearance-engine.md)
 - [WLWM](architecture/wlwm.md)
 - [Animation suite](architecture/animation-suite.md)
 - [WLDE](architecture/wlde.md)
 - [WLT](architecture/wlt.md)
 - [WLOSDE and WLDM](architecture/wlosde-wldm.md)
+- [Standby and session security](architecture/standby-security.md)
+- [Extensions and community ecosystem](architecture/extensions.md)
 - [Restoration and clean uninstallation](architecture/restoration.md)
 - [Technical source ledger](references/SOURCES.md)
 - [Workspace index](index.md)

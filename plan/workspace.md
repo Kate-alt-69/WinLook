@@ -48,7 +48,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Rainmeter compatibility level and licensing.
 
 ## Repository state
-- Root Plan.md is being moved to plan/Plan.md.
-- Detailed per-OS compatibility pages, subsystem architecture docs, source ledger and workspace index/memory are part of the documentation change.
+- Root-level Plan.md was moved to plan/Plan.md in commit bd1b7281af700e7efa4dcda67f994ab79dde43f5.
+- Per-OS compatibility pages, subsystem architecture docs, source ledger and workspace index/memory were added to main in that documentation change.
 - User explicitly authorized direct commits to main for this work.
 - These documents are planning/research; they do not claim that code is implemented or tested.
