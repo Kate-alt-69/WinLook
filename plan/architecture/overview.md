@@ -49,3 +49,10 @@ A cache hit is not permission to skip current safety checks. Do not run slow ana
 
 ## Further reading
 [Appearance Engine](appearance-engine.md) · [WLWM](wlwm.md) · [Animation suite](animation-suite.md) · [WLDE](wlde.md) · [WLT](wlt.md) · [WLOSDE/WLDM](wlosde-wldm.md) · [Standby/security](standby-security.md) · [Extensions](extensions.md) · [Restoration](restoration.md) · [Compatibility](../compatibility/README.md) · [Sources](../references/SOURCES.md)
+
+## Repository, UI and documentation architecture
+
+The proposed source layout is documented in [repository-layout.md](repository-layout.md). C and Rust use parallel feature directories, reusable WinLook libraries live under the repository's lib directory, and each language has a dedicated UI tree. Public APIs are separated from engine implementation.
+
+The Manager UI direction is a clear, native-feeling navigation shell with focused pages and reusable controls; see [ui-architecture.md](ui-architecture.md). Public API and application documentation requirements are in [documentation-standard.md](documentation-standard.md). These are planning proposals and do not imply that the source tree has been moved or that a UI toolkit has been selected.
+
