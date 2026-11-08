@@ -51,3 +51,12 @@ For every new source record its exact claim, publisher, affected version, last-v
 ## Open research
 
 Win9x toolchain/runtime combinations; safe desktop icon suppression/recovery; process creation/injection compatibility; legacy display APIs; desktop wallpaper placement without Explorer modification; modern DWM/DirectComposition differences; WLWM workspace APIs beyond the public IVirtualDesktopManager interface; OS-specific lock/session event mechanisms for pre-Vista systems; exact Rainmeter package metadata and runtime emulation scope.
+
+## UI design references
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| UI-001 | [WinToys screenshots](https://freesoft-100.com/screen/ss-wintoys.html) | Example of a Windows utility organized around a persistent navigation menu and focused category pages | Visual/information-architecture reference only; not a source to copy and not evidence of WinLook implementation |
+| UI-002 | [WinToys feature overview and screenshots](https://www.computerbild.de/artikel/Tipps-Windows-Wintoys-Kostenloses-Tuning-Tool-fuer-Windows-11-und-10-045b07f-35673881.html) | Illustrates grouped Apps, Services, Performance, Health and Optimization areas in a single utility | Third-party overview; UI direction reference only |
+| UI-003 | [Microsoft Windows app design basics](https://learn.microsoft.com/en-us/windows/apps/design/basics/) | Windows guidance for navigation, commands, content hierarchy, spacing and control grouping | General design guidance; does not select WinLook's UI framework or guarantee legacy API availability |
+
