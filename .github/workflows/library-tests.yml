@@ -1,0 +1,73 @@
+name: Shared libraries
+
+on:
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "rust/library/**"
+      - "C/library/**"
+      - ".github/workflows/library-tests.yml"
+  pull_request:
+    paths:
+      - "rust/library/**"
+      - "C/library/**"
+      - ".github/workflows/library-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: Rust / ${{ matrix.crate }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [wl_animate, wl_cpuv, wl_gpuv]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install stable Rust components
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml -- --check
+      - name: Run unit and documentation tests
+        run: cargo test --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml --all-targets --all-features
+      - name: Run Clippy
+        run: cargo clippy --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml --all-targets --all-features -- -D warnings
+      - name: Build API documentation
+        run: cargo doc --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml --no-deps
+
+  c-msvc:
+    name: C89 / MSVC / ${{ matrix.library }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        library: [wl_Lanimate, wl_Lcpuv, wl_Lgpuv]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure CMake
+        run: cmake -S C/library/${{ matrix.library }} -B build/${{ matrix.library }} -A x64
+      - name: Build library and tests
+        run: cmake --build build/${{ matrix.library }} --config Release
+      - name: Run C tests
+        run: ctest --test-dir build/${{ matrix.library }} -C Release --output-on-failure
+
+  c-portable:
+    name: C89 / GCC + sanitizers / ${{ matrix.library }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        library: [wl_Lanimate, wl_Lcpuv, wl_Lgpuv]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure strict C89 build
+        run: cmake -S C/library/${{ matrix.library }} -B build/${{ matrix.library }} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="-std=c89 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build library and tests
+        run: cmake --build build/${{ matrix.library }} --parallel
+      - name: Run C tests
+        run: ctest --test-dir build/${{ matrix.library }} --output-on-failure
