@@ -71,3 +71,32 @@ jobs:
         run: cmake --build build/${{ matrix.library }} --parallel
       - name: Run C tests
         run: ctest --test-dir build/${{ matrix.library }} --output-on-failure
+
+  rust-workspace:
+    name: Rust / workspace integration
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check workspace formatting
+        run: cargo fmt --all -- --check
+      - name: Test all Rust libraries together
+        run: cargo test --workspace --all-targets --all-features
+      - name: Lint all Rust libraries together
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Build all Rust library documentation
+        run: cargo doc --workspace --no-deps
+
+  c-aggregate:
+    name: C89 / combined library build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure all C libraries together
+        run: cmake -S C/library -B build/shared -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="-std=c89 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build all C libraries
+        run: cmake --build build/shared --parallel
+      - name: Run all C tests
+        run: ctest --test-dir build/shared --output-on-failure
