@@ -1,0 +1,36 @@
+name: Format and lock Manager UI Rust sources (one-time helper)
+
+on:
+  push:
+    branches: [feature/wintoys-manager-ui]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.ref_name == 'feature/wintoys-manager-ui'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate pinned workspace lockfile
+        run: cargo generate-lockfile
+      - name: Format workspace
+        run: cargo fmt --all
+      - name: Commit generated lockfile and formatting
+        shell: pwsh
+        run: |
+          if (git diff --quiet) {
+            Write-Host "No lockfile or formatting changes."
+            exit 0
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock rust/library/wl_ui rust/win10 rust/win11
+          git commit -m "build: lock WinUI preview dependencies and format UI"
+          git pull --rebase origin "${{ github.ref_name }}"
+          git push origin "HEAD:${{ github.ref_name }}"
