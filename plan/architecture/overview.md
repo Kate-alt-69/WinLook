@@ -15,7 +15,7 @@ WinLook is an additive Windows customization platform. It extends the user-facin
 | Component | Responsibility |
 |---|---|
 | WinLook Manager | Settings, previews, import/export, apply and restore |
-| Main BGW / Agent | Session/process monitoring, WLWM compatibility cache, injection orchestration and health |
+| BGW runtime (`winlook.bg.exe`) | Hosts/co-ordinates background subsystems, lifecycle, events/policy, WLWM compatibility and optional integrations |
 | Appearance Engine | Taskbar, Start Menu, File Explorer presentation/Shell integration, window surfaces and supported system appearance |
 | Audio & Media Experience | Global/per-app audio controls plus provider-backed Now Playing metadata, thumbnails, transport and timeline |
 | Icon Engine | System/file/folder/drive/application/shortcut icons |
@@ -56,7 +56,7 @@ The Manager communicates with BGW over authenticated, versioned local IPC. BGW i
 A cache hit is not permission to skip current safety checks. Do not run slow analysis or network operations while holding loader locks.
 
 ## Further reading
-[Appearance Engine](appearance-engine.md) · [File Explorer Customization](explorer-customization.md) · [Audio & Media Experience](audio-experience.md) · [WLWM](wlwm.md) · [Animation suite](animation-suite.md) · [WLDE](wlde.md) · [WLT](wlt.md) · [WLOSDE/WLDM](wlosde-wldm.md) · [Standby/security](standby-security.md) · [Extensions](extensions.md) · [Restoration](restoration.md) · [Compatibility](../compatibility/README.md) · [Sources](../references/SOURCES.md)
+[Appearance Engine](appearance-engine.md) · [File Explorer Customization](explorer-customization.md) · [Audio & Media Experience](audio-experience.md) · [WLWM](wlwm.md) · [Background Runtime](background-runtime.md) · [Animation suite](animation-suite.md) · [WLDE](wlde.md) · [WLT](wlt.md) · [WLOSDE/WLDM](wlosde-wldm.md) · [Standby/security](standby-security.md) · [Extensions](extensions.md) · [Restoration](restoration.md) · [Compatibility](../compatibility/README.md) · [Sources](../references/SOURCES.md)
 
 ## Repository, UI and documentation architecture
 
