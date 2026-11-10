@@ -72,11 +72,11 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - User explicitly authorized direct commits to main for this work.
 - These documents are planning/research; they do not claim that code is implemented or tested.
 
-## Detailed planning checkpoint — 2026-11-08 (historical; superseded for animation libraries)
+## Detailed planning checkpoint — 2026-11-08 (historical; superseded by the 2026-11-10 repository layout)
 
 - At that point the user confirmed the task remained in planning/specification; the later explicit implementation request supersedes that restriction for the two animation libraries only. Do not infer permission to implement the other engines/UI or to migrate the source layout.
-- Proposed source layout: parallel C/ and rust/ source trees; uppercase acronym engine directories; a dedicated, split UI/ under each language; public Rust engine crates under rust/crate/; C public headers plus a proposed C/index.c umbrella; reusable WinLook libraries under root lib/.
-- Existing animation prototypes are planned to move from crates/wl_animate and legacy/wl_Lanimate to lib/wl_animate and lib/wl_Lanimate only after structure approval and a separate migration plan.
+- Historical proposal only (superseded): parallel acronym-engine trees, dedicated UI trees, `rust/crate/`, C umbrella headers and root `lib/`. The current authoritative layout is recorded in the 2026-11-10 section below.
+- Historical prototype locations were `crates/wl_animate` and `legacy/wl_Lanimate`. Their future migration must target the current `rust/library/` and `C/library/` layout, not the superseded root `lib/` proposal.
 - The exact purpose of the root wllook/ directory is unresolved; current proposal reserves it for product/packaging metadata and shared assets, not duplicate engine source.
 - Manager UI direction: WinToys-inspired clear left navigation and focused pages, familiar/native controls, split pages and reusable components. Do not copy its implementation or commit to WinUI 3 for legacy targets.
 - Added [repository layout](architecture/repository-layout.md), [UI architecture](architecture/ui-architecture.md), [documentation standards](architecture/documentation-standard.md), [runtime contracts](architecture/runtime-contracts.md), [roadmap](roadmap.md) and [compatibility test strategy](compatibility/test-strategy.md).
@@ -122,7 +122,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - User paused further source implementation and requested more architecture planning before resuming implementation.
 - Added [vector-animation.md](architecture/vector-animation.md): typed vector/matrix/shape model, vector document/item hierarchy, SVG path-data contract, supported SVG profile, color-space/alpha/group-opacity rules, timelines/sequences/parallel groups, CPU/GPU renderer separation, and a "does X do X?" conformance/stress matrix.
 - Added [resource-governors.md](architecture/resource-governors.md): intended responsibilities and limits of CPUv/GPUv, tickets/admission, scheduler and memory-budget contracts, activity modes (interactive/gaming/idle/power saver), Windows adapters, cross-language parity, bypass audit and stress tests.
-- Proposed library identities: Rust `wl_cpuv`/`wl_gpuv`; C `wl_Lcpuv`/`wl_Lgpuv`. Their long-term shared-library home is `lib/`, subject to the separately documented repository-layout migration.
+- Proposed library identities: Rust `wl_cpuv`/`wl_gpuv`; C `wl_Lcpuv`/`wl_Lgpuv`. Their target homes are now `rust/library/` and `C/library/`, respectively.
 - Important enforcement boundary: the governors can require all WinLook-owned managed work to request permits; they cannot intercept Windows, unrelated processes, arbitrary code bypasses or GPU drivers. DXGI reports per-process video-memory budgets; reservations are OS hints, not hardware partitions. Job Object hard CPU caps can pause all threads in the contained job after its interval allocation and are not the default interactive-app throttle.
 - Current main branch has a `0.2.0-beta.1` Cargo manifest label and initial `vector.rs`/`svg.rs` files, but `lib.rs` has not yet wired or exported them. The label is not a completed/released beta. The source parser and vector API remain gated on the new plan's tests and public contract review.
 - No CPUv/GPUv implementation files, Windows rendering backend, worker scheduler, DXGI adapter or machine-code optimizer have been committed in this planning pass. Planned features must not be advertised as implemented.
