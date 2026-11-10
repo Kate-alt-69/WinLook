@@ -103,6 +103,6 @@ The CPUv/GPUv implementations are deliberately policy cores only. They do not cr
 
 The Rust vector API is now exported from `wl_animate`, including path-data parsing. This is **not** a complete SVG document importer or renderer. The C animation library has vector/geometry helpers but does not yet have the Rust parser/scene API parity.
 
-A root Cargo workspace and a CMake aggregator make the libraries testable together. CI coverage is defined in `.github/workflows/library-tests.yml`; results are pending until the branch workflow finishes. The WinToys-style Manager UI remains the next phase, after the library CI and API/test gaps are reviewed.
+A root Cargo workspace and a CMake aggregator make the libraries testable together. Rust formatting is normalized by the one-time migration workflow before the final CI pass. CI coverage is defined in `.github/workflows/library-tests.yml`; results are pending until the branch workflow finishes. The WinToys-style Manager UI remains the next phase, after the library CI and API/test gaps are reviewed.
 
 FFmpeg wrappers are not included in this first slice: codec/build selection, redistribution licensing and Windows 95 media compatibility remain unresolved decisions.
