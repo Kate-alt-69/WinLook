@@ -779,7 +779,7 @@ These checkmarks record architecture decisions/documentation only. They do not m
 - [x] Add root Cargo workspace and C-library CMake aggregator.
 - [x] Add Rust vector/SVG path-data public exports and C vector/transform math helpers.
 - [x] Add C89 and Rust unit-test suites plus Windows MSVC and portable GCC sanitizer CI.
-- [ ] Finish Rust format/test/Clippy/docs CI and correct any findings.
+- [x] Finish Rust format/test/Clippy/docs CI and correct findings — run 42832087050 passed all Rust jobs.
 - [ ] Review CPUv/GPUv API limitations and C/Rust contract parity before integrating into BGW.
 - [ ] Decide and implement FFmpeg wrappers after codec/build/licensing and Windows 95 compatibility research.
 - [ ] Implement the WinToys-style Manager UI using the information architecture in [UI Architecture](architecture/ui-architecture.md).
@@ -787,3 +787,18 @@ These checkmarks record architecture decisions/documentation only. They do not m
 - [ ] Only after library and UI verification, integrate the application/BGW runtime, then compile and optimize against measured Windows 10/11 and legacy-target evidence.
 
 This is a staged implementation sequence. The current library branch contains portable cores only; it does not yet include Windows scheduling/DXGI adapters, BGW integration, full SVG document import/rendering or the Manager UI.
+
+
+---
+
+# 20. Manager UI framework prototype — 2026-11-10
+
+- [x] Research native WinUI 3 and the Rust Windows Reactor option.
+- [x] Record Windows Reactor + WinUI 3 as the modern Win10/Win11 prototype direction, not yet a permanent performance-certified dependency.
+- [x] Record the Rust 1.95+ toolchain requirement and Windows App SDK runtime deployment choices.
+- [x] Preserve a separate native C UI path for Windows 95.
+- [ ] Add shared Rust UI library and Win10/Win11 Manager app entry points.
+- [ ] Implement the WinToys-inspired persistent navigation shell, page header, Home and reusable setting/status components.
+- [ ] Implement the remaining page modules and route/state handling.
+- [ ] Test navigation, controls, keyboard/accessibility, constrained layouts, BGW-disconnected states and resource use.
+- [ ] Compare framework-dependent versus self-contained packaging after measuring size/startup.
