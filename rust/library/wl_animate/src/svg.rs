@@ -488,7 +488,7 @@ mod tests {
             }
         );
         assert!(matches!(
-            path.commands()[9],
+            path.commands()[8],
             PathCommand::ArcTo {
                 large_arc: false,
                 sweep: true,
