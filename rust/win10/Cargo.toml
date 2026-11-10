@@ -8,6 +8,7 @@ publish = false
 [[bin]]
 name = "winlook"
 path = "src/main.rs"
+doc = false
 
 [dependencies]
 wl_ui = { path = "../library/wl_ui" }
