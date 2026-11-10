@@ -158,6 +158,9 @@ impl<'a> Parser<'a> {
                 }
                 if command == b'Z' || command == b'z' {
                     self.commands.push(PathCommand::Close);
+                    if self.commands.len() > MAX_PATH_COMMANDS {
+                        return Err(self.error(SvgPathErrorKind::TooManyCommands));
+                    }
                     self.current = self.subpath_start;
                     self.previous_command = Some(command);
                     self.clear_controls();
@@ -310,6 +313,9 @@ impl<'a> Parser<'a> {
                     self.clear_controls();
                 }
                 _ => return Err(self.error(SvgPathErrorKind::UnsupportedCommand)),
+            }
+            if self.commands.len() > MAX_PATH_COMMANDS {
+                return Err(self.error(SvgPathErrorKind::TooManyCommands));
             }
             self.previous_command = Some(command);
             group += 1;
