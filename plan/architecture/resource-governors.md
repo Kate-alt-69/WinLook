@@ -152,6 +152,14 @@ Modes are policy presets and signals, not hardware switches.
 
 Do not assume “idle” means consume 100% of unused resources. Use measured load, user settings, deadlines and policy ceilings. Foreground-game detection is supplied by a WinLook policy adapter; CPUv/GPUv should not scan arbitrary game memory or inject into games to infer state.
 
+## 7A. Quality-preserving pressure response
+
+**Automatic Dynamic Quality Scaling is not part of WinLook's resource-governance strategy.** CPUv/GPUv and BGW must not silently lower wallpaper resolution, reduce image/video source quality, degrade visual fidelity or simplify the user's scene as an automatic response to resource pressure.
+
+Prefer scheduling and lifecycle controls: defer optional work, pause playback, freeze the last successfully displayed frame, stop decoding frames that will not be presented, suspend unnecessary widget/animation updates, bound queues/concurrency/submissions, and release unused or recoverable resources. Resume safely when pressure subsides. A user may explicitly choose a lower-resource visual preset, but automatic BGW policy must preserve the configured visual quality.
+
+The policy governs WinLook-owned work only. It cannot suspend, throttle or reclaim resources from unrelated processes. BGW must preserve a minimal control/recovery path during critical pressure.
+
 ## 8. C and Rust parity
 
 Proposed source mappings, subject to the approved repository library migration:
