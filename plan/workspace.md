@@ -157,7 +157,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 
 ## Manager UI research checkpoint — 2026-11-10
 
-- Modern Win10/Win11 UI prototype direction: Windows Reactor + native WinUI 3, using the published 0.100 release family and Rust 1.95+.
+- Modern Win10/Win11 UI prototype direction: Windows Reactor + native WinUI 3, using the pinned windows-reactor-pre 0.107.1 preview package and Rust 1.95+; its public API may change.
 - Windows App SDK/WinUI 3 minimum documented client is Windows 10 1809 (build 17763). This is a documented platform minimum, not a WinLook runtime-support claim.
 - Start with framework-dependent deployment for the prototype; compare self-contained runtime staging after measuring package size and install experience.
 - No Electron or WebView2 for the core settings UI.
