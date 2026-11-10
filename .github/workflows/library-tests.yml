@@ -1,4 +1,4 @@
-name: Shared libraries and Manager UI prototype checks
+name: Shared libraries and WinUI preview prototype checks
 
 on:
   push:
