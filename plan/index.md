@@ -10,7 +10,8 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Compatibility matrix: [compatibility/matrix.md](compatibility/matrix.md)
 - Per-version pages: [win95](compatibility/win95.md), [win98](compatibility/win98.md), [winme](compatibility/winme.md), [nt4](compatibility/nt4.md), [win2000](compatibility/win2000.md), [winxp](compatibility/winxp.md), [vista](compatibility/vista.md), [win7](compatibility/win7.md), [win8](compatibility/win8.md), [win81](compatibility/win81.md), [win10](compatibility/win10.md), [win11](compatibility/win11.md)
 - Architecture overview: [architecture/overview.md](architecture/overview.md)
-- Proposed repository layout: [architecture/repository-layout.md](architecture/repository-layout.md)
+- Two-executable BGW runtime: [architecture/background-runtime.md](architecture/background-runtime.md)
+- User-defined repository layout: [architecture/repository-layout.md](architecture/repository-layout.md)
 - Manager UI architecture: [architecture/ui-architecture.md](architecture/ui-architecture.md)
 - Runtime/process/IPC contracts: [architecture/runtime-contracts.md](architecture/runtime-contracts.md)
 - Documentation standards: [architecture/documentation-standard.md](architecture/documentation-standard.md)
@@ -33,6 +34,14 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Source ledger: [references/SOURCES.md](references/SOURCES.md)
 - Durable workspace notes: [workspace.md](workspace.md)
 
+
+## Current target source layout
+- Complete Windows 10 application: `rust/win10/`.
+- Complete Windows 11 application: `rust/win11/`.
+- Complete Windows 95 application: `C/win95/`.
+- Shared libraries: `rust/library/` and `C/library/`.
+- Root planning and workflows: `plan/` and `.github/workflows/`.
+- The historical `crates/` and `legacy/` prototype paths may remain until a dedicated migration is completed; do not treat them as the target layout.
 
 ## Initial code prototypes
 - Modern Rust animation crate: [`crates/wl_animate`](../crates/wl_animate/README.md)
