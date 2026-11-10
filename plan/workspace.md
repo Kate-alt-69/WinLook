@@ -174,4 +174,4 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Current shell includes persistent left navigation, search, back/pane controls, System/Light/Dark window theme, Home quick actions and reusable status cards.
 - All non-Home pages are explicit scaffolds. They do not claim to apply system settings; BGW/IPC and OS adapters are not implemented yet.
 - Windows 95 UI remains out of this branch and will use a separate C-native implementation.
-- Build/test gates are defined in library-tests.yml; live Windows App Runtime/desktop smoke testing and low-end performance measurements remain required.
+- Build/test gates are defined in library-tests.yml; the Windows CI formatter/lockfile helper generates the reproducible Cargo.lock and formats the UI crates. Live Windows App Runtime/desktop smoke testing and low-end performance measurements remain required.
