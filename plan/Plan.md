@@ -747,3 +747,23 @@ The following decisions were confirmed by the user on 2026-11-08. They are accep
 - WLT exports selected portable settings/assets, not active media, clipboard payloads, process handles, caches, hardware serials or Explorer implementation addresses.
 - RGB/peripheral lighting remains delegated to existing third-party applications; optional integration requires a documented interface.
 - Startup-application management remains out of scope.
+
+
+---
+
+# 18. Two-executable BGW runtime and resource architecture — 2026-11-10
+
+- [x] Define `winlook.exe` as the main interactive Manager UI.
+- [x] Define `winlook.bg.exe` as the startup-launched BGW background runtime/worker.
+- [x] Establish BGW as the host/coordinator for background functionality including WLDE, WLWM, WLDM, WLOSDE, Appearance/Icon, Audio & Media and other enabled modules; these are not separate mandatory application executables.
+- [x] Define Manager↔BGW local IPC as versioned, authenticated, bounded and acknowledgement-based. BGW owns applied runtime state; Manager draft state is not assumed applied until acknowledged.
+- [x] Require BGW to continue with the last valid committed configuration when the Manager closes or crashes.
+- [x] Require subsystem registration of capabilities, dependencies, health and safe pressure-response actions.
+- [x] Define CPUv/GPUv as core libraries for WinLook-managed work, coordinated by BGW. They do not control unrelated processes or replace Windows/driver resource management.
+- [x] Reject automatic Dynamic Quality Scaling as a pressure response. Preserve configured visual quality; defer/pause work, freeze the last frame, stop unnecessary decoding/updates and release recoverable resources instead.
+- [x] Record the target repository layout: `rust/win10`, `rust/win11`, `rust/library`, `C/win95`, `C/library`, `plan`, `.github/workflows` and root `README.md`.
+- [x] Record FFmpeg wrapper-library direction as a design candidate: `wl_ffmpeg` and `wl_Lffmpeg`, subject to platform/build/licensing review and a separate Windows 95 media-backend decision.
+
+Detailed contracts: [Background Runtime](architecture/background-runtime.md), [Runtime Contracts](architecture/runtime-contracts.md), [CPUv/GPUv](architecture/resource-governors.md), and [Repository Layout](architecture/repository-layout.md).
+
+These checkmarks record architecture decisions/documentation only. They do not mean the executables, IPC transport, resource-governor libraries, FFmpeg wrappers or platform applications have been implemented or runtime-tested.
