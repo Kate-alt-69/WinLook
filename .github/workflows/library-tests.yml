@@ -5,11 +5,17 @@ on:
     branches: [main]
     paths:
       - "rust/library/**"
+      - "rust/win10/**"
+      - "rust/win11/**"
+      - "Cargo.toml"
       - "C/library/**"
       - ".github/workflows/library-tests.yml"
   pull_request:
     paths:
       - "rust/library/**"
+      - "rust/win10/**"
+      - "rust/win11/**"
+      - "Cargo.toml"
       - "C/library/**"
       - ".github/workflows/library-tests.yml"
   workflow_dispatch:
@@ -100,3 +106,20 @@ jobs:
         run: cmake --build build/shared --parallel
       - name: Run all C tests
         run: ctest --test-dir build/shared --output-on-failure
+
+  ui-prototype:
+    name: WinUI 3 / Manager prototype
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check workspace formatting
+        run: cargo fmt --all -- --check
+      - name: Test UI page registry and navigation metadata
+        run: cargo test -p wl_ui --all-targets
+      - name: Lint UI library
+        run: cargo clippy -p wl_ui --all-targets -- -D warnings
+      - name: Build Win10 and Win11 Manager executables
+        run: cargo build --release -p winlook-win10 -p winlook-win11
