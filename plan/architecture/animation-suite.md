@@ -85,9 +85,7 @@ The authoritative target layout is now `rust/library/wl_animate/` and `C/library
 
 ## Current beta planning status — 2026-11-09
 
-The crate manifest currently carries `0.2.0-beta.1` and the branch includes initial `vector.rs`/`svg.rs` source files. That version string is not a release-quality assertion: these modules are not yet wired into the crate's public exports, and the vector/SVG parser still needs the grammar, alpha, document-import and stress-test gates in [vector-animation.md](vector-animation.md). Do not publish or advertise a completed beta until those gates pass.
-
-The user has paused further source implementation to continue planning. The next source pass should be driven by [vector-animation.md](vector-animation.md) and [resource-governors.md](resource-governors.md). Those docs define the intended contract; planned API entries are not available features yet.
+The crate manifest carries `0.2.0-beta.1`, but that prerelease label is not a release-quality assertion. The Rust vector/SVG path modules are now wired into public exports on the library-foundation branch. The parser covers SVG path data only; it is not a document importer or renderer. Alpha/color-space semantics, full document import, timelines/composition, C/Rust scene/parser parity and the remaining stress/fuzz gates are still incomplete. Do not publish or advertise a completed beta until the gates in [vector-animation.md](vector-animation.md) pass.
 
 
 
