@@ -130,11 +130,47 @@ static void test_keyframe_track(void)
     assert(wl_Lanimate_track_sample(&track, 10.0) == 0.0);
 }
 
+static void test_vector_geometry(void)
+{
+    wl_Lanimate_vector3 a3, b3, c3;
+    wl_Lanimate_matrix3x2 translation, scale, combined;
+    wl_Lanimate_point2 point, transformed;
+    wl_Lanimate_transform2d from_value, to_value, middle;
+    wl_Lanimate_opacity opacity;
+
+    a3.x = 1.0; a3.y = 2.0; a3.z = 3.0;
+    b3.x = 3.0; b3.y = 4.0; b3.z = 5.0;
+    c3 = wl_Lanimate_vector3_lerp(a3, b3, 0.5);
+    assert(near_value(c3.x, 2.0) && near_value(c3.y, 3.0) && near_value(c3.z, 4.0));
+
+    translation = wl_Lanimate_matrix3x2_identity();
+    translation.dx = 10.0; translation.dy = 20.0;
+    scale = wl_Lanimate_matrix3x2_identity();
+    scale.m11 = 2.0; scale.m22 = 3.0;
+    combined = wl_Lanimate_matrix3x2_compose(translation, scale);
+    point.x = 3.0; point.y = 4.0;
+    transformed = wl_Lanimate_matrix3x2_transform_point(combined, point);
+    assert(near_value(transformed.x, 16.0) && near_value(transformed.y, 32.0));
+
+    from_value.translation.x = 0.0; from_value.translation.y = 0.0;
+    from_value.scale.x = 1.0; from_value.scale.y = 1.0;
+    from_value.rotation_radians = 350.0 * 3.14159265358979323846 / 180.0;
+    to_value = from_value;
+    to_value.rotation_radians = 10.0 * 3.14159265358979323846 / 180.0;
+    middle = wl_Lanimate_transform2d_lerp(from_value, to_value, 0.5);
+    assert(near_value(middle.rotation_radians * 180.0 / 3.14159265358979323846, 360.0));
+    opacity = wl_Lanimate_opacity_make(1.5);
+    assert(near_value(opacity.value, 1.0));
+    opacity = wl_Lanimate_opacity_make(-1.0);
+    assert(near_value(opacity.value, 0.0));
+}
+
 int main(void)
 {
     test_tween_lifecycle();
     test_tween_delay();
     test_easing_and_values();
     test_keyframe_track();
+    test_vector_geometry();
     return 0;
 }
