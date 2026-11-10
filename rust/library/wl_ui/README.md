@@ -12,18 +12,19 @@ Shared native WinUI 3 shell and page composition for the WinLook Manager.
 
 The modern UI prototype uses the pinned Windows Reactor preview 0.107.1 package (Rust 1.95+) backed by native WinUI 3. Its API may change; keep it isolated behind wl_ui and do not expose Reactor types to the application or BGW APIs. It uses the framework-dependent Windows App Runtime model; install/runtime packaging is a separate deployment task.
 
-## Build
+## Build and run
 
-From the repository root on Windows with the stable MSVC Rust toolchain:
+From the repository root on Windows 10 version 1809 or later / Windows 11 with the stable MSVC Rust toolchain. Install the matching **Windows App Runtime 2.5.1 (x64)** from the [official Windows App SDK downloads](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/downloads) first; this is a framework-dependent prototype and does not bundle that runtime.
+
+Run the Windows 10 or Windows 11 Manager target with:
 
 ```sh
-cargo fmt --all -- --check
-cargo test -p wl_ui
-cargo clippy -p wl_ui --all-targets -- -D warnings
-cargo build --release -p winlook-win10 -p winlook-win11
+cargo run -p winlook-win10
+# or
+cargo run -p winlook-win11
 ```
 
-The built executables require the matching Windows App Runtime to be installed. The root Cargo.lock pins the complete workspace dependency graph. Do not copy only the EXE to a clean machine and assume it is self-contained.
+The root Cargo.lock pins the complete workspace dependency graph. To run the validation suite, use cargo fmt --all -- --check, cargo test -p wl_ui, cargo clippy -p wl_ui --all-targets -- -D warnings, and build each app with a separate target directory so both product outputs can be named winlook.exe. Do not copy only the EXE to a clean machine and assume it is self-contained.
 
 ## Not implemented yet
 
