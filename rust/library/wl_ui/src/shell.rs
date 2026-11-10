@@ -219,10 +219,16 @@ impl Component for ManagerShell {
 
         let on_navigate = context.callback(Message::Navigate);
         let page_view = pages::render(self.page, on_navigate);
-        let menu_items: Vec<KeyedView> = PageId::ALL
+        let mut visible_pages: Vec<PageId> = PageId::ALL
             .iter()
             .copied()
             .filter(|page| page.matches_search(&self.search))
+            .collect();
+        if !visible_pages.contains(&self.page) {
+            visible_pages.push(self.page);
+        }
+        let menu_items: Vec<KeyedView> = visible_pages
+            .into_iter()
             .map(|page| navigation_item(page, page == self.page))
             .collect();
 
