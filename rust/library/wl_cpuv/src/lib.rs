@@ -5,6 +5,8 @@
 //! admitted work. Access to a Governor requires external synchronization when
 //! shared between threads.
 
+#![forbid(unsafe_code)]
+
 use std::collections::BTreeMap;
 
 /// Relative importance used when applying the reserved critical headroom.
