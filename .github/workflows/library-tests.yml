@@ -126,3 +126,12 @@ jobs:
         run: |
           cargo build --release -p winlook-win10 --target-dir target/win10
           cargo build --release -p winlook-win11 --target-dir target/win11
+      - name: Upload Win10 and Win11 Manager preview binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlook-manager-preview
+          path: |
+            target/win10/release/winlook.exe
+            target/win11/release/winlook.exe
+          if-no-files-found: error
+          retention-days: 7
