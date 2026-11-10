@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
             match command.to_ascii_uppercase() {
                 b'M' | b'L' => {
                     let point = self.read_point(relative)?;
-                    if command.to_ascii_uppercase() == b'M' && group == 0 {
+                    if command.eq_ignore_ascii_case(&b'M') && group == 0 {
                         self.commands.push(PathCommand::MoveTo(point));
                         self.subpath_start = point;
                     } else {
