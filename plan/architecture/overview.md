@@ -60,7 +60,7 @@ A cache hit is not permission to skip current safety checks. Do not run slow ana
 
 ## Repository, UI and documentation architecture
 
-The proposed source layout is documented in [repository-layout.md](repository-layout.md). C and Rust use parallel feature directories, reusable WinLook libraries live under the repository's lib directory, and each language has a dedicated UI tree. Public APIs are separated from engine implementation.
+The user-defined target source layout is documented in [repository-layout.md](repository-layout.md): complete Windows 10/11 applications under `rust/win10/` and `rust/win11/`, the Windows 95 application under `C/win95/`, and shared libraries under `rust/library/` and `C/library/`. This replaces earlier parallel acronym-engine trees and the proposed root `lib/` layout. Historical source paths remain until a dedicated migration is performed.
 
 The Manager UI direction is a clear, native-feeling navigation shell with focused pages and reusable controls; see [ui-architecture.md](ui-architecture.md). Public API and application documentation requirements are in [documentation-standard.md](documentation-standard.md). These are planning proposals and do not imply that the source tree has been moved or that a UI toolkit has been selected.
 
