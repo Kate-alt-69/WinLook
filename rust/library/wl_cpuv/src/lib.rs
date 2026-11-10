@@ -55,7 +55,7 @@ pub struct Completion {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Reservation { class: WorkClass, estimate: u64 }
+struct Reservation { estimate: u64 }
 
 /// Deterministic CPU work admission core. It is not an OS scheduler.
 #[derive(Debug)]
@@ -90,7 +90,7 @@ impl Governor {
         let id = self.next_ticket;
         self.next_ticket = self.next_ticket.checked_add(1).ok_or(Error::TicketExhausted)?;
         self.reserved += estimate;
-        self.active.insert(id, Reservation { class, estimate });
+        self.active.insert(id, Reservation { estimate });
         Ok(Ticket(id))
     }
 
