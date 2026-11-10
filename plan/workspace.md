@@ -165,3 +165,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Win95 remains a separate C/native-control implementation; no WinUI 3/Windows App SDK dependency.
 - Evidence and caveats: [UI Architecture](architecture/ui-architecture.md), [Source Ledger](references/SOURCES.md).
 - Prototype acceptance: cold start, idle CPU, private bytes/working set, navigation latency, mount/unmount memory, UI Automation, keyboard/high contrast/text scaling/reduced motion and constrained-window layout. No performance claim until measured on representative low-end hardware.
+
+
+## WinToys-style Manager UI implementation checkpoint — 2026-11-10
+
+- Stacked UI branch: feature/wintoys-manager-ui, based on feature/library-foundation.
+- Added wl_ui using Windows Reactor 0.100.0 / WinUI 3 and Win10/Win11 Manager entry points.
+- Current shell includes persistent left navigation, search, back/pane controls, System/Light/Dark window theme, Home quick actions and reusable status cards.
+- All non-Home pages are explicit scaffolds. They do not claim to apply system settings; BGW/IPC and OS adapters are not implemented yet.
+- Windows 95 UI remains out of this branch and will use a separate C-native implementation.
+- Build/test gates are defined in library-tests.yml; live Windows App Runtime/desktop smoke testing and low-end performance measurements remain required.
