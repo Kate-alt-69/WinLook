@@ -9,7 +9,7 @@
 - `Tween<T>` with pending/running/paused/finished/cancelled states, delay, elapsed time, progress, cancellation and restart.
 - `Keyframe<T>` and immutable `KeyframeTrack<T>` with ordered-time validation and timestamp sampling.
 - `Vector2/3/4`, rectangles, affine matrices, decomposed transforms, opacity and vector-scene/style value types.
-- An SVG **path-data parser** for M/L/H/V/C/S/Q/T/A/Z, absolute/relative commands, repeated groups and compact numeric syntax. This is not a complete SVG XML/document importer or renderer.
+- An SVG **path-data parser** for M/L/H/V/C/S/Q/T/A/Z, absolute/relative commands, repeated groups and compact numeric syntax. The parser rejects path data above 1 MiB and more than 100,000 normalized commands. This is not a complete SVG XML/document importer or renderer.
 - C/Rust APIs are not yet feature-identical: the C library currently exposes vector/transform math but not the Rust path parser or scene model.
 
 The core is caller-driven: a host frame loop supplies elapsed `Duration` values to `Tween::advance`, or samples a keyframe track at a timestamp. The crate creates no threads, timers, windows, graphics contexts, hooks or scheduler. Sampling does not allocate internally for built-in fixed-size values; a custom value type's own `Clone`/`Interpolate` implementation may allocate.
