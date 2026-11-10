@@ -151,5 +151,17 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - C `wl_Lanimate` now includes C89 vector3/vector4/rect, affine matrix composition/point transform, opacity and shortest-arc Transform2D interpolation helpers.
 - CPUv/GPUv Rust and C cores are portable policy/admission primitives only. They do not implement OS scheduling, DXGI, hardware resource creation, BGW integration or system-wide controls.
 - FFmpeg wrappers remain deferred pending codec/toolchain/licensing and Windows 95 compatibility decisions.
-- CI workflow: `.github/workflows/library-tests.yml`. Tests are not marked passed until its actual GitHub Actions jobs complete.
+- CI workflow: .github/workflows/library-tests.yml. Full run [42832087050](https://github.com/Kate-alt-69/WinLook/actions/runs/42832087050) passed: Rust formatting/tests/Clippy/docs for all three crates and workspace integration; C89 MSVC plus GCC ASan/UBSan for all three C libraries; combined CMake/CTest passed 3/3.
 - Next sequence: run/fix all library CI; review API/contract parity and fill test gaps; then implement and test the WinToys-style Manager UI; only after UI verification proceed to application compilation and optimization.
+
+
+## Manager UI research checkpoint — 2026-11-10
+
+- Modern Win10/Win11 UI prototype direction: Windows Reactor + native WinUI 3, using the published 0.100 release family and Rust 1.95+.
+- Windows App SDK/WinUI 3 minimum documented client is Windows 10 1809 (build 17763). This is a documented platform minimum, not a WinLook runtime-support claim.
+- Start with framework-dependent deployment for the prototype; compare self-contained runtime staging after measuring package size and install experience.
+- No Electron or WebView2 for the core settings UI.
+- Shared UI components/page models/design tokens belong in a future rust/library/wl_ui/; Win10 and Win11 application entry points remain in their own platform trees.
+- Win95 remains a separate C/native-control implementation; no WinUI 3/Windows App SDK dependency.
+- Evidence and caveats: [UI Architecture](architecture/ui-architecture.md), [Source Ledger](references/SOURCES.md).
+- Prototype acceptance: cold start, idle CPU, private bytes/working set, navigation latency, mount/unmount memory, UI Automation, keyboard/high contrast/text scaling/reduced motion and constrained-window layout. No performance claim until measured on representative low-end hardware.
