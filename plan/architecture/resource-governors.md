@@ -197,7 +197,7 @@ If different language processes share a single resource-governor authority, they
 - begin-frame/accounting boundary;
 - cancellation/refund prior to submission;
 - dynamic budget update and pressure state;
-- release/trim/degrade recommendations;
+- defer/pause/release recommendations that preserve configured visual quality;
 - device lost, adapter changed and unsupported capability results.
 
 Both APIs need explicit errors such as InvalidRequest, NoBudget, BudgetExceeded, QueueFull, ConcurrencyLimit, DeadlineExpired, Cancelled, Unknown/StaleTicket, DeviceLost, Unsupported and ShuttingDown. Return status plus a stable reason code; do not silently drop accepted work.
