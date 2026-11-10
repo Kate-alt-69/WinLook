@@ -19,6 +19,8 @@ jobs:
           persist-credentials: true
       - name: Merge latest library foundation
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin feature/library-foundation
           git merge --no-edit -X ours origin/feature/library-foundation
       - name: Confirm merged branch and push
