@@ -10,7 +10,7 @@ Shared native WinUI 3 shell and page composition for the WinLook Manager.
 - Reusable page headers and information cards.
 - Honest disconnected/preview states: no system settings are applied and BGW is not connected yet.
 
-The modern UI prototype uses Windows Reactor 0.100.0 (Rust 1.95+) backed by native WinUI 3. It uses the framework-dependent Windows App Runtime model; install/runtime packaging is a separate deployment task.
+The modern UI prototype uses the pinned Windows Reactor preview 0.107.1 package (Rust 1.95+) backed by native WinUI 3. Its API may change; keep it isolated behind wl_ui and do not expose Reactor types to the application or BGW APIs. It uses the framework-dependent Windows App Runtime model; install/runtime packaging is a separate deployment task.
 
 ## Build
 
