@@ -1,0 +1,29 @@
+# Rust build output
+/target/
+**/target/
+
+# CMake / native build output
+/build/
+/cmake-build-*/
+**/build/
+CMakeFiles/
+CMakeCache.txt
+CTestTestfile.cmake
+cmake_install.cmake
+Makefile.cmake
+
+# Native compiler output
+*.o
+*.obj
+*.a
+*.lib
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
