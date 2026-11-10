@@ -314,6 +314,14 @@ mod tests {
     }
 
     #[test]
+    fn compact_arc_flags_are_single_character_tokens() {
+        let path = VectorPath::parse("M0 0 A5 6 30 0110 20").expect("compact arc flags");
+        assert!(matches!(path.commands()[1], PathCommand::ArcTo {
+            large_arc: false, sweep: true, to: Vector2 { x: 10.0, y: 20.0 }, ..
+        }));
+    }
+
+    #[test]
     fn malformed_paths_are_rejected() {
         for data in ["", "M 1", "M0 0 A -1 2 0 0 1 3 4", "M0 0 A1 1 0 2 0 3 4", "M0 0 L1e 2"] {
             assert!(VectorPath::parse(data).is_err(), "accepted malformed input: {data}");
