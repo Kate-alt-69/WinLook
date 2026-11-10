@@ -181,7 +181,7 @@ Reasons:
 - WinUI 3 is Microsoft's modern native Windows desktop UI framework and uses Fluent controls/design patterns, which align with the WinToys visual reference.
 - Windows Reactor exposes WinUI 3 controls to Rust through typed components/messages and state-driven reconciliation. It includes native NavigationView, controls, accessibility/automation modifiers, list virtualization, dialogs, menus and composition integration.
 - This is a native WinUI UI path, not an Electron/Chromium application. Do not add WebView2 merely to draw the settings UI.
-- The documented Windows App SDK minimum is Windows 10 version 1809 (build 17763), which fits the modern Win10/Win11 Rust application family. This is a platform minimum, not a WinLook runtime test.
+- The documented Windows App SDK minimum is Windows 10 version 1809 (build 17763). The exact Win10 baseline is still an open question in compatibility/win10.md, so this prototype only targets 1809+ and must not be presented as supporting earlier Win10 releases. If the product baseline includes pre-1809 builds, keep this UI as a newer-OS implementation and provide a separately tested Win32 fallback or choose a different framework before finalizing support.
 
 Initial version/toolchain evidence:
 - Prototype pin: windows-reactor-pre 0.107.1 (aliased as windows-reactor in Cargo) with the matching Windows App SDK metadata/runtime pin. This is a preview package; its public API may change. Keep all Reactor types inside wl_ui.
