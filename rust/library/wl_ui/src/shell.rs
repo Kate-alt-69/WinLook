@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use windows_reactor::*;
 
+#[path = "pages.rs"]
 mod pages;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
