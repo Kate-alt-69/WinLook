@@ -8,7 +8,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 ## Agreed architecture decisions
 - Modern implementation: Rust. Legacy implementation: separate C implementation/toolchain per OS family. Shared conceptual APIs/contracts, not one binary.
 - Windows windowing and DWM remain intact. WLWM augments Windows; it does not replace DWM.
-- WLWM may inject/hook compatible apps. Main BGW coordinates process detection, compatibility checks/cache, injection and module health.
+- WLWM may inject/hook compatible apps through separately gated, version-specific integrations. BGW is the complete background runtime/worker, not merely a WLWM coordinator; it hosts/co-ordinates the background subsystems and owns their lifecycle, policy and health.
 - WLWM classifies applications before injection and caches compatibility results locally in a binary format. Cache identity/invalidation includes target binary/version/hash, architecture, OS/build, relevant mitigations, WLWM module and compatibility DB versions. Cache hits never skip runtime safety checks.
 - Explorer.exe must never be patched/replaced on disk. Deep Explorer customization is accepted scope: documented Shell extensions plus a separate opt-in, per-build presentation adapter for UI surfaces without public APIs. This is not general WLWM injection; Windows retains native Shell/filesystem operations. DWM and authentication/security-critical processes are excluded.
 - WLWM Settings are in WinLook Manager and can be included in WLT; no standalone WLWM config language required.
@@ -126,3 +126,17 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Important enforcement boundary: the governors can require all WinLook-owned managed work to request permits; they cannot intercept Windows, unrelated processes, arbitrary code bypasses or GPU drivers. DXGI reports per-process video-memory budgets; reservations are OS hints, not hardware partitions. Job Object hard CPU caps can pause all threads in the contained job after its interval allocation and are not the default interactive-app throttle.
 - Current main branch has a `0.2.0-beta.1` Cargo manifest label and initial `vector.rs`/`svg.rs` files, but `lib.rs` has not yet wired or exported them. The label is not a completed/released beta. The source parser and vector API remain gated on the new plan's tests and public contract review.
 - No CPUv/GPUv implementation files, Windows rendering backend, worker scheduler, DXGI adapter or machine-code optimizer have been committed in this planning pass. Planned features must not be advertised as implemented.
+
+
+## Two-executable runtime and current repository layout — 2026-11-10
+
+- The two principal application executables are `winlook.exe` (interactive Manager UI) and `winlook.bg.exe` (startup-launched BGW background runtime/worker). Do not introduce a third mandatory Agent/desktop-runtime executable or one executable per subsystem.
+- BGW hosts/co-ordinates WLDE, WLWM, WLDM, WLOSDE, Appearance/Icon, Audio & Media and other enabled background modules. These are logical modules and may use internal threads/bounded workers.
+- Manager↔BGW communication uses local IPC with protocol versioning, peer/session authentication, bounded typed messages, request IDs, explicit acknowledgements and reconnect/recovery semantics. BGW is authoritative for applied runtime state; Manager drafts are not applied until BGW acknowledges them.
+- BGW continues after the Manager closes, using the last valid committed configuration. It initializes modules after capability checks, monitors module health and retains a minimal control/recovery path under critical pressure.
+- Subsystems register capabilities, dependencies, owned work and safe response actions with BGW. BGW observes supported system/session signals; users do not need to register every external game/window for general pressure policy.
+- CPUv/GPUv are core libraries for WinLook-managed CPU work and GPU allocations/submissions. BGW coordinates policy; the governors cannot control unrelated processes or replace Windows/driver scheduling and residency.
+- Automatic Dynamic Quality Scaling is explicitly rejected. Never silently lower wallpaper resolution, source quality or visual fidelity. Defer/pause optional work, freeze the last displayed frame, stop unnecessary decoding/updates and release recoverable resources instead.
+- Target repository layout is user-defined: `.github/workflows/`, `rust/win10/`, `rust/win11/`, `rust/library/`, `C/win95/`, `C/library/`, `plan/` and root `README.md`. This supersedes earlier `crates/`, `legacy/`, root `lib/`, `docs/`, `wllook/` and acronym-engine layout proposals. Historical source may remain in old paths until a dedicated migration is performed.
+- FFmpeg integration direction: narrow wrapper libraries `wl_ffmpeg` and `wl_Lffmpeg`, coordinated with CPUv/GPUv. Codec/build configuration, licensing and Windows 95 support remain open research decisions.
+- New detailed source: [background-runtime.md](architecture/background-runtime.md). The design is documentation/planning only; no new executable, IPC transport, resource governor or FFmpeg wrapper is claimed implemented.
