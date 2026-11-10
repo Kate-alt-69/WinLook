@@ -23,7 +23,7 @@ cargo clippy -p wl_ui --all-targets -- -D warnings
 cargo build --release -p winlook-win10 -p winlook-win11
 ```
 
-The built executables require the matching Windows App Runtime to be installed. Do not copy only the EXE to a clean machine and assume it is self-contained.
+The built executables require the matching Windows App Runtime to be installed. The root Cargo.lock pins the complete workspace dependency graph. Do not copy only the EXE to a clean machine and assume it is self-contained.
 
 ## Not implemented yet
 
