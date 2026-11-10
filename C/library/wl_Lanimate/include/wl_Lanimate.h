@@ -58,6 +58,20 @@ typedef struct wl_Lanimate_rgba {
     double a;
 } wl_Lanimate_rgba;
 
+typedef struct wl_Lanimate_vector3 { double x; double y; double z; } wl_Lanimate_vector3;
+typedef struct wl_Lanimate_vector4 { double x; double y; double z; double w; } wl_Lanimate_vector4;
+typedef struct wl_Lanimate_rect { double x; double y; double width; double height; } wl_Lanimate_rect;
+typedef struct wl_Lanimate_matrix3x2 {
+    double m11; double m12; double m21; double m22; double dx; double dy;
+} wl_Lanimate_matrix3x2;
+typedef struct wl_Lanimate_transform2d {
+    wl_Lanimate_point2 translation;
+    wl_Lanimate_point2 scale;
+    double rotation_radians;
+} wl_Lanimate_transform2d;
+
+typedef struct wl_Lanimate_opacity { double value; } wl_Lanimate_opacity;
+
 typedef struct wl_Lanimate_keyframe {
     double at_ms;
     double value;
@@ -75,6 +89,16 @@ typedef enum wl_Lanimate_result {
     WL_LANIMATE_INVALID_KEYFRAME_ORDER = 2,
     WL_LANIMATE_INVALID_KEYFRAME_TIME = 3
 } wl_Lanimate_result;
+
+/* Vector/geometry helpers. Matrix composition applies rhs, then self. */
+wl_Lanimate_vector3 wl_Lanimate_vector3_lerp(wl_Lanimate_vector3 from_value, wl_Lanimate_vector3 to_value, double progress);
+wl_Lanimate_vector4 wl_Lanimate_vector4_lerp(wl_Lanimate_vector4 from_value, wl_Lanimate_vector4 to_value, double progress);
+wl_Lanimate_rect wl_Lanimate_rect_lerp(wl_Lanimate_rect from_value, wl_Lanimate_rect to_value, double progress);
+wl_Lanimate_matrix3x2 wl_Lanimate_matrix3x2_identity(void);
+wl_Lanimate_matrix3x2 wl_Lanimate_matrix3x2_compose(wl_Lanimate_matrix3x2 self, wl_Lanimate_matrix3x2 rhs);
+wl_Lanimate_point2 wl_Lanimate_matrix3x2_transform_point(wl_Lanimate_matrix3x2 matrix, wl_Lanimate_point2 point);
+wl_Lanimate_opacity wl_Lanimate_opacity_make(double value);
+wl_Lanimate_transform2d wl_Lanimate_transform2d_lerp(wl_Lanimate_transform2d from_value, wl_Lanimate_transform2d to_value, double progress);
 
 /* Returns eased progress. Input is clamped to [0, 1]; NaN maps to zero. */
 double wl_Lanimate_ease(wl_Lanimate_easing easing, double progress);
