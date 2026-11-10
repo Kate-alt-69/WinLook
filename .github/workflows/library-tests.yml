@@ -1,4 +1,4 @@
-name: Shared libraries and WinUI preview verification (rebased)
+name: Shared libraries and WinUI preview verification (rebased and tested)
 
 on:
   push:
