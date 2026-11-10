@@ -90,39 +90,138 @@ fn home_page(on_navigate: Callback<PageId>) -> View {
         .into()
 }
 
+fn page_settings(page: PageId) -> &'static [(&'static str, &'static str)] {
+    match page {
+        PageId::Appearance => &[
+            ("Theme and colours", "Choose the window theme and configure accent colours. The live theme selector is in the title bar."),
+            ("Transparency effects", "Configure supported transparency and material effects after the platform capability probe is available."),
+            ("Appearance profiles", "Save and switch between reusable visual profiles."),
+        ],
+        PageId::AudioMedia => &[
+            ("Audio sessions", "View supported audio sessions and route WinLook-managed audio controls."),
+            ("Media playback", "Display the active media session and supported transport controls."),
+            ("Volume overlay", "Configure the WinLook volume and media on-screen display."),
+        ],
+        PageId::FileExplorer => &[
+            ("Explorer appearance", "Configure supported File Explorer presentation options."),
+            ("Context menu", "Manage optional context-menu integrations and their permissions."),
+            ("Folder presentation", "Choose supported folder and navigation presentation preferences."),
+        ],
+        PageId::Icons => &[
+            ("Desktop icons", "Configure supported desktop icon presentation."),
+            ("Icon library", "Browse and select installed icon packs."),
+            ("System icons", "Review which system icon locations are supported on this Windows build."),
+        ],
+        PageId::Wallpaper => &[
+            ("Wallpaper library", "Import and organize still images, videos and desktop scenes."),
+            ("Playback", "Configure playback, pause behaviour and per-display wallpaper assignment."),
+            ("Widgets", "Manage desktop widgets and their update/resource policies."),
+        ],
+        PageId::WindowManager => &[
+            ("Window rules", "Create rules for supported window placement and behaviour."),
+            ("Workspaces", "Configure workspace layouts and restore points."),
+            ("Compatibility", "Review optional target integrations and their safety status."),
+        ],
+        PageId::Displays => &[
+            ("Connected displays", "View monitor topology and the capabilities reported by the display adapter."),
+            ("Display profiles", "Save per-monitor arrangements and supported display preferences."),
+            ("Per-display wallpaper", "Assign desktop scenes to individual displays."),
+        ],
+        PageId::Notifications => &[
+            ("On-screen display", "Configure WinLook notification and OSD presentation."),
+            ("Notification style", "Choose placement, duration and visual presentation."),
+            ("Quiet hours", "Configure when optional WinLook notifications should be suppressed."),
+        ],
+        PageId::Templates => &[
+            ("Template library", "Browse reusable WinLook configurations and presets."),
+            ("Import configuration", "Review and validate a configuration before applying it."),
+            ("Export configuration", "Export a selected profile without including private runtime state."),
+        ],
+        PageId::Extensions => &[
+            ("Installed extensions", "Review installed extensions and their declared capabilities."),
+            ("Permissions", "Inspect and revoke extension permissions."),
+            ("Extension sources", "Configure trusted extension sources and signature requirements."),
+        ],
+        PageId::Compatibility => &[
+            ("Windows capabilities", "Probe the current Windows build and available platform APIs."),
+            ("Feature compatibility", "Distinguish documented support from features verified on this machine."),
+            ("Legacy adapters", "Review compatibility adapters and their tested OS ranges."),
+        ],
+        PageId::Diagnostics => &[
+            ("BGW runtime", "Inspect background runtime health, protocol version and reconnect state."),
+            ("CPUv and GPUv", "Review WinLook-owned resource reservations, pressure and recovery events."),
+            ("Event log", "Inspect structured WinLook diagnostics without exposing unrelated process data."),
+        ],
+        PageId::Settings => &[
+            ("Startup", "Configure whether the BGW background runtime starts with the Windows user session."),
+            ("Updates", "Review application and library update channels."),
+            ("Privacy", "Configure diagnostics collection and local data retention."),
+        ],
+        PageId::Home => &[],
+    }
+}
+
+fn setting_card(title: &str, body: &str) -> View {
+    Border::new()
+        .background(ThemeBrush::CardBackground)
+        .border_brush(ThemeBrush::CardStroke)
+        .border_thickness(1.0)
+        .corner_radius(8.0)
+        .padding(Thickness::new(18.0, 16.0, 18.0, 16.0))
+        .content(
+            StackPanel::new()
+                .spacing(8.0)
+                .children((
+                    TextBlock::new()
+                        .text(title)
+                        .font_size(16.0)
+                        .font_weight(FontWeight::SEMI_BOLD),
+                    TextBlock::new()
+                        .text(body)
+                        .text_wrapping(TextWrapping::Wrap),
+                    ToggleSwitch::new()
+                        .header("Unavailable until BGW is connected")
+                        .is_enabled(false),
+                )),
+        )
+        .into()
+}
+
 fn page_content(page: PageId) -> View {
-    let (status_title, status_body) = match page {
-        PageId::Diagnostics => (
-            "Runtime diagnostics",
-            "BGW is not connected in this UI prototype. Live process, subsystem and resource information will be shown only after the runtime protocol is implemented.",
-        ),
-        PageId::Compatibility => (
-            "Compatibility status",
-            "No platform capability probe has run yet. WinLook will distinguish documented API availability from features verified on this exact Windows build.",
-        ),
-        PageId::Extensions => (
-            "Extension safety",
-            "Extensions are not loaded by this prototype. Future extension capabilities will be isolated and permission-scoped.",
-        ),
-        PageId::Settings => (
-            "Manager preferences",
-            "The title-bar theme selector currently changes this window's theme only. Persistence and system-wide settings are not connected yet.",
-        ),
-        _ => (
-            "Page scaffold",
-            "This page has its navigation destination and layout scaffold. Its controls will be connected to BGW capabilities in a later integration stage.",
-        ),
-    };
+    let mut children = vec![
+        page_header(page.title(), page.summary()),
+        TextBlock::new()
+            .text("Settings preview")
+            .font_size(20.0)
+            .font_weight(FontWeight::SEMI_BOLD)
+            .into(),
+    ];
+
+    for (title, body) in page_settings(page) {
+        children.push(setting_card(title, body));
+    }
+
+    if page == PageId::Diagnostics {
+        children.push(information_card(
+            "Current prototype state",
+            "No BGW process, IPC channel or live system telemetry is connected. This page intentionally does not fabricate runtime measurements.",
+        ));
+    }
+
+    if page == PageId::Settings {
+        children.push(information_card(
+            "Window theme",
+            "Use the Theme selector in the title bar to switch this Manager window between System, Light and Dark. This preview preference is not persisted yet.",
+        ));
+    }
+
+    children.push(preview_notice());
 
     ScrollViewer::new()
         .content(
             Border::new()
                 .padding(Thickness::new(36.0, 28.0, 36.0, 36.0))
-                .content(StackPanel::new().spacing(22.0).children((
-                    page_header(page.title(), page.summary()),
-                    information_card(status_title, status_body),
-                    preview_notice(),
-                ))),
+                .content(StackPanel::new().spacing(18.0).children(children)),
         )
         .into()
 }
