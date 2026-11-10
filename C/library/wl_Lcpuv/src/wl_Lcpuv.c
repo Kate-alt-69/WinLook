@@ -8,7 +8,7 @@ static unsigned long wl_Lcpuv_add_saturating(unsigned long a, unsigned long b)
 
 static int wl_Lcpuv_valid_class(wl_Lcpuv_work_class work_class)
 {
-    return work_class >= WL_LCPUV_CRITICAL && work_class <= WL_LCPUV_IDLE;
+    return (int)work_class >= (int)WL_LCPUV_CRITICAL && (int)work_class <= (int)WL_LCPUV_IDLE;
 }
 
 static int wl_Lcpuv_find_slot(const wl_Lcpuv_governor *governor, unsigned long ticket)
