@@ -434,7 +434,7 @@ mod tests {
     fn parses_absolute_relative_smooth_and_arc_commands() {
         let path = VectorPath::parse("M0 0 l10 0 h5 v5 C15 10 20 10 20 15 S25 20 30 15 Q35 10 40 15 T50 15 A5 6 30 0 1 60 20 z")
             .expect("valid SVG path");
-        assert_eq!(path.commands().len(), 11);
+        assert_eq!(path.commands().len(), 10);
         assert_eq!(
             path.commands()[0],
             PathCommand::MoveTo(Vector2::new(0.0, 0.0))
@@ -475,7 +475,7 @@ mod tests {
                 ..
             }
         ));
-        assert_eq!(path.commands()[10], PathCommand::Close);
+        assert_eq!(path.commands()[9], PathCommand::Close);
     }
 
     #[test]
