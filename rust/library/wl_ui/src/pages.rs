@@ -180,8 +180,8 @@ fn setting_card(title: &str, body: &str) -> View {
                         .text(body)
                         .text_wrapping(TextWrapping::Wrap),
                     ToggleSwitch::new()
-                        .header("Unavailable until BGW is connected")
-                        .is_enabled(false),
+                        .is_enabled(false)
+                        .header("Unavailable until BGW is connected"),
                 )),
         )
         .into()
