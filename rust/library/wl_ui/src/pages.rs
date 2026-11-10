@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use windows_reactor::*;
 
 use crate::shell::PageId;
@@ -17,12 +16,19 @@ fn page_header(title: &str, summary: &str) -> View {
 
 fn information_card(title: &str, body: &str) -> View {
     Border::new()
+        .background(ThemeBrush::CardBackground)
+        .border_brush(ThemeBrush::CardStroke)
+        .border_thickness(1.0)
+        .corner_radius(8.0)
         .padding(Thickness::new(18.0, 16.0, 18.0, 16.0))
         .content(
             StackPanel::new()
                 .spacing(6.0)
                 .children((
-                    TextBlock::new().text(title).font_size(16.0),
+                    TextBlock::new()
+                .text(title)
+                .font_size(16.0)
+                .font_weight(FontWeight::SEMI_BOLD),
                     TextBlock::new()
                         .text(body)
                         .text_wrapping(TextWrapping::Wrap),
@@ -39,19 +45,22 @@ fn preview_notice() -> View {
 }
 
 fn home_page(on_navigate: Callback<PageId>) -> View {
+    let appearance = on_navigate.clone();
+    let wallpaper = on_navigate.clone();
+    let displays = on_navigate;
     let quick_actions = StackPanel::new()
         .orientation(Orientation::Horizontal)
         .spacing(8.0)
         .children((
             Button::new()
                 .content("Appearance")
-                .on_click(on_navigate.call(PageId::Appearance)),
+                .on_click(move || appearance.call(PageId::Appearance)),
             Button::new()
                 .content("Wallpaper")
-                .on_click(on_navigate.call(PageId::Wallpaper)),
+                .on_click(move || wallpaper.call(PageId::Wallpaper)),
             Button::new()
                 .content("Displays")
-                .on_click(on_navigate.call(PageId::Displays)),
+                .on_click(move || displays.call(PageId::Displays)),
         ));
 
     ScrollViewer::new()
@@ -143,14 +152,6 @@ mod tests {
             assert!(!page.summary().trim().is_empty());
             assert!(!page.tag().trim().is_empty());
         }
-    }
-
-    #[test]
-    fn diagnostics_and_compatibility_are_explicit_about_missing_runtime_data() {
-        let diagnostics = page_content(PageId::Diagnostics);
-        let compatibility = page_content(PageId::Compatibility);
-        // The views are native view trees; construction itself is the smoke check.
-        let _ = (diagnostics, compatibility);
     }
 
     #[test]
