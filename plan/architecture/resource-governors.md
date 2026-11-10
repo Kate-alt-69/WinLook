@@ -147,8 +147,8 @@ Modes are policy presets and signals, not hardware switches.
 | Interactive | favor UI/window events and visible state updates; defer maintenance | preserve visible composition; cap background uploads/effects |
 | Gaming | sharply reduce or pause nonessential WinLook background tasks; keep only small necessary integration work | reduce WinLook wallpaper/widget/effect/animation work and release optional caches; never interfere with the game process |
 | Idle | allow bounded cache/preparation tasks in low-priority lanes | allow bounded pre-rasterization/uploads while maintaining headroom |
-| Power saver | smaller worker pool and stricter task admission | reduce resolution/effect quality, frame rate and optional GPU work |
-| Critical pressure | reject/defer nonessential work and run cleanup/recovery only | release optional resources, simplify scenes and switch to CPU fallback where useful |
+| Power saver | smaller worker pool and stricter task admission | defer optional submissions and release recoverable caches while preserving configured visual quality |
+| Critical pressure | reject/defer nonessential work and run cleanup/recovery only | release optional resources, freeze the last frame where appropriate and suspend optional submissions; do not silently degrade visual quality |
 
 Do not assume “idle” means consume 100% of unused resources. Use measured load, user settings, deadlines and policy ceilings. Foreground-game detection is supplied by a WinLook policy adapter; CPUv/GPUv should not scan arbitrary game memory or inject into games to infer state.
 
