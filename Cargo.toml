@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = [
+    "rust/library/wl_animate",
+    "rust/library/wl_cpuv",
+    "rust/library/wl_gpuv",
+]
