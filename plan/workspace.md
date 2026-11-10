@@ -140,3 +140,16 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Target repository layout is user-defined: `.github/workflows/`, `rust/win10/`, `rust/win11/`, `rust/library/`, `C/win95/`, `C/library/`, `plan/` and root `README.md`. This supersedes earlier `crates/`, `legacy/`, root `lib/`, `docs/`, `wllook/` and acronym-engine layout proposals. Historical source may remain in old paths until a dedicated migration is performed.
 - FFmpeg integration direction: narrow wrapper libraries `wl_ffmpeg` and `wl_Lffmpeg`, coordinated with CPUv/GPUv. Codec/build configuration, licensing and Windows 95 support remain open research decisions.
 - New detailed source: [background-runtime.md](architecture/background-runtime.md). The design is documentation/planning only; no new executable, IPC transport, resource governor or FFmpeg wrapper is claimed implemented.
+
+
+## Shared library implementation checkpoint — 2026-11-10
+
+- Current implementation branch: `feature/library-foundation`, based on `main` at the 2026-11-10 architecture-doc commit.
+- Target source homes are now populated on the feature branch: `rust/library/wl_animate`, `rust/library/wl_cpuv`, `rust/library/wl_gpuv`, `C/library/wl_Lanimate`, `C/library/wl_Lcpuv`, `C/library/wl_Lgpuv`.
+- Root `Cargo.toml` defines a workspace for the three Rust crates; `C/library/CMakeLists.txt` aggregates the three C libraries.
+- Rust `wl_animate` now publicly exports its existing vector/SVG path-data modules. Its SVG parser's arc flags were changed to consume single-character flags so compact flag sequences can be parsed.
+- C `wl_Lanimate` now includes C89 vector3/vector4/rect, affine matrix composition/point transform, opacity and shortest-arc Transform2D interpolation helpers.
+- CPUv/GPUv Rust and C cores are portable policy/admission primitives only. They do not implement OS scheduling, DXGI, hardware resource creation, BGW integration or system-wide controls.
+- FFmpeg wrappers remain deferred pending codec/toolchain/licensing and Windows 95 compatibility decisions.
+- CI workflow: `.github/workflows/library-tests.yml`. Tests are not marked passed until its actual GitHub Actions jobs complete.
+- Next sequence: run/fix all library CI; review API/contract parity and fill test gaps; then implement and test the WinToys-style Manager UI; only after UI verification proceed to application compilation and optimization.
