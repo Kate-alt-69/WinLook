@@ -2,7 +2,7 @@
 
 static int wl_Lgpuv_valid_class(wl_Lgpuv_work_class work_class)
 {
-    return work_class >= WL_LGPUV_CRITICAL && work_class <= WL_LGPUV_IDLE;
+    return (int)work_class >= (int)WL_LGPUV_CRITICAL && (int)work_class <= (int)WL_LGPUV_IDLE;
 }
 
 static int wl_Lgpuv_find_resource(const wl_Lgpuv_governor *governor, unsigned long ticket)
