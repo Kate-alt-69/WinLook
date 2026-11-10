@@ -1,4 +1,4 @@
-name: Shared libraries and WinUI preview prototype checks
+name: Shared libraries and WinUI preview verification
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - "rust/win10/**"
       - "rust/win11/**"
       - "Cargo.toml"
+      - "Cargo.lock"
       - "C/library/**"
       - ".github/workflows/library-tests.yml"
   pull_request:
