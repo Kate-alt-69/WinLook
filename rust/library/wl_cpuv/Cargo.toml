@@ -1,0 +1,10 @@
+[package]
+name = "wl_cpuv"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.56"
+description = "Portable admission and accounting core for WinLook-owned CPU work"
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"
