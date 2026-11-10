@@ -197,9 +197,12 @@ mod tests {
             g.try_acquire(WorkClass::Interactive, 1),
             Err(Error::BudgetExceeded)
         );
-        assert_eq!(g.try_acquire(WorkClass::Critical, 20).unwrap().id(), 2);
-        assert_eq!(g.complete(t, 70).unwrap().overrun, false);
+        let critical = g.try_acquire(WorkClass::Critical, 20).unwrap();
+        assert_eq!(critical.id(), 2);
+        let completion = g.complete(t, 70).unwrap();
+        assert!(!completion.overrun);
         assert_eq!(g.spent_units(), 70);
+        g.complete(critical, 15).unwrap();
     }
 
     #[test]
