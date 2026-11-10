@@ -9,17 +9,21 @@
 
 mod easing;
 mod svg;
-mod vector;
 mod track;
 mod tween;
 mod values;
+mod vector;
 
 pub use easing::Easing;
+pub use svg::{PathCommand, SvgPathError, SvgPathErrorKind, VectorPath};
 pub use track::{Keyframe, KeyframeTrack, TrackError};
 pub use tween::{PlaybackState, Tween};
 pub use values::{Interpolate, Point2, Rgba};
-pub use svg::{PathCommand, SvgPathError, SvgPathErrorKind, VectorPath};
-pub use vector::{AlphaMode, FillRule, GradientStop, LinearGradient, Matrix3x2, Opacity, Paint, RadialGradient, Rect, StrokeCap, StrokeJoin, Transform2D, Vector2, Vector3, Vector4, VectorDocument, VectorItem, VectorStyle};
+pub use vector::{
+    AlphaMode, FillRule, GradientStop, LinearGradient, Matrix3x2, Opacity, Paint, RadialGradient,
+    Rect, StrokeCap, StrokeJoin, Transform2D, Vector2, Vector3, Vector4, VectorDocument,
+    VectorItem, VectorStyle,
+};
 
 #[cfg(test)]
 mod tests {

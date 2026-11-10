@@ -9,7 +9,13 @@ use std::collections::BTreeMap;
 
 /// Relative importance used when applying the reserved critical headroom.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum WorkClass { Critical, Interactive, Foreground, Background, Idle }
+pub enum WorkClass {
+    Critical,
+    Interactive,
+    Foreground,
+    Background,
+    Idle,
+}
 
 /// Per-accounting-window limits. Costs are caller-defined abstract CPU work units.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,7 +27,10 @@ pub struct Policy {
 
 impl Policy {
     pub fn validate(self) -> Result<Self, Error> {
-        if self.window_budget == 0 || self.critical_reserve > self.window_budget || self.max_in_flight == 0 {
+        if self.window_budget == 0
+            || self.critical_reserve > self.window_budget
+            || self.max_in_flight == 0
+        {
             return Err(Error::InvalidPolicy);
         }
         Ok(self)
@@ -32,7 +41,11 @@ impl Policy {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ticket(u64);
 
-impl Ticket { pub fn id(self) -> u64 { self.0 } }
+impl Ticket {
+    pub fn id(self) -> u64 {
+        self.0
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
@@ -45,7 +58,11 @@ pub enum Error {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Pressure { Normal, Constrained, Critical }
+pub enum Pressure {
+    Normal,
+    Constrained,
+    Critical,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Completion {
@@ -55,7 +72,9 @@ pub struct Completion {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Reservation { estimate: u64 }
+struct Reservation {
+    estimate: u64,
+}
 
 /// Deterministic CPU work admission core. It is not an OS scheduler.
 #[derive(Debug)]
@@ -69,26 +88,52 @@ pub struct Governor {
 
 impl Governor {
     pub fn new(policy: Policy) -> Result<Self, Error> {
-        Ok(Self { policy: policy.validate()?, spent: 0, reserved: 0, next_ticket: 1, active: BTreeMap::new() })
+        Ok(Self {
+            policy: policy.validate()?,
+            spent: 0,
+            reserved: 0,
+            next_ticket: 1,
+            active: BTreeMap::new(),
+        })
     }
 
-    pub fn policy(&self) -> Policy { self.policy }
-    pub fn spent_units(&self) -> u64 { self.spent }
-    pub fn reserved_units(&self) -> u64 { self.reserved }
-    pub fn in_flight(&self) -> usize { self.active.len() }
+    pub fn policy(&self) -> Policy {
+        self.policy
+    }
+    pub fn spent_units(&self) -> u64 {
+        self.spent
+    }
+    pub fn reserved_units(&self) -> u64 {
+        self.reserved
+    }
+    pub fn in_flight(&self) -> usize {
+        self.active.len()
+    }
 
     pub fn available_for(&self, class: WorkClass) -> u64 {
-        let limit = if class == WorkClass::Critical { self.policy.window_budget }
-            else { self.policy.window_budget - self.policy.critical_reserve };
+        let limit = if class == WorkClass::Critical {
+            self.policy.window_budget
+        } else {
+            self.policy.window_budget - self.policy.critical_reserve
+        };
         limit.saturating_sub(self.spent.saturating_add(self.reserved))
     }
 
     pub fn try_acquire(&mut self, class: WorkClass, estimate: u64) -> Result<Ticket, Error> {
-        if estimate == 0 { return Err(Error::InvalidEstimate); }
-        if self.active.len() >= self.policy.max_in_flight { return Err(Error::ConcurrencyLimit); }
-        if estimate > self.available_for(class) { return Err(Error::BudgetExceeded); }
+        if estimate == 0 {
+            return Err(Error::InvalidEstimate);
+        }
+        if self.active.len() >= self.policy.max_in_flight {
+            return Err(Error::ConcurrencyLimit);
+        }
+        if estimate > self.available_for(class) {
+            return Err(Error::BudgetExceeded);
+        }
         let id = self.next_ticket;
-        self.next_ticket = self.next_ticket.checked_add(1).ok_or(Error::TicketExhausted)?;
+        self.next_ticket = self
+            .next_ticket
+            .checked_add(1)
+            .ok_or(Error::TicketExhausted)?;
         self.reserved += estimate;
         self.active.insert(id, Reservation { estimate });
         Ok(Ticket(id))
@@ -99,7 +144,11 @@ impl Governor {
         let reservation = self.active.remove(&ticket.0).ok_or(Error::UnknownTicket)?;
         self.reserved -= reservation.estimate;
         self.spent = self.spent.saturating_add(actual);
-        Ok(Completion { estimated_units: reservation.estimate, actual_units: actual, overrun: actual > reservation.estimate })
+        Ok(Completion {
+            estimated_units: reservation.estimate,
+            actual_units: actual,
+            overrun: actual > reservation.estimate,
+        })
     }
 
     /// Cancels work before it runs and refunds its reservation exactly once.
@@ -110,13 +159,19 @@ impl Governor {
     }
 
     /// Starts a new accounting window. Live reservations remain reserved.
-    pub fn reset_window(&mut self) { self.spent = 0; }
+    pub fn reset_window(&mut self) {
+        self.spent = 0;
+    }
 
     pub fn pressure(&self) -> Pressure {
         let used = self.spent.saturating_add(self.reserved);
-        if used >= self.policy.window_budget { Pressure::Critical }
-        else if used >= self.policy.window_budget - self.policy.window_budget / 5 { Pressure::Constrained }
-        else { Pressure::Normal }
+        if used >= self.policy.window_budget {
+            Pressure::Critical
+        } else if used >= self.policy.window_budget - self.policy.window_budget / 5 {
+            Pressure::Constrained
+        } else {
+            Pressure::Normal
+        }
     }
 }
 
@@ -125,7 +180,12 @@ mod tests {
     use super::*;
 
     fn governor() -> Governor {
-        Governor::new(Policy { window_budget: 100, critical_reserve: 20, max_in_flight: 2 }).unwrap()
+        Governor::new(Policy {
+            window_budget: 100,
+            critical_reserve: 20,
+            max_in_flight: 2,
+        })
+        .unwrap()
     }
 
     #[test]
@@ -133,7 +193,10 @@ mod tests {
         let mut g = governor();
         assert_eq!(g.available_for(WorkClass::Background), 80);
         let t = g.try_acquire(WorkClass::Background, 80).unwrap();
-        assert_eq!(g.try_acquire(WorkClass::Interactive, 1), Err(Error::BudgetExceeded));
+        assert_eq!(
+            g.try_acquire(WorkClass::Interactive, 1),
+            Err(Error::BudgetExceeded)
+        );
         assert_eq!(g.try_acquire(WorkClass::Critical, 20).unwrap().id(), 2);
         assert_eq!(g.complete(t, 70).unwrap().overrun, false);
         assert_eq!(g.spent_units(), 70);
@@ -144,7 +207,10 @@ mod tests {
         let mut g = governor();
         let a = g.try_acquire(WorkClass::Interactive, 1).unwrap();
         let b = g.try_acquire(WorkClass::Background, 1).unwrap();
-        assert_eq!(g.try_acquire(WorkClass::Idle, 1), Err(Error::ConcurrencyLimit));
+        assert_eq!(
+            g.try_acquire(WorkClass::Idle, 1),
+            Err(Error::ConcurrencyLimit)
+        );
         g.cancel(a).unwrap();
         assert_eq!(g.cancel(a), Err(Error::UnknownTicket));
         g.complete(b, 2).unwrap();
@@ -166,7 +232,18 @@ mod tests {
 
     #[test]
     fn rejects_invalid_policy_and_zero_estimate() {
-        assert_eq!(Governor::new(Policy { window_budget: 1, critical_reserve: 2, max_in_flight: 1 }).err(), Some(Error::InvalidPolicy));
-        assert_eq!(governor().try_acquire(WorkClass::Idle, 0), Err(Error::InvalidEstimate));
+        assert_eq!(
+            Governor::new(Policy {
+                window_budget: 1,
+                critical_reserve: 2,
+                max_in_flight: 1
+            })
+            .err(),
+            Some(Error::InvalidPolicy)
+        );
+        assert_eq!(
+            governor().try_acquire(WorkClass::Idle, 0),
+            Err(Error::InvalidEstimate)
+        );
     }
 }
