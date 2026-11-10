@@ -205,7 +205,7 @@ impl<'a> Parser<'a> {
                     }
                     self.current = point;
                     self.clear_controls();
-                    if command.to_ascii_uppercase() == b'M' {
+                    if command.eq_ignore_ascii_case(&b'M') {
                         command = if relative { b'l' } else { b'L' };
                         *active = Some(command);
                     }
