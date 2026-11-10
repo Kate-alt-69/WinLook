@@ -316,9 +316,14 @@ mod tests {
     #[test]
     fn compact_arc_flags_are_single_character_tokens() {
         let path = VectorPath::parse("M0 0 A5 6 30 0110 20").expect("compact arc flags");
-        assert!(matches!(path.commands()[1], PathCommand::ArcTo {
-            large_arc: false, sweep: true, to: Vector2 { x: 10.0, y: 20.0 }, ..
-        }));
+        match path.commands()[1] {
+            PathCommand::ArcTo { large_arc, sweep, to, .. } => {
+                assert!(!large_arc);
+                assert!(sweep);
+                assert_eq!(to, Vector2::new(10.0, 20.0));
+            }
+            _ => panic!("expected an arc command"),
+        }
     }
 
     #[test]
