@@ -42,5 +42,10 @@ if(BUILD_TESTING)
         C_STANDARD_REQUIRED YES
         C_EXTENSIONS NO
     )
+    if(MSVC)
+        target_compile_options(test_wl_Lanimate PRIVATE /UNDEBUG)
+    else()
+        target_compile_options(test_wl_Lanimate PRIVATE -UNDEBUG)
+    endif()
     add_test(NAME wl_Lanimate.core COMMAND test_wl_Lanimate)
 endif()
