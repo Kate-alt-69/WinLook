@@ -8,4 +8,4 @@ license = "MIT"
 
 [dependencies]
 [target.'cfg(windows)'.dependencies]
-windows-reactor = "=0.100.0"
+windows-reactor = { package = "windows-reactor-pre", version = "=0.107.1" }
