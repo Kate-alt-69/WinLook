@@ -96,7 +96,7 @@ cmake --build build/libraries --config Release
 ctest --test-dir build/libraries -C Release --output-on-failure
 ```
 
-Each C library also has its own CMake and Makefile build. The `Shared libraries` GitHub Actions workflow checks Rust/MSVC, C/MSVC and strict C89 GCC builds with AddressSanitizer/UndefinedBehaviorSanitizer. CI is not a substitute for Windows 10 client VM/hardware tests, Windows 95 compiler/runtime validation or actual graphics-adapter testing.
+Each C library also has its own CMake and Makefile build. The `Shared libraries` GitHub Actions workflow passed run [42832087050](https://github.com/Kate-alt-69/WinLook/actions/runs/42832087050): Rust formatting, 27 unit tests, Clippy and docs; C89/MSVC and strict GCC ASan/UBSan; and the combined CMake suite (3/3). CI is not a substitute for Windows 10 client VM/hardware tests, Windows 95 compiler/runtime validation or actual graphics-adapter testing.
 
 ## Development status
 
