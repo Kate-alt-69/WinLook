@@ -53,7 +53,7 @@ The Manager is not a hosted BGW module: it is the separate `winlook.exe` UI proc
 | State or operation | Authoritative owner |
 |---|---|
 | User preferences and profile selection | Manager configuration service |
-| Session lifecycle | Agent |
+| Session lifecycle | BGW runtime |
 | Target policy and compatibility cache | BGW |
 | Window observations, rules and layout decisions | WLWM |
 | Desktop presentation and wallpaper playback | WLDE |
@@ -137,7 +137,7 @@ A supervisor may restart a crashed non-critical component but must not loop on a
 
 ## 8. Privilege and trust model
 
-- Manager, Agent, BGW, WLDE and WLOSDE run as ordinary user unless a specific operation proves otherwise.
+- Manager and BGW run as ordinary user unless a specific operation proves otherwise.
 - Optional Service exposes typed allowlisted operations, not a general elevated command runner.
 - WinLook never collects passwords, PINs or secure-desktop content.
 - Community content is untrusted even when downloaded from a popular catalogue.
@@ -162,7 +162,7 @@ Do not infer runtime support from a modern SDK header. Use late binding or separ
 - [ ] Configuration precedence and unknown-field handling are ratified.
 - [ ] Every privileged operation is enumerated and justified.
 - [ ] Restart, quarantine and recovery behaviour is tested in a prototype harness.
-- [ ] Windows-native fallback is demonstrated when Agent, BGW, WLDE or WLOSDE exits.
+- [ ] Windows-native fallback is demonstrated when BGW, WLDE or WLOSDE exits.
 
 ## 11. Open decisions
 
