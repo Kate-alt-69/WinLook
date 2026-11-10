@@ -1,6 +1,9 @@
 use crate::vector::Vector2;
 use std::fmt;
 
+const MAX_PATH_DATA_BYTES: usize = 1_048_576;
+const MAX_PATH_COMMANDS: usize = 100_000;
+
 /// Normalized SVG path commands. Relative, H/V and smooth commands are
 /// converted to absolute commands.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -41,6 +44,8 @@ pub enum SvgPathErrorKind {
     InvalidArcFlag,
     NegativeArcRadius,
     UnsupportedCommand,
+    InputTooLarge,
+    TooManyCommands,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -78,6 +83,12 @@ impl VectorPath {
     /// repeated groups, exponents and compact signed values. XML, CSS, filters,
     /// masks, text and external references are outside this path-data parser.
     pub fn parse(data: &str) -> Result<Self, SvgPathError> {
+        if data.len() > MAX_PATH_DATA_BYTES {
+            return Err(SvgPathError {
+                offset: MAX_PATH_DATA_BYTES,
+                kind: SvgPathErrorKind::InputTooLarge,
+            });
+        }
         Parser::new(data).parse()
     }
 }
@@ -159,6 +170,9 @@ impl<'a> Parser<'a> {
             }
             let command = active.ok_or_else(|| self.error(SvgPathErrorKind::UnexpectedToken))?;
             self.parse_groups(command, &mut active)?;
+            if self.commands.len() > MAX_PATH_COMMANDS {
+                return Err(self.error(SvgPathErrorKind::TooManyCommands));
+            }
         }
         if self.commands.is_empty() {
             return Err(self.error(SvgPathErrorKind::Empty));
@@ -507,6 +521,21 @@ mod tests {
             }
             _ => panic!("expected an arc command"),
         }
+    }
+
+    #[test]
+    fn parser_enforces_input_and_command_limits() {
+        let oversized = " ".repeat(MAX_PATH_DATA_BYTES + 1);
+        assert_eq!(
+            VectorPath::parse(&oversized).unwrap_err().kind,
+            SvgPathErrorKind::InputTooLarge
+        );
+
+        let repeated = format!("M0 0 {}", "L1 1 ".repeat(MAX_PATH_COMMANDS));
+        assert_eq!(
+            VectorPath::parse(&repeated).unwrap_err().kind,
+            SvgPathErrorKind::TooManyCommands
+        );
     }
 
     #[test]
