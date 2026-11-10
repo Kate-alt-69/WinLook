@@ -7,7 +7,9 @@
 - Caller-owned scalar tweens with pending/running/paused/finished/cancelled states.
 - Start delay, elapsed-time advancement, progress queries, cancellation and restart.
 - Linear, quadratic, cubic, sine and quartic easing functions.
-- `Point2` and RGBA interpolation helpers.
+- `Point2`, RGBA, Vector3/4 and rectangle interpolation helpers.
+- Affine `Matrix3x2` composition/point transformation, normalized opacity and shortest-arc `Transform2D` interpolation.
+- The C implementation does not yet include the Rust SVG path parser or full vector scene model.
 - Caller-owned scalar keyframe arrays and timestamp sampling with input validation.
 
 ## C and resource contract
