@@ -122,4 +122,6 @@ jobs:
       - name: Lint UI library
         run: cargo clippy -p wl_ui --all-targets -- -D warnings
       - name: Build Win10 and Win11 Manager executables
-        run: cargo build --release -p winlook-win10 -p winlook-win11
+        run: |
+          cargo build --release -p winlook-win10 --target-dir target/win10
+          cargo build --release -p winlook-win11 --target-dir target/win11
