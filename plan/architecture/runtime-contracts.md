@@ -28,23 +28,25 @@ An optional privileged Service, if a later feature proves it necessary, is separ
 
 For the full startup, IPC, configuration-acknowledgement, subsystem-registration and recovery design, see [background-runtime.md](background-runtime.md).
 
-## 2A. Logical module topology
+## 2A. BGW-hosted modules and optional helpers
 
-The following are logical modules/ownership roles inside the two-executable architecture, not a mandate to launch one process per row.
+The following are logical modules/ownership roles inside BGW, not a mandate to launch one process per row. Only a separately justified isolation boundary should become a helper process.
 
-| Role | Responsibility | Session/privilege | Failure expectation |
+| Module/role | Responsibility | Context | Failure expectation |
 |---|---|---|---|
-| WinLook Manager | Settings, previews, templates, catalogue UI, diagnostics and consent | Interactive user; ordinary privilege | UI may restart without losing committed configuration |
-| WinLook Agent | Per-user startup/shutdown, session coordination and user state | Interactive user session | Native desktop remains usable if it exits |
-| Main BGW | WLWM process observation, classification/cache, policy and optional injection orchestration | Same user session as targets by default | Stops optional integrations; never blocks application launch |
-| WLDE Runtime | Wallpapers, widgets, desktop presentation, Groups and resource policy | Interactive user session | Falls back to static/native desktop presentation |
-| WLOSDE surfaces | WinLook notifications, popups and OSD | Interactive user session | Surfaces disappear; native security UI is unaffected |
-| WLDM adapter | Monitor discovery/topology and approved display changes | User context by default | Retains or restores safe display configuration |
-| Audio & Media adapter | Audio endpoints/sessions and provider-backed media metadata/transport | User context; ordinary controls do not require elevation | Native audio/player operation continues; unsupported controls are omitted |
-| Explorer presentation adapter | Optional Explorer styling/Shell extension coordination | Separate opt-in, build-specific component with out-of-process coordinator | Quarantine/disable adapter; native Explorer and file operations continue |
-| Optional Service | Only narrowly scoped operations requiring elevated privilege | Service session | Privileged actions become unavailable; interactive UI continues |
-| In-process module | Optional target-specific WLWM integration | Target process security context | Module failure must not terminate/corrupt target |
-| Extension host | Untrusted widgets and interactive content | Restricted process/capability sandbox | Extension can be stopped independently |
+| BGW runtime | Startup, session lifecycle, subsystem hosting/co-ordination, event/policy loop and health | Interactive user session; ordinary privilege by default | Windows remains usable; relaunch/recovery restores last valid committed configuration |
+| WLDE | Wallpapers, widgets, desktop presentation, Groups and resource-aware rendering | Hosted/co-ordinated by BGW | Quarantine/restart module where safe; retain native/static desktop fallback |
+| WLWM | Window policies/layouts/rules/workspaces, compatibility analysis and optional integrations | Hosted/co-ordinated by BGW; target integrations separately gated | Disable unsafe integration; native window management continues |
+| WLDM | Monitor discovery/topology and approved display changes | Hosted/co-ordinated by BGW | Retain or restore safe display configuration |
+| WLOSDE | WinLook notifications, popups and OSD | Hosted/co-ordinated by BGW | Surfaces disappear; native security UI is unaffected |
+| Appearance/Icon | Theme and supported system/icon presentation | Hosted/co-ordinated by BGW | Restore native values or disable the affected adapter |
+| Audio & Media | Audio endpoints/sessions and provider-backed media metadata/transport | Hosted/co-ordinated by BGW | Native audio/player operation continues; unsupported controls are omitted |
+| Explorer presentation adapter | Optional Explorer styling/Shell extension coordination | Separate opt-in, build-specific boundary where required | Quarantine/disable adapter; native Explorer and file operations continue |
+| Optional Service | Only narrowly scoped operations requiring elevated privilege | Service session | Privileged actions become unavailable; BGW/Manager continue |
+| In-process WLWM module | Optional target-specific integration | Target process security context | Module failure must not terminate/corrupt target |
+| Isolated extension helper | Untrusted widgets or interactive content, only where isolation is required | Restricted process/capability sandbox | Helper can be stopped independently; BGW remains alive |
+
+The Manager is not a hosted BGW module: it is the separate `winlook.exe` UI process. The Agent/desktop-runtime split from older planning text is superseded by the two-executable model. BGW itself owns the background lifecycle and session coordination.
 
 ## 3. Ownership boundaries
 
