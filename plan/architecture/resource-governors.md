@@ -59,9 +59,9 @@ Proposed flow:
 6. The scheduler dispatches admitted CPU work. The renderer allocates/submits admitted GPU work.
 7. Completion reports measured CPU cost and, where supported, GPU timestamp/fence evidence. GPU allocation estimates are reconciled with the next OS budget snapshot.
 8. Cancellation, timeout, device loss or target disposal releases all outstanding permits and owned resources.
-9. Snapshots expose aggregated counters and pressure states to the Manager/Agent and profiles.
+9. Snapshots expose aggregated counters and pressure states to the Manager/BGW and profiles.
 
-The shared coordinator may live in the Agent/runtime layer; it is not automatically a third public library. Keep CPUv and GPUv independently usable and independently testable.
+The shared coordinator may live inside the BGW runtime; it is not automatically a third public library. Keep CPUv and GPUv independently usable and independently testable.
 
 ## 5. CPUv contract
 
@@ -116,7 +116,7 @@ Do not call elapsed wall time “CPU usage.” A sleeping or I/O-bound task can 
 - Track pending estimated allocation bytes and avoid admitting work beyond configured WinLook headroom.
 - Bound per-frame submissions/work units and background GPU work.
 - Surface Normal/Constrained/Critical/Unknown pressure.
-- Ask renderers to defer, lower quality, release caches, simplify geometry or use CPU fallback.
+- Ask renderers to defer optional work, freeze the last frame where appropriate, release recoverable caches or use a supported CPU fallback without silently degrading configured visual quality.
 - Handle adapter changes and device removal/reset by invalidating device-owned resources and rebuilding from logical scene data.
 
 ### OS authority and DXGI integration
@@ -166,15 +166,15 @@ Proposed source mappings, subject to the approved repository library migration:
 
 | Rust library | C library | Intended home |
 |---|---|---|
-| `wl_animate` | `wl_Lanimate` | `lib/wl_animate`, `lib/wl_Lanimate` |
-| `wl_cpuv` | `wl_Lcpuv` | `lib/wl_cpuv`, `lib/wl_Lcpuv` |
-| `wl_gpuv` | `wl_Lgpuv` | `lib/wl_gpuv`, `lib/wl_Lgpuv` |
+| `wl_animate` | `wl_Lanimate` | `rust/library/wl_animate`, `C/library/wl_Lanimate` |
+| `wl_cpuv` | `wl_Lcpuv` | `rust/library/wl_cpuv`, `C/library/wl_Lcpuv` |
+| `wl_gpuv` | `wl_Lgpuv` | `rust/library/wl_gpuv`, `C/library/wl_Lgpuv` |
 
 Rust and C must share concepts, units, result states and reference test vectors, not internal structure layouts. The C API uses an explicit ABI/version, fixed-width integer types where the chosen compiler provides them, caller-visible ownership, capacity limits, stale-ticket detection and well-defined synchronization.
 
 Because C89 has no standard threading primitive, the library must either receive host-supplied lock/unlock operations or require and verify serialized access. It must not imply thread safety without an implementation. No lock may be held while invoking caller callbacks or executing work.
 
-If different language processes share a single resource-governor authority, they must request through the Agent's versioned IPC contract. Separate in-process governors must not pretend to share one global budget.
+If different language processes share a single resource-governor authority, they must request through BGW's versioned IPC contract. Separate in-process governors must not pretend to share one global budget.
 
 ## 9. Public API shape (proposal)
 
