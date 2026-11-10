@@ -78,7 +78,7 @@ The intended architecture uses Rust for current Windows 10+ builds and a separat
 - [x] Identify the Microsoft `windows` / `windows-sys` bindings as candidates for native Windows APIs.
 - [ ] Keep Windows 95–8.1 on the separate C implementation unless a pinned Rust toolchain/runtime is explicitly validated; do not infer older-OS support from language portability.
 - [ ] Choose the supported Rust toolchain, editions, minimum OS versions, and target triples.
-- [ ] Define the process model and boundaries between Manager, per-user Agent, rendering workers, and optional Service.
+- [x] Define the two principal application executables: Manager UI (`winlook.exe`) and BGW background runtime (`winlook.bg.exe`), with internal modules/workers and an optional narrowly scoped Service only if justified.
 - [ ] Define native UI and rendering technology; evaluate low-overhead options rather than assuming a browser-heavy shell.
 - [ ] Define crash handling, structured logs, diagnostics, and safe restart behaviour.
 - [ ] Define IPC between WinLook processes and validate all IPC messages.
@@ -99,14 +99,14 @@ The intended architecture uses Rust for current Windows 10+ builds and a separat
 
 - [x] Define Windows version detection as a core responsibility.
 - [x] Design a capability-detection system.
-- [x] Design a per-user WinLook Agent and optional privileged Service.
+- [x] Design the per-user BGW background runtime and optional privileged Service.
 - [ ] Define the shared configuration format and schema.
 - [ ] Define schema versioning, validation, defaults, and migration rules.
 - [ ] Decide which settings use JSON, TOML, or INI and where legacy constraints require a simpler format.
 - [ ] Define shared identifiers for themes, wallpapers, widgets, extensions, and profiles.
 - [ ] Define a stable internal API between core modules.
 - [ ] Define how unsupported configuration fields are handled on older Windows versions.
-- [ ] Define update compatibility between Manager, Agent, Service, legacy companion, and packages.
+- [ ] Define update compatibility between Manager, BGW, optional Service, platform application and packages.
 
 ## Proposed process responsibilities
 
@@ -116,7 +116,7 @@ The intended architecture uses Rust for current Windows 10+ builds and a separat
 - [ ] Keep injected modules small, versioned and recovery-aware.
 
 - [ ] Specify **WinLook Manager**: user-facing settings, theme management, library, and Store UI.
-- [ ] Specify **WinLook Agent**: per-user desktop, appearance, and session integration.
+- [x] Specify **BGW runtime**: per-user background lifecycle, subsystem hosting, event/policy coordination and session integration.
 - [ ] Specify **WLDE Runtime**: wallpaper/widget rendering and desktop composition.
 - [ ] Specify **WinLook Service**: only operations that genuinely require elevated privileges.
 - [ ] Specify isolated workers for untrusted or complex extensions.
@@ -434,7 +434,7 @@ Restoration is a core requirement. Users must be able to undo WinLook changes an
 Process injection is an accepted WLWM technique for compatible targets. The main BGW coordinates WLWM compatibility classification, cache lookup and injection. Protected/authentication processes, DWM and security-critical targets remain excluded. Explorer.exe must never be modified on disk or replaced. Deep Explorer presentation customization is a separate opt-in, build-specific Appearance Engine adapter—not ordinary WLWM injection—and must preserve native Shell/file-operation ownership. See [architecture/explorer-customization.md](architecture/explorer-customization.md) and [architecture/wlwm.md](architecture/wlwm.md).
 
 
-- [ ] Threat-model the Manager, Agent, Service, WLDE, Store, and extension runtime.
+- [ ] Threat-model the Manager, BGW, optional Service, WLDE, Store, and extension runtime.
 - [ ] Define least-privilege requirements and elevation prompts.
 - [ ] Define package integrity verification and signing.
 - [ ] Design secure archive extraction and protection against path traversal.
@@ -543,7 +543,7 @@ The following preserves the checklist and completion statuses supplied during th
 - [x] Define Rust/C hybrid architecture
 - [x] Define Windows version detection
 - [x] Design capability detection system
-- [x] Design WinLook Agent and optional Service
+- [x] Design BGW background runtime and optional Service
 - [ ] Define shared configuration format
 
 ## Appearance Engine
@@ -623,7 +623,7 @@ This section records the latest user-approved decisions and supersedes any earli
 - **wl_animate:** public/reusable Rust crate and modern animation API for WinLook modules and third-party developers.
 - **wl_Lanimate:** corresponding C animation library for legacy builds.
 - **WLT:** WinLook Template. Portable profile and bundled asset format.
-- **Main BGW:** coordinates WLWM detection, compatibility classification/cache, injection and health/recovery.
+- **BGW runtime (`winlook.bg.exe`):** hosts/co-ordinates all background subsystems; WLWM detection, compatibility classification/cache, optional integration orchestration and health/recovery are part of its wider responsibilities.
 
 ## DWM, Windows and injection
 
