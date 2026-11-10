@@ -9,11 +9,11 @@ This directory is the source of truth for WinLook's living plan, compatibility r
 4. [Compatibility matrix](compatibility/matrix.md) — cross-generation summary.
 5. [Architecture overview](architecture/overview.md) — subsystem relationships and process model.
 6. [Background Runtime](architecture/background-runtime.md) — two-executable Manager/BGW model, IPC, lifecycle and resource coordination.
-6. [Appearance Engine](architecture/appearance-engine.md), [File Explorer Customization](architecture/explorer-customization.md) and [Audio & Media Experience](architecture/audio-experience.md) — appearance, Shell and media architecture.
-7. [Clipboard Experience](architecture/clipboard-experience.md) and [Profiles and Optimization](architecture/profiles-and-optimization.md) — coordinated settings and portable profile design.
-8. [Standby/security](architecture/standby-security.md) and [extensions](architecture/extensions.md) — lifecycle, ecosystem and package trust.
-9. [Source ledger](references/SOURCES.md) — primary API/OS references and third-party project sources.
-10. [Agent index](index.md) and [workspace memory](workspace.md) — compact navigation and durable context.
+7. [Appearance Engine](architecture/appearance-engine.md), [File Explorer Customization](architecture/explorer-customization.md) and [Audio & Media Experience](architecture/audio-experience.md) — appearance, Shell and media architecture.
+8. [Clipboard Experience](architecture/clipboard-experience.md) and [Profiles and Optimization](architecture/profiles-and-optimization.md) — coordinated settings and portable profile design.
+9. [Standby/security](architecture/standby-security.md) and [extensions](architecture/extensions.md) — lifecycle, ecosystem and package trust.
+10. [Source ledger](references/SOURCES.md) — primary API/OS references and third-party project sources.
+11. [Agent index](index.md) and [workspace memory](workspace.md) — compact navigation and durable context.
 
 ## Structure
 - Plan.md: current living plan; do not replace it with an implementation specification.
