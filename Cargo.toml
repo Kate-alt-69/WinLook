@@ -4,4 +4,7 @@ members = [
     "rust/library/wl_animate",
     "rust/library/wl_cpuv",
     "rust/library/wl_gpuv",
+    "rust/library/wl_ui",
+    "rust/win10",
+    "rust/win11",
 ]
