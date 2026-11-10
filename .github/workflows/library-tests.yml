@@ -2,7 +2,7 @@ name: Shared libraries
 
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "rust/library/**"
       - "C/library/**"
