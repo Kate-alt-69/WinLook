@@ -1,0 +1,13 @@
+[package]
+name = "winlook-win10"
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.95"
+publish = false
+
+[[bin]]
+name = "winlook"
+path = "src/main.rs"
+
+[dependencies]
+wl_ui = { path = "../library/wl_ui" }
