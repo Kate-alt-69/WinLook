@@ -1,0 +1,33 @@
+name: Format Manager UI Rust sources (one-time migration helper)
+
+on:
+  pull_request:
+    branches: [feature/library-foundation]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/wintoys-manager-ui'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Format the Rust workspace
+        run: cargo fmt --all
+      - name: Commit formatting changes
+        shell: pwsh
+        run: |
+          if (git diff --quiet) {
+            Write-Host "Rust sources are already formatted."
+            exit 0
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rust/library/wl_ui rust/win10 rust/win11
+          git commit -m "style: format native Manager UI"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
