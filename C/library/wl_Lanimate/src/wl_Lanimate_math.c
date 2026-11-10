@@ -77,3 +77,90 @@ wl_Lanimate_rgba wl_Lanimate_rgba_lerp(wl_Lanimate_rgba from_value,
     result.a = wl_Lanimate_lerp(from_value.a, to_value.a, progress);
     return result;
 }
+
+wl_Lanimate_vector3 wl_Lanimate_vector3_lerp(wl_Lanimate_vector3 from_value,
+    wl_Lanimate_vector3 to_value, double progress)
+{
+    wl_Lanimate_vector3 result;
+    result.x = wl_Lanimate_lerp(from_value.x, to_value.x, progress);
+    result.y = wl_Lanimate_lerp(from_value.y, to_value.y, progress);
+    result.z = wl_Lanimate_lerp(from_value.z, to_value.z, progress);
+    return result;
+}
+
+wl_Lanimate_vector4 wl_Lanimate_vector4_lerp(wl_Lanimate_vector4 from_value,
+    wl_Lanimate_vector4 to_value, double progress)
+{
+    wl_Lanimate_vector4 result;
+    result.x = wl_Lanimate_lerp(from_value.x, to_value.x, progress);
+    result.y = wl_Lanimate_lerp(from_value.y, to_value.y, progress);
+    result.z = wl_Lanimate_lerp(from_value.z, to_value.z, progress);
+    result.w = wl_Lanimate_lerp(from_value.w, to_value.w, progress);
+    return result;
+}
+
+wl_Lanimate_rect wl_Lanimate_rect_lerp(wl_Lanimate_rect from_value,
+    wl_Lanimate_rect to_value, double progress)
+{
+    wl_Lanimate_rect result;
+    result.x = wl_Lanimate_lerp(from_value.x, to_value.x, progress);
+    result.y = wl_Lanimate_lerp(from_value.y, to_value.y, progress);
+    result.width = wl_Lanimate_lerp(from_value.width, to_value.width, progress);
+    result.height = wl_Lanimate_lerp(from_value.height, to_value.height, progress);
+    return result;
+}
+
+wl_Lanimate_matrix3x2 wl_Lanimate_matrix3x2_identity(void)
+{
+    wl_Lanimate_matrix3x2 result;
+    result.m11 = 1.0; result.m12 = 0.0;
+    result.m21 = 0.0; result.m22 = 1.0;
+    result.dx = 0.0; result.dy = 0.0;
+    return result;
+}
+
+wl_Lanimate_matrix3x2 wl_Lanimate_matrix3x2_compose(
+    wl_Lanimate_matrix3x2 self, wl_Lanimate_matrix3x2 rhs)
+{
+    wl_Lanimate_matrix3x2 result;
+    result.m11 = self.m11 * rhs.m11 + self.m21 * rhs.m12;
+    result.m12 = self.m12 * rhs.m11 + self.m22 * rhs.m12;
+    result.m21 = self.m11 * rhs.m21 + self.m21 * rhs.m22;
+    result.m22 = self.m12 * rhs.m21 + self.m22 * rhs.m22;
+    result.dx = self.m11 * rhs.dx + self.m21 * rhs.dy + self.dx;
+    result.dy = self.m12 * rhs.dx + self.m22 * rhs.dy + self.dy;
+    return result;
+}
+
+wl_Lanimate_point2 wl_Lanimate_matrix3x2_transform_point(
+    wl_Lanimate_matrix3x2 matrix, wl_Lanimate_point2 point)
+{
+    wl_Lanimate_point2 result;
+    result.x = matrix.m11 * point.x + matrix.m21 * point.y + matrix.dx;
+    result.y = matrix.m12 * point.x + matrix.m22 * point.y + matrix.dy;
+    return result;
+}
+
+wl_Lanimate_opacity wl_Lanimate_opacity_make(double value)
+{
+    wl_Lanimate_opacity result;
+    result.value = wl_Lanimate_clamp01(value);
+    return result;
+}
+
+wl_Lanimate_transform2d wl_Lanimate_transform2d_lerp(
+    wl_Lanimate_transform2d from_value, wl_Lanimate_transform2d to_value,
+    double progress)
+{
+    wl_Lanimate_transform2d result;
+    double delta;
+    double t;
+    t = wl_Lanimate_clamp01(progress);
+    result.translation = wl_Lanimate_point2_lerp(from_value.translation, to_value.translation, t);
+    result.scale = wl_Lanimate_point2_lerp(from_value.scale, to_value.scale, t);
+    delta = fmod(to_value.rotation_radians - from_value.rotation_radians, 2.0 * WL_LANIMATE_PI);
+    if (delta > WL_LANIMATE_PI) delta -= 2.0 * WL_LANIMATE_PI;
+    if (delta < -WL_LANIMATE_PI) delta += 2.0 * WL_LANIMATE_PI;
+    result.rotation_radians = from_value.rotation_radians + delta * t;
+    return result;
+}
