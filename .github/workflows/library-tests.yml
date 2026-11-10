@@ -1,4 +1,4 @@
-name: Shared libraries
+name: Shared libraries and Manager UI
 
 on:
   push:
