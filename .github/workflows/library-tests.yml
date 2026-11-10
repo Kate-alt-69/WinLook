@@ -13,6 +13,9 @@ on:
   pull_request:
     paths:
       - "rust/library/**"
+      - "rust/win10/**"
+      - "rust/win11/**"
+      - "Cargo.toml"
       - "C/library/**"
       - ".github/workflows/library-tests.yml"
   workflow_dispatch:
