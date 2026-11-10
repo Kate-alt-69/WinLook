@@ -1,0 +1,56 @@
+# wl_animate
+
+`wl_animate` is the modern Rust animation library for WinLook. It is also intended as a reusable public API for third-party applications and integrations.
+
+## Initial API
+
+- `Interpolate` for values that can be blended, with built-in `f32`, `f64`, `Point2` and `Rgba` implementations.
+- Linear, quadratic, cubic, sine and quartic easing curves.
+- `Tween<T>` with pending/running/paused/finished/cancelled states, delay, elapsed time, progress, cancellation and restart.
+- `Keyframe<T>` and immutable `KeyframeTrack<T>` with ordered-time validation and timestamp sampling.
+
+The core is caller-driven: a host frame loop supplies elapsed `Duration` values to `Tween::advance`, or samples a keyframe track at a timestamp. The crate creates no threads, timers, windows, graphics contexts, hooks or scheduler. Sampling does not allocate internally for built-in fixed-size values; a custom value type's own `Clone`/`Interpolate` implementation may allocate.
+
+## Example
+
+```rust
+use std::time::Duration;
+use wl_animate::{Easing, Tween};
+
+let mut fade = Tween::new_delayed(
+    0.0_f32,
+    1.0,
+    Duration::from_millis(180),
+    Duration::from_millis(40),
+    Easing::EaseOutCubic,
+);
+let opacity = fade.advance(Duration::from_millis(16));
+```
+
+`elapsed()` includes the delay. `progress()` reports interpolation progress only. While pending or cancelled, sampling returns the current value; a finished tween returns its final value.
+
+## Windows baseline
+
+The first implementation baseline for **both** `wl_animate` and the C `wl_Lanimate` library is Windows 10. Rust/MSVC builds use the current official Windows target; the C library retains its C89-compatible source constraint and can be built on Windows with MSVC or on a host compiler. C89 compatibility is a source-language constraint, not evidence that the C library already works on pre-Windows-10 releases. Older Windows targets remain a separate future compatibility gate.
+
+The crate's `rust-version = 1.56` describes its minimum Rust compiler version, not its Windows OS minimum. A portable crate that avoids Win32 APIs does not by itself make a current Rust/MSVC application binary compatible with older Windows releases.
+
+See [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) and [WinLook's compatibility policy](../../plan/compatibility/README.md).
+
+## Scope boundary
+
+This is the renderer-independent animation core, not the complete OS animation suite. Win32 window observation, DWM, D3D11, DirectComposition, overlay presentation, frame scheduling, target-FPS pacing and platform resource management belong in separate adapters. A backend must be selected through capability detection and retain a native fallback. The core does not inject into processes or manipulate Windows UI by itself.
+
+## Build and test
+
+```sh
+cargo fmt --manifest-path rust/library/wl_animate/Cargo.toml -- --check
+cargo test --manifest-path rust/library/wl_animate/Cargo.toml
+cargo clippy --manifest-path rust/library/wl_animate/Cargo.toml --all-targets --all-features -- -D warnings
+```
+
+The Windows CI workflow uses the MSVC Rust target. These portable tests validate the library logic; a Windows 10 client runtime test remains a separate environment-level check.
+
+## Status
+
+Preview API `0.2.0-beta.1`. Public signatures may change before a stable release. No Windows rendering or scheduler backend is included yet.
