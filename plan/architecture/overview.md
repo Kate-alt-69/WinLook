@@ -35,8 +35,13 @@ DWM is not the application launcher. Windows Shell/application activation launch
 
 Sources: [DwmIsCompositionEnabled](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmiscompositionenabled), [Windows 8 DWM always on](https://learn.microsoft.com/en-us/windows/win32/w8cookbook/desktop-window-manager-is-always-on).
 
-## Process/session model
-WinLook Manager and the interactive Agent/BGW run in the user session. Any optional Service is limited to operations requiring service privileges. Starting with Windows Vista, Session 0 is reserved for services/non-interactive processes; services must not host the interactive WLDE/Manager UI. Source: [Service changes for Windows Vista](https://learn.microsoft.com/en-us/windows/win32/services/service-changes-for-windows-vista).
+## Two-executable process/session model
+
+WinLook has two principal application executables: `winlook.exe` is the interactive Manager UI; `winlook.bg.exe` is the BGW background runtime/worker. BGW starts through the user's Windows startup mechanism and continues operating when the Manager closes. It hosts and coordinates WLDE, WLWM, WLDM, WLOSDE, Appearance/Icon, Audio & Media and other background modules. These subsystem names are logical modules, not a requirement for one executable per subsystem.
+
+Both processes run in the interactive user session with ordinary privileges by default. Any optional privileged Service is limited to individually justified operations; it is not the background runtime and does not host the interactive UI. Starting with Windows Vista, Session 0 is reserved for services/non-interactive processes. Source: [Service changes for Windows Vista](https://learn.microsoft.com/en-us/windows/win32/services/service-changes-for-windows-vista).
+
+The Manager communicates with BGW over authenticated, versioned local IPC. BGW is authoritative for applied configuration and runtime state; Manager drafts and UI state must not be mistaken for applied state. BGW continues with the last valid committed configuration when the Manager exits. See [Background Runtime](background-runtime.md) and [Runtime Contracts](runtime-contracts.md).
 
 ## BGW injection flow
 1. Detect process creation through a per-OS mechanism.
