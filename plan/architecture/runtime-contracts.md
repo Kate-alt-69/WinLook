@@ -13,9 +13,24 @@
 - Every system-wide change has an ownership record and restoration strategy before application.
 - Legacy C and modern Rust remain distinct targets with OS-specific adapters.
 
-## 2. Logical process topology
+## 2. Two-executable process topology
 
-These are logical roles, not a requirement to create one executable per row. Constrained legacy editions may combine roles only when ownership, privilege, lifetime and crash boundaries remain explicit.
+The principal application topology is fixed at two cooperating executables:
+
+| Executable | Responsibility | Session/privilege | Failure expectation |
+|---|---|---|---|
+| `winlook.exe` | Manager UI: settings, previews, templates, catalogue/library UI, diagnostics and user controls | Interactive user; ordinary privilege | May restart independently; does not own the background runtime |
+| `winlook.bg.exe` | BGW background runtime: hosts/co-ordinates background subsystems, applies configuration and monitors their lifecycle | Interactive user session; ordinary privilege by default | Manager-independent; recovers from Manager disconnect and restores last valid configuration |
+
+WLDE, WLWM, WLDM, WLOSDE, Appearance/Icon, Audio & Media, CPUv/GPUv coordination and other background capabilities are modules hosted/coordinated by BGW, not additional required application executables. Internal threads or bounded workers do not change this two-executable product model. A separately isolated helper may be introduced only for a specific reviewed security, compatibility or crash boundary.
+
+An optional privileged Service, if a later feature proves it necessary, is separate from these two principal executables and must expose only typed, allowlisted operations. It is not the BGW runtime.
+
+For the full startup, IPC, configuration-acknowledgement, subsystem-registration and recovery design, see [background-runtime.md](background-runtime.md).
+
+## 2A. Logical module topology
+
+The following are logical modules/ownership roles inside the two-executable architecture, not a mandate to launch one process per row.
 
 | Role | Responsibility | Session/privilege | Failure expectation |
 |---|---|---|---|
