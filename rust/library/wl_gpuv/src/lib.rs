@@ -4,6 +4,8 @@
 //! DXGI or guarantee residency. A platform adapter supplies OS budget snapshots
 //! and owns actual graphics objects. Synchronize shared access externally.
 
+#![forbid(unsafe_code)]
+
 use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
