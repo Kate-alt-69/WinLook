@@ -251,7 +251,7 @@ mod tests {
     fn every_non_home_page_has_a_scaffolded_settings_section() {
         for page in PageId::ALL {
             if page != PageId::Home {
-                assert!(!page_settings(page).is_empty(), "missing page sections for {}", page.tag());
+                assert!(!page_settings(page).is_empty());
             }
         }
     }
