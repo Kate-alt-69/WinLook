@@ -55,6 +55,12 @@ These are toolchain planning boundaries, not WinLook OS support claims. Every Wi
 
 Sources: [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) · [Rust GNU target support](https://doc.rust-lang.org/rustc/platform-support/windows-gnu.html).
 
+## Runtime architecture
+
+WinLook uses two principal executables: `winlook.exe` is the Manager UI, and `winlook.bg.exe` is the startup-launched BGW background runtime. BGW hosts and coordinates WLDE, WLWM, WLDM, WLOSDE and the other background subsystems, and remains active when the Manager closes. The Manager communicates with BGW through authenticated, versioned local IPC. See the [Background Runtime architecture](plan/architecture/background-runtime.md).
+
+CPUv/GPUv are core resource-governance libraries for WinLook-managed CPU and GPU work. Under pressure, WinLook defers or pauses its own work, freezes the last displayed frame where appropriate and releases recoverable resources; it does not automatically lower wallpaper resolution or degrade visual quality. See [Resource Governors](plan/architecture/resource-governors.md).
+
 ## Documentation
 
 Start with these canonical documents:
@@ -93,4 +99,4 @@ The C library also provides a CMake build for MSVC; see its [build instructions]
 
 Planning documents distinguish accepted product scope, proposals, documented API facts and tested implementation behaviour. Do not mark a feature supported from an SDK reference alone. Before implementing a feature, read its per-OS page, confirm toolchain/API minimums, and define fallback, recovery, privacy and acceptance tests.
 
-The target repository layout and public documentation structure are still proposals. The animation libraries remain in their current paths; do not move them into `lib/` or create the complete `C/`, `rust/` engine trees until the layout gates in [repository-layout.md](plan/architecture/repository-layout.md) are accepted.
+WinLook's target source organization is now defined in [repository-layout.md](plan/architecture/repository-layout.md): complete Windows 10 and Windows 11 applications under `rust/win10/` and `rust/win11/`, the complete Windows 95 application under `C/win95/`, and shared libraries under each language's `library/` directory. Historical prototype paths may remain until a dedicated migration updates source, manifests, workflows, tests and links together.
