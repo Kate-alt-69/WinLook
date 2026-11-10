@@ -22,17 +22,15 @@ fn information_card(title: &str, body: &str) -> View {
         .corner_radius(8.0)
         .padding(Thickness::new(18.0, 16.0, 18.0, 16.0))
         .content(
-            StackPanel::new()
-                .spacing(6.0)
-                .children((
-                    TextBlock::new()
-                .text(title)
-                .font_size(16.0)
-                .font_weight(FontWeight::SEMI_BOLD),
-                    TextBlock::new()
-                        .text(body)
-                        .text_wrapping(TextWrapping::Wrap),
-                )),
+            StackPanel::new().spacing(6.0).children((
+                TextBlock::new()
+                    .text(title)
+                    .font_size(16.0)
+                    .font_weight(FontWeight::SEMI_BOLD),
+                TextBlock::new()
+                    .text(body)
+                    .text_wrapping(TextWrapping::Wrap),
+            )),
         )
         .into()
 }
@@ -120,15 +118,11 @@ fn page_content(page: PageId) -> View {
         .content(
             Border::new()
                 .padding(Thickness::new(36.0, 28.0, 36.0, 36.0))
-                .content(
-                    StackPanel::new()
-                        .spacing(22.0)
-                        .children((
-                            page_header(page.title(), page.summary()),
-                            information_card(status_title, status_body),
-                            preview_notice(),
-                        )),
-                ),
+                .content(StackPanel::new().spacing(22.0).children((
+                    page_header(page.title(), page.summary()),
+                    information_card(status_title, status_body),
+                    preview_notice(),
+                ))),
         )
         .into()
 }
@@ -157,8 +151,10 @@ mod tests {
     #[test]
     fn page_registry_is_searchable_without_case_sensitivity() {
         let query = "aUdIo";
-        assert!(PageId::ALL
-            .iter()
-            .any(|page| page.title().to_ascii_lowercase().contains(&query.to_ascii_lowercase())));
+        assert!(PageId::ALL.iter().any(|page| {
+            page.title()
+                .to_ascii_lowercase()
+                .contains(&query.to_ascii_lowercase())
+        }));
     }
 }

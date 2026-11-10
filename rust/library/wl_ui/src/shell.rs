@@ -103,8 +103,14 @@ impl PageId {
     pub fn matches_search(self, query: &str) -> bool {
         let query = query.trim();
         query.is_empty()
-            || self.title().to_ascii_lowercase().contains(&query.to_ascii_lowercase())
-            || self.summary().to_ascii_lowercase().contains(&query.to_ascii_lowercase())
+            || self
+                .title()
+                .to_ascii_lowercase()
+                .contains(&query.to_ascii_lowercase())
+            || self
+                .summary()
+                .to_ascii_lowercase()
+                .contains(&query.to_ascii_lowercase())
     }
 }
 
@@ -249,9 +255,10 @@ impl Component for ManagerShell {
                 TextBox::new()
                     .text(self.search.clone())
                     .placeholder_text("Search WinLook settings")
-                    .on_text_changed(context.callback(|value: Rc<str>| {
-                        Message::SearchChanged(value.to_string())
-                    })),
+                    .on_text_changed(
+                        context
+                            .callback(|value: Rc<str>| Message::SearchChanged(value.to_string())),
+                    ),
             )
             .right_header(
                 Button::new()
