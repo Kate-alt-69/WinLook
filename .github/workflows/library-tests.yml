@@ -2,7 +2,7 @@ name: Shared libraries and Manager UI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/wintoys-manager-ui]
     paths:
       - "rust/library/**"
       - "rust/win10/**"
