@@ -1,0 +1,70 @@
+
+name: Windows 10 application build
+
+on:
+  push:
+    branches: [main, github/workflow]
+    paths:
+      - "rust/win10/**"
+      - "rust/library/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.py"
+  pull_request:
+    branches: [main, feature/wintoys-manager-ui]
+    paths:
+      - "rust/win10/**"
+      - "rust/library/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect win10 application
+    runs-on: windows-2022
+    outputs:
+      available: ${{ steps.target.outputs.available }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - id: target
+        run: python build.py status win10 --github-output
+
+  build:
+    name: Build and package win10
+    needs: detect
+    if: needs.detect.outputs.available == 'true'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            build/.rcache
+            build/rust/win10
+          key: ${{ runner.os }}-win10-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml') }}
+          restore-keys: ${{ runner.os }}-win10-
+      - name: Build win10 executable
+        run: python build.py build win10
+      - name: Package win10 preview
+        run: python build.py package win10
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: winlook-win10-preview
+          path: build/artifacts/winlook-win10-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 14
