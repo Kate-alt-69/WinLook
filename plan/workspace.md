@@ -190,3 +190,6 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - BGW remains source-gated until a winlook.bg / winlook-bg / winlook_bg Cargo binary target is explicitly declared.
 - Latest completed verification before this note: workflow lint and Python unit suite passed run 43052529907; Gitleaks scan passed in security run 43052529901. CodeQL C/C++ initially failed in the default build mode with "no source code seen"; the workflow was updated to use the documented build-mode none for C/C++ and Rust and is being re-run. Do not treat the initial CodeQL matrix as green.
 - Next: verify the latest full workflow run; then create a draft stacked workflow PR targeting feature/wintoys-manager-ui. Do not merge the workflow branch before PR #2.
+
+
+- Dependency review note: PR #3 discovered that the repository Dependency Graph is disabled. security.yml now emits a visible warning and skips the Dependency Review action unless repository Actions variable WINLOOK_DEPENDENCY_GRAPH_ENABLED=true is set. Before treating dependency review as enabled, activate Settings → Security → Dependency graph and set that variable. CodeQL and Gitleaks remain independent and continue to run.
