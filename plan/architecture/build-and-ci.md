@@ -99,7 +99,7 @@ All third-party Actions used by these workflows are pinned to a verified commit 
 | win95.yml | Legacy C application build using Open Watcom | Requires C/win95/Makefile and the configured self-hosted open-watcom runner |
 | docs.yml | Required-document checks and Python test compilation | Documentation/build-runner gate |
 | security.yml | CodeQL for C/C++, Rust, Actions and Python; dependency review; Gitleaks full-history scan | Security gate |
-| build-all.yml | Manual/main-branch strict toolchain preflight, full supported verification, and actual Win10/Win11 application compilation when source manifests exist | Integration build |
+| build-all.yml | Manual/main-branch strict toolchain preflight, full supported verification, and actual Win10/Win11 application compilation when source manifests exist; reruns when its own workflow or build-runner tests change | Integration build |
 | release.yml | Version-tag release after library validation and both modern app builds | Publish gate |
 
 The BGW and Win95 workflows intentionally use source/toolchain detection. If a target is not implemented, it stays skipped; it is not replaced by a dummy binary or a fake passing build.
