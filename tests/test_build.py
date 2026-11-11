@@ -129,7 +129,7 @@ class BuildHelpersTests(unittest.TestCase):
     def test_no_arguments_defaults_to_read_only_doctor(self):
         with mock.patch("build.command_doctor", return_value=0) as doctor:
             self.assertEqual(build.main([]), 0)
-        args, _ = doctor.call_args
+        args = doctor.call_args.args[0]
         self.assertEqual(args.action, "doctor")
         self.assertFalse(args.strict)
 
