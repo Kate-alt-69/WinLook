@@ -19,20 +19,20 @@
 4. Library tests, C/Rust contract review and portability gates.
 5. WinToys-style Manager UI implementation and UI-specific tests.
 6. Per-OS toolchain/runtime baselines and capability contract.
-4. Process/session model, IPC and health/restart rules.
-5. Change journal, transaction and restoration design.
-6. Platform adapters and read-only capability discovery.
-7. Reversible appearance and desktop foundations.
-8. WLDE static wallpaper, widgets and resource policy.
-9. WLDM and WLOSDE display/notification surfaces.
-10. Animation presentation and lifecycle.
-11. WLWM passive observation, rules and non-injected layouts.
-12. Optional target-specific in-process integration after security review.
-13. WLT package/import/export and independent catalogue support.
-14. Legacy vertical slices, installer/update and release hardening.
+7. Process/session model, IPC and health/restart rules.
+8. Change journal, transaction and restoration design.
+9. Platform adapters and read-only capability discovery.
+10. Reversible appearance and desktop foundations.
+11. WLDE static wallpaper, widgets and resource policy.
+12. WLDM and WLOSDE display/notification surfaces.
+13. Animation presentation and lifecycle.
+14. WLWM passive observation, rules and non-injected layouts.
+15. Optional target-specific in-process integration after security review.
+16. WLT package/import/export and independent catalogue support.
+17. Legacy vertical slices, installer/update and release hardening.
+18. Consolidated build runner, CI/security workflows and release automation — merged last, after the library and Manager UI implementation stages.
 
 Legacy toolchain research proceeds in parallel but remains a separate build/test stream.
-
 ## 3. Phase 0 — Product, support and developer experience contract
 
 ### Deliverables
