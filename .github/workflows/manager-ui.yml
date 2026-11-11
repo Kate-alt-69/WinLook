@@ -11,6 +11,7 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "build.py"
+      - ".github/workflows/manager-ui.yml"
   pull_request:
     branches: [main, feature/wintoys-manager-ui]
     paths:
