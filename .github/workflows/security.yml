@@ -16,24 +16,36 @@ permissions:
   actions: read
 
 jobs:
-  codeql:
-    name: CodeQL / ${{ matrix.language }}
+  codeql-compiled:
+    name: CodeQL / compiled languages
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [c-cpp, rust, actions, python]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - uses: github/codeql-action/init@9418214df1f2c4b8128c770156c409013b07d6b9
         with:
-          languages: ${{ matrix.language }}
+          languages: c-cpp,rust
+          build-mode: none
           dependency-caching: true
       - uses: github/codeql-action/analyze@9418214df1f2c4b8128c770156c409013b07d6b9
         with:
-          category: "/language:${{ matrix.language }}"
+          category: "/language:compiled"
+
+  codeql-interpreted:
+    name: CodeQL / workflows and Python
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: github/codeql-action/init@9418214df1f2c4b8128c770156c409013b07d6b9
+        with:
+          languages: actions,python
+          dependency-caching: true
+      - uses: github/codeql-action/analyze@9418214df1f2c4b8128c770156c409013b07d6b9
+        with:
+          category: "/language:interpreted"
 
   dependency-review:
     name: Dependency review
