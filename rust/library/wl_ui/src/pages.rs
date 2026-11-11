@@ -93,69 +93,186 @@ fn home_page(on_navigate: Callback<PageId>) -> View {
 fn page_settings(page: PageId) -> &'static [(&'static str, &'static str)] {
     match page {
         PageId::Appearance => &[
-            ("Theme and colours", "Choose the window theme and configure accent colours. The live theme selector is in the title bar."),
-            ("Transparency effects", "Configure supported transparency and material effects after the platform capability probe is available."),
-            ("Appearance profiles", "Save and switch between reusable visual profiles."),
+            (
+                "Theme and colours",
+                "Choose the window theme and configure accent colours. The live theme selector is in the title bar.",
+            ),
+            (
+                "Transparency effects",
+                "Configure supported transparency and material effects after the platform capability probe is available.",
+            ),
+            (
+                "Appearance profiles",
+                "Save and switch between reusable visual profiles.",
+            ),
         ],
         PageId::AudioMedia => &[
-            ("Audio sessions", "View supported audio sessions and route WinLook-managed audio controls."),
-            ("Media playback", "Display the active media session and supported transport controls."),
-            ("Volume overlay", "Configure the WinLook volume and media on-screen display."),
+            (
+                "Audio sessions",
+                "View supported audio sessions and route WinLook-managed audio controls.",
+            ),
+            (
+                "Media playback",
+                "Display the active media session and supported transport controls.",
+            ),
+            (
+                "Volume overlay",
+                "Configure the WinLook volume and media on-screen display.",
+            ),
         ],
         PageId::FileExplorer => &[
-            ("Explorer appearance", "Configure supported File Explorer presentation options."),
-            ("Context menu", "Manage optional context-menu integrations and their permissions."),
-            ("Folder presentation", "Choose supported folder and navigation presentation preferences."),
+            (
+                "Explorer appearance",
+                "Configure supported File Explorer presentation options.",
+            ),
+            (
+                "Context menu",
+                "Manage optional context-menu integrations and their permissions.",
+            ),
+            (
+                "Folder presentation",
+                "Choose supported folder and navigation presentation preferences.",
+            ),
         ],
         PageId::Icons => &[
-            ("Desktop icons", "Configure supported desktop icon presentation."),
-            ("Icon library", "Browse and select installed icon packs."),
-            ("System icons", "Review which system icon locations are supported on this Windows build."),
+            (
+                "Desktop icons",
+                "Configure supported desktop icon presentation.",
+            ),
+            (
+                "Icon library",
+                "Browse and select installed icon packs.",
+            ),
+            (
+                "System icons",
+                "Review which system icon locations are supported on this Windows build.",
+            ),
         ],
         PageId::Wallpaper => &[
-            ("Wallpaper library", "Import and organize still images, videos and desktop scenes."),
-            ("Playback", "Configure playback, pause behaviour and per-display wallpaper assignment."),
-            ("Widgets", "Manage desktop widgets and their update/resource policies."),
+            (
+                "Wallpaper library",
+                "Import and organize still images, videos and desktop scenes.",
+            ),
+            (
+                "Playback",
+                "Configure playback, pause behaviour and per-display wallpaper assignment.",
+            ),
+            (
+                "Widgets",
+                "Manage desktop widgets and their update/resource policies.",
+            ),
         ],
         PageId::WindowManager => &[
-            ("Window rules", "Create rules for supported window placement and behaviour."),
-            ("Workspaces", "Configure workspace layouts and restore points."),
-            ("Compatibility", "Review optional target integrations and their safety status."),
+            (
+                "Window rules",
+                "Create rules for supported window placement and behaviour.",
+            ),
+            (
+                "Workspaces",
+                "Configure workspace layouts and restore points.",
+            ),
+            (
+                "Compatibility",
+                "Review optional target integrations and their safety status.",
+            ),
         ],
         PageId::Displays => &[
-            ("Connected displays", "View monitor topology and the capabilities reported by the display adapter."),
-            ("Display profiles", "Save per-monitor arrangements and supported display preferences."),
-            ("Per-display wallpaper", "Assign desktop scenes to individual displays."),
+            (
+                "Connected displays",
+                "View monitor topology and the capabilities reported by the display adapter.",
+            ),
+            (
+                "Display profiles",
+                "Save per-monitor arrangements and supported display preferences.",
+            ),
+            (
+                "Per-display wallpaper",
+                "Assign desktop scenes to individual displays.",
+            ),
         ],
         PageId::Notifications => &[
-            ("On-screen display", "Configure WinLook notification and OSD presentation."),
-            ("Notification style", "Choose placement, duration and visual presentation."),
-            ("Quiet hours", "Configure when optional WinLook notifications should be suppressed."),
+            (
+                "On-screen display",
+                "Configure WinLook notification and OSD presentation.",
+            ),
+            (
+                "Notification style",
+                "Choose placement, duration and visual presentation.",
+            ),
+            (
+                "Quiet hours",
+                "Configure when optional WinLook notifications should be suppressed.",
+            ),
         ],
         PageId::Templates => &[
-            ("Template library", "Browse reusable WinLook configurations and presets."),
-            ("Import configuration", "Review and validate a configuration before applying it."),
-            ("Export configuration", "Export a selected profile without including private runtime state."),
+            (
+                "Template library",
+                "Browse reusable WinLook configurations and presets.",
+            ),
+            (
+                "Import configuration",
+                "Review and validate a configuration before applying it.",
+            ),
+            (
+                "Export configuration",
+                "Export a selected profile without including private runtime state.",
+            ),
         ],
         PageId::Extensions => &[
-            ("Installed extensions", "Review installed extensions and their declared capabilities."),
-            ("Permissions", "Inspect and revoke extension permissions."),
-            ("Extension sources", "Configure trusted extension sources and signature requirements."),
+            (
+                "Installed extensions",
+                "Review installed extensions and their declared capabilities.",
+            ),
+            (
+                "Permissions",
+                "Inspect and revoke extension permissions.",
+            ),
+            (
+                "Extension sources",
+                "Configure trusted extension sources and signature requirements.",
+            ),
         ],
         PageId::Compatibility => &[
-            ("Windows capabilities", "Probe the current Windows build and available platform APIs."),
-            ("Feature compatibility", "Distinguish documented support from features verified on this machine."),
-            ("Legacy adapters", "Review compatibility adapters and their tested OS ranges."),
+            (
+                "Windows capabilities",
+                "Probe the current Windows build and available platform APIs.",
+            ),
+            (
+                "Feature compatibility",
+                "Distinguish documented support from features verified on this machine.",
+            ),
+            (
+                "Legacy adapters",
+                "Review compatibility adapters and their tested OS ranges.",
+            ),
         ],
         PageId::Diagnostics => &[
-            ("BGW runtime", "Inspect background runtime health, protocol version and reconnect state."),
-            ("CPUv and GPUv", "Review WinLook-owned resource reservations, pressure and recovery events."),
-            ("Event log", "Inspect structured WinLook diagnostics without exposing unrelated process data."),
+            (
+                "BGW runtime",
+                "Inspect background runtime health, protocol version and reconnect state.",
+            ),
+            (
+                "CPUv and GPUv",
+                "Review WinLook-owned resource reservations, pressure and recovery events.",
+            ),
+            (
+                "Event log",
+                "Inspect structured WinLook diagnostics without exposing unrelated process data.",
+            ),
         ],
         PageId::Settings => &[
-            ("Startup", "Configure whether the BGW background runtime starts with the Windows user session."),
-            ("Updates", "Review application and library update channels."),
-            ("Privacy", "Configure diagnostics collection and local data retention."),
+            (
+                "Startup",
+                "Configure whether the BGW background runtime starts with the Windows user session.",
+            ),
+            (
+                "Updates",
+                "Review application and library update channels.",
+            ),
+            (
+                "Privacy",
+                "Configure diagnostics collection and local data retention.",
+            ),
         ],
         PageId::Home => &[],
     }
@@ -169,9 +286,7 @@ fn setting_card(title: &str, body: &str) -> View {
         .corner_radius(8.0)
         .padding(Thickness::new(18.0, 16.0, 18.0, 16.0))
         .content(
-            StackPanel::new()
-                .spacing(8.0)
-                .children((
+            StackPanel::new().spacing(8.0).children((
                     TextBlock::new()
                         .text(title)
                         .font_size(16.0)
