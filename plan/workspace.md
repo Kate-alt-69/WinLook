@@ -188,3 +188,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - BGW remains source-gated until a `winlook.bg` / `winlook-bg` / `winlook_bg` Cargo binary target is explicitly declared.
 - Keep source-detection skips distinct from actual builds: Win95 and BGW executables are not built until their source targets exist.
 - The PR #3 merge commit's combined-status endpoint returned no status entries in this inspection; that is not evidence of a passing or failing hosted Actions run. Check the individual workflow runs before treating the merged head as fully CI-verified.
+
+
+## Build runner CLI and workflow correction — 2026-11-12
+
+- User reproduced `py build.py` failing because argparse required an action. The intended default is now the read-only `doctor` preflight; no arguments must never trigger setup, compilation, downloads or cleanup.
+- Add regression coverage for the no-argument dispatch and parser acceptance of every workflow-used CLI command.
+- `workflow-lint.yml` and `docs.yml` smoke-test `python build.py` in addition to syntax compilation and unit tests.
+- `build-all.yml` runs the default preflight and a strict toolchain doctor check before `verify all`; on Windows this verification includes actual supported library/UI checks and Win10/Win11 app compilation where manifests are present.
+- Distinguish workflow lint and unit tests from real compiler evidence. The latter must come from `libraries.yml` and `build-all.yml`; BGW and Win95 remain explicitly source/toolchain gated.
