@@ -1,0 +1,47 @@
+
+name: Workflow and build-script validation
+
+on:
+  push:
+    branches: [main, github/workflow]
+    paths:
+      - ".github/workflows/**"
+      - "build.py"
+      - "tests/**"
+  pull_request:
+    branches: [main, feature/wintoys-manager-ui]
+    paths:
+      - ".github/workflows/**"
+      - "build.py"
+      - "tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Python tests and GitHub Actions lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+          cache: ""
+      - name: Compile build runner and tests
+        run: python -m py_compile build.py tests/test_build.py
+      - name: Run build-runner unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Lint every workflow with pinned actionlint
+        run: python build.py workflow-lint --apply
+      - name: Check build and cache paths
+        run: |
+          python build.py status libraries
+          python build.py status ui
+          python build.py status win10
+          python build.py status win11
+          python build.py status win95
+          python build.py status bgw
