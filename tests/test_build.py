@@ -1,6 +1,7 @@
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -124,6 +125,39 @@ class BuildHelpersTests(unittest.TestCase):
         rendered = build.format_command(command)
         self.assertIn("cmake", rendered)
         self.assertIn("C:/WinLook Project/C/library", rendered)
+
+    def test_no_arguments_defaults_to_read_only_doctor(self):
+        with mock.patch("build.command_doctor", return_value=0) as doctor:
+            self.assertEqual(build.main([]), 0)
+        args, _ = doctor.call_args
+        self.assertEqual(args.action, "doctor")
+        self.assertFalse(args.strict)
+
+    def test_workflow_commands_are_supported_by_the_cli_parser(self):
+        commands = (
+            ["status", "libraries"],
+            ["status", "ui"],
+            ["status", "win10"],
+            ["status", "win11"],
+            ["status", "win95"],
+            ["status", "bgw"],
+            ["verify", "rust"],
+            ["verify", "c", "--sanitizers"],
+            ["verify", "ui"],
+            ["verify", "all"],
+            ["build", "win10"],
+            ["build", "win11"],
+            ["build", "win95"],
+            ["build", "bgw"],
+            ["package", "win10"],
+            ["package", "win11"],
+            ["docs"],
+            ["workflow-lint", "--apply"],
+            ["secret-scan", "--apply"],
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertEqual(build.build_parser().parse_args(command).action, command[0])
 
 
 if __name__ == "__main__":
