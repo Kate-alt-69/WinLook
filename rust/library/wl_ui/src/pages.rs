@@ -278,17 +278,17 @@ fn setting_card(title: &str, body: &str) -> View {
         .padding(Thickness::new(18.0, 16.0, 18.0, 16.0))
         .content(
             StackPanel::new().spacing(8.0).children((
-                    TextBlock::new()
-                        .text(title)
-                        .font_size(16.0)
-                        .font_weight(FontWeight::SEMI_BOLD),
-                    TextBlock::new()
-                        .text(body)
-                        .text_wrapping(TextWrapping::Wrap),
-                    ToggleSwitch::new()
-                        .is_enabled(false)
-                        .header("Unavailable until BGW is connected"),
-                )),
+                TextBlock::new()
+                    .text(title)
+                    .font_size(16.0)
+                    .font_weight(FontWeight::SEMI_BOLD),
+                TextBlock::new()
+                    .text(body)
+                    .text_wrapping(TextWrapping::Wrap),
+                ToggleSwitch::new()
+                    .is_enabled(false)
+                    .header("Unavailable until BGW is connected"),
+            )),
         )
         .into()
 }
