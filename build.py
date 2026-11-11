@@ -48,8 +48,8 @@ APP_RUNTIME_URL = (
 )
 BGW_TARGET_NAMES = {"winlook.bg", "winlook-bg", "winlook_bg"}
 WINDOWS_APPS = {
-    "win10": ("winlook-win10", "target/win10"),
-    "win11": ("winlook-win11", "target/win11"),
+    "win10": ("winlook-win10", "build/rust/win10"),
+    "win11": ("winlook-win11", "build/rust/win11"),
 }
 
 
@@ -223,6 +223,12 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "rustfmt": command_path("rustfmt"),
         "clippy-driver": command_path("clippy-driver"),
         "cmake": command_path("cmake"),
+        "ccache": command_path("ccache"),
+        "sccache": command_path("sccache"),
+        "cargo_home": str(runner.root / "build" / ".rcache" / "cargo-home"),
+        "rust_output": str(runner.root / "build" / "rust"),
+        "c_output": str(runner.root / "build" / "c"),
+        "c_cache": str(runner.root / "build" / ".Ccache"),
         "cmake_generator": os.environ.get("CMAKE_GENERATOR"),
         "msvc_cl": command_path("cl"),
         "gcc": command_path("gcc"),
@@ -285,7 +291,7 @@ def download_open_watcom(runner: Runner, apply: bool) -> None:
             "Automated Open Watcom setup is pinned for Linux x86_64. "
             "Install it manually on other hosts and set WATCOM."
         )
-    destination = runner.root / "build" / ".toolchains" / ("open-watcom-" + WATCOM_RELEASE)
+    destination = runner.root / "build" / ".rcache" / "toolchains" / ("open-watcom-" + WATCOM_RELEASE)
     compiler = destination / "binl64" / "wcc386"
     installer = destination.parent / "open-watcom-2_0-c-linux-x64"
     if compiler.is_file():
@@ -428,7 +434,7 @@ def build_windows_app(runner: Runner, target: str) -> None:
     package, target_dir = WINDOWS_APPS[target]
     runner.run(
         "Build " + target + " Manager executable",
-        ["cargo", "build", "--release", "-p", package, "--target-dir", target_dir],
+        ["cargo", "build", "--release", "-p", package, "--target-dir", str(runner.root / target_dir)],
     )
 
 
@@ -473,7 +479,13 @@ def build_win95(runner: Runner) -> None:
             "on Linux x86_64, or install Open Watcom manually and set WATCOM."
         )
     require_command("wmake", "Install Open Watcom 2.0 and add its bin directory to PATH.")
-    runner.run("Build Windows 95 C application with Open Watcom", ["wmake", "-f", "Makefile"], cwd=makefile.parent)
+    build_env = {"WINLOOK_BUILD_DIR": str(runner.root / "build" / "c" / "win95")}
+    runner.run(
+        "Build Windows 95 C application with Open Watcom",
+        ["wmake", "-f", "Makefile"],
+        cwd=makefile.parent,
+        env=build_env,
+    )
 
 
 def build_libraries(runner: Runner) -> None:
@@ -595,7 +607,7 @@ def command_status(args: argparse.Namespace, runner: Runner) -> int:
 def actionlint_path(root: Path, apply: bool) -> Path:
     if not sys.platform.startswith("linux") or platform.machine().lower() not in {"x86_64", "amd64"}:
         raise BuildError("Automatic actionlint bootstrap currently targets Linux x86_64.")
-    destination = root / ".toolchains" / ("actionlint-" + ACTIONLINT_VERSION)
+    destination = root / "build" / ".rcache" / "tools" / ("actionlint-" + ACTIONLINT_VERSION)
     executable = destination / "actionlint"
     if executable.is_file():
         return executable
@@ -634,10 +646,11 @@ def actionlint_path(root: Path, apply: bool) -> Path:
 
 
 def command_workflow_lint(args: argparse.Namespace, runner: Runner) -> int:
-    executable = actionlint_path(runner.root, args.apply and not runner.dry_run)
     if runner.dry_run:
+        print("Would download/verify actionlint " + ACTIONLINT_VERSION + " if needed.")
         print("Would lint .github/workflows/*.yml")
         return 0
+    executable = actionlint_path(runner.root, args.apply)
     files = sorted((runner.root / ".github" / "workflows").glob("*.yml"))
     if not files:
         raise BuildError("No GitHub Actions workflow YAML files were found.")
