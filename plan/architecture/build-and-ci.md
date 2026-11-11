@@ -58,8 +58,8 @@ From the repository root:
 | Command | Purpose |
 |---|---|
 | python build.py doctor | Report Python, Rust, CMake, MSVC/GCC/Clang, cache tools and available source targets |
-| python build.py setup | Print the toolchain setup plan without installing |
-| python build.py setup --apply | Install/update stable Rust when rustup already exists |
+| python build.py setup | Print toolchain notes; use an explicit --with-* option to select what to install |
+| python build.py setup --with-rust | Plan stable Rust installation/update without changing the machine |\n| python build.py setup --with-rust --apply | Install/update stable Rust and rustfmt/Clippy components |\n| python build.py setup --with-rust --install-rustup --apply | Use WinGet to install Rustup when missing; open a new terminal and rerun with --with-rust |
 | python build.py setup --with-cmake --apply | Install CMake through WinGet on Windows when missing |
 | python build.py setup --open-watcom --apply | Download and SHA-256 verify the pinned Open Watcom installer; the installer itself must still be run manually |
 | python build.py fmt --check | Check Rust formatting |
@@ -80,7 +80,7 @@ Open Watcom has a documented Windows 95/98/Me target, but the official installer
 
 ## 4. Workflow inventory
 
-All third-party Actions used by these workflows are pinned to a verified commit SHA rather than a moving tag.
+All third-party Actions used by these workflows are pinned to a verified commit SHA rather than a moving tag. As checked on 2026-11-11: checkout v7.0.1, setup-python v7.1.0, cache v6.1.0, upload-artifact v7.0.2, download-artifact v8.0.2, CodeQL Action v4.39.3 and dependency-review v5.0.0.
 
 | Workflow | Responsibility | Gate |
 |---|---|---|
