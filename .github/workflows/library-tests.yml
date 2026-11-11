@@ -1,13 +1,14 @@
-name: Shared libraries
+name: Shared libraries and WinUI preview verification (base synchronized)
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/wintoys-manager-ui]
     paths:
       - "rust/library/**"
       - "rust/win10/**"
       - "rust/win11/**"
       - "Cargo.toml"
+      - "Cargo.lock"
       - "C/library/**"
       - ".github/workflows/library-tests.yml"
   pull_request:
@@ -122,4 +123,15 @@ jobs:
       - name: Lint UI library
         run: cargo clippy -p wl_ui --all-targets -- -D warnings
       - name: Build Win10 and Win11 Manager executables
-        run: cargo build --release -p winlook-win10 -p winlook-win11
+        run: |
+          cargo build --release -p winlook-win10 --target-dir target/win10
+          cargo build --release -p winlook-win11 --target-dir target/win11
+      - name: Upload Win10 and Win11 Manager preview binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlook-manager-preview
+          path: |
+            target/win10/release/winlook.exe
+            target/win11/release/winlook.exe
+          if-no-files-found: error
+          retention-days: 7

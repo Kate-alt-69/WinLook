@@ -157,11 +157,21 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 
 ## Manager UI research checkpoint — 2026-11-10
 
-- Modern Win10/Win11 UI prototype direction: Windows Reactor + native WinUI 3, using the published 0.100 release family and Rust 1.95+.
-- Windows App SDK/WinUI 3 minimum documented client is Windows 10 1809 (build 17763). This is a documented platform minimum, not a WinLook runtime-support claim.
+- Modern Win10/Win11 UI prototype direction: Windows Reactor + native WinUI 3, using the pinned windows-reactor-pre 0.107.1 preview package and Rust 1.95+; its public API may change.
+- Windows App SDK/WinUI 3 minimum documented client is Windows 10 1809 (build 17763). The exact Win10 product baseline remains open; the current prototype targets 1809+ only and cannot be claimed to support earlier Win10 builds.
 - Start with framework-dependent deployment for the prototype; compare self-contained runtime staging after measuring package size and install experience.
 - No Electron or WebView2 for the core settings UI.
 - Shared UI components/page models/design tokens belong in a future rust/library/wl_ui/; Win10 and Win11 application entry points remain in their own platform trees.
 - Win95 remains a separate C/native-control implementation; no WinUI 3/Windows App SDK dependency.
 - Evidence and caveats: [UI Architecture](architecture/ui-architecture.md), [Source Ledger](references/SOURCES.md).
 - Prototype acceptance: cold start, idle CPU, private bytes/working set, navigation latency, mount/unmount memory, UI Automation, keyboard/high contrast/text scaling/reduced motion and constrained-window layout. No performance claim until measured on representative low-end hardware.
+
+
+## WinToys-style Manager UI implementation checkpoint — 2026-11-10
+
+- Stacked UI branch: feature/wintoys-manager-ui, based on feature/library-foundation.
+- Added wl_ui using the pinned windows-reactor-pre 0.107.1 preview package / WinUI 3 and Win10/Win11 Manager entry points.
+- Current shell includes persistent left navigation, search, back/pane controls, System/Light/Dark window theme, Home quick actions and reusable status cards.
+- All non-Home pages are explicit scaffolds. They do not claim to apply system settings; BGW/IPC and OS adapters are not implemented yet.
+- Windows 95 UI remains out of this branch and will use a separate C-native implementation.
+- Build/test gates are defined in `.github/workflows/library-tests.yml`; the Windows UI job verifies workspace formatting, UI tests/Clippy, Win10/Win11 application builds and preview artifacts. The UI branch CI passed after the `pages.rs` rustfmt corrections (run 43057947732). Actual Windows App Runtime desktop smoke testing and low-end performance measurements remain required.

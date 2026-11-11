@@ -181,12 +181,12 @@ Reasons:
 - WinUI 3 is Microsoft's modern native Windows desktop UI framework and uses Fluent controls/design patterns, which align with the WinToys visual reference.
 - Windows Reactor exposes WinUI 3 controls to Rust through typed components/messages and state-driven reconciliation. It includes native NavigationView, controls, accessibility/automation modifiers, list virtualization, dialogs, menus and composition integration.
 - This is a native WinUI UI path, not an Electron/Chromium application. Do not add WebView2 merely to draw the settings UI.
-- The documented Windows App SDK minimum is Windows 10 version 1809 (build 17763), which fits the modern Win10/Win11 Rust application family. This is a platform minimum, not a WinLook runtime test.
+- The documented Windows App SDK minimum is Windows 10 version 1809 (build 17763). The exact Win10 baseline is still an open question in compatibility/win10.md, so this prototype only targets 1809+ and must not be presented as supporting earlier Win10 releases. If the product baseline includes pre-1809 builds, keep this UI as a newer-OS implementation and provide a separately tested Win32 fallback or choose a different framework before finalizing support.
 
 Initial version/toolchain evidence:
-- Published baseline: windows-reactor 0.100.0 and windows-reactor-setup 0.100.0.
+- Prototype pin: windows-reactor-pre 0.107.1 (aliased as windows-reactor in Cargo) with the matching Windows App SDK metadata/runtime pin. This is a preview package; its public API may change. Keep all Reactor types inside wl_ui.
 - Rust MSRV: 1.95 for the Windows Reactor release family; the application toolchain must therefore be modern even though the portable shared-library crates currently retain Rust 1.56 compatibility.
-- The initial 0.100 release was tied to Windows App SDK 2.4.0. Upstream's current development source has moved its metadata/runtime pin forward; keep the Reactor, setup helper, metadata and Windows App SDK runtime versions aligned rather than mixing versions.
+- The current upstream metadata/runtime source pins Windows App SDK 2.5.1. The published stable 0.100 line and preview 0.107.1 are different release tracks; do not mix their setup helper, metadata and runtime versions. Verify the preview package's exact runtime pin before changing it.
 - Start with framework-dependent deployment for the prototype (installed Windows App Runtime plus the framework bootstrap). Evaluate self-contained packaging separately because staging the runtime beside the app increases package/output size.
 
 The first UI library should live at rust/library/wl_ui/ and contain shared WinUI components, page models, design tokens and navigation/shell composition. The complete Win10 and Win11 application entry points remain in rust/win10/ and rust/win11/. The UI library must not own BGW policy or call private engine internals; use view-model/adapter interfaces and the Manager↔BGW IPC contract.

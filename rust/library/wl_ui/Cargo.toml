@@ -1,0 +1,11 @@
+[package]
+name = "wl_ui"
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.95"
+description = "Shared native WinUI 3 Manager shell and page components for WinLook"
+license = "MIT"
+
+[dependencies]
+[target.'cfg(windows)'.dependencies]
+windows-reactor = { package = "windows-reactor-pre", version = "=0.107.1" }

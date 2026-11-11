@@ -8,9 +8,9 @@ The project aims to cover Windows 95 and later, but that ambition is not a relea
 
 ## Project status
 
-**Early implementation; shared animation and resource-governor libraries are being brought online.**
+**Early implementation; shared libraries are in place and the Win10/Win11 Manager has an initial native UI prototype.**
 
-This repository is not yet a complete Windows application. It currently contains the living architecture/compatibility plan and portable shared-library cores. The Manager UI, BGW runtime and OS-specific application implementations are still future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
+This repository is not yet a complete Windows application. It contains the living architecture/compatibility plan, portable shared-library cores and an initial native WinUI 3 Manager shell. The BGW background runtime and OS-specific system-integration implementations remain future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
 
 The first implementation work is focused on the paired animation libraries, both using **Windows 10 as their initial target baseline**:
 - [`wl_animate`](rust/library/wl_animate/README.md) — Rust animation, vector math and SVG path-data core.
@@ -76,6 +76,10 @@ Start with these canonical documents:
 - [Technical source ledger](plan/references/SOURCES.md) — primary API/toolchain sources and their limits.
 
 Detailed specifications live in [`plan/architecture/`](plan/architecture/overview.md); per-version research lives in [`plan/compatibility/`](plan/compatibility/README.md).
+
+## Manager UI prototype
+
+The Win10/Win11 Manager shell is being prototyped with native WinUI 3 through Windows Reactor in [wl_ui](rust/library/wl_ui/README.md). The current shell has navigation/search/theme controls and explicit preview states; it does not apply system settings until BGW and IPC are implemented. See [UI Architecture](plan/architecture/ui-architecture.md).
 
 ## Building the shared libraries
 
