@@ -8,6 +8,7 @@ on:
       - "C/win95/**"
       - "C/library/**"
       - "build.py"
+      - ".github/workflows/win95.yml"
   pull_request:
     branches: [main, feature/wintoys-manager-ui]
     paths:
