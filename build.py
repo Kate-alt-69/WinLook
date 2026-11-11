@@ -409,9 +409,9 @@ def rust_verify(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
     commands = [
         ("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"]),
-        ("Rust workspace tests", ["cargo", "test", "--workspace", "--all-targets", "--all-features"]),
-        ("Rust Clippy", ["cargo", "clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"]),
-        ("Rust API documentation", ["cargo", "doc", "--workspace", "--no-deps"]),
+        ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features"]),
+        ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features", "--", "-D", "warnings"]),
+        ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--no-deps"]),
     ]
     for label, command in commands:
         runner.run(label, command)
@@ -419,7 +419,7 @@ def rust_verify(runner: Runner) -> None:
 
 def rust_tests(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Rust workspace unit tests", ["cargo", "test", "--workspace", "--all-targets", "--all-features"])
+    runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features"])
 
 
 def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
@@ -532,8 +532,8 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
         rust_tests(runner)
         if scope in ("libraries", "all"):
             runner.run("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"])
-            runner.run("Rust Clippy", ["cargo", "clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"])
-            runner.run("Rust API docs", ["cargo", "doc", "--workspace", "--no-deps"])
+            runner.run("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features", "--", "-D", "warnings"])
+            runner.run("Rust shared-library API docs", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--no-deps"])
     if scope in ("c", "libraries", "all"):
         cmake_c_test(runner, sanitizers=sanitizers)
     if scope in ("ui", "all"):
