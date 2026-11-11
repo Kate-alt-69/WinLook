@@ -1,6 +1,6 @@
 # WinLook Workspace Memory
 
-> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-09. Current user instructions and repository source take precedence.
+> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-11. Current user instructions and repository source take precedence.
 
 ## Project identity
 WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
@@ -170,8 +170,26 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 ## WinToys-style Manager UI implementation checkpoint — 2026-11-10
 
 - Stacked UI branch: feature/wintoys-manager-ui, based on feature/library-foundation.
-- Added wl_ui using Windows Reactor 0.100.0 / WinUI 3 and Win10/Win11 Manager entry points.
+- Added wl_ui using the pinned windows-reactor-pre 0.107.1 preview package / WinUI 3 and Win10/Win11 Manager entry points.
 - Current shell includes persistent left navigation, search, back/pane controls, System/Light/Dark window theme, Home quick actions and reusable status cards.
 - All non-Home pages are explicit scaffolds. They do not claim to apply system settings; BGW/IPC and OS adapters are not implemented yet.
 - Windows 95 UI remains out of this branch and will use a separate C-native implementation.
-- Build/test gates are defined in library-tests.yml; the Windows CI formatter/lockfile helper generates the reproducible Cargo.lock and formats the UI crates. Live Windows App Runtime/desktop smoke testing and low-end performance measurements remain required.
+- UI verification lives in manager-ui.yml; live Windows App Runtime/desktop smoke testing and low-end performance measurements remain required.
+
+
+## Unified build runner and workflow branch — 2026-11-11
+
+- Workflow branch: github/workflow, created from main and intentionally stacked to merge after the library and Manager UI implementation stages. Intended PR base: feature/wintoys-manager-ui.
+- Root build entry point: build.py (Python 3.9+, standard library only). Build runner and tests pass Python compilation and 9 unit tests on GitHub Actions.
+- Build output contract: Rust under build/rust/; CMake/Open Watcom under build/c/; package/report output under build/artifacts/.
+- Cache contract: CARGO_HOME and optional sccache under build/.rcache/; ccache under build/.Ccache/. Root .gitignore excludes the full build/ tree. clean --yes keeps caches; clean --yes --all removes them.
+- Workflow files added: workflow-lint.yml, libraries.yml, manager-ui.yml, win10.yml, win11.yml, bgw.yml, win95.yml, docs.yml, security.yml, build-all.yml and release.yml. The former monolithic library-tests.yml is removed on this branch.
+- Workflow lint uses pinned actionlint 1.7.12 (SHA-256 verified) and .github/actionlint.yaml declares the self-hosted open-watcom label.
+- Security workflow uses CodeQL for C/C++, Rust, Actions and Python; dependency review on pull requests; and a full-history Gitleaks scan with redacted report output. Gitleaks 8.30.1 download is pinned and hash-verified.
+- Win95 remains source-gated until C/win95/Makefile exists. For CI it requires a self-hosted Linux x64 runner labelled open-watcom plus repository variable WINLOOK_ENABLE_WIN95_RUNNER=true and a manually installed Open Watcom compiler. The Python helper downloads/verifies the upstream installer but does not assume undocumented silent switches.
+- BGW remains source-gated until a winlook.bg / winlook-bg / winlook_bg Cargo binary target is explicitly declared.
+- Latest completed verification before this note: workflow lint and Python unit suite passed run 43052529907; Gitleaks scan passed in security run 43052529901. CodeQL C/C++ initially failed in the default build mode with "no source code seen"; the workflow was updated to use the documented build-mode none for C/C++ and Rust and is being re-run. Do not treat the initial CodeQL matrix as green.
+- Next: verify the latest full workflow run; then create a draft stacked workflow PR targeting feature/wintoys-manager-ui. Do not merge the workflow branch before PR #2.
+
+
+- Dependency review note: PR #3 discovered that the repository Dependency Graph is disabled. security.yml now emits a visible warning and skips the Dependency Review action unless repository Actions variable WINLOOK_DEPENDENCY_GRAPH_ENABLED=true is set. Before treating dependency review as enabled, activate Settings → Security → Dependency graph and set that variable. CodeQL and Gitleaks remain independent and continue to run.
