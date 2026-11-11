@@ -6,6 +6,7 @@ on:
     branches: [main, github/workflow]
     paths:
       - ".github/workflows/**"
+      - ".github/actionlint.yaml"
       - "build.py"
       - "tests/**"
   pull_request:
