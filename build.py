@@ -497,7 +497,8 @@ def build_win95(runner: Runner) -> None:
     if not os.environ.get("WATCOM"):
         raise BuildError(
             "WATCOM is not configured. Run python build.py setup --open-watcom --apply "
-            "on Linux x86_64, or install Open Watcom manually and set WATCOM."
+            "to download and verify the pinned installer, then install it manually "
+            "and set WATCOM. Unattended installer switches are not yet verified."
         )
     require_command("wmake", "Install Open Watcom 2.0 and add its bin directory to PATH.")
     build_env = {"WINLOOK_BUILD_DIR": str(build_paths(runner.root)["c"] / "win95")}
