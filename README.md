@@ -83,9 +83,10 @@ The Win10/Win11 Manager shell is being prototyped with native WinUI 3 through Wi
 
 ## Building WinLook
 
-The root Python runner is the common entry point for building, testing and packaging. It requires Python 3.9+ and uses only the standard library:
+The root Python runner is the common entry point for building, testing and packaging. It requires Python 3.9+ and uses only the standard library. Running it without an action performs a read-only environment diagnostic:
 
 ```sh
+python build.py
 python build.py doctor
 python build.py setup
 python build.py verify libraries --sanitizers
