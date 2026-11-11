@@ -53,6 +53,17 @@ WINDOWS_APPS = {
 }
 
 
+def build_paths(root: Path) -> Dict[str, Path]:
+    base = root / "build"
+    return {
+        "rust": base / "rust",
+        "c": base / "c",
+        "rust_cache": base / ".rcache",
+        "c_cache": base / ".Ccache",
+        "artifacts": base / "artifacts",
+    }
+
+
 class BuildError(RuntimeError):
     """An actionable build or toolchain error."""
 
@@ -76,11 +87,11 @@ class Runner:
         process_env = os.environ.copy()
         if env is not None:
             process_env.update(env)
-        build_root = self.root / "build"
-        process_env.setdefault("CARGO_HOME", str(build_root / ".rcache" / "cargo-home"))
-        process_env.setdefault("CARGO_TARGET_DIR", str(build_root / "rust" / "shared"))
-        process_env.setdefault("SCCACHE_DIR", str(build_root / ".rcache" / "sccache"))
-        process_env.setdefault("CCACHE_DIR", str(build_root / ".Ccache"))
+        paths = build_paths(self.root)
+        process_env.setdefault("CARGO_HOME", str(paths["rust_cache"] / "cargo-home"))
+        process_env.setdefault("CARGO_TARGET_DIR", str(paths["rust"] / "shared"))
+        process_env.setdefault("SCCACHE_DIR", str(paths["rust_cache"] / "sccache"))
+        process_env.setdefault("CCACHE_DIR", str(paths["c_cache"]))
         process_env.setdefault("CCACHE_BASEDIR", str(self.root))
         if command_path("sccache"):
             process_env.setdefault("RUSTC_WRAPPER", command_path("sccache") or "sccache")
@@ -225,10 +236,11 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "cmake": command_path("cmake"),
         "ccache": command_path("ccache"),
         "sccache": command_path("sccache"),
-        "cargo_home": str(runner.root / "build" / ".rcache" / "cargo-home"),
-        "rust_output": str(runner.root / "build" / "rust"),
-        "c_output": str(runner.root / "build" / "c"),
-        "c_cache": str(runner.root / "build" / ".Ccache"),
+        "cargo_home": str(build_paths(runner.root)["rust_cache"] / "cargo-home"),
+        "rust_output": str(build_paths(runner.root)["rust"]),
+        "c_output": str(build_paths(runner.root)["c"]),
+        "rust_cache": str(build_paths(runner.root)["rust_cache"]),
+        "c_cache": str(build_paths(runner.root)["c_cache"]),
         "cmake_generator": os.environ.get("CMAKE_GENERATOR"),
         "msvc_cl": command_path("cl"),
         "gcc": command_path("gcc"),
@@ -291,7 +303,7 @@ def download_open_watcom(runner: Runner, apply: bool) -> None:
             "Automated Open Watcom setup is pinned for Linux x86_64. "
             "Install it manually on other hosts and set WATCOM."
         )
-    destination = runner.root / "build" / ".rcache" / "toolchains" / ("open-watcom-" + WATCOM_RELEASE)
+    destination = build_paths(runner.root)["rust_cache"] / "toolchains" / ("open-watcom-" + WATCOM_RELEASE)
     compiler = destination / "binl64" / "wcc386"
     installer = destination.parent / "open-watcom-2_0-c-linux-x64"
     if compiler.is_file():
@@ -395,7 +407,7 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
     source = runner.root / "C" / "library"
     if not (source / "CMakeLists.txt").is_file():
         raise BuildError("C/library/CMakeLists.txt is missing.")
-    build_dir = runner.root / "build" / "c" / ("library-sanitized" if sanitizers else "library-release")
+    build_dir = build_paths(runner.root)["c"] / ("library-sanitized" if sanitizers else "library-release")
     configure = [
         "cmake", "-S", str(source), "-B", str(build_dir),
         "-DCMAKE_BUILD_TYPE=" + ("Debug" if sanitizers else "Release"),
@@ -459,7 +471,7 @@ def build_bgw(runner: Runner) -> None:
             "winlook.bg, winlook-bg, or winlook_bg before enabling BGW compilation."
         )
     for package, binary in targets:
-        target_dir = runner.root / "build" / "rust" / "bgw" / package
+        target_dir = build_paths(runner.root)["rust"] / "bgw" / package
         runner.run(
             "Build BGW executable " + binary,
             ["cargo", "build", "--release", "-p", package, "--bin", binary, "--target-dir", str(target_dir)],
@@ -479,7 +491,7 @@ def build_win95(runner: Runner) -> None:
             "on Linux x86_64, or install Open Watcom manually and set WATCOM."
         )
     require_command("wmake", "Install Open Watcom 2.0 and add its bin directory to PATH.")
-    build_env = {"WINLOOK_BUILD_DIR": str(runner.root / "build" / "c" / "win95")}
+    build_env = {"WINLOOK_BUILD_DIR": str(build_paths(runner.root)["c"] / "win95")}
     runner.run(
         "Build Windows 95 C application with Open Watcom",
         ["wmake", "-f", "Makefile"],
@@ -490,7 +502,7 @@ def build_win95(runner: Runner) -> None:
 
 def build_libraries(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Build Rust shared libraries", ["cargo", "build", "--workspace", "--release", "--target-dir", str(runner.root / "build" / "rust" / "shared")])
+    runner.run("Build Rust shared libraries", ["cargo", "build", "--workspace", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
     cmake_c_test(runner)
 
 
@@ -573,7 +585,7 @@ def package_windows_app(runner: Runner, target: str) -> Path:
     executable = runner.root / target_dir / "release" / "winlook.exe"
     if not executable.is_file():
         raise BuildError("Missing " + str(executable) + ". Build the target before packaging.")
-    output_dir = runner.root / "build" / "artifacts"
+    output_dir = build_paths(runner.root)["artifacts"]
     archive = output_dir / package_filename(target)
     note = (
         "WinLook " + target + " Manager preview\n\n"
@@ -672,14 +684,14 @@ def command_docs(args: argparse.Namespace, runner: Runner) -> int:
 
 def command_clean(args: argparse.Namespace, runner: Runner) -> int:
     targets = [
-        runner.root / "build" / "rust",
-        runner.root / "build" / "c",
-        runner.root / "build" / "artifacts",
+        build_paths(runner.root)["rust"],
+        build_paths(runner.root)["c"],
+        build_paths(runner.root)["artifacts"],
     ]
     if args.all:
         targets.extend([
-            runner.root / "build" / ".rcache",
-            runner.root / "build" / ".Ccache",
+            build_paths(runner.root)["rust_cache"],
+            build_paths(runner.root)["c_cache"],
         ])
     existing = [path for path in targets if path.exists()]
     if not args.yes:
