@@ -1,0 +1,137 @@
+name: Shared libraries and WinUI preview verification (base synchronized)
+
+on:
+  push:
+    branches: [main, feature/wintoys-manager-ui]
+    paths:
+      - "rust/library/**"
+      - "rust/win10/**"
+      - "rust/win11/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "C/library/**"
+      - ".github/workflows/library-tests.yml"
+  pull_request:
+    paths:
+      - "rust/library/**"
+      - "rust/win10/**"
+      - "rust/win11/**"
+      - "Cargo.toml"
+      - "C/library/**"
+      - ".github/workflows/library-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: Rust / ${{ matrix.crate }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [wl_animate, wl_cpuv, wl_gpuv]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install stable Rust components
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        run: cargo fmt --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml -- --check
+      - name: Run unit and documentation tests
+        run: cargo test --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml --all-targets --all-features
+      - name: Run Clippy
+        run: cargo clippy --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml --all-targets --all-features -- -D warnings
+      - name: Build API documentation
+        run: cargo doc --manifest-path rust/library/${{ matrix.crate }}/Cargo.toml --no-deps
+
+  c-msvc:
+    name: C89 / MSVC / ${{ matrix.library }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        library: [wl_Lanimate, wl_Lcpuv, wl_Lgpuv]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure CMake
+        run: cmake -S C/library/${{ matrix.library }} -B build/${{ matrix.library }} -A x64
+      - name: Build library and tests
+        run: cmake --build build/${{ matrix.library }} --config Release
+      - name: Run C tests
+        run: ctest --test-dir build/${{ matrix.library }} -C Release --output-on-failure
+
+  c-portable:
+    name: C89 / GCC + sanitizers / ${{ matrix.library }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        library: [wl_Lanimate, wl_Lcpuv, wl_Lgpuv]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure strict C89 build
+        run: cmake -S C/library/${{ matrix.library }} -B build/${{ matrix.library }} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="-std=c89 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build library and tests
+        run: cmake --build build/${{ matrix.library }} --parallel
+      - name: Run C tests
+        run: ctest --test-dir build/${{ matrix.library }} --output-on-failure
+
+  rust-workspace:
+    name: Rust / workspace integration
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check workspace formatting
+        run: cargo fmt --all -- --check
+      - name: Test all Rust libraries together
+        run: cargo test --workspace --all-targets --all-features
+      - name: Lint all Rust libraries together
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Build all Rust library documentation
+        run: cargo doc --workspace --no-deps
+
+  c-aggregate:
+    name: C89 / combined library build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure all C libraries together
+        run: cmake -S C/library -B build/shared -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="-std=c89 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build all C libraries
+        run: cmake --build build/shared --parallel
+      - name: Run all C tests
+        run: ctest --test-dir build/shared --output-on-failure
+
+  ui-prototype:
+    name: WinUI 3 / Manager prototype
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check workspace formatting
+        run: cargo fmt --all -- --check
+      - name: Test UI page registry and navigation metadata
+        run: cargo test -p wl_ui --all-targets
+      - name: Lint UI library
+        run: cargo clippy -p wl_ui --all-targets -- -D warnings
+      - name: Build Win10 and Win11 Manager executables
+        run: |
+          cargo build --release -p winlook-win10 --target-dir target/win10
+          cargo build --release -p winlook-win11 --target-dir target/win11
+      - name: Upload Win10 and Win11 Manager preview binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlook-manager-preview
+          path: |
+            target/win10/release/winlook.exe
+            target/win11/release/winlook.exe
+          if-no-files-found: error
+          retention-days: 7

@@ -78,6 +78,13 @@ Start with these canonical documents:
 Detailed specifications live in [`plan/architecture/`](plan/architecture/overview.md); per-version research lives in [`plan/compatibility/`](plan/compatibility/README.md).
 
 ## Manager UI prototype
+<<<<<<< HEAD
+=======
+
+The Win10/Win11 Manager shell is being prototyped with native WinUI 3 through Windows Reactor in [wl_ui](rust/library/wl_ui/README.md). The current shell has navigation/search/theme controls and explicit preview states; it does not apply system settings until BGW and IPC are implemented. See [UI Architecture](plan/architecture/ui-architecture.md).
+
+## Building the shared libraries
+>>>>>>> origin/main
 
 The Win10/Win11 Manager shell is being prototyped with native WinUI 3 through Windows Reactor in [wl_ui](rust/library/wl_ui/README.md). The current shell has navigation/search/theme controls and explicit preview states; it does not apply system settings until BGW and IPC are implemented. See [UI Architecture](plan/architecture/ui-architecture.md).
 

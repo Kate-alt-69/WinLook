@@ -175,6 +175,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - All non-Home pages are explicit scaffolds. They do not claim to apply system settings; BGW/IPC and OS adapters are not implemented yet.
 - Windows 95 UI remains out of this branch and will use a separate C-native implementation.
 - Build/test gates are defined in `.github/workflows/library-tests.yml`; the Windows UI job verifies workspace formatting, UI tests/Clippy, Win10/Win11 application builds and preview artifacts. The UI branch CI passed after the `pages.rs` rustfmt corrections (run 43057947732). Actual Windows App Runtime desktop smoke testing and low-end performance measurements remain required.
+<<<<<<< HEAD
 
 ## Unified build runner and workflow branch — 2026-11-11
 
@@ -192,3 +193,5 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 
 
 - Dependency review note: PR #3 discovered that the repository Dependency Graph is disabled. security.yml now emits a visible warning and skips the Dependency Review action unless repository Actions variable WINLOOK_DEPENDENCY_GRAPH_ENABLED=true is set. Before treating dependency review as enabled, activate Settings → Security → Dependency graph and set that variable. CodeQL and Gitleaks remain independent and continue to run.
+=======
+>>>>>>> origin/main
