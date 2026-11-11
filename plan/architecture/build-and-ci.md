@@ -62,7 +62,9 @@ From the repository root:
 |---|---|
 | python build.py doctor | Report Python, Rust, CMake, MSVC/GCC/Clang, cache tools and available source targets |
 | python build.py setup | Print toolchain notes; use an explicit --with-* option to select what to install |
-| python build.py setup --with-rust | Plan stable Rust installation/update without changing the machine |\n| python build.py setup --with-rust --apply | Install/update stable Rust and rustfmt/Clippy components |\n| python build.py setup --with-rust --install-rustup --apply | Use WinGet to install Rustup when missing; open a new terminal and rerun with --with-rust |
+| python build.py setup --with-rust | Plan stable Rust installation/update without changing the machine |
+| python build.py setup --with-rust --apply | Install/update stable Rust and rustfmt/Clippy components |
+| python build.py setup --with-rust --install-rustup --apply | Use WinGet to install Rustup when missing; open a new terminal and rerun with --with-rust |
 | python build.py setup --with-cmake --apply | Install CMake through WinGet on Windows when missing |
 | python build.py setup --open-watcom --apply | Download and SHA-256 verify the pinned Open Watcom installer; the installer itself must still be run manually |
 | python build.py fmt --check | Check Rust formatting |
