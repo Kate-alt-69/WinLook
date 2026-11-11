@@ -173,16 +173,17 @@ def target_available(root: Path, target: str) -> Tuple[bool, str]:
         ready = project_has_manifest(root, "C/win95/Makefile")
         return ready, "C/win95/Makefile found" if ready else "C/win95/Makefile is not present"
     if target == "bgw":
-        candidates = (
-            "rust/win10/src/bin/winlook.bg.rs",
-            "rust/win10/src/bin/winlook-bg.rs",
-            "rust/win10/src/bin/winlook_bg.rs",
-            "rust/win11/src/bin/winlook.bg.rs",
-            "rust/win11/src/bin/winlook-bg.rs",
-            "rust/win11/src/bin/winlook_bg.rs",
-        )
-        ready = any(project_has_manifest(root, item) for item in candidates)
-        return ready, "BGW source target found" if ready else "BGW binary target is not implemented"
+        manifests = (root / "rust/win10/Cargo.toml", root / "rust/win11/Cargo.toml")
+        for manifest in manifests:
+            if manifest.is_file():
+                try:
+                    source = manifest.read_text(encoding="utf-8")
+                except OSError:
+                    continue
+                for target_name in BGW_TARGET_NAMES:
+                    if target_name in source:
+                        return True, "BGW binary declaration found in " + str(manifest.relative_to(root))
+        return False, "BGW binary target is not implemented"
     raise ValueError("Unknown build target: " + target)
 
 
@@ -503,7 +504,11 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
             print_skip("Win95 source is not present.")
         if not os.environ.get("WATCOM"):
             print_skip("Open Watcom is not configured; Win95 cross-build not run.")
-        if not runner.dry_run and not select_bgw_targets(cargo_metadata(runner)):
+        if runner.dry_run:
+            print_skip("BGW target discovery is deferred in dry-run mode.")
+        elif select_bgw_targets(cargo_metadata(runner)):
+            print_skip("BGW target exists; use python build.py build bgw for its compile gate.")
+        else:
             print_skip("No BGW Cargo binary target exists yet.")
 
 
