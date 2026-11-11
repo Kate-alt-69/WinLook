@@ -36,8 +36,10 @@ jobs:
             build/.Ccache
           key: ${{ runner.os }}-full-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml', 'C/library/**') }}
           restore-keys: ${{ runner.os }}-full-
+      - name: Run default build-runner preflight
+        run: python build.py
       - name: Report source availability and toolchain
-        run: python build.py doctor
+        run: python build.py doctor --strict
       - name: Run full supported build/verification sequence
         run: python build.py verify all
       - name: Upload application build outputs
