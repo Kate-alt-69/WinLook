@@ -9,6 +9,7 @@ on:
       - "plan/**"
       - "build.py"
       - "tests/**"
+      - ".github/workflows/docs.yml"
   pull_request:
     branches: [main, feature/wintoys-manager-ui]
     paths:
