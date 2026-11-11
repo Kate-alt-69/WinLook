@@ -348,21 +348,32 @@ def download_open_watcom(runner: Runner, apply: bool) -> None:
 
 def command_setup(args: argparse.Namespace, runner: Runner) -> int:
     actions: List[List[str]] = []
-    if not command_path("rustup"):
-        if args.install_rustup:
+    rustup_missing = not command_path("rustup")
+    if args.with_rust:
+        if rustup_missing:
+            if not args.install_rustup:
+                raise BuildError(
+                    "Rustup is missing. Install it from https://rustup.rs/, or pass "
+                    "--install-rustup on Windows to use WinGet."
+                )
             if os.name != "nt" or not command_path("winget"):
                 raise BuildError(
                     "Automatic rustup installation uses WinGet on Windows. "
-                    "Install Rust from https://rustup.rs/ and retry."
+                    "Install Rust from https://rustup.rs/ and retry on other platforms."
                 )
             actions.append(["winget", "install", "--id", "Rustlang.Rustup", "--exact"])
         else:
-            print("Rustup is missing. Install it from https://rustup.rs/.")
-    else:
-        actions.append([
-            "rustup", "toolchain", "install", "stable", "--profile", "minimal",
-            "--component", "rustfmt", "--component", "clippy",
-        ])
+            actions.append([
+                "rustup", "toolchain", "install", "stable", "--profile", "minimal",
+                "--component", "rustfmt", "--component", "clippy",
+            ])
+    elif args.install_rustup and rustup_missing:
+        if os.name != "nt" or not command_path("winget"):
+            raise BuildError(
+                "Automatic rustup installation uses WinGet on Windows. "
+                "Install Rust from https://rustup.rs/ and retry on other platforms."
+            )
+        actions.append(["winget", "install", "--id", "Rustlang.Rustup", "--exact"])
     if args.with_cmake and not command_path("cmake"):
         if os.name != "nt" or not command_path("winget"):
             raise BuildError(
@@ -526,12 +537,16 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
     if scope in ("c", "libraries", "all"):
         cmake_c_test(runner, sanitizers=sanitizers)
     if scope in ("ui", "all"):
-        if check_ui_sources(runner.root):
-            ui_verify(runner)
-        elif scope == "ui":
-            raise BuildError("Manager UI is not available in this checkout.")
-        else:
+        if not check_ui_sources(runner.root):
+            if scope == "ui":
+                raise BuildError("Manager UI is not available in this checkout.")
             print_skip("Manager UI manifests are not present.")
+        elif os.name != "nt":
+            if scope == "ui":
+                raise BuildError("The WinUI 3 Manager UI tests require a Windows host.")
+            print_skip("WinUI 3 Manager UI tests require Windows; Rust/C library tests can still run here.")
+        else:
+            ui_verify(runner)
     if scope == "all":
         if check_ui_sources(runner.root):
             if os.name == "nt":
@@ -790,7 +805,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup = sub.add_parser("setup", help="Plan or install user-scoped build prerequisites.")
     setup.add_argument("--apply", action="store_true", help="Execute setup; otherwise show the plan only.")
-    setup.add_argument("--install-rustup", action="store_true", help="Allow WinGet to install rustup if missing.")
+    setup.add_argument("--with-rust", action="store_true", help="Install/update stable Rust and its rustfmt/Clippy components.")
+    setup.add_argument("--install-rustup", action="store_true", help="Allow WinGet to install rustup when --with-rust is requested or Rustup is missing.")
     setup.add_argument("--with-cmake", action="store_true", help="Allow WinGet to install CMake if missing.")
     setup.add_argument("--open-watcom", action="store_true", help="Install the pinned Open Watcom Linux x64 package.")
     setup.add_argument("--dry-run", action="store_true")
