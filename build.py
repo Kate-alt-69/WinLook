@@ -34,6 +34,15 @@ WATCOM_ASSET_URL = (
 WATCOM_ASSET_SHA256 = (
     "9d9d823c2ee040a38484ad74ad4a594e904672184e4e8fff84b3bac7090c9f6c"
 )
+ACTIONLINT_VERSION = "1.7.12"
+ACTIONLINT_URL = (
+    "https://github.com/rhysd/actionlint/releases/download/v"
+    + ACTIONLINT_VERSION
+    + "/actionlint_" + ACTIONLINT_VERSION + "_linux_amd64.tar.gz"
+)
+ACTIONLINT_SHA256 = (
+    "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+)
 APP_RUNTIME_URL = (
     "https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/downloads"
 )
@@ -64,6 +73,17 @@ class Runner:
     ) -> subprocess.CompletedProcess:
         args = [str(item) for item in command]
         location = cwd or self.root
+        process_env = os.environ.copy()
+        if env is not None:
+            process_env.update(env)
+        build_root = self.root / "build"
+        process_env.setdefault("CARGO_HOME", str(build_root / ".rcache" / "cargo-home"))
+        process_env.setdefault("CARGO_TARGET_DIR", str(build_root / "rust" / "shared"))
+        process_env.setdefault("SCCACHE_DIR", str(build_root / ".rcache" / "sccache"))
+        process_env.setdefault("CCACHE_DIR", str(build_root / ".Ccache"))
+        process_env.setdefault("CCACHE_BASEDIR", str(self.root))
+        if command_path("sccache"):
+            process_env.setdefault("RUSTC_WRAPPER", command_path("sccache") or "sccache")
         rendered = subprocess.list2cmdline(args) if os.name == "nt" else shlex.join(args)
         print("\n==> " + label)
         print("$ " + rendered)
@@ -71,7 +91,7 @@ class Runner:
             return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
         try:
             result = subprocess.run(
-                args, cwd=str(location), env=env, check=False, text=True,
+                args, cwd=str(location), env=process_env, check=False, text=True,
                 capture_output=capture,
             )
         except FileNotFoundError as exc:
@@ -259,59 +279,44 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def install_open_watcom(runner: Runner, apply: bool) -> None:
+def download_open_watcom(runner: Runner, apply: bool) -> None:
     if not sys.platform.startswith("linux") or platform.machine().lower() not in {"x86_64", "amd64"}:
         raise BuildError(
             "Automated Open Watcom setup is pinned for Linux x86_64. "
             "Install it manually on other hosts and set WATCOM."
         )
-    destination = runner.root / ".toolchains" / ("open-watcom-" + WATCOM_RELEASE)
+    destination = runner.root / "build" / ".toolchains" / ("open-watcom-" + WATCOM_RELEASE)
     compiler = destination / "binl64" / "wcc386"
+    installer = destination.parent / "open-watcom-2_0-c-linux-x64"
     if compiler.is_file():
-        print("Open Watcom already exists at " + str(destination))
-    elif not apply:
-        print("Plan: download the official Open Watcom asset:")
+        print("Open Watcom compiler already exists at " + str(destination))
+        return
+    if not apply:
+        print("Plan: download the official Open Watcom installer:")
         print("  " + WATCOM_ASSET_URL)
         print("Verify SHA-256: " + WATCOM_ASSET_SHA256)
-        print("Install into: " + str(destination))
+        print("Store it under: " + str(installer))
         print("No files were downloaded. Repeat with --apply.")
         return
-    else:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        installer = runner.root / ".toolchains" / "open-watcom-installer"
-        request = urllib.request.Request(
-            WATCOM_ASSET_URL, headers={"User-Agent": "WinLook-build.py"}
-        )
-        print("Downloading pinned Open Watcom 2.0 toolchain asset...")
-        with urllib.request.urlopen(request, timeout=120) as response:
-            with installer.open("wb") as output:
-                shutil.copyfileobj(response, output)
-        actual = sha256_file(installer)
-        if actual.lower() != WATCOM_ASSET_SHA256:
-            installer.unlink(missing_ok=True)
-            raise BuildError(
-                "Open Watcom SHA-256 mismatch; refusing to execute the installer. "
-                "Expected " + WATCOM_ASSET_SHA256 + ", got " + actual
-            )
-        installer.chmod(0o755)
-        destination.mkdir(parents=True, exist_ok=True)
-        runner.run(
-            "Install verified Open Watcom 2.0",
-            [str(installer), "-s", "--install-dir=" + str(destination)],
-        )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    request = urllib.request.Request(
+        WATCOM_ASSET_URL, headers={"User-Agent": "WinLook-build.py"}
+    )
+    print("Downloading pinned Open Watcom 2.0 installer...")
+    with urllib.request.urlopen(request, timeout=120) as response:
+        with installer.open("wb") as output:
+            shutil.copyfileobj(response, output)
+    actual = sha256_file(installer)
+    if actual.lower() != WATCOM_ASSET_SHA256:
         installer.unlink(missing_ok=True)
-    if not compiler.is_file():
         raise BuildError(
-            "Open Watcom installer did not produce " + str(compiler)
-            + ". Inspect installer output before retrying."
+            "Open Watcom SHA-256 mismatch; refusing to execute the installer. "
+            "Expected " + WATCOM_ASSET_SHA256 + ", got " + actual
         )
-    include = destination / "h"
-    append_github_environment("WATCOM", str(destination))
-    append_github_environment("INCLUDE", str(include) + os.pathsep + str(include / "nt"))
-    append_github_environment("EDPATH", str(destination / "eddat"))
-    append_github_path(str(destination / "binl64"))
-    print("Open Watcom verified at " + str(destination))
-    print("WATCOM, INCLUDE, EDPATH and PATH exported when running in GitHub Actions.")
+    print("Verified and downloaded Open Watcom installer: " + str(installer))
+    print("The upstream docs do not specify unattended installer switches.")
+    print("Run the verified installer manually; then set WATCOM to its install directory.")
+    print("No installer command was guessed or executed.")
 
 
 def command_setup(args: argparse.Namespace, runner: Runner) -> int:
@@ -339,7 +344,7 @@ def command_setup(args: argparse.Namespace, runner: Runner) -> int:
             )
         actions.append(["winget", "install", "--id", "Kitware.CMake", "--exact"])
     if args.open_watcom:
-        install_open_watcom(runner, args.apply and not runner.dry_run)
+        download_open_watcom(runner, args.apply and not runner.dry_run)
     for action in actions:
         print("Planned setup: " + shlex.join(action))
     if not args.apply:
@@ -384,7 +389,7 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
     source = runner.root / "C" / "library"
     if not (source / "CMakeLists.txt").is_file():
         raise BuildError("C/library/CMakeLists.txt is missing.")
-    build_dir = runner.root / "build" / "c-library"
+    build_dir = runner.root / "build" / "c" / ("library-sanitized" if sanitizers else "library-release")
     configure = [
         "cmake", "-S", str(source), "-B", str(build_dir),
         "-DCMAKE_BUILD_TYPE=" + ("Debug" if sanitizers else "Release"),
@@ -395,6 +400,8 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
             "-DCMAKE_C_FLAGS=" + flags,
             "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined",
         ])
+    if os.name != "nt" and command_path("ccache"):
+        configure.append("-DCMAKE_C_COMPILER_LAUNCHER=ccache")
     runner.run("Configure all C89 libraries", configure)
     config = "Debug" if sanitizers else "Release"
     runner.run("Build all C89 libraries", ["cmake", "--build", str(build_dir), "--config", config, "--parallel"])
@@ -446,10 +453,10 @@ def build_bgw(runner: Runner) -> None:
             "winlook.bg, winlook-bg, or winlook_bg before enabling BGW compilation."
         )
     for package, binary in targets:
-        target_dir = runner.root / "target" / "bgw" / package
+        target_dir = runner.root / "build" / "rust" / "bgw" / package
         runner.run(
             "Build BGW executable " + binary,
-            ["cargo", "build", "--release", "-p", package, "--bin", binary, "--target-dir", target_dir],
+            ["cargo", "build", "--release", "-p", package, "--bin", binary, "--target-dir", str(target_dir)],
         )
 
 
@@ -471,7 +478,7 @@ def build_win95(runner: Runner) -> None:
 
 def build_libraries(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Build Rust shared libraries", ["cargo", "build", "--workspace", "--release"])
+    runner.run("Build Rust shared libraries", ["cargo", "build", "--workspace", "--release", "--target-dir", str(runner.root / "build" / "rust" / "shared")])
     cmake_c_test(runner)
 
 
@@ -554,7 +561,7 @@ def package_windows_app(runner: Runner, target: str) -> Path:
     executable = runner.root / target_dir / "release" / "winlook.exe"
     if not executable.is_file():
         raise BuildError("Missing " + str(executable) + ". Build the target before packaging.")
-    output_dir = runner.root / "dist"
+    output_dir = runner.root / "build" / "artifacts"
     archive = output_dir / package_filename(target)
     note = (
         "WinLook " + target + " Manager preview\n\n"
@@ -580,8 +587,8 @@ def command_status(args: argparse.Namespace, runner: Runner) -> int:
     output_file = os.environ.get("GITHUB_OUTPUT")
     if args.github_output and output_file:
         with open(output_file, "a", encoding="utf-8") as handle:
-            handle.write("available=" + ("true" if available else "false") + "\\n")
-            handle.write("reason=" + reason.replace("\\n", " ") + "\\n")
+            handle.write("available=" + ("true" if available else "false") + "\n")
+            handle.write("reason=" + reason.replace("\n", " ") + "\n")
     return 0
 
 
@@ -651,7 +658,16 @@ def command_docs(args: argparse.Namespace, runner: Runner) -> int:
 
 
 def command_clean(args: argparse.Namespace, runner: Runner) -> int:
-    targets = [runner.root / "build", runner.root / "target", runner.root / "dist"]
+    targets = [
+        runner.root / "build" / "rust",
+        runner.root / "build" / "c",
+        runner.root / "build" / "artifacts",
+    ]
+    if args.all:
+        targets.extend([
+            runner.root / "build" / ".rcache",
+            runner.root / "build" / ".Ccache",
+        ])
     existing = [path for path in targets if path.exists()]
     if not args.yes:
         print("Generated output directories that would be removed:")
@@ -719,6 +735,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     clean = sub.add_parser("clean", help="Remove generated build outputs only.")
     clean.add_argument("--yes", action="store_true")
+    clean.add_argument("--all", action="store_true", help="Also remove Rust and C compiler caches.")
     return parser
 
 
