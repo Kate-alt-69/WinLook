@@ -44,7 +44,7 @@ The first buildable library slice now provides a paired Rust crate and C static 
 
 ### Rust: `wl_animate`
 
-- Crate: [`crates/wl_animate`](../../crates/wl_animate/README.md), version `0.1.0-alpha.2`.
+- Crate: [`rust/library/wl_animate`](../../rust/library/wl_animate/README.md), version `0.1.0-alpha.2`.
 - Public API: `Interpolate`, `Easing`, `Tween<T>`, `PlaybackState`, `Keyframe<T>`, `KeyframeTrack<T>`, `TrackError`, `Point2` and `Rgba`.
 - Built-in interpolation: `f32`, `f64`, 2D points and four-channel RGBA values.
 - Easing: linear, quadratic, cubic, sine and quartic in/out/in-out curves.
@@ -54,7 +54,7 @@ The first buildable library slice now provides a paired Rust crate and C static 
 
 ### C: `wl_Lanimate`
 
-- Sources: [`legacy/wl_Lanimate`](../../legacy/wl_Lanimate/README.md), version `0.1.0-alpha.2`.
+- Sources: [`C/library/wl_Lanimate`](../../C/library/wl_Lanimate/README.md), version `0.1.0-alpha.2`.
 - C89-compatible public header and implementation; matching easing family and scalar tween/keyframe concepts.
 - Point2 and RGBA interpolation helpers. The alpha-channel interpolation defect from the previous prototype is fixed and covered by a dedicated test.
 - Caller-owned tween/keyframe storage; no allocation in the per-frame core.
@@ -80,16 +80,29 @@ The first buildable library slice now provides a paired Rust crate and C static 
 
 ## Planned repository location
 
-The long-term layout proposal places reusable WinLook-owned libraries under the root `lib` directory:
-- `wl_animate` → `lib/wl_animate` (Rust).
-- `wl_Lanimate` → `lib/wl_Lanimate` (C).
-
-The current source paths remain unchanged until a dedicated layout migration updates manifests, imports, tests, build workflows and documentation links together.
+The authoritative target layout is now `rust/library/wl_animate/` and `C/library/wl_Lanimate/`. The first migration has been staged on the library-foundation branch; old prototype copies are removed only after the new paths are verified.
 
 
 ## Current beta planning status — 2026-11-09
 
-The crate manifest currently carries `0.2.0-beta.1` and the branch includes initial `vector.rs`/`svg.rs` source files. That version string is not a release-quality assertion: these modules are not yet wired into the crate's public exports, and the vector/SVG parser still needs the grammar, alpha, document-import and stress-test gates in [vector-animation.md](vector-animation.md). Do not publish or advertise a completed beta until those gates pass.
+The crate manifest carries `0.2.0-beta.1`, but that prerelease label is not a release-quality assertion. The Rust vector/SVG path modules are now wired into public exports on the library-foundation branch. The parser covers SVG path data only; it is not a document importer or renderer. Alpha/color-space semantics, full document import, timelines/composition, C/Rust scene/parser parity and the remaining stress/fuzz gates are still incomplete. Do not publish or advertise a completed beta until the gates in [vector-animation.md](vector-animation.md) pass.
 
-The user has paused further source implementation to continue planning. The next source pass should be driven by [vector-animation.md](vector-animation.md) and [resource-governors.md](resource-governors.md). Those docs define the intended contract; planned API entries are not available features yet.
 
+
+## Library foundation implementation — 2026-11-10
+
+The current implementation branch adds the first shared-library set under the approved language/library directories:
+
+| Rust | C | Current scope |
+|---|---|---|
+| `rust/library/wl_animate` | `C/library/wl_Lanimate` | Host-driven tween/keyframe core; Rust vector scene/value types and SVG path-data parser; C vector/transform math helpers |
+| `rust/library/wl_cpuv` | `C/library/wl_Lcpuv` | Portable admission/accounting core with reserved critical headroom, bounded in-flight permits, cancellation and actual-cost overrun reporting |
+| `rust/library/wl_gpuv` | `C/library/wl_Lgpuv` | Portable GPU resource-byte leases, bounded submission tickets and dynamic budget updates |
+
+The CPUv/GPUv implementations are deliberately policy cores only. They do not create worker threads, call DXGI, allocate graphics resources, submit commands, guarantee GPU residency or control other processes. The host/platform adapters remain future work.
+
+The Rust vector API is now exported from `wl_animate`, including path-data parsing. This is **not** a complete SVG document importer or renderer. The C animation library has vector/geometry helpers but does not yet have the Rust parser/scene API parity.
+
+A root Cargo workspace and a CMake aggregator make the libraries testable together. Rust formatting is normalized by the one-time migration workflow before the final CI pass. CI coverage is defined in `.github/workflows/library-tests.yml`; results are pending until the branch workflow finishes. The WinToys-style Manager UI remains the next phase, after the library CI and API/test gaps are reviewed.
+
+FFmpeg wrappers are not included in this first slice: codec/build selection, redistribution licensing and Windows 95 media compatibility remain unresolved decisions.

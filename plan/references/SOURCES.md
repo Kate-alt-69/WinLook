@@ -1,6 +1,6 @@
 # WinLook Technical Source Ledger
 
-Last verified: 2026-11-09. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
+Last verified: 2026-11-10. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
 
 ## Microsoft Windows / Win32
 
@@ -113,3 +113,18 @@ Win9x toolchain/runtime combinations; safe desktop icon suppression/recovery; pr
 | UI-002 | [WinToys feature overview and screenshots](https://www.computerbild.de/artikel/Tipps-Windows-Wintoys-Kostenloses-Tuning-Tool-fuer-Windows-11-und-10-045b07f-35673881.html) | Illustrates grouped Apps, Services, Performance, Health and Optimization areas in a single utility | Third-party overview; UI direction reference only |
 | UI-003 | [Microsoft Windows app design basics](https://learn.microsoft.com/en-us/windows/apps/design/basics/) | Windows guidance for navigation, commands, content hierarchy, spacing and control grouping | General design guidance; does not select WinLook's UI framework or guarantee legacy API availability |
 
+
+
+## Modern WinUI / Rust UI research
+
+| ID | Source | Claim supported | Scope / limit |
+|---|---|---|---|
+| UI-001 | [WinUI 3 overview](https://learn.microsoft.com/en-us/windows/apps/winui/winui3/) | WinUI 3 is Microsoft's native desktop UI framework with Fluent controls and XAML programming model | Windows App SDK; not a Win95 option; minimum OS is documented separately |
+| UI-002 | [Windows developer FAQ](https://learn.microsoft.com/en-au/windows/apps/get-started/windows-developer-faq) | Windows App SDK supports desktop apps down to Windows 10 version 1809 (build 17763); Microsoft recommends WinUI 3 for new general-purpose Windows desktop apps | Exact API support still varies by OS/build; does not certify WinLook performance |
+| UI-003 | [windows-reactor documentation](https://github.com/microsoft/windows-rs/blob/master/docs/crates/windows-reactor.md) | Rust library backed by native WinUI 3; declarative components/state; docs cover NavigationView, controls, UI Automation modifiers, virtualization, dialogs and composition | Upstream library; API and release versions must be pinned and tested |
+| UI-004 | [windows-reactor README](https://github.com/microsoft/windows-rs/blob/master/crates/libs/reactor/readme.md) | Typed Rust component/message model and native WinUI controls | Upstream example, not WinLook code |
+| UI-005 | [windows-reactor-setup guide](https://github.com/microsoft/windows-rs/blob/master/docs/crates/windows-reactor-setup.md) | Framework-dependent and self-contained Windows App SDK deployment options; setup helper is a build dependency for self-contained staging | Packaging choice affects install prerequisites and output size; measure before release |
+| UI-006 | [Rust for Windows August 2026 release notes](https://github.com/microsoft/windows-rs/issues/4867) | Windows Reactor 0.100 release family uses Rust 1.95 MSRV and initially targets Windows App SDK 2.4.0 | Release-family facts; do not mix setup/runtime metadata versions |
+| UI-007 | [windows-rs dependency pins](https://github.com/microsoft/windows-rs/blob/master/docs/dependencies.md) | Current upstream development metadata/runtime pin is Windows App SDK 2.5.1 | Current upstream source may be newer than the published 0.100.0 crate; pin matching crate/setup/runtime versions together |
+
+Implementation consequence: prototype Win10/Win11 Manager UI with the published Windows Reactor release family, but treat cold start, idle CPU, private bytes, navigation latency, accessibility and low-end hardware behaviour as WinLook-specific acceptance tests. The Win95 C UI remains a separate native compatibility implementation.

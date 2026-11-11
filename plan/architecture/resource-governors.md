@@ -1,12 +1,12 @@
 # WinLook CPUv and GPUv Resource Governors
 
-> Status: design proposal, 2026-11-09. This is the architecture contract for the planned CPUv/GPUv libraries, not an implementation or a claim of system-wide resource control.
+> Status: architecture contract plus initial portable policy-core implementation, 2026-11-10. The Rust/C libraries implement bounded admission/accounting primitives only; this is not an OS adapter or a claim of system-wide resource control.
 >
 > Initial target baseline: Windows 10.
 
 ## 1. Goal
 
-Create two shared WinLook libraries:
+Create two shared WinLook library pairs:
 
 | Modern library | Legacy library | Responsibility |
 |---|---|---|
@@ -243,3 +243,23 @@ Use deterministic fake clocks/budget providers, property-based state-machine tes
 - No driver/kernel hooks, undocumented GPU-control interface or process injection to obtain hardware telemetry.
 - No promise that estimated GPU work cost is equal to real GPU execution cost.
 - No general CPU/GPU management of arbitrary third-party workloads.
+
+
+## 13. Current portable-core implementation boundary — 2026-11-10
+
+Initial Rust and C libraries now exist under `rust/library/wl_cpuv`, `rust/library/wl_gpuv`, `C/library/wl_Lcpuv` and `C/library/wl_Lgpuv`.
+
+Implemented in this first slice:
+- CPUv admission with caller-defined work units, reserved critical headroom, maximum in-flight permits, explicit cancellation, completion accounting and estimate-overrun reporting.
+- GPUv memory-byte leases, protected critical reserve, bounded in-flight submission tickets, explicit completion/release and dynamic budget update.
+- C89 APIs use caller-provided ticket-slot storage and require serialized access; Rust cores require external synchronization if shared between threads.
+- Deterministic unit tests cover budget limits, reserve protection, concurrency/queue bounds, stale tickets, cancellation, overrun and budget shrink.
+
+Not implemented yet:
+- OS thread-pool adapters, worker scheduling, CPU-time telemetry or BGW IPC.
+- DXGI adapter/node discovery, budget-change events, real graphics allocation/fence integration or device-loss recovery.
+- Automatic observation of system/game pressure and BGW policy dispatch.
+- Full queue priority/fairness/deadline scheduling and cross-governor atomic CPU+GPU reservation.
+- Whole-app broker integration/audit.
+
+Do not describe the current libraries as virtual hardware or a working global governor. They are portable admission/accounting primitives that future BGW/platform adapters will call.

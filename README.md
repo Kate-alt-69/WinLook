@@ -8,13 +8,15 @@ The project aims to cover Windows 95 and later, but that ambition is not a relea
 
 ## Project status
 
-**Early product planning; animation libraries in active alpha implementation.**
+**Early implementation; shared animation and resource-governor libraries are being brought online.**
 
-This repository is not yet a complete Windows application. It currently contains the living architecture/compatibility plan and the first renderer-independent animation-library prototypes. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
+This repository is not yet a complete Windows application. It currently contains the living architecture/compatibility plan and portable shared-library cores. The Manager UI, BGW runtime and OS-specific application implementations are still future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
 
 The first implementation work is focused on the paired animation libraries, both using **Windows 10 as their initial target baseline**:
-- [`wl_animate`](crates/wl_animate/README.md) — Rust animation primitives and public crate API.
-- [`wl_Lanimate`](legacy/wl_Lanimate/README.md) — C89-compatible counterpart with caller-owned storage and static-library builds.
+- [`wl_animate`](rust/library/wl_animate/README.md) — Rust animation, vector math and SVG path-data core.
+- [`wl_Lanimate`](C/library/wl_Lanimate/README.md) — C89-compatible animation and vector-math core.
+- [`wl_cpuv`](rust/library/wl_cpuv/README.md) / [`wl_Lcpuv`](C/library/wl_Lcpuv/README.md) — CPU work admission/accounting cores.
+- [`wl_gpuv`](rust/library/wl_gpuv/README.md) / [`wl_Lgpuv`](C/library/wl_Lgpuv/README.md) — GPU memory/submission admission cores.
 
 Both cores are renderer-independent: no Windows drawing backend, timer, scheduler, window hook or process injection is included yet. C89 is a source-language constraint, not a claim of support on pre-Windows-10 releases. See the [Animation Suite plan](plan/architecture/animation-suite.md) for implementation status and remaining gates.
 
@@ -75,25 +77,26 @@ Start with these canonical documents:
 
 Detailed specifications live in [`plan/architecture/`](plan/architecture/overview.md); per-version research lives in [`plan/compatibility/`](plan/compatibility/README.md).
 
-## Building the animation libraries
+## Building the shared libraries
 
-There is no root application build command yet. Build and test the Rust crate with:
-
-```sh
-cargo fmt --manifest-path crates/wl_animate/Cargo.toml -- --check
-cargo test --manifest-path crates/wl_animate/Cargo.toml
-cargo clippy --manifest-path crates/wl_animate/Cargo.toml --all-targets --all-features -- -D warnings
-```
-
-Build the C static library and run its host tests with:
+There is no root application build command yet. The Rust libraries are members of the root Cargo workspace:
 
 ```sh
-make -C legacy/wl_Lanimate clean
-make -C legacy/wl_Lanimate all
-make -C legacy/wl_Lanimate test
+cargo fmt --all -- --check
+cargo test --workspace --all-targets --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo doc --workspace --no-deps
 ```
 
-The C library also provides a CMake build for MSVC; see its [build instructions](legacy/wl_Lanimate/README.md). A dedicated GitHub Actions workflow checks Rust/MSVC and C/MSVC builds. Host C tests validate the portable core, not a Windows 10 client runtime. The Windows CI runner is a build/test environment, not a substitute for the planned Windows 10 client VM/hardware verification.
+Build and test all C libraries together with CMake:
+
+```sh
+cmake -S C/library -B build/libraries
+cmake --build build/libraries --config Release
+ctest --test-dir build/libraries -C Release --output-on-failure
+```
+
+Each C library also has its own CMake and Makefile build. The `Shared libraries` GitHub Actions workflow passed run [42832087050](https://github.com/Kate-alt-69/WinLook/actions/runs/42832087050): Rust formatting, 27 unit tests, Clippy and docs; C89/MSVC and strict GCC ASan/UBSan; and the combined CMake suite (3/3). CI is not a substitute for Windows 10 client VM/hardware tests, Windows 95 compiler/runtime validation or actual graphics-adapter testing.
 
 ## Development status
 

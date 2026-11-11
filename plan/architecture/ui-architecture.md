@@ -170,3 +170,40 @@ Parity means the same concepts, labels, categories and expected user outcomes. I
 - [ ] Keyboard, contrast, scaling and reduced-motion requirements are addressed.
 - [ ] The interface remains responsive on low-resource systems and legacy resolutions.
 - [ ] UI framework choices are supported by measured prototypes, not preference alone.
+
+## 10. Modern UI prototype direction — 2026-11-10
+
+### Rust / Windows 10 and 11
+
+The first modern UI prototype will use **Windows Reactor + WinUI 3**, through the native Rust windows-reactor library. This is the recommended prototype target, not a performance certification or a promise that the dependency is permanent.
+
+Reasons:
+- WinUI 3 is Microsoft's modern native Windows desktop UI framework and uses Fluent controls/design patterns, which align with the WinToys visual reference.
+- Windows Reactor exposes WinUI 3 controls to Rust through typed components/messages and state-driven reconciliation. It includes native NavigationView, controls, accessibility/automation modifiers, list virtualization, dialogs, menus and composition integration.
+- This is a native WinUI UI path, not an Electron/Chromium application. Do not add WebView2 merely to draw the settings UI.
+- The documented Windows App SDK minimum is Windows 10 version 1809 (build 17763), which fits the modern Win10/Win11 Rust application family. This is a platform minimum, not a WinLook runtime test.
+
+Initial version/toolchain evidence:
+- Published baseline: windows-reactor 0.100.0 and windows-reactor-setup 0.100.0.
+- Rust MSRV: 1.95 for the Windows Reactor release family; the application toolchain must therefore be modern even though the portable shared-library crates currently retain Rust 1.56 compatibility.
+- The initial 0.100 release was tied to Windows App SDK 2.4.0. Upstream's current development source has moved its metadata/runtime pin forward; keep the Reactor, setup helper, metadata and Windows App SDK runtime versions aligned rather than mixing versions.
+- Start with framework-dependent deployment for the prototype (installed Windows App Runtime plus the framework bootstrap). Evaluate self-contained packaging separately because staging the runtime beside the app increases package/output size.
+
+The first UI library should live at rust/library/wl_ui/ and contain shared WinUI components, page models, design tokens and navigation/shell composition. The complete Win10 and Win11 application entry points remain in rust/win10/ and rust/win11/. The UI library must not own BGW policy or call private engine internals; use view-model/adapter interfaces and the Manager↔BGW IPC contract.
+
+### C / Windows 95
+
+The Windows 95 application must not depend on WinUI 3 or Windows App SDK. Its UI remains a separate C implementation using only APIs and common controls proven available for the selected Win95 compiler/runtime. It should share settings identifiers, page concepts and user outcomes with the modern UI, not modern pixels or unsupported controls. The exact C UI toolkit/control strategy remains a compatibility research gate.
+
+### Prototype and acceptance gates
+
+Before treating Windows Reactor as the permanent UI stack:
+- Build a small Win10/Win11 prototype with the same left navigation and content layout used by the WinToys reference.
+- Verify the installed Windows App Runtime/framework bootstrap and an unpackaged development run.
+- Measure cold start, idle CPU, private bytes/working set, navigation latency and repeated page mount/unmount memory on a low-end representative machine.
+- Test keyboard navigation, UI Automation names, screen reader access, high contrast, text scaling and reduced motion.
+- Test list virtualization and avoid keeping every page's controls mounted when the page is not visible.
+- Test 1366x768 and a constrained small window; keep legacy 640x480 as a separate C/Win95 requirement.
+- Keep a native static/empty fallback if a page cannot load its data or BGW is disconnected.
+
+If the prototype fails the low-resource or compatibility gates, compare a lighter Win32 control implementation before committing to a permanent framework. Do not replace WinUI with a browser-based UI as a fallback.

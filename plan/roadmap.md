@@ -15,7 +15,10 @@
 
 1. Product scope, OS support tiers and non-goals.
 2. Repository layout, source ownership and public API strategy.
-3. Per-OS toolchain/runtime baselines and capability contract.
+3. Shared-library foundation (animation, CPUv and GPUv; FFmpeg after platform/licensing decisions).
+4. Library tests, C/Rust contract review and portability gates.
+5. WinToys-style Manager UI implementation and UI-specific tests.
+6. Per-OS toolchain/runtime baselines and capability contract.
 4. Process/session model, IPC and health/restart rules.
 5. Change journal, transaction and restoration design.
 6. Platform adapters and read-only capability discovery.
@@ -36,7 +39,7 @@ Legacy toolchain research proceeds in parallel but remains a separate build/test
 - Product mission, non-goals and support tiers.
 - Feature-capability matrix for Windows 95 through 11.
 - Hardware/performance tiers and accessibility baseline.
-- Approved repository layout for C, rust, lib, product metadata and documentation.
+- Approved repository layout: complete applications in rust/win10/, rust/win11/ and C/win95/; shared libraries in rust/library/ and C/library/; planning under plan/.
 - Engine naming convention and public API ownership.
 - WinToys-inspired Manager navigation/page model.
 - Application guide, public API reference and per-engine documentation standard.
@@ -44,7 +47,7 @@ Legacy toolchain research proceeds in parallel but remains a separate build/test
 ### Exit gate
 - [ ] Each Windows release has an intended tier or is marked research-only.
 - [ ] No feature is described as universal without evidence.
-- [ ] C/Rust source trees and library ownership are approved.
+- [x] C/Rust source trees and shared-library ownership are recorded in [Repository Layout](architecture/repository-layout.md).
 - [ ] Public crate/header responsibilities are clear.
 - [ ] UI toolkit choices are not prematurely assumed for legacy targets.
 - [ ] Documentation structure and API stability labels are approved.
@@ -124,7 +127,7 @@ Choose a small reversible setting, then prove preview, snapshot, apply, verifica
 ### Exit gate
 - [ ] Static wallpaper works across selected monitor layouts.
 - [ ] Renderer stop/restart does not corrupt/hide the native desktop.
-- [ ] Resource pressure degrades quality before severe contention.
+- [ ] Resource pressure defers or pauses WinLook-owned work, freezes the last frame where appropriate and releases recoverable resources without silently degrading configured visual quality.
 - [ ] Suspend stops expensive work where feasible.
 - [ ] Reduced-motion and accessibility preferences are respected.
 

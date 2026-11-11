@@ -41,14 +41,14 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Complete Windows 95 application: `C/win95/`.
 - Shared libraries: `rust/library/` and `C/library/`.
 - Root planning and workflows: `plan/` and `.github/workflows/`.
-- The historical `crates/` and `legacy/` prototype paths may remain until a dedicated migration is completed; do not treat them as the target layout.
+- Shared libraries now live under `rust/library/` and `C/library/`; historical `crates/` and `legacy/` prototype copies are scheduled for removal as part of this migration.
 
-## Initial code prototypes
-- Modern Rust animation crate: [`crates/wl_animate`](../crates/wl_animate/README.md)
-- Legacy C animation library: [`wl_Lanimate`](../legacy/wl_Lanimate/README.md)
-- Vector/SVG API design: [Vector Animation](architecture/vector-animation.md)
-- Shared CPU/GPU governors are planned as `wl_cpuv`/`wl_gpuv` and `wl_Lcpuv`/`wl_Lgpuv`; the current repository branch does not yet contain releasable implementations.
-- Implementation status and verification limits: [Animation Suite](architecture/animation-suite.md)
+## Shared library implementation
+- Rust: [`wl_animate`](../rust/library/wl_animate/README.md), [`wl_cpuv`](../rust/library/wl_cpuv/README.md), [`wl_gpuv`](../rust/library/wl_gpuv/README.md).
+- C: [`wl_Lanimate`](../C/library/wl_Lanimate/README.md), [`wl_Lcpuv`](../C/library/wl_Lcpuv/README.md), [`wl_Lgpuv`](../C/library/wl_Lgpuv/README.md).
+- Vector/SVG contract: [Vector Animation](architecture/vector-animation.md).
+- Resource-governor contract: [CPUv/GPUv](architecture/resource-governors.md).
+- UI phase after library verification: [Manager UI Architecture](architecture/ui-architecture.md).
 
 ## Resume rules
 1. Re-read the current user request and current repository files. This index is navigation, not authority over new instructions.

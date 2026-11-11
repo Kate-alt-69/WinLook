@@ -231,4 +231,4 @@ Do not call the animation API beta-complete or publish a stable beta package unt
 6. CPU fallback works and a GPU renderer has device-loss and budget-pressure coverage.
 7. API examples compile, and docs do not claim features that have only been planned.
 
-The current `0.2.0-beta.1` manifest value is a prerelease label only; it is not evidence that these gates have passed. The committed vector/SVG files still need public module/export wiring and conformance tests before consumers can rely on that API.
+The current `0.2.0-beta.1` manifest value is a prerelease label only; it is not evidence that these gates have passed. The Rust vector/SVG path-data modules are exported in the library-foundation branch and have unit coverage for command normalization, compact flags, malformed input and parser size/command limits. Full SVG document import, alpha/color-space/group-opacity semantics, C/Rust scene/parser parity, property/fuzz coverage and renderer conformance remain open before consumers can rely on the broader API.

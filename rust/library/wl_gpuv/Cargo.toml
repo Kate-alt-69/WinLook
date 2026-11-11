@@ -1,0 +1,10 @@
+[package]
+name = "wl_gpuv"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.56"
+description = "Portable memory and submission admission core for WinLook GPU work"
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"
