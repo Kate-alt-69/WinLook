@@ -277,6 +277,11 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
             print("  {:30} {}".format(key + ":", "not found" if value is None else str(value)))
         if missing:
             print("\nMissing baseline tools: " + ", ".join(missing))
+        print("\nNext steps:")
+        print("  python build.py verify libraries")
+        print("  python build.py build win10   (Windows + MSVC only)")
+        print("  python build.py build win11   (Windows + MSVC only)")
+        print("Running without an action is equivalent to: python build.py doctor")
         print("\nWindows UI builds require Visual Studio C++ Build Tools.")
         print("Running WinUI 3 also requires the matching Windows App Runtime:")
         print("  " + APP_RUNTIME_URL)
@@ -856,7 +861,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    # Running the entry point without an action should be useful, not an argparse error.
+    # The doctor command is read-only and gives users the next actionable build steps.
+    if not arguments:
+        arguments = ["doctor"]
+    args = parser.parse_args(arguments)
     root = Path(args.root).expanduser().resolve()
     if not (root / "Cargo.toml").is_file() or not (root / "README.md").is_file():
         parser.error("--root must point to the WinLook repository root.")
