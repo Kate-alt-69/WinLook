@@ -1,0 +1,77 @@
+
+name: WinLook preview release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  libraries:
+    name: Release library gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Verify libraries before release
+        run: python build.py verify libraries --sanitizers
+
+  windows:
+    name: Build release target / ${{ matrix.target }}
+    needs: libraries
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [win10, win11]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Confirm release target exists
+        run: python build.py status ${{ matrix.target }} --github-output
+      - name: Build application
+        run: python build.py build ${{ matrix.target }}
+      - name: Package application
+        run: python build.py package ${{ matrix.target }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: winlook-${{ matrix.target }}-release
+          path: build/artifacts/winlook-${{ matrix.target }}-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish release
+    needs: [libraries, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: winlook-*-release
+          path: release-assets
+          merge-multiple: true
+      - name: Verify release assets
+        run: |
+          test -s release-assets/winlook-win10-x64-preview.zip
+          test -s release-assets/winlook-win11-x64-preview.zip
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" release-assets/*.zip             --title "WinLook ${GITHUB_REF_NAME}"             --generate-notes             --notes "Preview release: WinLook Manager binaries are framework-dependent and require the matching Windows App Runtime. The BGW background worker and Windows 95 application are not included until their implementation/build gates exist."
