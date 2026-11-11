@@ -10,6 +10,7 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "build.py"
+      - ".github/workflows/win11.yml"
   pull_request:
     branches: [main, feature/wintoys-manager-ui]
     paths:
