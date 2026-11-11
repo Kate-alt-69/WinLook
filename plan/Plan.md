@@ -3,7 +3,7 @@
 > **Document type:** Living planning checklist and architecture decisions  
 > **Project:** WinLook  
 > **Repository:** [Kate-alt-69/WinLook](https://github.com/Kate-alt-69/WinLook)  
-> **Status:** Planning plus shared-library implementation in progress; see implementation checkpoints for tested and unverified work.  
+> **Status:** Shared-library foundation merged; the WinToys-style Manager UI is implemented on its separate branch and awaits review; the staged build runner and CI are being stacked to merge last.  
 > **Primary document:** `Plan.md`  
 > **Future consolidated specification:** `Final-Plan.md`
 
@@ -797,8 +797,26 @@ This is a staged implementation sequence. The current library branch contains po
 - [x] Record Windows Reactor + WinUI 3 as the modern Win10/Win11 prototype direction, not yet a permanent performance-certified dependency.
 - [x] Record the Rust 1.95+ toolchain requirement and Windows App SDK runtime deployment choices.
 - [x] Preserve a separate native C UI path for Windows 95.
-- [ ] Add shared Rust UI library and Win10/Win11 Manager app entry points.
-- [ ] Implement the WinToys-inspired persistent navigation shell, page header, Home and reusable setting/status components.
-- [ ] Implement the remaining page modules and route/state handling.
-- [ ] Test navigation, controls, keyboard/accessibility, constrained layouts, BGW-disconnected states and resource use.
+- [x] Add shared Rust UI library and Win10/Win11 Manager app entry points on feature/wintoys-manager-ui.
+- [x] Implement the first WinToys-inspired navigation shell, search, page routing, title-bar theme selector and reusable page/status cards.
+- [ ] Correct the remaining Windows UI CI failures and complete accessibility/runtime smoke tests before merging PR #2.
 - [ ] Compare framework-dependent versus self-contained packaging after measuring size/startup.
+
+
+---
+
+# 21. Unified build runner and workflow suite — 2026-11-11
+
+- [x] Add Python 3.9+ standard-library build entry point at root build.py.
+- [x] Route Rust outputs to build/rust/ and CMake/Open Watcom outputs to build/c/.
+- [x] Route Cargo registry/Git and optional sccache data to build/.rcache/; route ccache data to build/.Ccache/.
+- [x] Keep packages and generated security reports under build/artifacts/.
+- [x] Add build-runner unit tests, target-availability gates, safe dry-run/explicit setup/clean confirmations and SHA-256-verified actionlint/Gitleaks download helpers.
+- [x] Add dedicated workflows for workflow lint, libraries, Manager UI, Win10, Win11, BGW, Win95, documentation, security, full build order and tagged releases.
+- [x] Remove the old monolithic library-tests.yml from the staged workflow branch.
+- [ ] Complete all workflow jobs on the final staged PR and correct any findings.
+- [ ] Merge order: library foundation → Manager UI → github/workflow last.
+- [ ] Enable the Win95 self-hosted workflow only after C/win95/Makefile and a configured Open Watcom runner exist.
+- [ ] Enable BGW compilation only after explicit Cargo binary targets exist.
+
+Detailed command, output/cache, workflow and merge contracts: [Build System and CI](architecture/build-and-ci.md).
