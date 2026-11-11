@@ -175,23 +175,16 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - All non-Home pages are explicit scaffolds. They do not claim to apply system settings; BGW/IPC and OS adapters are not implemented yet.
 - Windows 95 UI remains out of this branch and will use a separate C-native implementation.
 - Build/test gates are defined in `.github/workflows/library-tests.yml`; the Windows UI job verifies workspace formatting, UI tests/Clippy, Win10/Win11 application builds and preview artifacts. The UI branch CI passed after the `pages.rs` rustfmt corrections (run 43057947732). Actual Windows App Runtime desktop smoke testing and low-end performance measurements remain required.
-<<<<<<< HEAD
+## Unified build runner and workflow implementation — 2026-11-11
 
-## Unified build runner and workflow branch — 2026-11-11
-
-- Workflow branch: github/workflow, stacked on the resolved feature/wintoys-manager-ui PR #2 head. PR #3 targets that branch and remains the final merge stage.
-- Root build entry point: build.py (Python 3.9+, standard library only). Build runner and tests are checked by workflow-lint.yml; the Python unit suite and actionlint have passed on the current staged PR checks.
-- Build output contract: Rust under build/rust/; CMake/Open Watcom under build/c/; package/report output under build/artifacts/.
-- Cache contract: CARGO_HOME and optional sccache under build/.rcache/; ccache under build/.Ccache/. Root .gitignore excludes the full build/ tree. clean --yes keeps caches; clean --yes --all removes them.
-- Workflow files added: workflow-lint.yml, libraries.yml, manager-ui.yml, win10.yml, win11.yml, bgw.yml, win95.yml, docs.yml, security.yml, build-all.yml and release.yml. The former monolithic library-tests.yml is removed on this branch.
-- Workflow lint uses pinned actionlint 1.7.12 (SHA-256 verified) and .github/actionlint.yaml declares the self-hosted open-watcom label.
-- Security workflow uses CodeQL for C/C++, Rust, Actions and Python; dependency review on pull requests; and a full-history Gitleaks scan with redacted report output. Gitleaks 8.30.1 download is pinned and hash-verified.
-- Win95 remains source-gated until C/win95/Makefile exists. For CI it requires a self-hosted Linux x64 runner labelled open-watcom plus repository variable WINLOOK_ENABLE_WIN95_RUNNER=true and a manually installed Open Watcom compiler. The Python helper downloads/verifies the upstream installer but does not assume undocumented silent switches.
-- BGW remains source-gated until a winlook.bg / winlook-bg / winlook_bg Cargo binary target is explicitly declared.
-- The latest stacked PR checks are tracked on PR #3. Keep source-detection skips distinct from actual builds; Win95 and BGW executables are not built until their source targets exist.
-- Next: after PR #2 is merged into main, retarget PR #3 to main and rerun all checks. Do not merge the workflow branch before PR #2.
-
-
-- Dependency review note: PR #3 discovered that the repository Dependency Graph is disabled. security.yml now emits a visible warning and skips the Dependency Review action unless repository Actions variable WINLOOK_DEPENDENCY_GRAPH_ENABLED=true is set. Before treating dependency review as enabled, activate Settings → Security → Dependency graph and set that variable. CodeQL and Gitleaks remain independent and continue to run.
-=======
->>>>>>> origin/main
+- The staged implementation sequence is complete: shared-library foundation PR #1, Manager UI PR #2 and build/workflow PR #3 are all merged into `main`. PR #3 merged at commit `ebc853e894e88d3e863c5b8034a41128dfbbaead`.
+- Root build entry point: `build.py` (Python 3.9+, standard library only). `workflow-lint.yml` validates the runner/tests and all workflow YAML with pinned actionlint.
+- Build output contract: Rust under `build/rust/`; CMake/Open Watcom under `build/c/`; package/report output under `build/artifacts/`.
+- Cache contract: `CARGO_HOME` and optional sccache under `build/.rcache/`; ccache under `build/.Ccache/`. Root `.gitignore` excludes the full `build/` tree. `clean --yes` keeps caches; `clean --yes --all` removes them.
+- Canonical workflow set: `workflow-lint.yml`, `libraries.yml`, `manager-ui.yml`, `win10.yml`, `win11.yml`, `bgw.yml`, `win95.yml`, `docs.yml`, `security.yml`, `build-all.yml` and `release.yml`. The earlier monolithic `library-tests.yml` is removed.
+- Workflow lint uses pinned actionlint 1.7.12 (SHA-256 verified); `.github/actionlint.yaml` declares the self-hosted `open-watcom` label.
+- Security workflow uses CodeQL for C/C++, Rust, Actions and Python, plus a full-history Gitleaks scan with redacted report output. Dependency review remains conditional on enabling the repository Dependency Graph and setting Actions variable `WINLOOK_DEPENDENCY_GRAPH_ENABLED=true`.
+- Win95 remains source-gated until `C/win95/Makefile` exists. Its CI path requires a self-hosted Linux x64 runner labelled `open-watcom`, repository variable `WINLOOK_ENABLE_WIN95_RUNNER=true` and a manually installed Open Watcom compiler. The Python helper verifies/downloads the upstream installer but does not assume undocumented silent switches.
+- BGW remains source-gated until a `winlook.bg` / `winlook-bg` / `winlook_bg` Cargo binary target is explicitly declared.
+- Keep source-detection skips distinct from actual builds: Win95 and BGW executables are not built until their source targets exist.
+- The PR #3 merge commit's combined-status endpoint returned no status entries in this inspection; that is not evidence of a passing or failing hosted Actions run. Check the individual workflow runs before treating the merged head as fully CI-verified.
