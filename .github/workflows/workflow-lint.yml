@@ -34,6 +34,8 @@ jobs:
           cache: ""
       - name: Compile build runner and tests
         run: python -m py_compile build.py tests/test_build.py
+      - name: Smoke-test the default build.py entry point
+        run: python build.py
       - name: Run build-runner unit tests
         run: python -m unittest discover -s tests -v
       - name: Lint every workflow with pinned actionlint
