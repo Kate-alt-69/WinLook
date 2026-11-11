@@ -113,15 +113,15 @@ Install the pinned Open Watcom 2.0 compiler on that runner, configure WATCOM, IN
 
 A v* tag starts the release workflow. It requires the shared-library verification job and successful Windows 10 and Windows 11 application packages. The current preview package documents that it is framework-dependent and does not contain winlook.bg.exe. Win95 and BGW outputs are not implied to exist until their own build gates have been implemented and passed.
 
-## 5. Required branch/merge order
+## 5. Completed branch/merge order
 
-The workflow branch is intentionally last in the implementation order:
+The staged implementation sequence has landed on `main` in the intended order:
 
-1. Shared libraries — feature/library-foundation; PR #1 has been merged into main.
-2. Manager UI — feature/wintoys-manager-ui; PR #2 must be reviewed and have its UI verification failures corrected before merge.
-3. Build orchestration and CI — github/workflow; this branch is intended to target feature/wintoys-manager-ui and merge after the UI branch. Once that stack is merged, the workflow suite becomes the repository's canonical CI.
+1. Shared libraries — `feature/library-foundation`, merged through PR #1.
+2. Manager UI — `feature/wintoys-manager-ui`, merged through PR #2.
+3. Build orchestration and CI — `github/workflow`, merged through PR #3 after PR #2.
 
-Do not merge github/workflow directly into main ahead of the Manager UI branch. Its pull request should remain stacked until the preceding implementation stages have landed.
+The focused workflow suite is now the canonical CI configuration. The original staged-branch instructions above are historical and no longer describe pending merge work.
 
 ## 6. Known boundaries and follow-up work
 
