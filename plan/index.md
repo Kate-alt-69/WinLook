@@ -13,6 +13,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Two-executable BGW runtime: [architecture/background-runtime.md](architecture/background-runtime.md)
 - User-defined repository layout: [architecture/repository-layout.md](architecture/repository-layout.md)
 - Manager UI architecture: [architecture/ui-architecture.md](architecture/ui-architecture.md)
+- Build system, shared output/cache layout and GitHub Actions: [architecture/build-and-ci.md](architecture/build-and-ci.md)
 - Runtime/process/IPC contracts: [architecture/runtime-contracts.md](architecture/runtime-contracts.md)
 - Documentation standards: [architecture/documentation-standard.md](architecture/documentation-standard.md)
 - Appearance/Icon Engine: [architecture/appearance-engine.md](architecture/appearance-engine.md)
@@ -40,7 +41,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Complete Windows 11 application: `rust/win11/`.
 - Complete Windows 95 application: `C/win95/`.
 - Shared libraries: `rust/library/` and `C/library/`.
-- Root planning and workflows: `plan/` and `.github/workflows/`.
+- Root planning, build runner and workflows: `plan/`, `build.py` and `.github/workflows/`.
 - Shared libraries now live under `rust/library/` and `C/library/`; historical `crates/` and `legacy/` prototype copies are scheduled for removal as part of this migration.
 
 ## Shared library implementation
