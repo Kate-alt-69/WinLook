@@ -1,0 +1,71 @@
+
+name: Windows 11 application build
+
+on:
+  push:
+    branches: [main, github/workflow]
+    paths:
+      - "rust/win11/**"
+      - "rust/library/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.py"
+      - ".github/workflows/win11.yml"
+  pull_request:
+    branches: [main, feature/wintoys-manager-ui]
+    paths:
+      - "rust/win11/**"
+      - "rust/library/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect win11 application
+    runs-on: windows-2022
+    outputs:
+      available: ${{ steps.target.outputs.available }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - id: target
+        run: python build.py status win11 --github-output
+
+  build:
+    name: Build and package win11
+    needs: detect
+    if: needs.detect.outputs.available == 'true'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            build/.rcache
+            build/rust/win11
+          key: ${{ runner.os }}-win11-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml') }}
+          restore-keys: ${{ runner.os }}-win11-
+      - name: Build win11 executable
+        run: python build.py build win11
+      - name: Package win11 preview
+        run: python build.py package win11
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: winlook-win11-preview
+          path: build/artifacts/winlook-win11-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 14
