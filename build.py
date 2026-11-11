@@ -15,6 +15,7 @@ import platform
 import shlex
 import shutil
 import subprocess
+import tarfile
 import sys
 import urllib.request
 import zipfile
@@ -589,6 +590,14 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("target", choices=("rust", "c", "libraries", "ui", "all"))
     verify.add_argument("--sanitizers", action="store_true")
     verify.add_argument("--dry-run", action="store_true")
+
+    status = sub.add_parser("status", help="Report whether a build target has source files.")
+    status.add_argument("target", choices=("libraries", "ui", "win10", "win11", "win95", "bgw"))
+    status.add_argument("--github-output", action="store_true", help="Write an available output for workflow gates.")
+
+    workflow_lint = sub.add_parser("workflow-lint", help="Download a pinned actionlint binary and lint workflow YAML.")
+    workflow_lint.add_argument("--apply", action="store_true", help="Download and SHA-256 verify actionlint if missing.")
+    workflow_lint.add_argument("--dry-run", action="store_true")
 
     package = sub.add_parser("package", help="Package a previously built Windows Manager executable.")
     package.add_argument("target", choices=("win10", "win11"))
