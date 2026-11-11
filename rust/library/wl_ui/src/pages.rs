@@ -139,10 +139,7 @@ fn page_settings(page: PageId) -> &'static [(&'static str, &'static str)] {
                 "Desktop icons",
                 "Configure supported desktop icon presentation.",
             ),
-            (
-                "Icon library",
-                "Browse and select installed icon packs.",
-            ),
+            ("Icon library", "Browse and select installed icon packs."),
             (
                 "System icons",
                 "Review which system icon locations are supported on this Windows build.",
@@ -223,10 +220,7 @@ fn page_settings(page: PageId) -> &'static [(&'static str, &'static str)] {
                 "Installed extensions",
                 "Review installed extensions and their declared capabilities.",
             ),
-            (
-                "Permissions",
-                "Inspect and revoke extension permissions.",
-            ),
+            ("Permissions", "Inspect and revoke extension permissions."),
             (
                 "Extension sources",
                 "Configure trusted extension sources and signature requirements.",
@@ -265,10 +259,7 @@ fn page_settings(page: PageId) -> &'static [(&'static str, &'static str)] {
                 "Startup",
                 "Configure whether the BGW background runtime starts with the Windows user session.",
             ),
-            (
-                "Updates",
-                "Review application and library update channels.",
-            ),
+            ("Updates", "Review application and library update channels."),
             (
                 "Privacy",
                 "Configure diagnostics collection and local data retention.",
