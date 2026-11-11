@@ -523,7 +523,7 @@ def build_win95(runner: Runner) -> None:
 
 def build_libraries(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Build Rust shared libraries", ["cargo", "build", "--workspace", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
+    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
     cmake_c_test(runner)
 
 
