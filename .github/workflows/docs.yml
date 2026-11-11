@@ -1,0 +1,38 @@
+
+name: Documentation validation
+
+on:
+  push:
+    branches: [main, github/workflow]
+    paths:
+      - "README.md"
+      - "plan/**"
+      - "build.py"
+      - "tests/**"
+  pull_request:
+    branches: [main, feature/wintoys-manager-ui]
+    paths:
+      - "README.md"
+      - "plan/**"
+      - "build.py"
+      - "tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Check documentation structure and Python tooling
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Check required documentation files
+        run: python build.py docs
+      - name: Compile Python build runner
+        run: python -m py_compile build.py tests/test_build.py
+      - name: Run build-runner tests
+        run: python -m unittest discover -s tests -v
