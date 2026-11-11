@@ -56,10 +56,11 @@ python build.py clean --yes --all also removes build/.rcache/ and build/.Ccache/
 
 ## 3. Python build runner
 
-From the repository root:
+From the repository root (Python 3.9+):
 
 | Command | Purpose |
 |---|---|
+| python build.py | Run the read-only doctor preflight; this is the default when no action is supplied |
 | python build.py doctor | Report Python, Rust, CMake, MSVC/GCC/Clang, cache tools and available source targets |
 | python build.py setup | Print toolchain notes; use an explicit --with-* option to select what to install |
 | python build.py setup --with-rust | Plan stable Rust installation/update without changing the machine |
@@ -89,7 +90,7 @@ All third-party Actions used by these workflows are pinned to a verified commit 
 
 | Workflow | Responsibility | Gate |
 |---|---|---|
-| workflow-lint.yml | Python syntax/unit tests and actionlint validation for every workflow | Must pass before workflow changes merge |
+| workflow-lint.yml | Python syntax/unit tests, default CLI smoke test, workflow-command parser coverage and actionlint validation for every workflow | Must pass before workflow changes merge |
 | libraries.yml | Rust shared-library formatting/tests/Clippy/docs (wl_animate, wl_cpuv and wl_gpuv only); C89 MSVC; C89 GCC ASan/UBSan | Portable library gate |
 | manager-ui.yml | WinUI 3 Manager unit tests and Clippy | Runs only when all UI manifests exist |
 | win10.yml | Windows 10 Manager build and preview package | Runs only when the Win10 app manifest exists |
@@ -98,7 +99,7 @@ All third-party Actions used by these workflows are pinned to a verified commit 
 | win95.yml | Legacy C application build using Open Watcom | Requires C/win95/Makefile and the configured self-hosted open-watcom runner |
 | docs.yml | Required-document checks and Python test compilation | Documentation/build-runner gate |
 | security.yml | CodeQL for C/C++, Rust, Actions and Python; dependency review; Gitleaks full-history scan | Security gate |
-| build-all.yml | Manual/main-branch complete build-order validation of all available modern targets | Integration build |
+| build-all.yml | Manual/main-branch strict toolchain preflight, full supported verification, and actual Win10/Win11 application compilation when source manifests exist | Integration build |
 | release.yml | Version-tag release after library validation and both modern app builds | Publish gate |
 
 The BGW and Win95 workflows intentionally use source/toolchain detection. If a target is not implemented, it stays skipped; it is not replaced by a dummy binary or a fake passing build.
@@ -125,7 +126,8 @@ The focused workflow suite is now the canonical CI configuration. The original s
 
 ## 6. Known boundaries and follow-up work
 
-- The current WinUI 3 prototype requires Windows App Runtime. CI compiles the Manager but does not prove clean-machine runtime bootstrap or low-end UI performance.
+- The current WinUI 3 prototype requires Windows App Runtime. The Windows build workflows compile and package the Manager; they do not prove clean-machine runtime bootstrap or low-end UI performance.
+- The build-runner unit suite validates helper logic and the supported workflow CLI command shapes. Actual compiler/build evidence comes from the Rust/C library verification workflows and the Windows integration build; a passing Python test suite or actionlint run alone is not a successful application build.
 - The current C/Win95 application directory and Makefile do not exist yet. Open Watcom compiler installation still needs an unattended, source-verified approach or the documented self-hosted runner.
 - BGW source/binary targets do not exist yet; no BGW executable is produced by this branch.
 - Windows application smoke tests, Windows 95 VM tests, installer/uninstaller rollback, hardware graphics, and runtime memory/CPU benchmarks remain distinct acceptance gates.
