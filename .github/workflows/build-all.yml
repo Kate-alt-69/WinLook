@@ -11,6 +11,8 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "build.py"
+      - "tests/**"
+      - ".github/workflows/build-all.yml"
 
 permissions:
   contents: read
