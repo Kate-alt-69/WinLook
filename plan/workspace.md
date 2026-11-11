@@ -1,6 +1,6 @@
 # WinLook Workspace Memory
 
-> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-09. Current user instructions and repository source take precedence.
+> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-11. Current user instructions and repository source take precedence.
 
 ## Project identity
 WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
@@ -165,3 +165,18 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Win95 remains a separate C/native-control implementation; no WinUI 3/Windows App SDK dependency.
 - Evidence and caveats: [UI Architecture](architecture/ui-architecture.md), [Source Ledger](references/SOURCES.md).
 - Prototype acceptance: cold start, idle CPU, private bytes/working set, navigation latency, mount/unmount memory, UI Automation, keyboard/high contrast/text scaling/reduced motion and constrained-window layout. No performance claim until measured on representative low-end hardware.
+
+
+## Unified build runner and workflow branch — 2026-11-11
+
+- Workflow branch: github/workflow, created from main and intentionally stacked to merge after the library and Manager UI implementation stages. Intended PR base: feature/wintoys-manager-ui.
+- Root build entry point: build.py (Python 3.9+, standard library only). Build runner and tests pass Python compilation and 9 unit tests on GitHub Actions.
+- Build output contract: Rust under build/rust/; CMake/Open Watcom under build/c/; package/report output under build/artifacts/.
+- Cache contract: CARGO_HOME and optional sccache under build/.rcache/; ccache under build/.Ccache/. Root .gitignore excludes the full build/ tree. clean --yes keeps caches; clean --yes --all removes them.
+- Workflow files added: workflow-lint.yml, libraries.yml, manager-ui.yml, win10.yml, win11.yml, bgw.yml, win95.yml, docs.yml, security.yml, build-all.yml and release.yml. The former monolithic library-tests.yml is removed on this branch.
+- Workflow lint uses pinned actionlint 1.7.12 (SHA-256 verified) and .github/actionlint.yaml declares the self-hosted open-watcom label.
+- Security workflow uses CodeQL for C/C++, Rust, Actions and Python; dependency review on pull requests; and a full-history Gitleaks scan with redacted report output. Gitleaks 8.30.1 download is pinned and hash-verified.
+- Win95 remains source-gated until C/win95/Makefile exists. For CI it requires a self-hosted Linux x64 runner labelled open-watcom plus repository variable WINLOOK_ENABLE_WIN95_RUNNER=true and a manually installed Open Watcom compiler. The Python helper downloads/verifies the upstream installer but does not assume undocumented silent switches.
+- BGW remains source-gated until a winlook.bg / winlook-bg / winlook_bg Cargo binary target is explicitly declared.
+- Latest completed verification before this note: workflow lint and Python unit suite passed run 43052529907; Gitleaks scan passed in security run 43052529901. CodeQL C/C++ initially failed in the default build mode with "no source code seen"; the workflow was updated to use the documented build-mode none for C/C++ and Rust and is being re-run. Do not treat the initial CodeQL matrix as green.
+- Next: verify the latest full workflow run; then create a draft stacked workflow PR targeting feature/wintoys-manager-ui. Do not merge the workflow branch before PR #2.
