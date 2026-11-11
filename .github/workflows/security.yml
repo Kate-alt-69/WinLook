@@ -1,0 +1,80 @@
+
+name: Security analysis
+
+on:
+  push:
+    branches: [main, github/workflow]
+  pull_request:
+    branches: [main, feature/wintoys-manager-ui]
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  codeql-compiled:
+    name: CodeQL / compiled languages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066
+        with:
+          languages: c-cpp,rust
+          build-mode: none
+          dependency-caching: true
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066
+        with:
+          category: "/language:compiled"
+
+  codeql-interpreted:
+    name: CodeQL / workflows and Python
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066
+        with:
+          languages: actions,python
+          dependency-caching: true
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066
+        with:
+          category: "/language:interpreted"
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+
+  secrets:
+    name: Full-history secret scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Scan all reachable Git history with redacted findings
+        run: python build.py secret-scan --apply
+      - name: Upload redacted SARIF report if generated
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: gitleaks-sarif
+          path: build/artifacts/gitleaks.sarif
+          if-no-files-found: ignore
+          retention-days: 7
