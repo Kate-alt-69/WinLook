@@ -1,6 +1,6 @@
 # WinLook Technical Source Ledger
 
-Last verified: 2026-11-10. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
+Last verified: 2026-11-11. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
 
 ## Microsoft Windows / Win32
 
@@ -128,3 +128,20 @@ Win9x toolchain/runtime combinations; safe desktop icon suppression/recovery; pr
 | UI-007 | [windows-rs dependency pins](https://github.com/microsoft/windows-rs/blob/master/docs/dependencies.md) | Current upstream development metadata/runtime pin is Windows App SDK 2.5.1 | Current upstream source may be newer than the published 0.100.0 crate; pin matching crate/setup/runtime versions together |
 
 Implementation consequence: prototype Win10/Win11 Manager UI with the published Windows Reactor release family, but treat cold start, idle CPU, private bytes, navigation latency, accessibility and low-end hardware behaviour as WinLook-specific acceptance tests. The Win95 C UI remains a separate native compatibility implementation.
+
+
+## Build, workflow and security tooling research — 2026-11-11
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| BUILD-001 | [Open Watcom 2.0 C/C++ Getting Started](https://open-watcom.github.io/open-watcom-v2-wikidocs/c_readme.html) | Open Watcom 2.0 supports 32-bit Windows 95/98/Me targets and Linux host development | Establishes target availability, not WinLook compatibility or an unattended installer CLI |
+| BUILD-002 | [Open Watcom C/C++ User Guide](https://open-watcom.github.io/open-watcom-v2-wikidocs/cguide.html) | WCC386 is the 32-bit x86 compiler; command-line target options and compiler invocation are documented | Exact WinLook Makefile/compiler flags still need a tested project |
+| BUILD-003 | [Official Open Watcom 2026-11-01 release assets](https://github.com/open-watcom/open-watcom-v2/releases/tag/2026-11-01-Build) | Official Linux x64 installer asset and release SHA-256 metadata are published | WinLook pins the asset digest. The public guide does not establish the -s/--install-dir flags; the Python runner does not execute guessed options |
+| BUILD-004 | [actionlint configuration](https://github.com/rhysd/actionlint/blob/main/docs/config.md) | Custom self-hosted runner labels are configured in .github/actionlint.yaml under self-hosted-runner.labels | The workflow branch declares only the WinLook-specific open-watcom label |
+| BUILD-005 | [CodeQL supported languages](https://codeql.github.com/docs/codeql-overview/supported-languages-and-frameworks/) | CodeQL supports C/C++, Rust, Python and GitHub Actions workflow analysis | Source scanning is not a substitute for compilation, tests, fuzzing or runtime validation |
+| BUILD-006 | [CodeQL build modes for compiled languages](https://docs.github.com/en/code-security/reference/code-scanning/codeql/build-options-for-compiled-languages) | C/C++ and Rust support build-mode none without a complete project build | Useful for early source scanning; completeness can differ from a full extracted build |
+| BUILD-007 | [Gitleaks usage](https://github.com/gitleaks/gitleaks/blob/master/README.md) | Current v8 command surface uses git, dir and stdin scanning modes; git scans repository history | WinLook scans full reachable history with redacted results and a pinned binary |
+| BUILD-008 | [Gitleaks v8.30.1 release](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1) | Official release asset and SHA-256 digest are available | WinLook verifies the Linux x64 archive digest before extraction |
+| BUILD-009 | [actions/checkout v7](https://github.com/actions/checkout/tree/v7), [setup-python v7](https://github.com/actions/setup-python/tree/v7), [cache v4](https://github.com/actions/cache/tree/v4), [upload-artifact v4](https://github.com/actions/upload-artifact/tree/v4), [download-artifact v4](https://github.com/actions/download-artifact/tree/v4) | Workflow action versions referenced in the staged workflow suite | Each use is pinned to the resolved commit SHA recorded in the YAML file, not a moving tag |
+
+Implementation consequence: C and Rust share the build/ root but keep outputs and compiler caches distinct. Cargo outputs use build/rust/, Cargo's registry/Git and optional sccache use build/.rcache/, CMake outputs use build/c/, and ccache uses build/.Ccache/. This directory arrangement is a WinLook repository contract, not a requirement imposed by the upstream tools.
