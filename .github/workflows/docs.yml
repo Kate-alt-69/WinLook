@@ -31,6 +31,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
+      - name: Smoke-test the default build.py entry point
+        run: python build.py
       - name: Check required documentation files
         run: python build.py docs
       - name: Compile Python build runner
