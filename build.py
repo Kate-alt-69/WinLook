@@ -92,6 +92,11 @@ class Runner:
         return result
 
 
+def format_command(command: Sequence[str]) -> str:
+    values = [str(item) for item in command]
+    return subprocess.list2cmdline(values) if os.name == "nt" else shlex.join(values)
+
+
 def command_path(name: str) -> Optional[str]:
     return shutil.which(name)
 
@@ -152,6 +157,33 @@ def check_ui_sources(root: Path) -> bool:
 
 def check_windows_app(root: Path, target: str) -> bool:
     return project_has_manifest(root, "rust/" + target + "/Cargo.toml")
+
+
+def target_available(root: Path, target: str) -> Tuple[bool, str]:
+    if target == "libraries":
+        ready = project_has_manifest(root, "Cargo.toml") and project_has_manifest(root, "C/library/CMakeLists.txt")
+        return ready, "Rust workspace and C library aggregator found" if ready else "library manifests incomplete"
+    if target == "ui":
+        ready = check_ui_sources(root)
+        return ready, "Manager UI manifests found" if ready else "Manager UI manifests are not present"
+    if target in ("win10", "win11"):
+        ready = check_windows_app(root, target)
+        return ready, target + " application manifest found" if ready else target + " application manifest is not present"
+    if target == "win95":
+        ready = project_has_manifest(root, "C/win95/Makefile")
+        return ready, "C/win95/Makefile found" if ready else "C/win95/Makefile is not present"
+    if target == "bgw":
+        candidates = (
+            "rust/win10/src/bin/winlook.bg.rs",
+            "rust/win10/src/bin/winlook-bg.rs",
+            "rust/win10/src/bin/winlook_bg.rs",
+            "rust/win11/src/bin/winlook.bg.rs",
+            "rust/win11/src/bin/winlook-bg.rs",
+            "rust/win11/src/bin/winlook_bg.rs",
+        )
+        ready = any(project_has_manifest(root, item) for item in candidates)
+        return ready, "BGW source target found" if ready else "BGW binary target is not implemented"
+    raise ValueError("Unknown build target: " + target)
 
 
 def print_skip(message: str) -> None:
@@ -312,10 +344,19 @@ def command_setup(args: argparse.Namespace, runner: Runner) -> int:
     if not args.apply:
         print("Nothing was installed. Repeat with --apply to execute the listed setup.")
         return 0
+    rustup_was_installed = False
     for action in actions:
         if action[0] == "winget":
             action.extend(["--accept-package-agreements", "--accept-source-agreements"])
-        runner.run("Install requested build prerequisite", action)
+            runner.run("Install requested build prerequisite", action)
+            rustup_was_installed = rustup_was_installed or "Rustlang.Rustup" in action
+        else:
+            runner.run("Install stable Rust toolchain and components", action)
+    if rustup_was_installed:
+        raise BuildError(
+            "rustup was installed successfully. Open a new terminal (so PATH refreshes), "
+            "then rerun python build.py setup --apply to install stable Rust components."
+        )
     print("Setup commands completed. Run python build.py doctor to verify.")
     return 0
 
@@ -354,8 +395,9 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
             "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined",
         ])
     runner.run("Configure all C89 libraries", configure)
-    runner.run("Build all C89 libraries", ["cmake", "--build", str(build_dir), "--config", "Release", "--parallel"])
-    runner.run("Run all C89 tests", ["ctest", "--test-dir", str(build_dir), "-C", "Release", "--output-on-failure"])
+    config = "Debug" if sanitizers else "Release"
+    runner.run("Build all C89 libraries", ["cmake", "--build", str(build_dir), "--config", config, "--parallel"])
+    runner.run("Run all C89 tests", ["ctest", "--test-dir", str(build_dir), "-C", config, "--output-on-failure"])
 
 
 def ui_verify(runner: Runner) -> None:
@@ -508,7 +550,6 @@ def package_windows_app(runner: Runner, target: str) -> Path:
     if not executable.is_file():
         raise BuildError("Missing " + str(executable) + ". Build the target before packaging.")
     output_dir = runner.root / "dist"
-    output_dir.mkdir(parents=True, exist_ok=True)
     archive = output_dir / package_filename(target)
     note = (
         "WinLook " + target + " Manager preview\n\n"
@@ -520,11 +561,76 @@ def package_windows_app(runner: Runner, target: str) -> Path:
     if runner.dry_run:
         print("Would package " + str(executable) + " -> " + str(archive))
         return archive
+    output_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
         package.write(executable, "winlook.exe")
         package.writestr("RUNTIME-REQUIREMENTS.txt", note)
     print("Created " + str(archive))
     return archive
+
+
+def command_status(args: argparse.Namespace, runner: Runner) -> int:
+    available, reason = target_available(runner.root, args.target)
+    print(json.dumps({"target": args.target, "available": available, "reason": reason}))
+    output_file = os.environ.get("GITHUB_OUTPUT")
+    if args.github_output and output_file:
+        with open(output_file, "a", encoding="utf-8") as handle:
+            handle.write("available=" + ("true" if available else "false") + "\\n")
+            handle.write("reason=" + reason.replace("\\n", " ") + "\\n")
+    return 0
+
+
+def actionlint_path(root: Path, apply: bool) -> Path:
+    if not sys.platform.startswith("linux") or platform.machine().lower() not in {"x86_64", "amd64"}:
+        raise BuildError("Automatic actionlint bootstrap currently targets Linux x86_64.")
+    destination = root / ".toolchains" / ("actionlint-" + ACTIONLINT_VERSION)
+    executable = destination / "actionlint"
+    if executable.is_file():
+        return executable
+    if not apply:
+        raise BuildError(
+            "actionlint is not cached. Run python build.py workflow-lint --apply "
+            "to download the pinned binary and verify its SHA-256."
+        )
+    destination.mkdir(parents=True, exist_ok=True)
+    archive_path = destination / "actionlint.tar.gz"
+    request = urllib.request.Request(ACTIONLINT_URL, headers={"User-Agent": "WinLook-build.py"})
+    with urllib.request.urlopen(request, timeout=120) as response:
+        with archive_path.open("wb") as output:
+            shutil.copyfileobj(response, output)
+    actual = sha256_file(archive_path)
+    if actual.lower() != ACTIONLINT_SHA256:
+        archive_path.unlink(missing_ok=True)
+        raise BuildError("actionlint SHA-256 mismatch; refusing to extract the archive.")
+    try:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            member = next(
+                (item for item in archive.getmembers() if item.name == "actionlint" and item.isfile()),
+                None,
+            )
+            if member is None:
+                raise BuildError("Pinned actionlint archive did not contain the expected binary.")
+            source = archive.extractfile(member)
+            if source is None:
+                raise BuildError("Could not read actionlint from the verified archive.")
+            with executable.open("wb") as output:
+                shutil.copyfileobj(source, output)
+    finally:
+        archive_path.unlink(missing_ok=True)
+    executable.chmod(0o755)
+    return executable
+
+
+def command_workflow_lint(args: argparse.Namespace, runner: Runner) -> int:
+    executable = actionlint_path(runner.root, args.apply and not runner.dry_run)
+    if runner.dry_run:
+        print("Would lint .github/workflows/*.yml")
+        return 0
+    files = sorted((runner.root / ".github" / "workflows").glob("*.yml"))
+    if not files:
+        raise BuildError("No GitHub Actions workflow YAML files were found.")
+    runner.run("Lint GitHub Actions workflows", [str(executable)] + [str(path) for path in files])
+    return 0
 
 
 def command_docs(args: argparse.Namespace, runner: Runner) -> int:
@@ -672,6 +778,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 0
         if args.action == "docs":
             return command_docs(args, runner)
+        if args.action == "status":
+            return command_status(args, runner)
+        if args.action == "workflow-lint":
+            return command_workflow_lint(args, runner)
         if args.action == "clean":
             return command_clean(args, runner)
     except BuildError as exc:
