@@ -35,6 +35,9 @@ All generated build contents live under the repository-root build/ directory:
 
 The primary build outputs are in build/rust/ and build/c/. The hidden cache directories are intentionally separate:
 
+- `build/rust/` and `build/c/` are sibling output roots under one common build footprint; they are not separate top-level workspaces.
+- Compiled output must stay under the matching language output root. Do not put Cargo's target tree in `.rcache/` or CMake's build tree in `.Ccache/`; those hidden directories are caches only.
+
 - CARGO_HOME=build/.rcache/cargo-home keeps Cargo package and Git caches inside the project build footprint.
 - CARGO_TARGET_DIR=build/rust/shared is the default Rust output directory. Platform binaries override it to build/rust/win10, build/rust/win11, or build/rust/bgw/<package> so same-named executables cannot overwrite one another.
 - When sccache exists, the runner uses build/.rcache/sccache through RUSTC_WRAPPER. It remains optional.
