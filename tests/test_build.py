@@ -18,6 +18,15 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertEqual(paths["c_cache"], root / "build" / ".Ccache")
         self.assertEqual(paths["artifacts"], root / "build" / "artifacts")
 
+    def test_rust_setup_is_opt_in_and_watcom_can_be_selected_separately(self):
+        parser = build.build_parser()
+        watcom = parser.parse_args(["setup", "--open-watcom"])
+        self.assertTrue(watcom.open_watcom)
+        self.assertFalse(watcom.with_rust)
+        rust = parser.parse_args(["setup", "--with-rust"])
+        self.assertTrue(rust.with_rust)
+        self.assertFalse(rust.open_watcom)
+
     def test_bgw_target_requires_binary_kind_and_supported_name(self):
         self.assertTrue(build.is_bgw_target("winlook.bg", ["bin"]))
         self.assertTrue(build.is_bgw_target("winlook-bg", ["bin"]))
