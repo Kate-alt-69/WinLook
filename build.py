@@ -43,6 +43,15 @@ ACTIONLINT_URL = (
 ACTIONLINT_SHA256 = (
     "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
 )
+GITLEAKS_VERSION = "8.30.1"
+GITLEAKS_URL = (
+    "https://github.com/gitleaks/gitleaks/releases/download/v"
+    + GITLEAKS_VERSION
+    + "/gitleaks_" + GITLEAKS_VERSION + "_linux_x64.tar.gz"
+)
+GITLEAKS_SHA256 = (
+    "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+)
 APP_RUNTIME_URL = (
     "https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/downloads"
 )
@@ -670,6 +679,66 @@ def command_workflow_lint(args: argparse.Namespace, runner: Runner) -> int:
     return 0
 
 
+def gitleaks_path(root: Path, apply: bool) -> Path:
+    if not sys.platform.startswith("linux") or platform.machine().lower() not in {"x86_64", "amd64"}:
+        raise BuildError("The automatic Gitleaks bootstrap currently targets Linux x86_64.")
+    destination = build_paths(root)["rust_cache"] / "tools" / ("gitleaks-" + GITLEAKS_VERSION)
+    executable = destination / "gitleaks"
+    if executable.is_file():
+        return executable
+    if not apply:
+        raise BuildError(
+            "Gitleaks is not cached. Run python build.py secret-scan --apply "
+            "to download the pinned binary and verify its SHA-256."
+        )
+    destination.mkdir(parents=True, exist_ok=True)
+    archive_path = destination / "gitleaks.tar.gz"
+    request = urllib.request.Request(GITLEAKS_URL, headers={"User-Agent": "WinLook-build.py"})
+    with urllib.request.urlopen(request, timeout=120) as response:
+        with archive_path.open("wb") as output:
+            shutil.copyfileobj(response, output)
+    actual = sha256_file(archive_path)
+    if actual.lower() != GITLEAKS_SHA256:
+        archive_path.unlink(missing_ok=True)
+        raise BuildError("Gitleaks SHA-256 mismatch; refusing to extract the archive.")
+    try:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            member = next(
+                (item for item in archive.getmembers() if item.name == "gitleaks" and item.isfile()),
+                None,
+            )
+            if member is None:
+                raise BuildError("Pinned Gitleaks archive did not contain the expected binary.")
+            source = archive.extractfile(member)
+            if source is None:
+                raise BuildError("Could not read Gitleaks from the verified archive.")
+            with executable.open("wb") as output:
+                shutil.copyfileobj(source, output)
+    finally:
+        archive_path.unlink(missing_ok=True)
+    executable.chmod(0o755)
+    return executable
+
+
+def command_secret_scan(args: argparse.Namespace, runner: Runner) -> int:
+    if runner.dry_run:
+        print("Would download/verify Gitleaks " + GITLEAKS_VERSION + " if needed.")
+        print("Would scan the full Git history with redacted output.")
+        return 0
+    executable = gitleaks_path(runner.root, args.apply)
+    report = build_paths(runner.root)["artifacts"] / "gitleaks.sarif"
+    report.parent.mkdir(parents=True, exist_ok=True)
+    runner.run(
+        "Scan full Git history for exposed secrets",
+        [
+            str(executable), "git", "--no-banner", "--redact",
+            "--report-format", "sarif", "--report-path", str(report),
+            "--log-opts=--all", str(runner.root),
+        ],
+    )
+    return 0
+
+
 def command_docs(args: argparse.Namespace, runner: Runner) -> int:
     required = (
         "README.md", "plan/Plan.md", "plan/index.md", "plan/roadmap.md",
@@ -746,6 +815,10 @@ def build_parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", help="Report whether a build target has source files.")
     status.add_argument("target", choices=("libraries", "ui", "win10", "win11", "win95", "bgw"))
     status.add_argument("--github-output", action="store_true", help="Write an available output for workflow gates.")
+
+    secret_scan = sub.add_parser("secret-scan", help="Download a pinned Gitleaks binary and scan Git history.")
+    secret_scan.add_argument("--apply", action="store_true", help="Download and SHA-256 verify Gitleaks if missing.")
+    secret_scan.add_argument("--dry-run", action="store_true")
 
     workflow_lint = sub.add_parser("workflow-lint", help="Download a pinned actionlint binary and lint workflow YAML.")
     workflow_lint.add_argument("--apply", action="store_true", help="Download and SHA-256 verify actionlint if missing.")
@@ -829,6 +902,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return command_status(args, runner)
         if args.action == "workflow-lint":
             return command_workflow_lint(args, runner)
+        if args.action == "secret-scan":
+            return command_secret_scan(args, runner)
         if args.action == "clean":
             return command_clean(args, runner)
     except BuildError as exc:
