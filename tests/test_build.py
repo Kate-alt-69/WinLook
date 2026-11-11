@@ -54,6 +54,25 @@ class BuildHelpersTests(unittest.TestCase):
                 target.write_text("[package]\nname = 'test'\n", encoding="utf-8")
             self.assertTrue(build.check_ui_sources(root))
 
+    def test_target_status_reports_gated_legacy_and_bgw_components(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(
+                build.target_available(root, "win95"),
+                (False, "C/win95/Makefile is not present"),
+            )
+            self.assertEqual(
+                build.target_available(root, "bgw"),
+                (False, "BGW binary target is not implemented"),
+            )
+            manifest = root / "rust" / "win10" / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                '[[bin]]\\nname = "winlook.bg"\\npath = "src/bin/bgw.rs"\\n',
+                encoding="utf-8",
+            )
+            self.assertTrue(build.target_available(root, "bgw")[0])
+
     def test_only_supported_modern_apps_can_be_packaged(self):
         self.assertEqual(
             build.package_filename("win10"),
@@ -70,6 +89,17 @@ class BuildHelpersTests(unittest.TestCase):
         runner = build.Runner(root=Path.cwd(), dry_run=True)
         result = runner.run("dry-run test", ["this-command-must-not-exist"])
         self.assertEqual(result.returncode, 0)
+
+    def test_package_dry_run_does_not_create_dist_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            executable = root / "target" / "win10" / "release" / "winlook.exe"
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"preview")
+            runner = build.Runner(root=root, dry_run=True)
+            result = build.package_windows_app(runner, "win10")
+            self.assertEqual(result.name, "winlook-win10-x64-preview.zip")
+            self.assertFalse((root / "dist").exists())
 
     def test_format_command_uses_argument_quoting(self):
         command = ["cmake", "-S", "C:/WinLook Project/C/library"]
