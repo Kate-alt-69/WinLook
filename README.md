@@ -77,26 +77,32 @@ Start with these canonical documents:
 
 Detailed specifications live in [`plan/architecture/`](plan/architecture/overview.md); per-version research lives in [`plan/compatibility/`](plan/compatibility/README.md).
 
-## Building the shared libraries
+## Building WinLook
 
-There is no root application build command yet. The Rust libraries are members of the root Cargo workspace:
-
-```sh
-cargo fmt --all -- --check
-cargo test --workspace --all-targets --all-features
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo doc --workspace --no-deps
-```
-
-Build and test all C libraries together with CMake:
+The root Python runner is the common entry point for building, testing and packaging. It requires Python 3.9+ and uses only the standard library:
 
 ```sh
-cmake -S C/library -B build/libraries
-cmake --build build/libraries --config Release
-ctest --test-dir build/libraries -C Release --output-on-failure
+python build.py doctor
+python build.py setup
+python build.py verify libraries --sanitizers
+python build.py build win10
+python build.py build win11
+python build.py package win10
 ```
 
-Each C library also has its own CMake and Makefile build. The `Shared libraries` GitHub Actions workflow passed run [42832087050](https://github.com/Kate-alt-69/WinLook/actions/runs/42832087050): Rust formatting, 27 unit tests, Clippy and docs; C89/MSVC and strict GCC ASan/UBSan; and the combined CMake suite (3/3). CI is not a substitute for Windows 10 client VM/hardware tests, Windows 95 compiler/runtime validation or actual graphics-adapter testing.
+On a Windows machine with the matching Windows App Runtime installed, the Win10/Win11 Manager targets can be launched through Cargo. Their application builds use the native MSVC toolchain.
+
+Generated files share one ignored build root:
+
+- Rust outputs: build/rust/
+- CMake/Open Watcom outputs: build/c/
+- Rust/Cargo/sccache cache: build/.rcache/
+- C compiler cache: build/.Ccache/
+- Preview packages and reports: build/artifacts/
+
+The C and Rust builds therefore share one build footprint without sharing compiler outputs or cache formats. Run python build.py clean --yes to remove compiled outputs while keeping caches; add --all only when you intentionally want to discard both caches.
+
+See [Build System and CI](plan/architecture/build-and-ci.md) for all commands, setup rules, workflow inventory, release gates and the required library → Manager UI → workflow merge order. The Win95 and BGW workflows remain source-gated until those application targets exist.
 
 ## Development status
 
