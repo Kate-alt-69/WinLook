@@ -1,0 +1,83 @@
+
+name: Shared library verification
+
+on:
+  push:
+    branches: [main, github/workflow]
+    paths:
+      - "rust/library/**"
+      - "C/library/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.py"
+      - "tests/**"
+      - ".github/workflows/libraries.yml"
+  pull_request:
+    branches: [main, feature/wintoys-manager-ui]
+    paths:
+      - "rust/library/**"
+      - "C/library/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.py"
+      - "tests/**"
+      - ".github/workflows/libraries.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: Rust libraries / stable
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            build/.rcache
+            build/rust
+          key: ${{ runner.os }}-rust-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml') }}
+          restore-keys: ${{ runner.os }}-rust-
+      - name: Verify Rust workspace
+        run: python build.py verify rust
+
+  c-gcc-sanitizers:
+    name: C89 libraries / GCC + ASan + UBSan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Install CMake and ccache
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes cmake ccache
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            build/.Ccache
+          key: ${{ runner.os }}-c89-ccache-${{ hashFiles('C/library/**') }}
+          restore-keys: ${{ runner.os }}-c89-ccache-
+      - name: Verify strict C89 libraries with sanitizers
+        run: python build.py verify c --sanitizers
+
+  c-msvc:
+    name: C89 libraries / MSVC
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Verify C89 libraries with MSVC
+        run: python build.py verify c
