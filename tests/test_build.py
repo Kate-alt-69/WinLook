@@ -9,6 +9,15 @@ import build
 
 
 class BuildHelpersTests(unittest.TestCase):
+    def test_c_and_rust_share_build_root_but_have_separate_outputs_and_caches(self):
+        root = Path("D:/WinLook")
+        paths = build.build_paths(root)
+        self.assertEqual(paths["rust"], root / "build" / "rust")
+        self.assertEqual(paths["c"], root / "build" / "c")
+        self.assertEqual(paths["rust_cache"], root / "build" / ".rcache")
+        self.assertEqual(paths["c_cache"], root / "build" / ".Ccache")
+        self.assertEqual(paths["artifacts"], root / "build" / "artifacts")
+
     def test_bgw_target_requires_binary_kind_and_supported_name(self):
         self.assertTrue(build.is_bgw_target("winlook.bg", ["bin"]))
         self.assertTrue(build.is_bgw_target("winlook-bg", ["bin"]))
@@ -68,7 +77,7 @@ class BuildHelpersTests(unittest.TestCase):
             manifest = root / "rust" / "win10" / "Cargo.toml"
             manifest.parent.mkdir(parents=True)
             manifest.write_text(
-                '[[bin]]\\nname = "winlook.bg"\\npath = "src/bin/bgw.rs"\\n',
+                '[[bin]]\nname = "winlook.bg"\npath = "src/bin/bgw.rs"\n',
                 encoding="utf-8",
             )
             self.assertTrue(build.target_available(root, "bgw")[0])
@@ -93,13 +102,13 @@ class BuildHelpersTests(unittest.TestCase):
     def test_package_dry_run_does_not_create_dist_directory(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            executable = root / "target" / "win10" / "release" / "winlook.exe"
+            executable = root / "build" / "rust" / "win10" / "release" / "winlook.exe"
             executable.parent.mkdir(parents=True)
             executable.write_bytes(b"preview")
             runner = build.Runner(root=root, dry_run=True)
             result = build.package_windows_app(runner, "win10")
             self.assertEqual(result.name, "winlook-win10-x64-preview.zip")
-            self.assertFalse((root / "dist").exists())
+            self.assertFalse((root / "build" / "artifacts").exists())
 
     def test_format_command_uses_argument_quoting(self):
         command = ["cmake", "-S", "C:/WinLook Project/C/library"]
