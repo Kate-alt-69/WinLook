@@ -69,8 +69,8 @@ From the repository root (Python 3.9+):
 | python build.py | Run the read-only doctor preflight; this is the default when no action is supplied |
 | python build.py doctor | Report Python, Rust, CMake, MSVC/GCC/Clang, cache tools and available source targets |
 | python build.py setup | Show available setup targets; choose an explicit --with-* option |
-| python build.py setup --with-rust | Plan Rust 1.95.0 installation under build/.rcache without changing global Rust |
-| python build.py setup --with-rust --apply | Download/verify rustup and install Rust 1.95.0 + rustfmt/Clippy into build/.rcache |
+| python build.py setup --with-rust | Check existing global and project-local Rust 1.95.0 installations; show the fallback plan if absent |
+| python build.py setup --with-rust --apply | Reuse Rust 1.95.0 if installed; otherwise add it side-by-side with existing rustup, or bootstrap a project-local rustup as the last resort |
 | python build.py setup --with-rust --install-rustup --apply | Use WinGet to install Rustup when missing; open a new terminal and rerun with --with-rust |
 | python build.py setup --with-c --apply | Load or install Visual Studio 2022 C++ Build Tools and install CMake when missing |\n| python build.py setup --with-cmake --apply | Install CMake through WinGet on Windows when missing |
 | python build.py setup --open-watcom --apply | Download and SHA-256 verify the pinned Open Watcom installer; the installer itself must still be run manually |
