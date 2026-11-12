@@ -1543,6 +1543,12 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
         _install_visual_studio_build_tools(runner)
         standalone_install_attempted = True
 
+    if runner.visual_studio_restart_required:
+        raise BuildError(
+            "Visual Studio setup reports that Windows must restart before its components "
+            "can be used. Restart Windows, then rerun the build."
+        )
+
     if load_msvc_environment(runner):
         return
 
