@@ -1,3 +1,4 @@
+import contextlib
 import io
 import os
 import sys
@@ -657,6 +658,140 @@ class BuildHelpersTests(unittest.TestCase):
                                 with self.assertRaisesRegex(build.BuildError, "elevation was declined"):
                                     build.ensure_windows_linker(runner, apply=True)
         install.assert_not_called()
+
+    def test_debug_flags_are_removed_and_accepted_after_subcommands(self):
+        cleaned, debug, all_debug = build._extract_debug_flags(
+            ["build", "win10", "--debug", "--root", "D:/WinLook"]
+        )
+        self.assertEqual(cleaned, ["build", "win10", "--root", "D:/WinLook"])
+        self.assertTrue(debug)
+        self.assertFalse(all_debug)
+        cleaned, debug, all_debug = build._extract_debug_flags(
+            ["--all-debug", "build", "win11"]
+        )
+        self.assertEqual(cleaned, ["build", "win11"])
+        self.assertFalse(debug)
+        self.assertTrue(all_debug)
+        self.assertTrue(build.build_parser().parse_args(["--debug", "doctor"]).debug)
+
+    def test_elevated_wait_polls_and_invokes_progress_callback(self):
+        class FakeKernel:
+            def __init__(self):
+                self.results = [258, 258, 0]
+                self.timeouts = []
+
+            def WaitForSingleObject(self, handle, timeout):
+                self.timeouts.append(timeout)
+                return self.results.pop(0)
+
+        kernel = FakeKernel()
+        progress = []
+        build._wait_for_windows_process(
+            kernel, 123, on_wait=lambda: progress.append("tick"), poll_interval_ms=750
+        )
+        self.assertEqual(progress, ["tick", "tick"])
+        self.assertEqual(kernel.timeouts, [750, 750, 750])
+
+    def test_visual_studio_log_tailer_reads_only_new_appended_lines(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_test.log"
+            log.write_text("[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VC.Tools\\n", encoding="utf-8")
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                tailer = build.VisualStudioSetupLogTailer(time.time() - 1)
+                first = tailer.read_new_lines()
+                self.assertEqual(len(first), 1)
+                self.assertIn("Installing package", first[0][1])
+                with log.open("a", encoding="utf-8") as output:
+                    output.write("[1234:0001][2026-11-12T12:00:01] Downloading package Microsoft.Windows.SDK\\n")
+                second = tailer.read_new_lines()
+        self.assertEqual(len(second), 1)
+        self.assertIn("Downloading package", second[0][1])
+
+    def test_visual_studio_activity_classifies_package_operations(self):
+        self.assertTrue(
+            build.visual_studio_activity(
+                "[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VisualStudio.Component.VC.Tools"
+            ).startswith("INSTALL:")
+        )
+        self.assertTrue(
+            build.visual_studio_activity(
+                "[1234:0001][2026-11-12T12:00:00] Downloading package Microsoft.Windows.SDK"
+            ).startswith("DOWNLOAD:")
+        )
+        self.assertTrue(
+            build.visual_studio_activity(
+                "[1234:0001][2026-11-12T12:00:00] Error: package signature check failed"
+            ).startswith("ERROR:")
+        )
+        self.assertIsNone(build.visual_studio_activity("Installer telemetry heartbeat"))
+
+    def test_visual_studio_debug_mode_streams_live_package_events(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_test.log"
+            log.write_text(
+                "[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VisualStudio.Component.VC.Tools\\n",
+                encoding="utf-8",
+            )
+            runner = build.Runner(root=Path(temp), debug=True)
+            output = io.StringIO()
+
+            def fake_elevated(command, cwd, on_wait=None):
+                if on_wait:
+                    on_wait()
+                return 0
+
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                with mock.patch.object(build, "_run_elevated_windows_command", side_effect=fake_elevated):
+                    with contextlib.redirect_stdout(output):
+                        build.run_visual_studio_setup(
+                            runner, Path("C:/VS/setup.exe"), ["modify", "--quiet"]
+                        )
+            rendered = output.getvalue()
+        self.assertIn("INSTALL:", rendered)
+        self.assertIn("Microsoft.VisualStudio.Component.VC.Tools", rendered)
+        self.assertIn("completed successfully", rendered)
+
+    def test_runner_suppresses_successful_subprocess_chatter_by_default(self):
+        runner = build.Runner(root=Path("."), debug=False)
+        result = build.subprocess.CompletedProcess(
+            ["example-tool"], 0, stdout="verbose compiler output", stderr=""
+        )
+        output = io.StringIO()
+        with mock.patch.object(build, "command_path", return_value=None):
+            with mock.patch.object(build.subprocess, "run", return_value=result) as run:
+                with contextlib.redirect_stdout(output):
+                    runner.run("Quiet check", ["example-tool"])
+        self.assertNotIn("verbose compiler output", output.getvalue())
+        self.assertNotIn("$ example-tool", output.getvalue())
+        self.assertTrue(run.call_args.kwargs["capture_output"])
+
+    def test_runner_all_debug_replays_subprocess_output(self):
+        runner = build.Runner(root=Path("."), debug=True, all_debug=True)
+        result = build.subprocess.CompletedProcess(
+            ["example-tool"], 0, stdout="full compiler output\\n", stderr=""
+        )
+        output = io.StringIO()
+        with mock.patch.object(build, "command_path", return_value=None):
+            with mock.patch.object(build.subprocess, "run", return_value=result):
+                with contextlib.redirect_stdout(output):
+                    runner.run("Detailed check", ["example-tool"])
+        self.assertIn("$ example-tool", output.getvalue())
+        self.assertIn("full compiler output", output.getvalue())
+
+    def test_all_debug_writes_a_complete_session_log(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            console = io.StringIO()
+            with mock.patch("sys.stdout", console):
+                result = build.run_with_all_debug_log(
+                    root, lambda: (print("diagnostic marker"), 7)[1]
+                )
+            log = (root / "debug.log").read_text(encoding="utf-8")
+        self.assertEqual(result, 7)
+        self.assertIn("diagnostic marker", console.getvalue())
+        self.assertIn("diagnostic marker", log)
+        self.assertIn("finished with exit code 7", log)
+
 
 if __name__ == "__main__":
     unittest.main()
