@@ -3,6 +3,7 @@ import io
 import os
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -695,14 +696,14 @@ class BuildHelpersTests(unittest.TestCase):
     def test_visual_studio_log_tailer_reads_only_new_appended_lines(self):
         with tempfile.TemporaryDirectory() as temp:
             log = Path(temp) / "dd_setup_test.log"
-            log.write_text("[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VC.Tools\\n", encoding="utf-8")
+            log.write_text("[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VC.Tools\n", encoding="utf-8")
             with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
                 tailer = build.VisualStudioSetupLogTailer(time.time() - 1)
                 first = tailer.read_new_lines()
                 self.assertEqual(len(first), 1)
                 self.assertIn("Installing package", first[0][1])
                 with log.open("a", encoding="utf-8") as output:
-                    output.write("[1234:0001][2026-11-12T12:00:01] Downloading package Microsoft.Windows.SDK\\n")
+                    output.write("[1234:0001][2026-11-12T12:00:01] Downloading package Microsoft.Windows.SDK\n")
                 second = tailer.read_new_lines()
         self.assertEqual(len(second), 1)
         self.assertIn("Downloading package", second[0][1])
@@ -768,7 +769,7 @@ class BuildHelpersTests(unittest.TestCase):
     def test_runner_all_debug_replays_subprocess_output(self):
         runner = build.Runner(root=Path("."), debug=True, all_debug=True)
         result = build.subprocess.CompletedProcess(
-            ["example-tool"], 0, stdout="full compiler output\\n", stderr=""
+            ["example-tool"], 0, stdout="full compiler output\n", stderr=""
         )
         output = io.StringIO()
         with mock.patch.object(build, "command_path", return_value=None):
