@@ -376,5 +376,66 @@ class BuildHelpersTests(unittest.TestCase):
                 self.assertEqual(build.build_parser().parse_args(command).action, command[0])
 
 
+    def test_failed_existing_visual_studio_modify_uses_one_buildtools_fallback(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        enterprise = Path("C:/Program Files/Microsoft Visual Studio/2022/Enterprise")
+        with mock.patch.object(build.os, "name", "nt"):
+            with mock.patch.object(build, "load_msvc_environment", side_effect=[False, True]):
+                with mock.patch.object(build, "probe_mingw_gcc", return_value=None):
+                    with mock.patch.object(build, "_visual_studio_installations", return_value=[enterprise]):
+                        with mock.patch.object(
+                            build, "_install_or_modify_visual_studio",
+                            side_effect=build.BuildError("existing instance modify failed"),
+                        ):
+                            with mock.patch.object(build, "_install_visual_studio_build_tools") as install:
+                                build.ensure_windows_linker(runner, apply=True)
+        install.assert_called_once_with(runner)
+
+    def test_failed_initial_buildtools_install_is_not_retried(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        with mock.patch.object(build.os, "name", "nt"):
+            with mock.patch.object(build, "load_msvc_environment", return_value=False):
+                with mock.patch.object(build, "probe_mingw_gcc", return_value=None):
+                    with mock.patch.object(build, "_visual_studio_installations", return_value=[]):
+                        with mock.patch.object(
+                            build, "_install_visual_studio_build_tools",
+                            side_effect=build.BuildError("WinGet installation failed"),
+                        ) as install:
+                            with self.assertRaisesRegex(build.BuildError, "WinGet installation failed"):
+                                build.ensure_windows_linker(runner, apply=True)
+        install.assert_called_once_with(runner)
+
+    def test_existing_buildtools_failure_does_not_trigger_second_install(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        buildtools = Path("C:/Program Files/Microsoft Visual Studio/2022/BuildTools")
+        with mock.patch.object(build.os, "name", "nt"):
+            with mock.patch.object(build, "load_msvc_environment", return_value=False):
+                with mock.patch.object(build, "probe_mingw_gcc", return_value=None):
+                    with mock.patch.object(build, "_visual_studio_installations", return_value=[buildtools]):
+                        with mock.patch.object(
+                            build, "_install_or_modify_visual_studio",
+                            side_effect=build.BuildError("existing Build Tools modify failed"),
+                        ):
+                            with mock.patch.object(build, "_install_visual_studio_build_tools") as install:
+                                with self.assertRaisesRegex(build.BuildError, "existing Visual Studio Build Tools"):
+                                    build.ensure_windows_linker(runner, apply=True)
+        install.assert_not_called()
+
+    def test_uac_decline_does_not_fall_back_to_a_second_installer(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        enterprise = Path("C:/Program Files/Microsoft Visual Studio/2022/Enterprise")
+        with mock.patch.object(build.os, "name", "nt"):
+            with mock.patch.object(build, "load_msvc_environment", return_value=False):
+                with mock.patch.object(build, "probe_mingw_gcc", return_value=None):
+                    with mock.patch.object(build, "_visual_studio_installations", return_value=[enterprise]):
+                        with mock.patch.object(
+                            build, "_install_or_modify_visual_studio",
+                            side_effect=build.BuildError("Windows elevation was declined"),
+                        ):
+                            with mock.patch.object(build, "_install_visual_studio_build_tools") as install:
+                                with self.assertRaisesRegex(build.BuildError, "elevation was declined"):
+                                    build.ensure_windows_linker(runner, apply=True)
+        install.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
