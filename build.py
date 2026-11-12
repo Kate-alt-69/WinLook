@@ -1393,7 +1393,7 @@ class Runner:
             process_env.setdefault("RUSTC_WRAPPER", command_path("sccache") or "sccache")
         rendered = subprocess.list2cmdline(args) if os.name == "nt" else shlex.join(args)
         print("\n==> " + label)
-        if self.debug and not self.all_debug:
+        if self.debug and (not self.all_debug or not _ALL_DEBUG_ACTIVE):
             print("$ " + rendered)
         if self.dry_run:
             return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
