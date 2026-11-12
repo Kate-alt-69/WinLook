@@ -204,32 +204,54 @@ def load_msvc_environment(runner: "Runner") -> bool:
         return False
     if command_path("cl") and command_path("link") and command_path("rc"):
         return True
+
+    installations: List[Path] = []
     vswhere = _vswhere_path()
-    if vswhere is None:
-        return False
-    result = subprocess.run(
-        [str(vswhere), "-latest", "-products", "*", "-property", "installationPath"],
-        text=True, capture_output=True, check=False,
-    )
-    installation = (result.stdout or "").strip().splitlines()
-    if result.returncode != 0 or not installation:
-        return False
-    devcmd = Path(installation[-1]) / "Common7" / "Tools" / "VsDevCmd.bat"
-    if not devcmd.is_file():
-        return False
-    command = 'call "' + str(devcmd) + '" -no_logo -arch=x64 -host_arch=x64 && set'
-    environment = subprocess.run(
-        ["cmd.exe", "/d", "/c", command],
-        text=True, capture_output=True, check=False,
-    )
-    if environment.returncode != 0:
-        return False
-    for line in (environment.stdout or "").splitlines():
-        if "=" in line:
-            key, value = line.split("=", 1)
-            if key:
-                os.environ[key] = value
-    return bool(command_path("cl") and command_path("link") and command_path("rc"))
+    if vswhere is not None:
+        result = subprocess.run(
+            [str(vswhere), "-latest", "-products", "*", "-property", "installationPath"],
+            text=True, capture_output=True, check=False,
+        )
+        if result.returncode == 0:
+            for line in (result.stdout or "").splitlines():
+                candidate = Path(line.strip().lstrip("\ufeff"))
+                if candidate.is_dir() and candidate not in installations:
+                    installations.append(candidate)
+
+    roots = [
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files")),
+        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")),
+    ]
+    for root in roots:
+        for year in ("2022", "2019"):
+            for edition in ("Enterprise", "Professional", "Community", "BuildTools"):
+                candidate = root / "Microsoft Visual Studio" / year / edition
+                if candidate.is_dir() and candidate not in installations:
+                    installations.append(candidate)
+
+    for installation in installations:
+        scripts = (
+            installation / "Common7" / "Tools" / "VsDevCmd.bat",
+            installation / "VC" / "Auxiliary" / "Build" / "vcvars64.bat",
+        )
+        script = next((path for path in scripts if path.is_file()), None)
+        if script is None:
+            continue
+        command = 'call "' + str(script) + '" -no_logo -arch=x64 -host_arch=x64 && set'
+        environment = subprocess.run(
+            ["cmd.exe", "/d", "/c", command],
+            text=True, capture_output=True, check=False,
+        )
+        if environment.returncode != 0:
+            continue
+        for line in (environment.stdout or "").splitlines():
+            if "=" in line:
+                key, value = line.split("=", 1)
+                if key:
+                    os.environ[key] = value
+        if command_path("cl") and command_path("link") and command_path("rc"):
+            return True
+    return False
 
 
 def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
