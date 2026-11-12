@@ -234,7 +234,7 @@ class BuildHelpersTests(unittest.TestCase):
         script = command[-1]
         self.assertIn("Import-Module Microsoft.PowerShell.Security -Force", script)
         self.assertIn("Get-AuthenticodeSignature", script)
-        self.assertEqual(run.call_args.kwargs["env"]["WINLOOK_AUTHENTICODE_FILE"], "C:/Temp/vs_buildtools.exe")
+        self.assertEqual(run.call_args.kwargs["env"]["WINLOOK_AUTHENTICODE_FILE"], str(Path("C:/Temp/vs_buildtools.exe")))
 
     def test_buildtools_bootstrapper_cache_is_reused_after_authenticode_check(self):
         with tempfile.TemporaryDirectory() as temp:
