@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shlex
 import shutil
 import subprocess
@@ -66,6 +67,74 @@ WINDOWS_APPS = {
     "win11": ("winlook-win11", "build/rust/win11"),
 }
 
+# Canonical selectors cover every OS page in plan/compatibility. A selector is
+# intentionally available before its implementation: the build then gives a
+# source-gate message instead of silently building a different Windows version.
+WINDOWS_GENERATIONS = {
+    "95": ("Windows 95", "win95", "watcom"),
+    "98": ("Windows 98", "win98", "watcom"),
+    "me": ("Windows Me", "winme", "watcom"),
+    "nt4": ("Windows NT 4.0", "winnt4", "mingw"),
+    "2000": ("Windows 2000", "win2000", "mingw"),
+    "xp": ("Windows XP", "winxp", "mingw"),
+    "vista": ("Windows Vista", "winvista", "mingw"),
+    "7": ("Windows 7", "win7", "mingw"),
+    "8": ("Windows 8", "win8", "mingw"),
+    "8.1": ("Windows 8.1", "win81", "mingw"),
+    "10": ("Windows 10", "win10", "msvc"),
+    "11": ("Windows 11", "win11", "msvc"),
+}
+WINDOWS_BUILD_COMMANDS = tuple("windows." + version for version in WINDOWS_GENERATIONS)
+
+ANSI_RESET = "\x1b[0m"
+ANSI_BOLD = "\x1b[1m"
+ANSI_CYAN = "\x1b[1;36m"
+ANSI_GREEN = "\x1b[1;32m"
+ANSI_YELLOW = "\x1b[1;33m"
+ANSI_MAGENTA = "\x1b[1;35m"
+
+
+def color_enabled(stream: Any = None) -> bool:
+    """Use ANSI colors in terminals; respect the standard NO_COLOR opt-out."""
+    if "NO_COLOR" in os.environ or os.environ.get("WINLOOK_NO_COLOR") == "1":
+        return False
+    forced = os.environ.get("FORCE_COLOR")
+    if forced is not None:
+        return forced not in {"", "0", "false", "False"}
+    output = stream or sys.stdout
+    try:
+        return bool(output.isatty()) and os.environ.get("TERM", "") != "dumb"
+    except (AttributeError, OSError):
+        return False
+
+
+def colorize_help(value: str) -> str:
+    """Add restrained ANSI styling to argparse help without changing its text."""
+    value = re.sub(r"(?m)^(usage:)", ANSI_BOLD + ANSI_CYAN + r"\1" + ANSI_RESET, value)
+    value = re.sub(
+        r"(?m)^(positional arguments|options|optional arguments|commands):",
+        ANSI_BOLD + ANSI_CYAN + r"\1" + ANSI_RESET,
+        value,
+    )
+    value = re.sub(
+        r"(?<![\w-])(--[A-Za-z0-9][\w.-]*|-[A-Za-z])(?=[\s,=\]]|$)",
+        lambda match: ANSI_GREEN + match.group(1) + ANSI_RESET,
+        value,
+    )
+    value = re.sub(
+        r"(?m)^(\s{2,})(windows\.[\w.]+)(\s{2,})",
+        lambda match: match.group(1) + ANSI_MAGENTA + match.group(2) + ANSI_RESET + match.group(3),
+        value,
+    )
+    return value
+
+
+class ColorArgumentParser(argparse.ArgumentParser):
+    """argparse parser with terminal-aware ANSI help styling."""
+
+    def format_help(self) -> str:
+        rendered = super().format_help()
+        return colorize_help(rendered) if color_enabled() else rendered
 
 
 def rust_paths(root: Path) -> Dict[str, Path]:
@@ -287,8 +356,8 @@ def _vswhere_path() -> Optional[Path]:
     if program_files:
         candidates.append(Path(program_files) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe")
     candidates.extend([
-        Path(r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"),
-        Path(r"C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe"),
+        Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"),
+        Path("C:/Program Files/Microsoft Visual Studio/Installer/vswhere.exe"),
     ])
     found = command_path("vswhere")
     if found:
@@ -296,18 +365,13 @@ def _vswhere_path() -> Optional[Path]:
     return next((path for path in candidates if path.is_file()), None)
 
 
-def load_msvc_environment(runner: "Runner") -> bool:
-    """Load an existing Visual Studio C++ toolchain into this build process."""
-    if os.name != "nt":
-        return False
-    if command_path("cl") and command_path("link") and command_path("rc"):
-        return True
-
+def _visual_studio_installations() -> List[Path]:
+    """Find registered VS/Build Tools instances, including partial installs."""
     installations: List[Path] = []
     vswhere = _vswhere_path()
     if vswhere is not None:
         result = subprocess.run(
-            [str(vswhere), "-latest", "-products", "*", "-property", "installationPath"],
+            [str(vswhere), "-all", "-products", "*", "-property", "installationPath"],
             text=True, capture_output=True, check=False,
         )
         if result.returncode == 0:
@@ -321,7 +385,9 @@ def load_msvc_environment(runner: "Runner") -> bool:
         registry_path = r"SOFTWARE\Microsoft\VisualStudio\Setup\Instances"
         for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
             try:
-                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, registry_path, 0, winreg.KEY_READ | view) as root_key:
+                with winreg.OpenKey(
+                    winreg.HKEY_LOCAL_MACHINE, registry_path, 0, winreg.KEY_READ | view
+                ) as root_key:
                     for index in range(winreg.QueryInfoKey(root_key)[0]):
                         try:
                             with winreg.OpenKey(root_key, winreg.EnumKey(root_key, index)) as instance:
@@ -336,9 +402,11 @@ def load_msvc_environment(runner: "Runner") -> bool:
     except ImportError:
         pass
 
+    # Registry/vswhere are authoritative; conventional roots are a recovery
+    # path for older or damaged Visual Studio Installer metadata.
     roots = [
-        Path(os.environ.get("ProgramFiles", r"C:\Program Files")),
-        Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")),
+        Path(os.environ.get("ProgramFiles", "C:/Program Files")),
+        Path(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)")),
     ]
     for root in roots:
         for year in ("2022", "2019"):
@@ -346,82 +414,239 @@ def load_msvc_environment(runner: "Runner") -> bool:
                 candidate = root / "Microsoft Visual Studio" / year / edition
                 if candidate.is_dir() and candidate not in installations:
                     installations.append(candidate)
+    return installations
 
-    for installation in installations:
-        scripts = (
-            installation / "Common7" / "Tools" / "VsDevCmd.bat",
-            installation / "VC" / "Auxiliary" / "Build" / "vcvars64.bat",
+
+def _vs_installer_path() -> Optional[Path]:
+    candidates = []
+    for variable, fallback in (
+        ("ProgramFiles(x86)", "C:/Program Files (x86)"),
+        ("ProgramFiles", "C:/Program Files"),
+    ):
+        root = Path(os.environ.get(variable, fallback))
+        candidates.append(root / "Microsoft Visual Studio" / "Installer" / "vs_installer.exe")
+    found = command_path("vs_installer")
+    if found:
+        candidates.append(Path(found))
+    return next((path for path in candidates if path.is_file()), None)
+
+
+def _windows_sdk_is_present(environment: Dict[str, str]) -> bool:
+    sdk_root = environment.get("WindowsSdkDir") or environment.get("WindowsSDKDir")
+    if not sdk_root:
+        return False
+    root = Path(sdk_root)
+    include_root = root / "Include"
+    lib_root = root / "Lib"
+    versions = []
+    sdk_version = (environment.get("WindowsSDKVersion") or "").replace("/", "").replace(chr(92), "")
+    if sdk_version:
+        versions.append(sdk_version)
+    if include_root.is_dir():
+        versions.extend(
+            path.name for path in sorted(include_root.iterdir(), reverse=True)
+            if path.is_dir() and path.name not in versions
         )
-        script = next((path for path in scripts if path.is_file()), None)
-        if script is None:
-            continue
-        arguments = " -no_logo -arch=x64 -host_arch=x64" if script.name.lower() == "vsdevcmd.bat" else ""
-        command = 'call "' + str(script) + '"' + arguments + " && set"
-        environment = subprocess.run(
-            ["cmd.exe", "/d", "/c", command],
-            text=True, capture_output=True, check=False,
-        )
-        if environment.returncode != 0:
-            continue
-        for line in (environment.stdout or "").splitlines():
-            if "=" in line:
-                key, value = line.split("=", 1)
-                if key:
-                    os.environ[key] = value
-        if command_path("cl") and command_path("link") and command_path("rc"):
+    for version in versions:
+        if (
+            (include_root / version / "um" / "Windows.h").is_file()
+            and (lib_root / version / "um" / "x64" / "kernel32.lib").is_file()
+        ):
             return True
     return False
 
 
-def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
-    """Prepare the MSVC linker/Windows SDK needed by Rust without requiring cl.exe on PATH."""
+def _msvc_environment_tools(environment: Dict[str, str]) -> bool:
+    search_path = environment.get("PATH", "")
+    return all(
+        shutil.which(name, path=search_path)
+        for name in ("cl", "link", "rc")
+    ) and _windows_sdk_is_present(environment)
+
+
+def load_msvc_environment(runner: "Runner") -> bool:
+    """Load an existing MSVC compiler, linker and Windows SDK without reinstalling."""
     if os.name != "nt":
+        return False
+
+    current = dict(os.environ)
+    if _msvc_environment_tools(current):
+        return True
+
+    for installation in _visual_studio_installations():
+        scripts = (
+            installation / "Common7" / "Tools" / "VsDevCmd.bat",
+            installation / "VC" / "Auxiliary" / "Build" / "vcvars64.bat",
+        )
+        for script in scripts:
+            if not script.is_file():
+                continue
+            arguments = " -no_logo -arch=x64 -host_arch=x64" if script.name.lower() == "vsdevcmd.bat" else ""
+            command = 'call "' + str(script) + '"' + arguments + " && set"
+            try:
+                result = subprocess.run(
+                    ["cmd.exe", "/d", "/c", command],
+                    text=True, capture_output=True, check=False,
+                )
+            except OSError:
+                continue
+            if result.returncode != 0:
+                continue
+            environment = dict(os.environ)
+            for line in (result.stdout or "").splitlines():
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    if key:
+                        environment[key] = value
+            if _msvc_environment_tools(environment):
+                # Do not contaminate this process with a partial environment.
+                os.environ.update(environment)
+                print("Using existing Visual Studio C++ Build Tools at " + str(installation))
+                return True
+    return False
+
+
+def probe_mingw_gcc() -> Optional[Dict[str, str]]:
+    """Return a usable native MinGW GCC/CMake toolchain, not just any gcc.exe."""
+    gcc = command_path("gcc")
+    if not gcc:
+        return None
+    try:
+        result = subprocess.run([gcc, "-dumpmachine"], text=True, capture_output=True, check=False)
+    except OSError:
+        return None
+    target = (result.stdout or "").strip()
+    if result.returncode != 0 or "mingw" not in target.lower():
+        return None
+
+    ninja = command_path("ninja")
+    mingw_make = command_path("mingw32-make")
+    msys_make = command_path("make")
+    if ninja:
+        generator, make_program = "Ninja", ninja
+    elif mingw_make:
+        generator, make_program = "MinGW Makefiles", mingw_make
+    elif msys_make:
+        generator, make_program = "MSYS Makefiles", msys_make
+    else:
+        generator, make_program = "", ""
+
+    return {
+        "gcc": gcc,
+        "target": target,
+        "generator": generator,
+        "make_program": make_program,
+        "g++": command_path("g++") or "",
+    }
+
+
+def _select_mingw_cmake(runner: "Runner", required: bool = False) -> bool:
+    info = probe_mingw_gcc()
+    if info is None:
+        return False
+    if not info["generator"]:
+        if required:
+            raise BuildError(
+                "MinGW GCC was found (" + info["target"] + "), but CMake needs Ninja, "
+                "mingw32-make, or MSYS make on PATH. Install one of those build tools."
+            )
+        return False
+    runner.c_compiler = "mingw"
+    runner.tool_env = {
+        "CC": info["gcc"],
+        "CMAKE_GENERATOR": info["generator"],
+        "CMAKE_MAKE_PROGRAM": info["make_program"],
+    }
+    print("Using installed MinGW GCC: " + info["gcc"] + " (" + info["target"] + ")")
+    print("CMake generator: " + info["generator"])
+    return True
+
+
+def _install_or_modify_visual_studio(runner: "Runner") -> None:
+    installations = _visual_studio_installations()
+    if installations:
+        installer = _vs_installer_path()
+        if installer is None:
+            raise BuildError(
+                "A Visual Studio installation already exists at " + str(installations[0])
+                + ", but Visual Studio Installer could not be located. Open Visual Studio Installer "
+                "and add the 'Desktop development with C++' workload; WinGet will not reinstall it."
+            )
+        runner.run(
+            "Add missing C++ workload to existing Visual Studio",
+            [
+                str(installer), "modify", "--installPath", str(installations[0]),
+                "--add", "Microsoft.VisualStudio.Workload.VCTools",
+                "--includeRecommended", "--quiet", "--wait", "--norestart",
+            ],
+        )
         return
-    if command_path("cl") and command_path("link") and command_path("rc"):
-        return
-    load_msvc_environment(runner)
-    if command_path("cl") and command_path("link") and command_path("rc"):
-        return
-    if not command_path("winget"):
-        raise BuildError("The MSVC linker or Windows SDK tools are missing. Install Visual Studio C++ Build Tools.")
-    if not apply:
-        print("Plan: install Visual Studio 2022 Build Tools (Desktop development with C++) via WinGet.")
-        return
+
+    winget = command_path("winget")
+    if not winget:
+        raise BuildError(
+            "Visual Studio Build Tools are not installed and WinGet is unavailable. "
+            "Install from https://visualstudio.microsoft.com/downloads/ and select "
+            "'Desktop development with C++' plus a Windows 10/11 SDK."
+        )
     runner.run(
         "Install Visual Studio 2022 C++ Build Tools",
-        ["winget", "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
-         "--accept-package-agreements", "--accept-source-agreements",
-         "--override", "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"],
+        [
+            winget, "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
+            "--accept-package-agreements", "--accept-source-agreements",
+            "--override",
+            "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended",
+        ],
     )
-    load_msvc_environment(runner)
-    if not (command_path("link") and command_path("rc")):
-        raise BuildError("Visual Studio Build Tools installed, but link.exe/rc.exe could not be loaded. Restart the terminal and retry.")
 
 
-def ensure_windows_c_toolchain(runner: "Runner", apply: bool = True) -> None:
+def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
+    """Prepare the MSVC linker/Windows SDK required by the Rust/WinUI targets."""
     if os.name != "nt":
         return
     if load_msvc_environment(runner):
         return
-    if not command_path("winget"):
-        raise BuildError(
-            "Visual C++ Build Tools are missing. Install Visual Studio 2022 Build Tools "
-            "with the Desktop development with C++ workload, then rerun this build."
+
+    gcc = probe_mingw_gcc()
+    if gcc:
+        print(
+            "MinGW GCC is installed (" + gcc["target"] + "), but the current WinUI 3 app "
+            "uses the Rust MSVC ABI. GCC alone cannot replace link.exe or the Windows SDK."
         )
+
+    installations = _visual_studio_installations()
     if not apply:
-        print("Plan: install Visual Studio 2022 Build Tools (Desktop development with C++) via WinGet.")
+        if installations:
+            print("Plan: add the C++ workload to the existing Visual Studio installation.")
+        else:
+            print("Plan: install Visual Studio 2022 Build Tools through WinGet.")
         return
-    runner.run(
-        "Install Visual Studio 2022 C++ Build Tools",
-        ["winget", "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
-         "--accept-package-agreements", "--accept-source-agreements",
-         "--override", "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"],
-    )
+    _install_or_modify_visual_studio(runner)
     if not load_msvc_environment(runner):
         raise BuildError(
-            "Visual Studio Build Tools installation finished, but cl.exe/link.exe/rc.exe "
-            "could not be loaded. Restart the terminal and run python build.py build win10 again."
+            "Visual Studio setup finished, but cl.exe, link.exe, rc.exe and a usable Windows SDK "
+            "were not detected. The installer was not launched again. Open Visual Studio Installer, "
+            "repair the selected instance, add 'Desktop development with C++', then rerun the build."
         )
+
+
+def ensure_windows_c_toolchain(runner: "Runner", apply: bool = True) -> str:
+    """Select an already-installed C compiler; use MSVC or MinGW without duplicate setup."""
+    if os.name != "nt":
+        return "host"
+    if load_msvc_environment(runner):
+        runner.c_compiler = "msvc"
+        runner.tool_env = {}
+        return "msvc"
+    if _select_mingw_cmake(runner):
+        return "mingw"
+    if not apply:
+        print("Plan: use installed MSVC or MinGW GCC; install CMake only if it is missing.")
+        return "missing"
+    ensure_windows_linker(runner, apply=True)
+    runner.c_compiler = "msvc"
+    runner.tool_env = {}
+    return "msvc"
 
 
 def ensure_cmake(runner: "Runner", apply: bool = True) -> None:
@@ -462,6 +687,8 @@ class Runner:
     dry_run: bool = False
     verbose: bool = False
     rust_env: Dict[str, str] = field(default_factory=dict)
+    tool_env: Dict[str, str] = field(default_factory=dict)
+    c_compiler: str = ""
 
     def run(
         self,
@@ -478,6 +705,7 @@ class Runner:
             process_env.update(env)
         paths = build_paths(self.root)
         process_env.update(self.rust_env)
+        process_env.update(self.tool_env)
         process_env.setdefault("CARGO_TARGET_DIR", str(paths["rust"] / "shared"))
         process_env.setdefault("SCCACHE_DIR", str(paths["rust_cache"] / "sccache"))
         process_env.setdefault("CCACHE_DIR", str(paths["c_cache"]))
@@ -636,6 +864,10 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "cmake_generator": os.environ.get("CMAKE_GENERATOR"),
         "msvc_cl": command_path("cl"),
         "gcc": command_path("gcc"),
+        "gcc_target": (probe_mingw_gcc() or {}).get("target"),
+        "mingw_build_system": (probe_mingw_gcc() or {}).get("generator") or None,
+        "ninja": command_path("ninja"),
+        "mingw32_make": command_path("mingw32-make"),
         "clang": command_path("clang"),
         "open_watcom_root": os.environ.get("WATCOM"),
         "open_watcom_wcc386": command_path("wcc386"),
@@ -662,10 +894,13 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
             print("\nMissing baseline tools: " + ", ".join(missing))
         print("\nNext steps:")
         print("  python build.py verify libraries")
-        print("  python build.py build win10   (Windows + MSVC only)")
-        print("  python build.py build win11   (Windows + MSVC only)")
+        print("  python build.py windows.10")
+        print("  python build.py windows.11")
+        print("  python build.py windows.7    (source-gated C/MinGW target)")
+        print("  python build.py windows.95   (source-gated C/Open Watcom target)")
         print("Running without an action is equivalent to: python build.py doctor")
-        print("\nWindows UI builds require Visual Studio C++ Build Tools.")
+        print("\nWin10/Win11 WinUI builds require the MSVC linker and Windows SDK.")
+        print("Legacy CMake targets prefer installed MinGW GCC; Win9x targets use Open Watcom.")
         print("Running WinUI 3 also requires the matching Windows App Runtime:")
         print("  " + APP_RUNTIME_URL)
         print("Win95 builds require Open Watcom and C/win95/Makefile.")
@@ -774,10 +1009,13 @@ def rust_tests(runner: Runner) -> None:
 
 def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
     ensure_cmake(runner)
+    if os.name == "nt":
+        ensure_windows_c_toolchain(runner)
     source = runner.root / "C" / "library"
     if not (source / "CMakeLists.txt").is_file():
         raise BuildError("C/library/CMakeLists.txt is missing.")
-    build_dir = build_paths(runner.root)["c"] / ("library-sanitized" if sanitizers else "library-release")
+    suffix = "-mingw" if runner.c_compiler == "mingw" else ""
+    build_dir = build_paths(runner.root)["c"] / (("library-sanitized" if sanitizers else "library-release") + suffix)
     configure = [
         "cmake", "-S", str(source), "-B", str(build_dir),
         "-DCMAKE_BUILD_TYPE=" + ("Debug" if sanitizers else "Release"),
@@ -788,23 +1026,20 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
             "-DCMAKE_C_FLAGS=" + flags,
             "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined",
         ])
-    if os.name != "nt" and command_path("ccache"):
+    if runner.c_compiler == "mingw":
+        configure.extend([
+            "-G", runner.tool_env["CMAKE_GENERATOR"],
+            "-DCMAKE_C_COMPILER=" + runner.tool_env["CC"],
+            "-DCMAKE_MAKE_PROGRAM=" + runner.tool_env["CMAKE_MAKE_PROGRAM"],
+        ])
+    elif os.name != "nt" and command_path("ccache"):
         configure.append("-DCMAKE_C_COMPILER_LAUNCHER=ccache")
     try:
         runner.run("Configure all C89 libraries", configure, capture=True)
-    except BuildError as exc:
-        detail = str(exc).lower()
-        missing_msvc = os.name == "nt" and any(
-            marker in detail for marker in (
-                "no cmake_c_compiler could be found",
-                "could not find any instance of visual studio",
-                "no cmake_cxx_compiler could be found",
-            )
-        )
-        if not missing_msvc:
-            raise
-        ensure_windows_c_toolchain(runner)
-        runner.run("Retry CMake configuration after installing MSVC", configure, capture=True)
+    except BuildError:
+        # Compiler discovery is completed before configure; never start an
+        # installer as a reaction to a generic CMake error message.
+        raise
     config = "Debug" if sanitizers else "Release"
     runner.run("Build all C89 libraries", ["cmake", "--build", str(build_dir), "--config", config, "--parallel"])
     runner.run("Run all C89 tests", ["ctest", "--test-dir", str(build_dir), "-C", config, "--output-on-failure"])
@@ -864,27 +1099,77 @@ def build_bgw(runner: Runner) -> None:
         )
 
 
-def build_win95(runner: Runner) -> None:
-    makefile = runner.root / "C" / "win95" / "Makefile"
+def build_watcom_application(runner: Runner, version: str) -> None:
+    _, directory, _ = WINDOWS_GENERATIONS[version]
+    makefile = runner.root / "C" / directory / "Makefile"
     if not makefile.is_file():
         raise BuildError(
-            "Windows 95 application source is not implemented. Expected C/win95/Makefile; "
-            "no legacy binary will be fabricated."
+            WINDOWS_GENERATIONS[version][0] + " application source is not implemented. "
+            "Expected C/" + directory + "/Makefile; the build was stopped before toolchain setup."
         )
     if not os.environ.get("WATCOM"):
         raise BuildError(
-            "WATCOM is not configured. Run python build.py setup --open-watcom --apply "
-            "to download and verify the pinned installer, then install it manually "
-            "and set WATCOM. Unattended installer switches are not yet verified."
+            "WATCOM is not configured for " + WINDOWS_GENERATIONS[version][0] + ". "
+            "Run python build.py setup --open-watcom --apply to download and verify the pinned "
+            "installer, then install it manually and set WATCOM. Unattended installer switches "
+            "are not yet verified."
         )
     require_command("wmake", "Install Open Watcom 2.0 and add its bin directory to PATH.")
-    build_env = {"WINLOOK_BUILD_DIR": str(build_paths(runner.root)["c"] / "win95")}
+    output = build_paths(runner.root)["c"] / "windows" / version
+    build_env = {"WINLOOK_BUILD_DIR": str(output)}
     runner.run(
-        "Build Windows 95 C application with Open Watcom",
+        "Build " + WINDOWS_GENERATIONS[version][0] + " C application with Open Watcom",
         ["wmake", "-f", "Makefile"],
         cwd=makefile.parent,
         env=build_env,
     )
+
+
+def build_win95(runner: Runner) -> None:
+    build_watcom_application(runner, "95")
+
+
+def build_legacy_windows_c(runner: Runner, version: str) -> None:
+    """Build an implemented NT-family C target with a detected MinGW toolchain."""
+    _, directory, _ = WINDOWS_GENERATIONS[version]
+    source = runner.root / "C" / directory
+    manifest = source / "CMakeLists.txt"
+    if not manifest.is_file():
+        raise BuildError(
+            WINDOWS_GENERATIONS[version][0] + " application source is not implemented. "
+            "Expected C/" + directory + "/CMakeLists.txt; the build was stopped before toolchain setup."
+        )
+    if not _select_mingw_cmake(runner, required=True):
+        raise BuildError(
+            "This legacy target uses its OS-specific C implementation. A native MinGW-w64 GCC "
+            "toolchain with Ninja, mingw32-make or MSYS make is required; a generic host GCC is not enough."
+        )
+    ensure_cmake(runner)
+    output = build_paths(runner.root)["c"] / "windows" / version
+    configure = [
+        "cmake", "-S", str(source), "-B", str(output),
+        "-G", runner.tool_env["CMAKE_GENERATOR"],
+        "-DCMAKE_C_COMPILER=" + runner.tool_env["CC"],
+        "-DCMAKE_MAKE_PROGRAM=" + runner.tool_env["CMAKE_MAKE_PROGRAM"],
+        "-DCMAKE_BUILD_TYPE=Release",
+    ]
+    runner.run("Configure " + WINDOWS_GENERATIONS[version][0] + " C application", configure, capture=True)
+    runner.run(
+        "Build " + WINDOWS_GENERATIONS[version][0] + " C application",
+        ["cmake", "--build", str(output), "--config", "Release", "--parallel"],
+    )
+
+
+def build_windows_generation(runner: Runner, version: str) -> None:
+    if version not in WINDOWS_GENERATIONS:
+        raise BuildError("Unknown Windows generation: " + version)
+    _, _, toolchain = WINDOWS_GENERATIONS[version]
+    if version in {"10", "11"}:
+        build_windows_app(runner, "win" + version)
+    elif toolchain == "watcom":
+        build_watcom_application(runner, version)
+    else:
+        build_legacy_windows_c(runner, version)
 
 
 def build_libraries(runner: Runner) -> None:
@@ -1161,9 +1446,19 @@ def command_clean(args: argparse.Namespace, runner: Runner) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="WinLook's Python build and verification entry point.")
+    parser = ColorArgumentParser(description="WinLook's cross-generation Windows build system.")
     parser.add_argument("--root", default=str(ROOT), help="Repository root; defaults to the directory containing build.py.")
-    sub = parser.add_subparsers(dest="action", required=True)
+    sub = parser.add_subparsers(dest="action", required=True, parser_class=ColorArgumentParser)
+
+    for version, (label, _, toolchain) in WINDOWS_GENERATIONS.items():
+        sub.add_parser(
+            "windows." + version,
+            help="Build " + label + " (toolchain: " + toolchain + ")",
+            description=(
+                label + " target. The runner checks the target's source manifest before "
+                "selecting or installing any compiler."
+            ),
+        ).add_argument("--dry-run", action="store_true")
 
     doctor = sub.add_parser("doctor", help="Inspect installed build tools and available project targets.")
     doctor.add_argument("--json", action="store_true")
@@ -1172,7 +1467,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup = sub.add_parser("setup", help="Plan or install user-scoped build prerequisites.")
     setup.add_argument("--apply", action="store_true", help="Execute setup; otherwise show the plan only.")
     setup.add_argument("--with-rust", action="store_true", help="Select existing Rust 1.95.0 or install it side-by-side without changing the default toolchain.")
-    setup.add_argument("--with-c", action="store_true", help="Install/load Visual C++ Build Tools and CMake when missing (Visual Studio is machine-wide).")
+    setup.add_argument("--with-c", action="store_true", help="Reuse installed MSVC or MinGW GCC, then ensure CMake is available.")
     setup.add_argument("--with-cmake", action="store_true", help="Install CMake if missing.")
     setup.add_argument("--open-watcom", action="store_true", help="Install the pinned Open Watcom Linux x64 package.")
     setup.add_argument("--dry-run", action="store_true")
@@ -1186,7 +1481,7 @@ def build_parser() -> argparse.ArgumentParser:
     test.add_argument("--sanitizers", action="store_true")
     test.add_argument("--dry-run", action="store_true")
 
-    build = sub.add_parser("build", help="Build a selected project area.")
+    build = sub.add_parser("build", help="Build shared libraries, UI, or a legacy target (compatibility aliases).")
     build.add_argument("target", choices=("libraries", "ui", "win10", "win11", "win95", "bgw", "all"))
     build.add_argument("--dry-run", action="store_true")
 
@@ -1239,12 +1534,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         needs_rust = (
             args.action == "fmt"
+            or (args.action in {"windows.10", "windows.11"} and check_windows_app(root, "win" + args.action.rsplit(".", 1)[1]))
             or (args.action == "build" and args.target in {"libraries", "ui", "win10", "win11", "bgw", "all"})
             or (args.action == "verify" and args.target in {"rust", "libraries", "ui", "all"})
             or (args.action == "test" and args.scope in {"rust", "libraries", "ui", "all"})
         )
         if needs_rust:
             ensure_rust_toolchain(runner, apply=True)
+        if args.action in WINDOWS_BUILD_COMMANDS:
+            build_windows_generation(runner, args.action.rsplit(".", 1)[1])
+            return 0
         if args.action == "doctor":
             return command_doctor(args, runner)
         if args.action == "setup":
@@ -1302,6 +1601,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return command_secret_scan(args, runner)
         if args.action == "clean":
             return command_clean(args, runner)
+    except KeyboardInterrupt:
+        print("\n[SETUP CANCELLED] The running command was interrupted. No automatic retry will be started.", file=sys.stderr)
+        return 130
     except BuildError as exc:
         print("\n[BUILD ERROR] " + str(exc), file=sys.stderr)
         return 1
