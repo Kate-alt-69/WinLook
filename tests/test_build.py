@@ -72,6 +72,7 @@ class BuildHelpersTests(unittest.TestCase):
         with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None):
             with mock.patch.object(build, "_probe_rustup_toolchain", side_effect=[
                 (False, "toolchain not installed"),
+                (False, "toolchain not installed"),
                 (True, "rustc 1.95.0 (59807616e 2026-04-14)"),
             ]):
                 with mock.patch.object(runner, "run") as run:
