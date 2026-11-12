@@ -1,0 +1,47 @@
+name: Build runner shell compatibility
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "build.py"
+      - "tests/test_build.py"
+      - ".github/workflows/shell-compatibility.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "build.py"
+      - "tests/test_build.py"
+      - ".github/workflows/shell-compatibility.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shell-entry:
+    name: ${{ matrix.label }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows PowerShell 5.1
+            shell: powershell
+          - label: PowerShell 7
+            shell: pwsh
+          - label: CMD
+            shell: cmd
+          - label: Git Bash
+            shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Run the common build CLI
+        run: python build.py --help
+        shell: ${{ matrix.shell }}
+      - name: Test CMD batch invocation and paths with spaces
+        run: python -m unittest discover -s tests -p test_build.py -k windows_batch_environment -v
+        shell: ${{ matrix.shell }}

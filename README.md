@@ -85,6 +85,8 @@ The Win10/Win11 Manager shell is being prototyped with native WinUI 3 through Wi
 
 The root Python runner is the common entry point for building, testing and packaging. It requires Python 3.9+ and uses only the standard library. Running it without an action performs a read-only environment diagnostic:
 
+The same `python build.py ...` commands work from **Windows PowerShell 5.1, PowerShell 7, CMD, and Git Bash**; no shell-specific wrapper or escaping is required. WinLook starts native tools with argument arrays and uses the Windows `COMSPEC` command processor only when it must load Visual Studio `.bat` setup scripts. Windows MSVC/WinUI builds still require Windows; Bash on Linux/macOS can run the host-supported build and verification commands.
+
 ```sh
 python build.py
 python build.py doctor

@@ -418,6 +418,61 @@ class BuildHelpersTests(unittest.TestCase):
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(b"Windows SDK test fixture")
 
+    def test_windows_batch_environment_command_uses_comspec_and_keeps_arguments_separate(self):
+        script = Path(
+            r"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
+            r"\\Common7\\Tools\\VsDevCmd.bat"
+        )
+        with mock.patch.dict(
+            "os.environ",
+            {"ComSpec": r"C:\\Windows\\System32\\cmd.exe"},
+            clear=True,
+        ):
+            command = build._windows_batch_environment_command(
+                script,
+                ("-no_logo", "-arch=x64", "-host_arch=x64"),
+            )
+
+        self.assertEqual(
+            command,
+            [
+                r"C:\\Windows\\System32\\cmd.exe",
+                "/d",
+                "/c",
+                "call",
+                str(script),
+                "-no_logo",
+                "-arch=x64",
+                "-host_arch=x64",
+                "&&",
+                "set",
+            ],
+        )
+        rendered = build.subprocess.list2cmdline(command)
+        self.assertIn('call "' + str(script) + '"', rendered)
+        self.assertTrue(rendered.endswith("&& set"))
+        self.assertNotIn(r'\\"', rendered)
+
+    @unittest.skipUnless(os.name == "nt", "requires the Windows command processor")
+    def test_windows_batch_environment_command_executes_a_path_with_spaces(self):
+        with tempfile.TemporaryDirectory() as temp:
+            script_dir = Path(temp) / "WinLook Batch Runner Fixture"
+            script_dir.mkdir()
+            script = script_dir / "emit-environment.cmd"
+            script.write_bytes(
+                b"@echo off\\r\\n"
+                b"set WINLOOK_BATCH_ENVIRONMENT_TEST=ready\\r\\n"
+            )
+            result = build.run_subprocess(
+                build._windows_batch_environment_command(script),
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        self.assertIn("WINLOOK_BATCH_ENVIRONMENT_TEST=ready", result.stdout or "")
+
     def test_msvc_environment_probe_uses_explicit_exe_names(self):
         observed = []
 

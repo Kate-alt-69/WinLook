@@ -2,7 +2,8 @@
 """WinLook's cross-platform build, test, packaging, and toolchain entry point.
 
 Requires Python 3.9+. Uses only the Python standard library and invokes native
-tools with argument arrays except for the fixed Visual Studio environment bootstrap.
+tools with argument arrays. On Windows, Visual Studio batch bootstraps run
+through COMSPEC so the caller's interactive shell does not affect quoting.
 Rust is installed into the repository build cache; optional Visual Studio Build Tools
 and CMake setup use the Windows package manager when explicitly requested or needed.
 """
@@ -914,6 +915,37 @@ def _msvc_environment_missing(status: Dict[str, Any]) -> List[str]:
     return missing
 
 
+def _windows_batch_environment_command(
+    script: Path,
+    arguments: Sequence[str] = (),
+) -> List[str]:
+    """Build CMD argv that calls a Visual Studio batch file and captures its environment.
+
+    Keep the call keyword, script path, and every argument as separate argv
+    elements. subprocess quotes the path as one argument. Passing one combined
+    command string makes Windows list2cmdline escape embedded quotes with
+    backslashes; cmd.exe treats those backslashes literally.
+    """
+    command_processor = next(
+        (
+            str(value).strip().strip('"')
+            for key, value in os.environ.items()
+            if str(key).casefold() == "comspec" and value
+        ),
+        "cmd.exe",
+    )
+    return [
+        command_processor,
+        "/d",
+        "/c",
+        "call",
+        str(script),
+        *[str(argument) for argument in arguments],
+        "&&",
+        "set",
+    ]
+
+
 def load_msvc_environment(runner: "Runner") -> bool:
     """Load an existing MSVC compiler, linker and Windows SDK without reinstalling."""
     if os.name != "nt":
@@ -935,11 +967,15 @@ def load_msvc_environment(runner: "Runner") -> bool:
         for script in scripts:
             if not script.is_file():
                 continue
-            arguments = " -no_logo -arch=x64 -host_arch=x64" if script.name.lower() == "vsdevcmd.bat" else ""
-            command = 'call "' + str(script) + '"' + arguments + " && set"
+            arguments = (
+                ("-no_logo", "-arch=x64", "-host_arch=x64")
+                if script.name.lower() == "vsdevcmd.bat"
+                else ()
+            )
+            command = _windows_batch_environment_command(script, arguments)
             try:
                 result = run_subprocess(
-                    ["cmd.exe", "/d", "/c", command],
+                    command,
                     text=True, capture_output=True, check=False,
                 )
             except OSError as exc:
