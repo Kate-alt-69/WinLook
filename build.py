@@ -188,6 +188,10 @@ def _vswhere_path() -> Optional[Path]:
     program_files = os.environ.get("ProgramFiles")
     if program_files:
         candidates.append(Path(program_files) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe")
+    candidates.extend([
+        Path(r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"),
+        Path(r"C:\Program Files\Microsoft Visual Studio\Installer\vswhere.exe"),
+    ])
     found = command_path("vswhere")
     if found:
         candidates.append(Path(found))
@@ -204,8 +208,7 @@ def load_msvc_environment(runner: "Runner") -> bool:
     if vswhere is None:
         return False
     result = subprocess.run(
-        [str(vswhere), "-latest", "-products", "*", "-requires",
-         "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"],
+        [str(vswhere), "-latest", "-products", "*", "-property", "installationPath"],
         text=True, capture_output=True, check=False,
     )
     installation = (result.stdout or "").strip().splitlines()
@@ -216,7 +219,7 @@ def load_msvc_environment(runner: "Runner") -> bool:
         return False
     command = 'call "' + str(devcmd) + '" -no_logo -arch=x64 -host_arch=x64 && set'
     environment = subprocess.run(
-        ["cmd.exe", "/d", "/s", "/c", command],
+        ["cmd.exe", "/d", "/c", command],
         text=True, capture_output=True, check=False,
     )
     if environment.returncode != 0:
