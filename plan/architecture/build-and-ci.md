@@ -1,6 +1,6 @@
 # Build system and GitHub Actions
 
-> Status: implemented build orchestration and CI workflows; platform execution gates are kept separate from source-availability gates. Last updated: 2026-11-11.
+> Status: implemented build orchestration and CI workflows; generation selectors, source gates and compiler discovery are centralized. Last updated: 2026-11-12.
 
 ## 1. Design goals
 
@@ -60,33 +60,52 @@ From the repository root (Python 3.9+):
 
 The runner requires Rust 1.95.0 because the WinUI/Windows Reactor dependency graph declares that minimum. Before downloading anything, it probes the existing global rustup installation with `rustup run 1.95.0 rustc --version`. When that toolchain already exists, WinLook selects it for build subprocesses using `RUSTUP_TOOLCHAIN=1.95.0`; the user's configured default (for example, `stable` on Rust 1.94) is not changed. If 1.95.0 is missing but global rustup exists, the runner installs it side-by-side with `rustup toolchain install 1.95.0`, which also leaves the default unchanged. Only when no usable rustup installation is available does it bootstrap a project-local rustup under `build/.rcache/rustup-home/`, with Cargo data under `build/.rcache/cargo-home/`. In the global-toolchain path the runner deliberately does not override `CARGO_HOME` or `RUSTUP_HOME`, so rustup can see the toolchains already installed in the user's profile.
 
-On Windows, the runner loads an existing Visual Studio C++ environment via `vswhere`/`VsDevCmd`. If it is missing, the Windows build path can install Visual Studio 2022 Build Tools with the Desktop development with C++ workload through WinGet. This Visual Studio installation is machine-wide and may require administrator approval. CMake is installed through WinGet when missing. `setup --with-c` prepares both prerequisites explicitly.
+Windows application builds now select a toolchain by generation, and source availability is checked before any compiler installer is started:
+
+- Windows 95/98/Me use the separate Open Watcom C path. The target Makefile and configured `WATCOM`/`wmake` must exist before compilation. The currently pinned Open Watcom installer artifact is Linux x64 and is downloaded only through the explicit verified setup action; its upstream documentation does not establish safe unattended installation flags.
+- Windows NT 4 through Windows 8.1 use separate C targets under `C/<generation>/`. When those projects are implemented, the preferred Windows C path is native MinGW-w64 GCC plus Ninja, MinGW Make or MSYS Make. The runner checks `gcc -dumpmachine`; a generic GCC for another host is not accepted as a Windows compiler. Each target's CMake configuration must still set and test its OS-specific API/CRT/architecture baseline.
+- Windows 10/11 use the existing Rust/WinUI 3 projects and the MSVC ABI. The runner checks the active environment, `vswhere`, Visual Studio Setup registry entries and standard install roots, then loads `VsDevCmd`/ `vcvars64`. It verifies `cl`, `link`, `rc`, Windows SDK headers and libraries. If a Visual Studio instance exists but lacks the C++ workload, it modifies that instance; it uses WinGet to install Build Tools only when no instance exists. MinGW GCC is not a substitute for this WinUI/MSVC linker and SDK requirement.
+
+Visual Studio Build Tools are machine-wide and may require administrator approval. CMake is installed through WinGet only when its executable is missing. `setup --with-c --apply` reuses an existing MSVC or verified MinGW installation before considering any Visual Studio setup.
 
 From the repository root (Python 3.9+):
 
 | Command | Purpose |
 |---|---|
 | python build.py | Run the read-only doctor preflight; this is the default when no action is supplied |
-| python build.py doctor | Report Python, Rust, CMake, MSVC/GCC/Clang, cache tools and available source targets |
+| python build.py --help | Show the colored command index when running in a color-capable terminal |
+| python build.py doctor | Report installed tools, compiler targets, Visual Studio instances and source readiness for every Windows generation |
 | python build.py setup | Show available setup targets; choose an explicit --with-* option |
 | python build.py setup --with-rust | Check existing global and project-local Rust 1.95.0 installations; show the fallback plan if absent |
 | python build.py setup --with-rust --apply | Reuse Rust 1.95.0 if installed; otherwise add it side-by-side with existing rustup, or bootstrap a project-local rustup as the last resort |
-| python build.py setup --with-rust --install-rustup --apply | Use WinGet to install Rustup when missing; open a new terminal and rerun with --with-rust |
-| python build.py setup --with-c --apply | Load or install Visual Studio 2022 C++ Build Tools and install CMake when missing |\n| python build.py setup --with-cmake --apply | Install CMake through WinGet on Windows when missing |
+| python build.py setup --with-c --apply | Reuse installed MSVC or MinGW GCC, then ensure CMake is available; modify an existing Visual Studio instance only if its C++ workload is missing |
+| python build.py setup --with-cmake --apply | Install CMake through WinGet on Windows only when CMake is missing |
 | python build.py setup --open-watcom --apply | Download and SHA-256 verify the pinned Open Watcom installer; the installer itself must still be run manually |
 | python build.py fmt --check | Check Rust formatting |
 | python build.py test libraries | Test Rust and C shared libraries |
-| python build.py verify libraries --sanitizers | Rust format/tests/Clippy/docs plus C89 GCC ASan/UBSan tests |
+| python build.py verify libraries --sanitizers | Rust format/tests/Clippy/docs plus C89 sanitizer tests where the host compiler supports them |
 | python build.py verify ui | Windows-only Manager UI formatting/tests/Clippy gate |
-| python build.py build win10 | Build the Windows 10 Manager |
-| python build.py build win11 | Build the Windows 11 Manager |
+| python build.py windows.95 | Build Windows 95 when C/win95/Makefile and Open Watcom are present |
+| python build.py windows.98 | Build Windows 98 when C/win98/Makefile and Open Watcom are present |
+| python build.py windows.me | Build Windows Me when C/winme/Makefile and Open Watcom are present |
+| python build.py windows.nt4 | Build Windows NT 4 when its CMake target is present |
+| python build.py windows.2000 | Build Windows 2000 when its CMake target is present |
+| python build.py windows.xp | Build Windows XP when its CMake target is present |
+| python build.py windows.vista | Build Windows Vista when its CMake target is present |
+| python build.py windows.7 | Build Windows 7 when its CMake target is present |
+| python build.py windows.8 | Build Windows 8 when its CMake target is present |
+| python build.py windows.8.1 | Build Windows 8.1 when its CMake target is present |
+| python build.py windows.10 | Build the Windows 10 Rust/WinUI Manager |
+| python build.py windows.11 | Build the Windows 11 Rust/WinUI Manager |
+| python build.py build libraries | Build shared Rust and C libraries |
 | python build.py build bgw | Build explicitly declared BGW Cargo binary targets |
-| python build.py build win95 | Build the C/Win95 Makefile with an installed Open Watcom toolchain |
 | python build.py package win10 | Package a previously built Windows 10 Manager executable |
 | python build.py workflow-lint --apply | Download and verify actionlint, then lint all workflow YAML |
 | python build.py secret-scan --apply | Download and verify Gitleaks, then scan reachable Git history with redacted output |
 
-The runner has no hidden setup side effects. Install operations need explicit --apply; clean operations need --yes; dry-run options print commands without executing them. Downloads are kept under build/.rcache/.
+Legacy `build win10`, `build win11` and `build win95` forms remain compatibility aliases; new scripts should use the generation selectors. Every `windows.*` command checks its expected source manifest before selecting or installing compilers. Missing source means a clear source-gate error and no toolchain download or setup attempt.
+
+The runner has no implicit setup for the standalone `setup` command: installer actions need `--apply`, clean operations need `--yes`, and dry-run options do not execute commands. A build may provision a required tool after it has confirmed that the requested target source exists and the tool is actually missing. Downloads are kept under `build/.rcache/` where the toolchain supports project-local caching. Color output respects `NO_COLOR` and `WINLOOK_NO_COLOR=1`.
 
 Open Watcom has a documented Windows 95/98/Me target, but the official installer guide does not document the unattended flags used by the current Linux installer asset. The runner therefore verifies and downloads that installer but deliberately does not guess its install flags. A Win95 CI runner must have Open Watcom installed and expose WATCOM, wcc386 and wmake.
 
