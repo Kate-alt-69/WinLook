@@ -119,6 +119,45 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertNotIn("--wait", command)
         command_path.assert_not_called()
 
+    def test_existing_visual_studio_workload_uses_hidden_elevated_setup(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        installation = Path("C:/Program Files/Microsoft Visual Studio/2022/BuildTools")
+        setup = Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/setup.exe")
+        with mock.patch.object(build, "_visual_studio_installations", return_value=[installation]):
+            with mock.patch.object(build, "_vs_installer_path", return_value=setup):
+                with mock.patch.object(build, "run_visual_studio_setup") as run_setup:
+                    with mock.patch.object(runner, "run") as normal_run:
+                        build._install_or_modify_visual_studio(runner)
+        normal_run.assert_not_called()
+        command = run_setup.call_args.args[2]
+        self.assertEqual(run_setup.call_args.args[1], setup)
+        self.assertEqual(command[0], "modify")
+        self.assertIn("--installPath", command)
+        self.assertIn("--add", command)
+        self.assertIn("--quiet", command)
+        self.assertIn("--norestart", command)
+        self.assertNotIn("--passive", command)
+        self.assertNotIn("--wait", command)
+
+    def test_visual_studio_setup_failure_includes_exit_reason_and_log_excerpt(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        with mock.patch.object(build, "_run_elevated_windows_command", return_value=5007):
+            with mock.patch.object(build, "_recent_visual_studio_setup_logs", return_value="setup log: workload blocked"):
+                with mock.patch.object(build.time, "time", return_value=1234.0):
+                    with self.assertRaisesRegex(
+                        build.BuildError,
+                        "5007.*requirements.*setup log: workload blocked",
+                    ):
+                        build.run_visual_studio_setup(
+                            runner, Path("C:/VS/setup.exe"), ["modify", "--quiet"]
+                        )
+
+    def test_visual_studio_exit_codes_have_actionable_descriptions(self):
+        self.assertIn("Elevation", build.visual_studio_exit_reason(740))
+        self.assertIn("already running", build.visual_studio_exit_reason(1618))
+        self.assertIn("requirements", build.visual_studio_exit_reason(5007))
+        self.assertIn("unspecified failure", build.visual_studio_exit_reason(987654))
+
     def test_help_colorization_uses_ansi_and_respects_no_color(self):
         rendered = build.colorize_help("usage: winlook [options]\\n  --help  Show help\\n")
         self.assertIn("\x1b[", rendered)
