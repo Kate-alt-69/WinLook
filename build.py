@@ -237,7 +237,8 @@ def load_msvc_environment(runner: "Runner") -> bool:
         script = next((path for path in scripts if path.is_file()), None)
         if script is None:
             continue
-        command = 'call "' + str(script) + '" -no_logo -arch=x64 -host_arch=x64 && set'
+        arguments = " -no_logo -arch=x64 -host_arch=x64" if script.name.lower() == "vsdevcmd.bat" else ""
+        command = 'call "' + str(script) + '"' + arguments + " && set"
         environment = subprocess.run(
             ["cmd.exe", "/d", "/c", command],
             text=True, capture_output=True, check=False,
