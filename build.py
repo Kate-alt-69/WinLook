@@ -234,6 +234,47 @@ def _probe_direct_rust(toolchain: str) -> Tuple[bool, str]:
     return False, output
 
 
+def _installed_rust_components(rustup: str, toolchain: str, env: Optional[Dict[str, str]] = None) -> set:
+    """Return the installed rustfmt/clippy components for one toolchain."""
+    result = subprocess.run(
+        [rustup, "component", "list", "--installed", "--toolchain", toolchain],
+        text=True, capture_output=True, check=False, env=env,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "rustup returned no diagnostic").strip()
+        raise BuildError("Could not inspect Rust components for " + toolchain + ": " + detail[-2000:])
+    installed = set()
+    for line in (result.stdout or "").splitlines():
+        entry = line.strip()
+        for component in ("rustfmt", "clippy"):
+            if entry == component or entry.startswith(component + "-"):
+                installed.add(component)
+    return installed
+
+
+def _ensure_rust_support_components(
+    runner: "Runner",
+    rustup: str,
+    env: Optional[Dict[str, str]] = None,
+    apply: bool = True,
+) -> None:
+    """Ensure the selected compiler can run cargo fmt and cargo clippy."""
+    required = ("rustfmt", "clippy")
+    installed = _installed_rust_components(rustup, RUST_TOOLCHAIN, env)
+    missing = [component for component in required if component not in installed]
+    if not missing:
+        return
+    if not apply:
+        print("Rust " + RUST_TOOLCHAIN + " is missing support components: " + ", ".join(missing) + ".")
+        print("Plan: add only the missing components to this toolchain; the rustup default stays unchanged.")
+        return
+    runner.run(
+        "Install missing Rust support components for " + RUST_TOOLCHAIN,
+        [rustup, "component", "add", "--toolchain", RUST_TOOLCHAIN, *missing],
+        env=env,
+    )
+
+
 def _select_global_rustup(runner: "Runner", rustup: str, install_if_missing: bool) -> bool:
     """Use the user's existing rustup home and preserve its default toolchain."""
     available, version = _probe_rustup_toolchain(rustup, RUST_TOOLCHAIN)
@@ -295,6 +336,7 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
     """
     global_rustup = command_path("rustup")
     if global_rustup and _select_global_rustup(runner, global_rustup, install_if_missing=False):
+        _ensure_rust_support_components(runner, global_rustup, apply=apply)
         return True
 
     direct_ok, direct_version = _probe_direct_rust(RUST_TOOLCHAIN)
@@ -305,6 +347,9 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
 
     local_rustup = _rustup_executable(runner.root)
     if local_rustup.is_file() and _select_project_rustup(runner, local_rustup, install_if_missing=False):
+        _ensure_rust_support_components(
+            runner, str(local_rustup), env=rust_environment(runner.root), apply=apply
+        )
         return True
 
     if not apply:
@@ -318,9 +363,13 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
     # When rustup is already installed, use its CLI to add a side-by-side toolchain.
     # This is much smaller and avoids downloading a second rustup installer.
     if global_rustup and _select_global_rustup(runner, global_rustup, install_if_missing=True):
+        _ensure_rust_support_components(runner, global_rustup, apply=True)
         return True
 
     if local_rustup.is_file() and _select_project_rustup(runner, local_rustup, install_if_missing=True):
+        _ensure_rust_support_components(
+            runner, str(local_rustup), env=rust_environment(runner.root), apply=True
+        )
         return True
 
     paths = rust_paths(runner.root)

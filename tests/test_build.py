@@ -320,12 +320,27 @@ class BuildHelpersTests(unittest.TestCase):
         rustup = r"C:\Users\Merge\.cargo\bin\rustup.exe"
         with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None):
             with mock.patch.object(build, "_probe_rustup_toolchain", return_value=(True, "rustc 1.95.0 (59807616e 2026-04-14)")) as probe:
-                with mock.patch.object(runner, "run") as run:
-                    self.assertTrue(build.ensure_rust_toolchain(runner))
+                with mock.patch.object(build, "_installed_rust_components", return_value={"rustfmt", "clippy"}):
+                    with mock.patch.object(runner, "run") as run:
+                        self.assertTrue(build.ensure_rust_toolchain(runner))
         self.assertEqual(runner.rust_env, {"RUSTUP_TOOLCHAIN": "1.95.0"})
         probe.assert_called_once_with(rustup, "1.95.0")
         run.assert_not_called()
         self.assertFalse(build.rust_paths(runner.root)["bootstrap"].exists())
+
+    def test_existing_global_rustup_adds_missing_rustfmt_and_clippy(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        rustup = r"C:\Users\Merge\.cargo\bin\rustup.exe"
+        with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None):
+            with mock.patch.object(build, "_probe_rustup_toolchain", return_value=(True, "rustc 1.95.0 (59807616e 2026-04-14)")):
+                with mock.patch.object(build, "_installed_rust_components", return_value=set()):
+                    with mock.patch.object(runner, "run") as run:
+                        self.assertTrue(build.ensure_rust_toolchain(runner))
+        self.assertEqual(
+            run.call_args.args[1],
+            [rustup, "component", "add", "--toolchain", "1.95.0", "rustfmt", "clippy"],
+        )
+        self.assertEqual(runner.rust_env, {"RUSTUP_TOOLCHAIN": "1.95.0"})
 
     def test_existing_global_rustup_default_is_not_modified(self):
         runner = build.Runner(root=Path("D:/WinLook"))
@@ -333,7 +348,8 @@ class BuildHelpersTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {"RUSTUP_TOOLCHAIN": "stable"}):
             with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None):
                 with mock.patch.object(build, "_probe_rustup_toolchain", return_value=(True, "rustc 1.95.0 (59807616e 2026-04-14)")):
-                    self.assertTrue(build.ensure_rust_toolchain(runner))
+                    with mock.patch.object(build, "_installed_rust_components", return_value={"rustfmt", "clippy"}):
+                        self.assertTrue(build.ensure_rust_toolchain(runner))
                     self.assertEqual(build.os.environ["RUSTUP_TOOLCHAIN"], "stable")
         self.assertEqual(runner.rust_env["RUSTUP_TOOLCHAIN"], "1.95.0")
 
@@ -346,8 +362,9 @@ class BuildHelpersTests(unittest.TestCase):
                 (False, "toolchain not installed"),
                 (True, "rustc 1.95.0 (59807616e 2026-04-14)"),
             ]):
-                with mock.patch.object(runner, "run") as run:
-                    self.assertTrue(build.ensure_rust_toolchain(runner))
+                with mock.patch.object(build, "_installed_rust_components", return_value={"rustfmt", "clippy"}):
+                    with mock.patch.object(runner, "run") as run:
+                        self.assertTrue(build.ensure_rust_toolchain(runner))
         self.assertEqual(run.call_args.args[1][:3], [rustup, "toolchain", "install"])
         self.assertEqual(runner.rust_env, {"RUSTUP_TOOLCHAIN": "1.95.0"})
 

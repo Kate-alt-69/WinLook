@@ -266,3 +266,10 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - The C++ setup request explicitly adds `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` and `Microsoft.VisualStudio.Component.Windows10SDK.19041` alongside `Microsoft.VisualStudio.Workload.VCTools`, rather than relying on optional/recommended workload defaults.
 - The Windows stress workflow now runs the build-runner Python regression suite on both hosted Windows matrix jobs before checking the preinstalled MSVC environment and performing clean/incremental builds.
 - Regression tests cover exact channel discovery, missing metadata, setup modify arguments and explicit compiler/SDK components. Actual UAC/installer execution still requires a Windows interactive build.
+
+
+## Rust verification components on reused toolchains — 2026-11-12
+
+- Windows CI reused the global Rust 1.95.0 compiler correctly, but the existing toolchain did not contain `cargo-fmt`; UI verification stopped before Clippy.
+- Rust toolchain selection now audits the selected 1.95.0 installation for `rustfmt` and `clippy`. It adds only missing components through that explicit toolchain and leaves the configured rustup default untouched. Read-only setup reports missing components and the planned action without installing them.
+- Regression coverage exercises the already-installed compiler path with and without the required support components.
