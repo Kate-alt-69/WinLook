@@ -863,7 +863,12 @@ class BuildHelpersTests(unittest.TestCase):
             (root / "Lib" / version / "um" / "x64" / "kernel32.lib").write_bytes(b"kernel32")
 
             completed, sdk = build._complete_msvc_environment(
-                {"Path": "C:/VisualStudio/VC/bin", "ProgramFiles(x86)": temp}
+                {
+                    "Path": "C:/VisualStudio/VC/bin",
+                    "WindowsSdkDir": str(root),
+                    "WindowsSDKVersion": version + os.sep,
+                    "ProgramFiles(x86)": temp,
+                }
             )
         self.assertEqual(sdk, (root, version))
         self.assertEqual(completed["WindowsSdkDir"], str(root) + os.sep)
