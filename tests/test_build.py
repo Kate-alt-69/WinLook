@@ -508,7 +508,8 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn(str(sdk_lib / "ucrt" / "x64"), environment["LIB"])
 
     def test_msvc_environment_status_reports_each_missing_tool_separately(self):
-        status = build._msvc_environment_status({"PATH": ""})
+        with mock.patch.object(build, "_find_windows_sdk", return_value=None):
+            status = build._msvc_environment_status({"PATH": ""})
         self.assertEqual(
             build._msvc_environment_missing(status),
             ["cl.exe", "link.exe", "rc.exe", "Windows SDK headers/libraries"],
