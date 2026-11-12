@@ -744,6 +744,7 @@ def _verify_microsoft_authenticode(path: Path, powershell: str) -> str:
     env["WINLOOK_AUTHENTICODE_FILE"] = str(path)
     script = (
         "$ErrorActionPreference = 'Stop'; "
+        "Import-Module Microsoft.PowerShell.Security -Force -ErrorAction Stop; "
         "$sig = Get-AuthenticodeSignature -LiteralPath $env:WINLOOK_AUTHENTICODE_FILE; "
         "if ($sig.Status -ne 'Valid') { Write-Error ('Signature status: ' + $sig.Status); exit 2 }; "
         "$subject = $sig.SignerCertificate.Subject; "
