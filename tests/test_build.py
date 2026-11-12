@@ -730,7 +730,7 @@ class BuildHelpersTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             log = Path(temp) / "dd_setup_test.log"
             log.write_text(
-                "[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VisualStudio.Component.VC.Tools\\n",
+                "[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VisualStudio.Component.VC.Tools\n",
                 encoding="utf-8",
             )
             runner = build.Runner(root=Path(temp), debug=True)
