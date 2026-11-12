@@ -553,54 +553,271 @@ def _vs_installer_path() -> Optional[Path]:
     return next((path for path in candidates if path.is_file()), None)
 
 
-def _windows_sdk_is_present(environment: Dict[str, str]) -> bool:
-    # os.environ is case-insensitive on Windows, but dict(os.environ) is not.
-    # Normalize copied environments before reading Windows SDK variables.
+def _windows_sdk_registry_roots() -> List[Path]:
+    """Read the Windows Kits registry locations without requiring them to exist."""
+    if os.name != "nt":
+        return []
+    try:
+        import winreg
+    except ImportError:
+        return []
+
+    roots: List[Path] = []
+    keys = (
+        (r"SOFTWARE\Microsoft\Windows Kits\Installed Roots", "KitsRoot10"),
+        (r"SOFTWARE\Microsoft\Microsoft SDKs\Windows\v10.0", "InstallationFolder"),
+    )
+    views = [0]
+    for name in ("KEY_WOW64_64KEY", "KEY_WOW64_32KEY"):
+        view = getattr(winreg, name, 0)
+        if view and view not in views:
+            views.append(view)
+
+    for subkey, value_name in keys:
+        for view in views:
+            try:
+                with winreg.OpenKey(
+                    winreg.HKEY_LOCAL_MACHINE,
+                    subkey,
+                    0,
+                    winreg.KEY_READ | view,
+                ) as registry_key:
+                    value, _ = winreg.QueryValueEx(registry_key, value_name)
+                if value:
+                    roots.append(Path(str(value)))
+            except OSError:
+                continue
+
+    unique: List[Path] = []
+    seen = set()
+    for root in roots:
+        key = str(root).replace("/", "\\").rstrip("\\").casefold()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(root)
+    return unique
+
+
+def _windows_sdk_root_candidates(environment: Dict[str, str]) -> List[Path]:
+    """Find Windows Kits roots from the developer environment, registry, and disk defaults."""
     normalized = {str(key).casefold(): value for key, value in environment.items()}
-    sdk_root = normalized.get("windowssdkdir")
-    if not sdk_root:
-        return False
-    root = Path(sdk_root)
-    include_root = root / "Include"
-    lib_root = root / "Lib"
-    versions = []
-    sdk_version = (normalized.get("windowssdkversion") or "").replace("/", "").replace(chr(92), "")
-    if sdk_version:
-        versions.append(sdk_version)
-    if include_root.is_dir():
-        versions.extend(
-            path.name for path in sorted(include_root.iterdir(), reverse=True)
-            if path.is_dir() and path.name not in versions
-        )
-    for version in versions:
-        if (
-            (include_root / version / "um" / "Windows.h").is_file()
-            and (lib_root / version / "um" / "x64" / "kernel32.lib").is_file()
-        ):
-            return True
-    return False
+    candidates: List[Path] = []
+    for name in (
+        "windowssdkdir",
+        "windowssdkdir_10",
+        "windowssdkdir10",
+        "universalcrtsdkdir",
+        "universalcrtsdkdir_10",
+        "kitsroot10",
+    ):
+        value = normalized.get(name)
+        if value:
+            candidates.append(Path(str(value).strip().strip('"')))
+
+    candidates.extend(_windows_sdk_registry_roots())
+
+    # VsDevCmd's winsdk helper normally populates WindowsSdkDir from registry
+    # metadata. If that lookup is blocked, still probe the conventional SDK
+    # locations directly; an installed SDK is not absent merely because the
+    # environment variable was not populated.
+    for name in ("programfiles(x86)", "programfiles"):
+        value = normalized.get(name)
+        if value:
+            candidates.append(Path(str(value)) / "Windows Kits" / "10")
+    candidates.extend((
+        Path("C:/Program Files (x86)/Windows Kits/10"),
+        Path("C:/Program Files/Windows Kits/10"),
+    ))
+
+    unique: List[Path] = []
+    seen = set()
+    for root in candidates:
+        key = str(root).replace("/", "\\").rstrip("\\").casefold()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(root)
+    return unique
+
+
+def _windows_sdk_version_sort_key(value: str) -> Tuple[int, ...]:
+    parts = re.findall(r"\d+", value)
+    return tuple(int(part) for part in parts) if parts else (0,)
+
+
+def _find_windows_sdk(environment: Dict[str, str]) -> Optional[Tuple[Path, str]]:
+    """Return an SDK root/version only when both its headers and x64 libraries exist."""
+    normalized = {str(key).casefold(): value for key, value in environment.items()}
+    preferred_versions = []
+    for name in ("windowssdkversion", "windowstargetplatformversion", "targetplatformversion"):
+        value = str(normalized.get(name) or "").strip().strip("\\/ ")
+        if value and value not in preferred_versions:
+            preferred_versions.append(value)
+
+    for root in _windows_sdk_root_candidates(environment):
+        include_root = root / "Include"
+        lib_root = root / "Lib"
+        versions = list(preferred_versions)
+        try:
+            available = [
+                entry.name for entry in include_root.iterdir()
+                if entry.is_dir() and entry.name not in versions
+            ]
+        except OSError:
+            available = []
+        versions.extend(sorted(available, key=_windows_sdk_version_sort_key, reverse=True))
+
+        for version in versions:
+            version_include = include_root / version
+            version_lib = lib_root / version
+            required_files = (
+                version_include / "um" / "Windows.h",
+                version_include / "shared" / "sdkddkver.h",
+                version_include / "ucrt" / "stdio.h",
+                version_lib / "um" / "x64" / "kernel32.lib",
+                version_lib / "ucrt" / "x64" / "ucrt.lib",
+            )
+            if all(path.is_file() for path in required_files):
+                return root, version
+    return None
+
+
+def _windows_sdk_is_present(environment: Dict[str, str]) -> bool:
+    # Do not rely exclusively on WindowsSdkDir. VsDevCmd's winsdk helper can
+    # leave it empty if its registry lookup is restricted even though the SDK
+    # is installed on disk.
+    return _find_windows_sdk(environment) is not None
+
+
+def _set_environment_value(environment: Dict[str, str], name: str, value: str) -> None:
+    key = next(
+        (existing for existing in environment if str(existing).casefold() == name.casefold()),
+        name,
+    )
+    environment[key] = value
+
+
+def _append_environment_paths(environment: Dict[str, str], name: str, paths: Sequence[Path]) -> None:
+    key = next(
+        (existing for existing in environment if str(existing).casefold() == name.casefold()),
+        name,
+    )
+    current = str(environment.get(key) or "")
+    existing = {
+        item.replace("/", "\\").rstrip("\\").casefold()
+        for item in current.split(os.pathsep)
+        if item
+    }
+    additions = []
+    for path in paths:
+        if not path.is_dir():
+            continue
+        value = str(path)
+        normalized = value.replace("/", "\\").rstrip("\\").casefold()
+        if normalized not in existing:
+            existing.add(normalized)
+            additions.append(value)
+    if additions:
+        environment[key] = os.pathsep.join(([current] if current else []) + additions)
+
+
+def _prepare_windows_sdk_environment(environment: Dict[str, str]) -> Dict[str, str]:
+    """Repair SDK variables and search paths when VsDevCmd could not populate them."""
+    detected = _find_windows_sdk(environment)
+    if detected is None:
+        return environment
+    root, version = detected
+    root_value = str(root) + os.sep
+    version_value = version + os.sep
+    bin_root = root / "bin" / version
+    bin_x64 = bin_root / "x64"
+    bin_x86 = bin_root / "x86"
+
+    for name, value in (
+        ("WindowsSdkDir", root_value),
+        ("WindowsSdkDir_10", root_value),
+        ("UniversalCRTSdkDir", root_value),
+        ("UniversalCRTSdkDir_10", root_value),
+        ("WindowsSDKVersion", version_value),
+        ("UCRTVersion", version_value),
+        ("WindowsSDKBinPath", str(bin_root) + os.sep),
+        ("WindowsSDKVerBinPath", str(bin_x64) + os.sep),
+    ):
+        _set_environment_value(environment, name, value)
+
+    if bin_x64.is_dir():
+        _set_environment_value(environment, "WindowsSDK_ExecutablePath_x64", str(bin_x64) + os.sep)
+    if bin_x86.is_dir():
+        _set_environment_value(environment, "WindowsSDK_ExecutablePath_x86", str(bin_x86) + os.sep)
+
+    include_root = root / "Include" / version
+    lib_root = root / "Lib" / version
+    _append_environment_paths(
+        environment,
+        "INCLUDE",
+        [include_root / name for name in ("ucrt", "shared", "um", "winrt", "cppwinrt")],
+    )
+    _append_environment_paths(
+        environment,
+        "LIB",
+        [lib_root / "ucrt" / "x64", lib_root / "um" / "x64"],
+    )
+    _append_environment_paths(
+        environment,
+        "LIBPATH",
+        [lib_root / "ucrt" / "x64", lib_root / "um" / "x64"],
+    )
+    _append_environment_paths(environment, "PATH", [bin_x64])
+    return environment
+
+
+def _msvc_environment_status(environment: Dict[str, str]) -> Dict[str, Any]:
+    normalized = {str(key).casefold(): value for key, value in environment.items()}
+    search_path = normalized.get("path", "")
+    tools = {
+        name + ".exe": bool(shutil.which(name + ".exe", path=search_path))
+        for name in ("cl", "link", "rc")
+    }
+    sdk = _find_windows_sdk(environment)
+    return {
+        **tools,
+        "windows_sdk": sdk is not None,
+        "windows_sdk_root": str(sdk[0]) if sdk else None,
+        "windows_sdk_version": sdk[1] if sdk else None,
+    }
+
+
+def _msvc_environment_missing(status: Dict[str, Any]) -> List[str]:
+    missing = [name for name in ("cl.exe", "link.exe", "rc.exe") if not status.get(name)]
+    if not status.get("windows_sdk"):
+        missing.append("Windows SDK headers/libraries")
+    return missing
 
 
 def _msvc_environment_tools(environment: Dict[str, str]) -> bool:
-    normalized = {str(key).casefold(): value for key, value in environment.items()}
-    search_path = normalized.get("path", "")
-    # MSVC tools are PE executables. Probe their real filenames explicitly so
-    # a missing PATHEXT cannot make a valid VS developer environment look empty.
-    return all(
-        shutil.which(name + ".exe", path=search_path)
-        for name in ("cl", "link", "rc")
-    ) and _windows_sdk_is_present(environment)
+    # Probe explicit PE executable names so an incomplete PATHEXT cannot make
+    # a valid Visual Studio developer environment look empty.
+    return not _msvc_environment_missing(_msvc_environment_status(environment))
+
+
 
 
 def load_msvc_environment(runner: "Runner") -> bool:
-    """Load an existing MSVC compiler, linker and Windows SDK without reinstalling."""
+    """Load MSVC and recover SDK paths when VsDevCmd cannot read SDK registry values."""
     if os.name != "nt":
         return False
 
-    current = dict(os.environ)
-    if _msvc_environment_tools(current):
+    current = _prepare_windows_sdk_environment(dict(os.environ))
+    runner.msvc_diagnostics = _msvc_environment_status(current)
+    if not _msvc_environment_missing(runner.msvc_diagnostics):
+        # The SDK fallback may have supplied variables missing from this process.
+        os.environ.update(current)
         return True
 
+    best_status = runner.msvc_diagnostics
+    best_score = sum(
+        1 for key in ("cl.exe", "link.exe", "rc.exe", "windows_sdk")
+        if best_status.get(key)
+    )
     for installation in _visual_studio_installations():
         scripts = (
             installation / "Common7" / "Tools" / "VsDevCmd.bat",
@@ -626,11 +843,25 @@ def load_msvc_environment(runner: "Runner") -> bool:
                     key, value = line.split("=", 1)
                     if key:
                         environment[key] = value
-            if _msvc_environment_tools(environment):
-                # Do not contaminate this process with a partial environment.
+
+            environment = _prepare_windows_sdk_environment(environment)
+            status = _msvc_environment_status(environment)
+            score = sum(
+                1 for key in ("cl.exe", "link.exe", "rc.exe", "windows_sdk")
+                if status.get(key)
+            )
+            if score > best_score:
+                best_status = status
+                best_score = score
+            if not _msvc_environment_missing(status):
+                # Only apply the developer environment once every component has
+                # been verified; partial state must not leak into the shell.
                 os.environ.update(environment)
+                runner.msvc_diagnostics = status
                 print("Using existing Visual Studio C++ Build Tools at " + str(installation))
                 return True
+
+    runner.msvc_diagnostics = best_status
     return False
 
 
@@ -1082,11 +1313,23 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
         if load_msvc_environment(runner):
             return
 
+    status = runner.msvc_diagnostics or _msvc_environment_status(dict(os.environ))
+    missing = _msvc_environment_missing(status)
+    details = "Missing: " + ", ".join(missing) + "."
+    if status.get("windows_sdk_root"):
+        details += (
+            " SDK detected at " + str(status["windows_sdk_root"])
+            + " (version " + str(status.get("windows_sdk_version") or "unknown") + ")."
+        )
+    elif not status.get("windows_sdk"):
+        details += (
+            " SDK discovery checked WindowsSdkDir/WindowsSdkDir_10, the Windows Kits "
+            "registry roots, and standard Program Files Windows Kits locations."
+        )
     raise BuildError(
-        "Visual Studio setup finished, but cl.exe, link.exe, rc.exe and a usable Windows SDK "
-        "were not detected. No further installer retry was started. Open Visual Studio Installer "
-        "and repair the existing Build Tools instance, add 'Desktop development with C++' and a "
-        "Windows SDK, then rerun the build."
+        "Visual Studio setup returned successfully, but the developer environment is still "
+        "incomplete. " + details + " No further installer retry was started. "
+        "Run 'py build.py doctor --json' for the per-tool probe results."
     )
 
 
@@ -1149,6 +1392,7 @@ class Runner:
     rust_env: Dict[str, str] = field(default_factory=dict)
     tool_env: Dict[str, str] = field(default_factory=dict)
     c_compiler: str = ""
+    msvc_diagnostics: Dict[str, Any] = field(default_factory=dict)
 
     def run(
         self,
@@ -1330,6 +1574,7 @@ def _windows_msvc_requirement_missing(
 def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
     mingw = probe_mingw_gcc()
     msvc_available = load_msvc_environment(runner) if os.name == "nt" else None
+    msvc_status = _msvc_environment_status(dict(os.environ)) if os.name == "nt" else {}
     visual_studio_instances = [str(path) for path in _visual_studio_installations()] if os.name == "nt" else []
     checks = {
         "python": sys.version.split()[0],
@@ -1357,9 +1602,20 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "msvc_cl": command_path("cl") if msvc_available else None,
         "msvc_link": command_path("link") if msvc_available else None,
         "msvc_rc": command_path("rc") if msvc_available else None,
-        "windows_sdk_dir": os.environ.get("WindowsSdkDir") or os.environ.get("WindowsSDKDir"),
-        "windows_sdk_version": os.environ.get("WindowsSDKVersion"),
-        "windows_sdk_present": _windows_sdk_is_present(dict(os.environ)) if os.name == "nt" else None,
+        "windows_sdk_dir": (
+            msvc_status.get("windows_sdk_root")
+            or os.environ.get("WindowsSdkDir")
+            or os.environ.get("WindowsSDKDir")
+        ),
+        "windows_sdk_version": (
+            msvc_status.get("windows_sdk_version") or os.environ.get("WindowsSDKVersion")
+        ),
+        "windows_sdk_present": msvc_status.get("windows_sdk") if os.name == "nt" else None,
+        "msvc_tools": {
+            "cl.exe": msvc_status.get("cl.exe"),
+            "link.exe": msvc_status.get("link.exe"),
+            "rc.exe": msvc_status.get("rc.exe"),
+        } if os.name == "nt" else None,
         "visual_studio_instances": visual_studio_instances,
         "gcc": command_path("gcc"),
         "gcc_target": (mingw or {}).get("target"),
