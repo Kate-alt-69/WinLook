@@ -717,6 +717,9 @@ def run_visual_studio_setup(
     if exit_code == 0:
         print("Visual Studio setup completed successfully.")
         return
+    if exit_code == 3010:
+        print("Visual Studio setup completed; Windows reports that a restart is required.")
+        return
     reason = visual_studio_exit_reason(exit_code)
     logs = _recent_visual_studio_setup_logs(started_at)
     raise BuildError(
