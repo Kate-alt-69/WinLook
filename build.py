@@ -764,12 +764,13 @@ def _install_or_modify_visual_studio(
                 + ", but Visual Studio Installer could not be located. "
                 "The existing instance will not be reinstalled."
             )
-        runner.run(
-            "Add missing C++ workload to existing Visual Studio",
+        run_visual_studio_setup(
+            runner,
+            installer,
             [
-                str(installer), "modify", "--installPath", str(selected),
+                "modify", "--installPath", str(selected),
                 "--add", "Microsoft.VisualStudio.Workload.VCTools",
-                "--includeRecommended", "--passive", "--norestart",
+                "--includeRecommended", "--quiet", "--norestart",
             ],
         )
         return
