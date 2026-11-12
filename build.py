@@ -424,8 +424,12 @@ def _vs_installer_path() -> Optional[Path]:
         ("ProgramFiles", "C:/Program Files"),
     ):
         root = Path(os.environ.get(variable, fallback))
-        candidates.append(root / "Microsoft Visual Studio" / "Installer" / "vs_installer.exe")
-    found = command_path("vs_installer")
+        installer_dir = root / "Microsoft Visual Studio" / "Installer"
+        # Microsoft documents setup.exe for modify/update operations. Keep
+        # vs_installer.exe as a compatibility fallback for unusual installs.
+        candidates.append(installer_dir / "setup.exe")
+        candidates.append(installer_dir / "vs_installer.exe")
+    found = command_path("setup") or command_path("vs_installer")
     if found:
         candidates.append(Path(found))
     return next((path for path in candidates if path.is_file()), None)
@@ -577,7 +581,7 @@ def _install_or_modify_visual_studio(runner: "Runner") -> None:
             [
                 str(installer), "modify", "--installPath", str(installations[0]),
                 "--add", "Microsoft.VisualStudio.Workload.VCTools",
-                "--includeRecommended", "--quiet", "--wait", "--norestart",
+                "--includeRecommended", "--passive", "--norestart",
             ],
         )
         return
