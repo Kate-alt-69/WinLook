@@ -48,7 +48,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
-      - name: Install project-local Rust 1.95.0
+      - name: Select or install Rust 1.95.0 without changing the default
         run: python build.py setup --with-rust --apply
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
