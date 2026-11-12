@@ -417,7 +417,7 @@ class BuildHelpersTests(unittest.TestCase):
                             side_effect=build.BuildError("existing Build Tools modify failed"),
                         ):
                             with mock.patch.object(build, "_install_visual_studio_build_tools") as install:
-                                with self.assertRaisesRegex(build.BuildError, "existing Visual Studio Build Tools"):
+                                with self.assertRaisesRegex(build.BuildError, "existing Build Tools modify failed"):
                                     build.ensure_windows_linker(runner, apply=True)
         install.assert_not_called()
 
