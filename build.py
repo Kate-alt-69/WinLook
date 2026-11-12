@@ -19,6 +19,8 @@ import shutil
 import subprocess
 import tarfile
 import sys
+import tempfile
+import time
 import urllib.request
 import zipfile
 from dataclasses import dataclass, field
@@ -566,6 +568,154 @@ def _select_mingw_cmake(runner: "Runner", required: bool = False) -> bool:
     return True
 
 
+def visual_studio_exit_reason(code: int) -> str:
+    """Translate common Visual Studio setup process exit codes."""
+    return {
+        0: "Operation completed successfully.",
+        740: "Elevation is required.",
+        1001: "A Visual Studio Installer operation is already running.",
+        1003: "Visual Studio is currently in use.",
+        1602: "The operation was cancelled.",
+        1618: "Another installation is already running.",
+        3010: "Installation completed, but Windows must be restarted before the tools can be used.",
+        5003: "The bootstrapper could not download the installer.",
+        5004: "The operation was cancelled.",
+        5005: "The installer rejected its command-line arguments.",
+        5007: "The operation was blocked because the machine does not meet an installer requirement.",
+        8001: "The installer rejected this ARM machine configuration.",
+        8002: "The background-download precheck failed.",
+        8003: "One or more selected components are out of support.",
+        8004: "The installation target directory was rejected.",
+        8005: "The installer could not verify one or more source payloads.",
+        8006: "Visual Studio processes are running and block the change.",
+        8010: "This Windows version is not supported by the selected Visual Studio workload.",
+    }.get(code, "Visual Studio Installer reported an unspecified failure; inspect its setup logs.")
+
+
+def _run_elevated_windows_command(command: Sequence[str], cwd: Path) -> int:
+    """Run a Windows command through the UAC runas verb and wait for its exit code."""
+    if os.name != "nt":
+        raise BuildError("UAC elevation is available only on Windows.")
+    import ctypes
+    from ctypes import wintypes
+
+    class ShellExecuteInfo(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("fMask", wintypes.ULONG),
+            ("hwnd", wintypes.HWND),
+            ("lpVerb", wintypes.LPCWSTR),
+            ("lpFile", wintypes.LPCWSTR),
+            ("lpParameters", wintypes.LPCWSTR),
+            ("lpDirectory", wintypes.LPCWSTR),
+            ("nShow", ctypes.c_int),
+            ("hInstApp", wintypes.HINSTANCE),
+            ("lpIDList", wintypes.LPVOID),
+            ("lpClass", wintypes.LPCWSTR),
+            ("hkeyClass", wintypes.HKEY),
+            ("dwHotKey", wintypes.DWORD),
+            ("hIconOrMonitor", wintypes.HANDLE),
+            ("hProcess", wintypes.HANDLE),
+        ]
+
+    args = [str(part) for part in command]
+    info = ShellExecuteInfo()
+    info.cbSize = ctypes.sizeof(info)
+    info.fMask = 0x00000040  # SEE_MASK_NOCLOSEPROCESS
+    info.lpVerb = "runas"
+    info.lpFile = args[0]
+    info.lpParameters = subprocess.list2cmdline(args[1:])
+    info.lpDirectory = str(cwd)
+    info.nShow = 0  # SW_HIDE; the Visual Studio operation itself uses --quiet.
+
+    shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    shell32.ShellExecuteExW.argtypes = [ctypes.POINTER(ShellExecuteInfo)]
+    shell32.ShellExecuteExW.restype = wintypes.BOOL
+    if not shell32.ShellExecuteExW(ctypes.byref(info)):
+        error = ctypes.get_last_error()
+        if error == 1223:  # ERROR_CANCELLED: user declined the UAC prompt.
+            raise BuildError("Windows elevation was declined. No Visual Studio changes were made.")
+        raise BuildError(
+            "Windows could not start the elevated Visual Studio Installer process "
+            + "(Win32 error " + str(error) + ")."
+        )
+
+    try:
+        wait_result = kernel32.WaitForSingleObject(info.hProcess, 0xFFFFFFFF)
+        if wait_result != 0:
+            raise BuildError("Waiting for the elevated Visual Studio Installer process failed (Win32 result " + str(wait_result) + ").")
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(info.hProcess, ctypes.byref(exit_code)):
+            error = ctypes.get_last_error()
+            raise BuildError("Could not read the Visual Studio Installer exit code (Win32 error " + str(error) + ").")
+        return int(exit_code.value)
+    finally:
+        kernel32.CloseHandle(info.hProcess)
+
+
+def _recent_visual_studio_setup_logs(started_at: float, limit: int = 3) -> str:
+    """Collect concise error context from Visual Studio's documented %TEMP% logs."""
+    log_root = Path(tempfile.gettempdir())
+    candidates: List[Path] = []
+    for pattern in ("dd_setup_*.log", "dd_client_*.log", "dd_bootstrapper_*.log"):
+        try:
+            for path in log_root.glob(pattern):
+                try:
+                    if path.is_file() and path.stat().st_mtime >= started_at - 10:
+                        candidates.append(path)
+                except OSError:
+                    continue
+        except OSError:
+            continue
+    candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    sections: List[str] = []
+    for path in candidates[:limit]:
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError as exc:
+            sections.append(str(path) + ": unable to read log (" + str(exc) + ")")
+            continue
+        markers = ("error", "failed", "failure", "warning", "exit code", "blocked")
+        relevant = [
+            line for line in lines
+            if any(marker in line.lower() for marker in markers)
+        ]
+        excerpt = relevant[-24:] if relevant else lines[-12:]
+        sections.append(
+            str(path) + "\\n" + "\\n".join(excerpt)[-5000:]
+        )
+    if not sections:
+        return "No new dd_setup/dd_client/dd_bootstrapper logs were found in " + str(log_root) + "."
+    return "\\n\\n".join(sections)[-12000:]
+
+
+def run_visual_studio_setup(
+    runner: "Runner", installer: Path, arguments: Sequence[str]
+) -> None:
+    """Run Visual Studio setup hidden, elevated, waitable and with actionable logs."""
+    command = [str(installer)] + [str(part) for part in arguments]
+    rendered = subprocess.list2cmdline(command) if os.name == "nt" else shlex.join(command)
+    print("\\n==> Modify existing Visual Studio C++ workload")
+    print("$ " + rendered)
+    print("Requesting administrator approval through Windows UAC; the installer UI stays hidden.")
+    if runner.dry_run:
+        return
+
+    started_at = time.time()
+    exit_code = _run_elevated_windows_command(command, runner.root)
+    if exit_code == 0:
+        print("Visual Studio Installer completed the workload modification successfully.")
+        return
+    reason = visual_studio_exit_reason(exit_code)
+    logs = _recent_visual_studio_setup_logs(started_at)
+    raise BuildError(
+        "Visual Studio workload modification failed with exit code " + str(exit_code) + ".\\n"
+        + reason + "\\n"
+        + "Relevant Visual Studio setup log excerpts:\\n" + logs
+    )
+
+
 def _install_or_modify_visual_studio(runner: "Runner") -> None:
     installations = _visual_studio_installations()
     if installations:
@@ -576,12 +726,13 @@ def _install_or_modify_visual_studio(runner: "Runner") -> None:
                 + ", but Visual Studio Installer could not be located. Open Visual Studio Installer "
                 "and add the 'Desktop development with C++' workload; WinGet will not reinstall it."
             )
-        runner.run(
-            "Add missing C++ workload to existing Visual Studio",
+        run_visual_studio_setup(
+            runner,
+            installer,
             [
-                str(installer), "modify", "--installPath", str(installations[0]),
+                "modify", "--installPath", str(installations[0]),
                 "--add", "Microsoft.VisualStudio.Workload.VCTools",
-                "--includeRecommended", "--passive", "--norestart",
+                "--includeRecommended", "--quiet", "--norestart",
             ],
         )
         return
