@@ -1,3 +1,4 @@
+import io
 import sys
 import tempfile
 import unittest
@@ -139,6 +140,67 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn("--norestart", command)
         self.assertNotIn("--passive", command)
         self.assertNotIn("--wait", command)
+
+    def test_missing_winget_uses_signed_official_buildtools_bootstrapper(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        bootstrapper = Path("D:/WinLook/build/.rcache/installers/vs_buildtools_2022.exe")
+        with mock.patch.object(build, "command_path", return_value=None):
+            with mock.patch.object(build, "download_vs_build_tools_bootstrapper", return_value=bootstrapper) as download:
+                with mock.patch.object(build, "run_visual_studio_setup") as run_setup:
+                    build._install_visual_studio_build_tools(runner)
+        download.assert_called_once_with(runner)
+        command = run_setup.call_args.args[2]
+        self.assertEqual(run_setup.call_args.args[1], bootstrapper)
+        self.assertIn("--quiet", command)
+        self.assertIn("--wait", command)
+        self.assertIn("--norestart", command)
+        self.assertIn("--installPath", command)
+        self.assertIn("--add", command)
+        self.assertIn("Microsoft.VisualStudio.Workload.VCTools", command)
+        self.assertIn("--includeRecommended", command)
+        self.assertEqual(run_setup.call_args.kwargs["operation"], "Install Visual Studio 2022 C++ Build Tools")
+
+    def test_buildtools_bootstrapper_cache_is_reused_after_authenticode_check(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runner = build.Runner(root=root)
+            cached = build.build_paths(root)["rust_cache"] / "installers" / "vs_buildtools_2022.exe"
+            cached.parent.mkdir(parents=True)
+            cached.write_bytes(b"cached signed bootstrapper")
+            with mock.patch.object(build, "_powershell_executable", return_value="powershell.exe"):
+                with mock.patch.object(
+                    build, "_verify_microsoft_authenticode",
+                    return_value="CN=Microsoft Corporation, O=Microsoft Corporation",
+                ) as verify:
+                    with mock.patch.object(build.urllib.request, "urlopen") as urlopen:
+                        result = build.download_vs_build_tools_bootstrapper(runner)
+            self.assertEqual(result, cached)
+            verify.assert_called_once_with(cached, "powershell.exe")
+            urlopen.assert_not_called()
+
+    def test_buildtools_bootstrapper_download_uses_official_url_and_verifies_signature(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runner = build.Runner(root=root)
+            payload = b"microsoft bootstrapper" * 4096
+            response = io.BytesIO(payload)
+            with mock.patch.object(build, "_powershell_executable", return_value="powershell.exe"):
+                with mock.patch.object(
+                    build, "_verify_microsoft_authenticode",
+                    return_value="CN=Microsoft Corporation, O=Microsoft Corporation",
+                ) as verify:
+                    with mock.patch.object(
+                        build.urllib.request, "urlopen", return_value=response
+                    ) as urlopen:
+                        result = build.download_vs_build_tools_bootstrapper(runner)
+            self.assertTrue(result.is_file())
+            self.assertEqual(result.read_bytes(), payload)
+            self.assertEqual(
+                urlopen.call_args.args[0].full_url,
+                "https://aka.ms/vs/17/release/vs_buildtools.exe",
+            )
+            verify.assert_called_once()
+            self.assertNotIn(".download", result.name)
 
     def test_visual_studio_setup_failure_includes_exit_reason_and_log_excerpt(self):
         runner = build.Runner(root=Path("D:/WinLook"))
