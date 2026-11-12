@@ -227,3 +227,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Win10/Win11 stay on the Rust MSVC/WinUI route. MSVC discovery checks the active environment, Visual Studio Installer metadata, registry and conventional installation roots; it loads the existing developer environment and checks `cl`, `link`, `rc`, Windows SDK headers and libraries. Existing Visual Studio instances are modified for missing C++ components; WinGet installs Build Tools only if no instance exists. MinGW is never treated as a substitute for WinUI's MSVC linker/SDK requirements.
 - Windows CMake library builds reuse installed MSVC or verified MinGW GCC. CMake setup is attempted only when its executable is absent. Terminal help has optional ANSI styling and respects `NO_COLOR`.
 - Regression coverage added for every selector (including dotted `windows.8.1`), source-gate-before-installer behavior, generic-GCC rejection, MinGW selection, Visual Studio non-reinstallation, and color opt-out. Hosted workflow results are checked separately; this checkpoint does not claim a local Windows application build.
+
+
+## Visual Studio Installer elevation and diagnostics — 2026-11-12
+
+- The local user's failed Build Tools modification showed `isadmin=true` but `iselevated=false`; the installer explicitly requires `--quiet`/`--passive` operations to be launched elevated. Exit code 5007 should be paired with the installer log context rather than treated as a compiler error.
+- Existing-instance modifications now call the installed `setup.exe modify` through the Windows `runas` UAC verb, wait on the returned process handle, use `--quiet --norestart` (no transient Installer UI), and report UAC cancellation distinctly.
+- The runner no longer passes `--wait` to installed `setup.exe` (that flag belongs to a bootstrapper). Windows process API signatures are declared explicitly for 64-bit-safe handle waits and exit-code retrieval.
+- On failure, the runner maps known Visual Studio installer exit codes and extracts recent error/warning lines from `dd_setup_*.log`, `dd_client_*.log` and `dd_bootstrapper_*.log` files in the temp directory.
+- Regression tests cover quiet/elevated routing, omission of `--passive`/`--wait`, error code explanations and log inclusion. UAC and actual installer behaviour still require a Windows interactive test.
