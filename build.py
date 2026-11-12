@@ -142,6 +142,8 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
         url = RUSTUP_DIST + "/" + host + "/rustup-init" + installer_suffix
         print("Downloading the official rustup installer for " + host + "...")
         _download_verified(url, installer, "rustup-init")
+        if os.name != "nt":
+            installer.chmod(installer.stat().st_mode | 0o111)
         runner.run(
             "Install project-local rustup",
             [str(installer), "-y", "--no-modify-path", "--default-toolchain", "none", "--profile", "minimal"],
