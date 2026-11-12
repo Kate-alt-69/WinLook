@@ -448,9 +448,9 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "platform": platform.platform(),
         "architecture": platform.machine(),
         "git": command_path("git"),
-        "rustup": command_path("rustup"),
-        "rustc": command_path("rustc"),
-        "cargo": command_path("cargo"),
+        "rustup": str(_rustup_executable(runner.root)) if _rustup_executable(runner.root).is_file() else command_path("rustup"),
+        "rustc": str(rust_paths(runner.root)["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")) if (rust_paths(runner.root)["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")).is_file() else command_path("rustc"),
+        "cargo": str(rust_paths(runner.root)["cargo_home"] / "bin" / ("cargo.exe" if os.name == "nt" else "cargo")) if (rust_paths(runner.root)["cargo_home"] / "bin" / ("cargo.exe" if os.name == "nt" else "cargo")).is_file() else command_path("cargo"),
         "project_rustup": str(_rustup_executable(runner.root)) if _rustup_executable(runner.root).is_file() else None,
         "project_rustc": str(rust_paths(runner.root)["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")) if (rust_paths(runner.root)["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")).is_file() else None,
         "required_rust": RUST_TOOLCHAIN,
@@ -1062,7 +1062,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             or (args.action == "build" and args.target in {"libraries", "ui", "win10", "win11", "bgw", "all"})
             or (args.action == "verify" and args.target in {"rust", "libraries", "ui", "all"})
             or (args.action == "test" and args.scope in {"rust", "libraries", "ui", "all"})
-            or (args.action == "setup" and args.with_rust)
         )
         if needs_rust:
             ensure_rust_toolchain(runner, apply=True)
