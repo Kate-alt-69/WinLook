@@ -663,11 +663,91 @@ def _windows_sdk_is_present(environment: Dict[str, str]) -> bool:
     return _windows_sdk_installation(environment) is not None
 
 
+def _append_environment_directories(
+    environment: Dict[str, str],
+    variable: str,
+    directories: Sequence[Path],
+) -> None:
+    """Append existing toolchain directories while preserving differently-cased env keys."""
+    normalized = {str(key).casefold(): value for key, value in environment.items()}
+    existing = normalized.get(variable.casefold(), "")
+    values = [item for item in existing.split(os.pathsep) if item]
+    seen = {item.strip('"').rstrip("\\/").casefold() for item in values}
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        value = str(directory)
+        key = value.rstrip("\\/").casefold()
+        if key not in seen:
+            values.append(value)
+            seen.add(key)
+    if values:
+        environment[variable] = os.pathsep.join(values)
+
+
+def _msvc_toolset_root(
+    environment: Dict[str, str],
+    installation: Optional[Path] = None,
+) -> Optional[Path]:
+    """Find the selected MSVC toolset from VCToolsInstallDir or the VS instance."""
+    normalized = {str(key).casefold(): value for key, value in environment.items()}
+    configured = normalized.get("vctoolsinstalldir")
+    if configured:
+        candidate = Path(str(configured).strip().strip('"'))
+        if (candidate / "include").is_dir() and (candidate / "lib").is_dir():
+            return candidate
+
+    if installation is None:
+        return None
+    tools_root = installation / "VC" / "Tools" / "MSVC"
+    try:
+        versions = [path for path in tools_root.iterdir() if path.is_dir()]
+    except OSError:
+        return None
+
+    def version_key(path: Path) -> Tuple[int, ...]:
+        numbers = re.findall(r"\d+", path.name)
+        return tuple(int(part) for part in numbers) if numbers else (0,)
+
+    for candidate in sorted(versions, key=version_key, reverse=True):
+        if (
+            (candidate / "include").is_dir()
+            and (candidate / "lib" / "x64").is_dir()
+            and any(
+                (candidate / "bin" / host / "x64" / "cl.exe").is_file()
+                and (candidate / "bin" / host / "x64" / "link.exe").is_file()
+                for host in ("Hostx64", "Hostx86")
+            )
+        ):
+            return candidate
+    return None
+
+
 def _complete_msvc_environment(
     environment: Dict[str, str],
+    installation: Optional[Path] = None,
 ) -> Tuple[Dict[str, str], Optional[Tuple[Path, str]]]:
-    """Fill SDK variables and search paths from the discovered SDK without changing global settings."""
+    """Fill MSVC and SDK variables from detected installations without changing global settings."""
     completed = dict(environment)
+
+    toolset_root = _msvc_toolset_root(completed, installation)
+    if toolset_root is not None:
+        completed["VCToolsInstallDir"] = str(toolset_root).rstrip("\\/") + os.sep
+        tool_bin = toolset_root / "bin" / "Hostx64" / "x64"
+        if not (tool_bin / "cl.exe").is_file() or not (tool_bin / "link.exe").is_file():
+            tool_bin = toolset_root / "bin" / "Hostx86" / "x64"
+        _append_environment_directories(completed, "PATH", [tool_bin])
+        _append_environment_directories(
+            completed,
+            "INCLUDE",
+            [toolset_root / "include", toolset_root / "atlmfc" / "include"],
+        )
+        _append_environment_directories(
+            completed,
+            "LIB",
+            [toolset_root / "lib" / "x64", toolset_root / "atlmfc" / "lib" / "x64"],
+        )
+
     sdk = _windows_sdk_installation(completed)
     if sdk is None:
         return completed, None
@@ -678,44 +758,30 @@ def _complete_msvc_environment(
 
     include_root = root / "Include" / version
     lib_root = root / "Lib" / version
-    include_dirs = [
-        include_root / name for name in ("ucrt", "shared", "um", "winrt", "cppwinrt")
-    ]
-    lib_dirs = [
-        lib_root / "ucrt" / "x64",
-        lib_root / "um" / "x64",
-    ]
-    for key, directories in (("INCLUDE", include_dirs), ("LIB", lib_dirs)):
-        existing = completed.get(key, "")
-        values = [item for item in existing.split(os.pathsep) if item]
-        seen = {item.rstrip("\\/").casefold() for item in values}
-        for directory in directories:
-            if directory.is_dir():
-                value = str(directory)
-                normalized = value.rstrip("\\/").casefold()
-                if normalized not in seen:
-                    values.append(value)
-                    seen.add(normalized)
-        if values:
-            completed[key] = os.pathsep.join(values)
+    _append_environment_directories(
+        completed,
+        "INCLUDE",
+        [include_root / name for name in ("ucrt", "shared", "um", "winrt", "cppwinrt")],
+    )
+    _append_environment_directories(
+        completed,
+        "LIB",
+        [lib_root / "ucrt" / "x64", lib_root / "um" / "x64"],
+    )
 
     sdk_bin = root / "bin" / version / "x64"
     if not (sdk_bin / "rc.exe").is_file():
         sdk_bin = root / "bin" / "x64"
-    if (sdk_bin / "rc.exe").is_file():
-        path_value = completed.get("PATH", "")
-        path_entries = [item for item in path_value.split(os.pathsep) if item]
-        if str(sdk_bin).rstrip("\\/").casefold() not in {
-            item.rstrip("\\/").casefold() for item in path_entries
-        }:
-            path_entries.insert(0, str(sdk_bin))
-            completed["PATH"] = os.pathsep.join(path_entries)
+    _append_environment_directories(completed, "PATH", [sdk_bin])
     return completed, sdk
 
 
-def _msvc_environment_issues(environment: Dict[str, str]) -> Tuple[List[str], Dict[str, str]]:
+def _msvc_environment_issues(
+    environment: Dict[str, str],
+    installation: Optional[Path] = None,
+) -> Tuple[List[str], Dict[str, str]]:
     """Explain exactly which MSVC/SDK prerequisites are absent from a developer environment."""
-    completed, sdk = _complete_msvc_environment(environment)
+    completed, sdk = _complete_msvc_environment(environment, installation)
     normalized = {str(key).casefold(): value for key, value in completed.items()}
     search_path = normalized.get("path", "")
     issues = [
@@ -738,6 +804,7 @@ def _msvc_environment_issues(environment: Dict[str, str]) -> Tuple[List[str], Di
                 "registry entry, or the standard Windows Kits installation paths"
             )
     return issues, completed
+
 
 
 def _msvc_environment_tools(environment: Dict[str, str]) -> bool:
@@ -790,7 +857,7 @@ def load_msvc_environment(runner: "Runner") -> bool:
                     key, value = line.split("=", 1)
                     if key:
                         environment[key] = value
-            issues, completed_environment = _msvc_environment_issues(environment)
+            issues, completed_environment = _msvc_environment_issues(environment, installation)
             if not issues:
                 # Do not contaminate this process with a partial environment.
                 os.environ.update(completed_environment)
