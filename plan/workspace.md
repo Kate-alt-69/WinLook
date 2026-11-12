@@ -217,3 +217,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - `ensure_rust_toolchain` probes global rustup first with `rustup run 1.95.0 rustc --version` and `cargo --version`. If present, build subprocesses receive `RUSTUP_TOOLCHAIN=1.95.0`; the user's global default and PATH are untouched.
 - If 1.95.0 is missing but global rustup exists, the CLI installs it side-by-side without changing the default. Existing project-local rustup is the next fallback; rustup-init download is now the final fallback only.
 - Regression tests cover global-toolchain reuse, preserving a pre-existing `RUSTUP_TOOLCHAIN=stable`, side-by-side installation, and not forcing project-local `CARGO_HOME`/`RUSTUP_HOME` for the global path.
+
+
+## Generation-aware Windows build selectors — 2026-11-12
+
+- Added canonical CLI selectors for every documented Windows generation: `windows.95`, `windows.98`, `windows.me`, `windows.nt4`, `windows.2000`, `windows.xp`, `windows.vista`, `windows.7`, `windows.8`, `windows.8.1`, `windows.10` and `windows.11`.
+- Each selector resolves its own source manifest before compiler setup. A missing target now exits with the exact expected path and does not invoke WinGet, Visual Studio Installer, rustup or another compiler installer.
+- Win9x selectors use the Open Watcom Makefile path. NT-family legacy selectors use an independent CMake target and verify that GCC is actually a native MinGW-w64 compiler via `gcc -dumpmachine`, with Ninja/MinGW Make/MSYS Make available as the CMake generator backend. A generic GCC binary alone does not prove it can produce Windows binaries.
+- Win10/Win11 stay on the Rust MSVC/WinUI route. MSVC discovery checks the active environment, Visual Studio Installer metadata, registry and conventional installation roots; it loads the existing developer environment and checks `cl`, `link`, `rc`, Windows SDK headers and libraries. Existing Visual Studio instances are modified for missing C++ components; WinGet installs Build Tools only if no instance exists. MinGW is never treated as a substitute for WinUI's MSVC linker/SDK requirements.
+- Windows CMake library builds reuse installed MSVC or verified MinGW GCC. CMake setup is attempted only when its executable is absent. Terminal help has optional ANSI styling and respects `NO_COLOR`.
+- Regression coverage added for every selector (including dotted `windows.8.1`), source-gate-before-installer behavior, generic-GCC rejection, MinGW selection, Visual Studio non-reinstallation, and color opt-out. Hosted workflow results are checked separately; this checkpoint does not claim a local Windows application build.
