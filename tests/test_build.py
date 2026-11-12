@@ -300,7 +300,7 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn("unspecified failure", build.visual_studio_exit_reason(987654))
 
     def test_help_colorization_uses_ansi_and_respects_no_color(self):
-        rendered = build.colorize_help("usage: winlook [options]\\n  --help  Show help\\n")
+        rendered = build.colorize_help("usage: winlook [options]\n  --help  Show help\n")
         self.assertIn("\x1b[", rendered)
         with mock.patch.dict("os.environ", {"NO_COLOR": "1"}):
             self.assertFalse(build.color_enabled())
@@ -888,10 +888,10 @@ class BuildHelpersTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             log = Path(temp) / "dd_setup_noop.log"
             log.write_text(
-                "Warning: Didn't find any channel feed.\\n"
-                "WebClient error RequestCanceled https://aka.ms/vs/17/release/channel\\n"
-                "Status changed to NoUpdate\\n"
-                "Closing the installer with exit code 0\\n",
+                "Warning: Didn't find any channel feed.\n"
+                "WebClient error RequestCanceled https://aka.ms/vs/17/release/channel\n"
+                "Status changed to NoUpdate\n"
+                "Closing the installer with exit code 0\n",
                 encoding="utf-8",
             )
             with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
@@ -903,9 +903,9 @@ class BuildHelpersTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             log = Path(temp) / "dd_setup_install.log"
             log.write_text(
-                "Status changed to Applying\\n"
-                "Downloading package Microsoft.VisualStudio.Component.VC.Tools.x86.x64\\n"
-                "Installing package Microsoft.VisualStudio.Component.Windows10SDK.19041\\n",
+                "Status changed to Applying\n"
+                "Downloading package Microsoft.VisualStudio.Component.VC.Tools.x86.x64\n"
+                "Installing package Microsoft.VisualStudio.Component.Windows10SDK.19041\n",
                 encoding="utf-8",
             )
             with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
