@@ -689,7 +689,7 @@ def _recent_visual_studio_setup_logs(started_at: float, limit: int = 3) -> str:
         ]
         excerpt = relevant[-24:] if relevant else lines[-12:]
         sections.append(
-            str(path) + "\\n" + "\\n".join(excerpt)[-5000:]
+            str(path) + "\n" + "\n".join(excerpt)[-5000:]
         )
     if not sections:
         return "No new dd_setup/dd_client/dd_bootstrapper logs were found in " + str(log_root) + "."
@@ -702,7 +702,7 @@ def run_visual_studio_setup(
     """Run Visual Studio setup hidden, elevated, waitable and with actionable logs."""
     command = [str(installer)] + [str(part) for part in arguments]
     rendered = subprocess.list2cmdline(command) if os.name == "nt" else shlex.join(command)
-    print("\\n==> Modify existing Visual Studio C++ workload")
+    print("\n==> Modify existing Visual Studio C++ workload")
     print("$ " + rendered)
     print("Requesting administrator approval through Windows UAC; the installer UI stays hidden.")
     if runner.dry_run:
@@ -716,9 +716,9 @@ def run_visual_studio_setup(
     reason = visual_studio_exit_reason(exit_code)
     logs = _recent_visual_studio_setup_logs(started_at)
     raise BuildError(
-        "Visual Studio workload modification failed with exit code " + str(exit_code) + ".\\n"
-        + reason + "\\n"
-        + "Relevant Visual Studio setup log excerpts:\\n" + logs
+        "Visual Studio workload modification failed with exit code " + str(exit_code) + ".\n"
+        + reason + "\n"
+        + "Relevant Visual Studio setup log excerpts:\n" + logs
     )
 
 
