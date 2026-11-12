@@ -160,6 +160,23 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn("--includeRecommended", command)
         self.assertEqual(run_setup.call_args.kwargs["operation"], "Install Visual Studio 2022 C++ Build Tools")
 
+    def test_authenticode_verifier_explicitly_imports_security_module(self):
+        with mock.patch.object(build.subprocess, "run") as run:
+            run.return_value = build.subprocess.CompletedProcess(
+                ["powershell.exe"], 0,
+                stdout="CN=Microsoft Corporation, O=Microsoft Corporation",
+                stderr="",
+            )
+            signer = build._verify_microsoft_authenticode(
+                Path("C:/Temp/vs_buildtools.exe"), "powershell.exe"
+            )
+        self.assertIn("Microsoft Corporation", signer)
+        command = run.call_args.args[0]
+        script = command[-1]
+        self.assertIn("Import-Module Microsoft.PowerShell.Security -Force", script)
+        self.assertIn("Get-AuthenticodeSignature", script)
+        self.assertEqual(run.call_args.kwargs["env"]["WINLOOK_AUTHENTICODE_FILE"], "C:/Temp/vs_buildtools.exe")
+
     def test_buildtools_bootstrapper_cache_is_reused_after_authenticode_check(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
