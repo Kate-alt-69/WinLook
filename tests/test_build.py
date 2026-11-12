@@ -106,18 +106,19 @@ class BuildHelpersTests(unittest.TestCase):
         setup = Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/setup.exe")
         with mock.patch.object(build, "_visual_studio_installations", return_value=[installation]):
             with mock.patch.object(build, "_vs_installer_path", return_value=setup):
-                with mock.patch.object(build, "command_path") as command_path:
-                    with mock.patch.object(runner, "run") as run:
+                with mock.patch.object(build, "run_visual_studio_setup") as run_setup:
+                    with mock.patch.object(runner, "run") as normal_run:
                         build._install_or_modify_visual_studio(runner)
-        command = run.call_args.args[1]
-        self.assertEqual(command[0], str(setup))
-        self.assertEqual(command[1], "modify")
+        normal_run.assert_not_called()
+        command = run_setup.call_args.args[2]
+        self.assertEqual(run_setup.call_args.args[1], setup)
+        self.assertEqual(command[0], "modify")
         self.assertIn("--installPath", command)
         self.assertIn("--add", command)
-        self.assertIn("--passive", command)
+        self.assertIn("--quiet", command)
         self.assertIn("--norestart", command)
+        self.assertNotIn("--passive", command)
         self.assertNotIn("--wait", command)
-        command_path.assert_not_called()
 
     def test_existing_visual_studio_workload_uses_hidden_elevated_setup(self):
         runner = build.Runner(root=Path("D:/WinLook"))
