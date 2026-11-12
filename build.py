@@ -646,7 +646,21 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
         ])
     if os.name != "nt" and command_path("ccache"):
         configure.append("-DCMAKE_C_COMPILER_LAUNCHER=ccache")
-    runner.run("Configure all C89 libraries", configure)
+    try:
+        runner.run("Configure all C89 libraries", configure, capture=True)
+    except BuildError as exc:
+        detail = str(exc).lower()
+        missing_msvc = os.name == "nt" and any(
+            marker in detail for marker in (
+                "no cmake_c_compiler could be found",
+                "could not find any instance of visual studio",
+                "no cmake_cxx_compiler could be found",
+            )
+        )
+        if not missing_msvc:
+            raise
+        ensure_windows_c_toolchain(runner)
+        runner.run("Retry CMake configuration after installing MSVC", configure, capture=True)
     config = "Debug" if sanitizers else "Release"
     runner.run("Build all C89 libraries", ["cmake", "--build", str(build_dir), "--config", config, "--parallel"])
     runner.run("Run all C89 tests", ["ctest", "--test-dir", str(build_dir), "-C", config, "--output-on-failure"])
