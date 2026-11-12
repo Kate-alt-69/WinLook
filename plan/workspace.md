@@ -236,3 +236,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - The runner no longer passes `--wait` to installed `setup.exe` (that flag belongs to a bootstrapper). Windows process API signatures are declared explicitly for 64-bit-safe handle waits and exit-code retrieval.
 - On failure, the runner maps known Visual Studio installer exit codes and extracts recent error/warning lines from `dd_setup_*.log`, `dd_client_*.log` and `dd_bootstrapper_*.log` files in the temp directory.
 - Regression tests cover quiet/elevated routing, omission of `--passive`/`--wait`, error code explanations and log inclusion. UAC and actual installer behaviour still require a Windows interactive test.
+
+
+## One-time Visual Studio Build Tools fallback — 2026-11-12
+
+- Existing Visual Studio workload changes run through the hidden, elevated UAC helper and wait for the actual installer process; `setup.exe modify` uses `--quiet --norestart`, not the bootstrapper-only `--wait` option.
+- If a pre-existing Enterprise/Professional/Community instance cannot be modified or still fails to expose `cl.exe`, `link.exe`, `rc.exe` and Windows SDK headers/libraries, the runner can make one fallback attempt to install the standalone Visual Studio 2022 Build Tools SKU.
+- An existing Build Tools instance is never reinstalled. If the standalone install was the first setup attempt and fails, the error is returned without an immediate second WinGet call. A user-declined UAC operation is also not retried through another installer.
+- The MinGW path is independent: native `x86_64-w64-mingw32` GCC plus Ninja/Make can build the shared C libraries, but it does not satisfy the Win10/11 Rust MSVC + WinUI linker/SDK gate.
+- Regression tests cover each single-attempt and cancellation boundary; the Windows hosted build still needs to confirm the installer can actually provide the required workload in that runner image.
