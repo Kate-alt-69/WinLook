@@ -146,7 +146,7 @@ class BuildHelpersTests(unittest.TestCase):
                 with mock.patch.object(build.time, "time", return_value=1234.0):
                     with self.assertRaisesRegex(
                         build.BuildError,
-                        "5007.*requirements.*setup log: workload blocked",
+                        r"(?s)5007.*requirement.*setup log: workload blocked",
                     ):
                         build.run_visual_studio_setup(
                             runner, Path("C:/VS/setup.exe"), ["modify", "--quiet"]
@@ -155,7 +155,7 @@ class BuildHelpersTests(unittest.TestCase):
     def test_visual_studio_exit_codes_have_actionable_descriptions(self):
         self.assertIn("Elevation", build.visual_studio_exit_reason(740))
         self.assertIn("already running", build.visual_studio_exit_reason(1618))
-        self.assertIn("requirements", build.visual_studio_exit_reason(5007))
+        self.assertIn("requirement", build.visual_studio_exit_reason(5007))
         self.assertIn("unspecified failure", build.visual_studio_exit_reason(987654))
 
     def test_help_colorization_uses_ansi_and_respects_no_color(self):
