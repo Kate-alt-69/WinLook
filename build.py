@@ -1171,7 +1171,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup = sub.add_parser("setup", help="Plan or install user-scoped build prerequisites.")
     setup.add_argument("--apply", action="store_true", help="Execute setup; otherwise show the plan only.")
-    setup.add_argument("--with-rust", action="store_true", help="Install Rust 1.95.0 and components into this repository build cache.")
+    setup.add_argument("--with-rust", action="store_true", help="Select existing Rust 1.95.0 or install it side-by-side without changing the default toolchain.")
     setup.add_argument("--with-c", action="store_true", help="Install/load Visual C++ Build Tools and CMake when missing (Visual Studio is machine-wide).")
     setup.add_argument("--with-cmake", action="store_true", help="Install CMake if missing.")
     setup.add_argument("--open-watcom", action="store_true", help="Install the pinned Open Watcom Linux x64 package.")
