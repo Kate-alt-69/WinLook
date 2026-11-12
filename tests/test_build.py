@@ -102,46 +102,102 @@ class BuildHelpersTests(unittest.TestCase):
                         build._install_or_modify_visual_studio(runner)
                     command.assert_not_called()
 
+    def test_visual_studio_channel_id_is_read_from_matching_vswhere_instance(self):
+        installation = Path("C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools")
+        vswhere = Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe")
+        instances = [
+            {
+                "installationPath": "c:/program files (x86)/microsoft visual studio/2022/buildtools",
+                "channelId": "VisualStudio.17.Release",
+            },
+            {
+                "installationPath": "C:/Program Files/Microsoft Visual Studio/2022/Community",
+                "channelId": "VisualStudio.17.Preview",
+            },
+        ]
+        completed = build.subprocess.CompletedProcess(
+            [str(vswhere)], 0, stdout=build.json.dumps(instances), stderr=""
+        )
+        with mock.patch.object(build, "_vswhere_path", return_value=vswhere):
+            with mock.patch.object(build.subprocess, "run", return_value=completed) as run:
+                result = build._visual_studio_channel_id(installation)
+        self.assertEqual(result, "VisualStudio.17.Release")
+        self.assertEqual(run.call_args.args[0], [str(vswhere), "-all", "-products", "*", "-format", "json"])
+
+    def test_visual_studio_channel_id_refuses_to_guess_when_instance_is_not_found(self):
+        installation = Path("D:/Custom/VS/BuildTools")
+        vswhere = Path("C:/VS/Installer/vswhere.exe")
+        completed = build.subprocess.CompletedProcess(
+            [str(vswhere)], 0,
+            stdout=build.json.dumps([{"installationPath":"D:/Other/VS/BuildTools","channelId":"VisualStudio.17.Release"}]),
+            stderr=""
+        )
+        with mock.patch.object(build, "_vswhere_path", return_value=vswhere):
+            with mock.patch.object(build.subprocess, "run", return_value=completed):
+                with self.assertRaisesRegex(build.BuildError, "Refusing to guess a channel ID"):
+                    build._visual_studio_channel_id(installation)
+
+    def test_visual_studio_channel_id_requires_metadata_for_matching_instance(self):
+        installation = Path("C:/VS/2022/BuildTools")
+        vswhere = Path("C:/VS/Installer/vswhere.exe")
+        completed = build.subprocess.CompletedProcess(
+            [str(vswhere)], 0,
+            stdout=build.json.dumps([{"installationPath":"C:/VS/2022/BuildTools"}]),
+            stderr=""
+        )
+        with mock.patch.object(build, "_vswhere_path", return_value=vswhere):
+            with mock.patch.object(build.subprocess, "run", return_value=completed):
+                with self.assertRaisesRegex(build.BuildError, "did not report its channelId"):
+                    build._visual_studio_channel_id(installation)
+
     def test_existing_visual_studio_instance_uses_setup_modify_without_bootstrapper_wait(self):
         runner = build.Runner(root=Path("D:/WinLook"))
         installation = Path("C:/Program Files/Microsoft Visual Studio/2022/Enterprise")
         setup = Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/setup.exe")
         with mock.patch.object(build, "_visual_studio_installations", return_value=[installation]):
             with mock.patch.object(build, "_vs_installer_path", return_value=setup):
-                with mock.patch.object(build, "run_visual_studio_setup") as run_setup:
-                    with mock.patch.object(runner, "run") as normal_run:
-                        build._install_or_modify_visual_studio(runner)
+                with mock.patch.object(build, "_visual_studio_channel_id", return_value="VisualStudio.17.Release") as channel:
+                    with mock.patch.object(build, "run_visual_studio_setup") as run_setup:
+                        with mock.patch.object(runner, "run") as normal_run:
+                            build._install_or_modify_visual_studio(runner)
+        channel.assert_called_once_with(installation)
         normal_run.assert_not_called()
         command = run_setup.call_args.args[2]
         self.assertEqual(run_setup.call_args.args[1], setup)
         self.assertEqual(command[0], "modify")
         self.assertIn("--installPath", command)
-        self.assertIn("--add", command)
+        self.assertEqual(command[command.index("--channelId") + 1], "VisualStudio.17.Release")
+        for component_id in (
+            "Microsoft.VisualStudio.Workload.VCTools",
+            "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "Microsoft.VisualStudio.Component.Windows10SDK.19041",
+        ):
+            self.assertIn(component_id, command)
         self.assertIn("--quiet", command)
         self.assertIn("--norestart", command)
         self.assertNotIn("--passive", command)
         self.assertNotIn("--wait", command)
-
     def test_existing_visual_studio_workload_uses_hidden_elevated_setup(self):
         runner = build.Runner(root=Path("D:/WinLook"))
         installation = Path("C:/Program Files/Microsoft Visual Studio/2022/BuildTools")
         setup = Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/setup.exe")
         with mock.patch.object(build, "_visual_studio_installations", return_value=[installation]):
             with mock.patch.object(build, "_vs_installer_path", return_value=setup):
-                with mock.patch.object(build, "run_visual_studio_setup") as run_setup:
-                    with mock.patch.object(runner, "run") as normal_run:
-                        build._install_or_modify_visual_studio(runner)
+                with mock.patch.object(build, "_visual_studio_channel_id", return_value="VisualStudio.17.Release"):
+                    with mock.patch.object(build, "run_visual_studio_setup") as run_setup:
+                        with mock.patch.object(runner, "run") as normal_run:
+                            build._install_or_modify_visual_studio(runner)
         normal_run.assert_not_called()
         command = run_setup.call_args.args[2]
         self.assertEqual(run_setup.call_args.args[1], setup)
         self.assertEqual(command[0], "modify")
-        self.assertIn("--installPath", command)
-        self.assertIn("--add", command)
+        self.assertEqual(command[command.index("--channelId") + 1], "VisualStudio.17.Release")
+        self.assertIn("Microsoft.VisualStudio.Component.VC.Tools.x86.x64", command)
+        self.assertIn("Microsoft.VisualStudio.Component.Windows10SDK.19041", command)
         self.assertIn("--quiet", command)
         self.assertIn("--norestart", command)
         self.assertNotIn("--passive", command)
         self.assertNotIn("--wait", command)
-
     def test_missing_winget_uses_signed_official_buildtools_bootstrapper(self):
         runner = build.Runner(root=Path("D:/WinLook"))
         bootstrapper = Path("D:/WinLook/build/.rcache/installers/vs_buildtools_2022.exe")
@@ -158,6 +214,8 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn("--installPath", command)
         self.assertIn("--add", command)
         self.assertIn("Microsoft.VisualStudio.Workload.VCTools", command)
+        self.assertIn("Microsoft.VisualStudio.Component.VC.Tools.x86.x64", command)
+        self.assertIn("Microsoft.VisualStudio.Component.Windows10SDK.19041", command)
         self.assertIn("--includeRecommended", command)
         self.assertEqual(run_setup.call_args.kwargs["operation"], "Install Visual Studio 2022 C++ Build Tools")
 
