@@ -1404,6 +1404,13 @@ class Runner:
                 args, cwd=str(location), env=process_env, check=False, text=True,
                 capture_output=True,
             )
+            if self.all_debug and not _ALL_DEBUG_ACTIVE:
+                if result.stdout:
+                    print("[COMMAND STDOUT] " + label)
+                    print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+                if result.stderr:
+                    print("[COMMAND STDERR] " + label, file=sys.stderr)
+                    print(result.stderr, end="" if result.stderr.endswith("\n") else "\n", file=sys.stderr)
         except FileNotFoundError as exc:
             raise BuildError(
                 "Required command was not found: " + args[0]
