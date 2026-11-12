@@ -139,9 +139,6 @@ jobs:
           }
           Write-Host "Windows SDK => $sdkRoot ($sdkVersion)"
           Write-Host "Visual Studio => $vsInstall"
-      - name: Confirm Python can resolve the MSVC and SDK environment
-        run: |
-          python -c "import os,shutil,build; print('PATHEXT:',repr(os.environ.get('PATHEXT'))); print('cl:',shutil.which('cl'),shutil.which('cl.exe')); print('link:',shutil.which('link'),shutil.which('link.exe')); print('rc:',shutil.which('rc'),shutil.which('rc.exe')); print('SDK helper:',build._windows_sdk_is_present(dict(os.environ))); r=os.environ.get('WindowsSdkDir',''); v=os.environ.get('WindowsSDKVersion','').replace('/','').replace(chr(92),''); from pathlib import Path; print('SDK header:',(Path(r)/'Include'/v/'um'/'Windows.h').is_file()); print('SDK library:',(Path(r)/'Lib'/v/'um'/'x64'/'kernel32.lib').is_file())"
       - name: Select Rust 1.95.0
         run: python build.py setup --with-rust --apply
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9

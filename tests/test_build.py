@@ -1,4 +1,5 @@
 import io
+import os
 import sys
 import tempfile
 import unittest
@@ -345,6 +346,26 @@ class BuildHelpersTests(unittest.TestCase):
                 ("rc.exe", "C:/VS/bin"),
             ],
         )
+
+    def test_windows_sdk_probe_accepts_case_insensitive_environment_keys(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            version = "10.0.26100.0"
+            header = root / "Include" / version / "um" / "Windows.h"
+            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
+            header.parent.mkdir(parents=True)
+            library.parent.mkdir(parents=True)
+            header.write_text("// Windows SDK test header", encoding="utf-8")
+            library.write_bytes(b"test")
+
+            self.assertTrue(
+                build._windows_sdk_is_present(
+                    {
+                        "WINDOWSSDKDIR": str(root) + os.sep,
+                        "WINDOWSSDKVERSION": version + os.sep,
+                    }
+                )
+            )
 
     def test_strict_doctor_requires_complete_msvc_for_modern_windows_apps(self):
         checks = {

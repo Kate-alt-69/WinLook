@@ -439,14 +439,17 @@ def _vs_installer_path() -> Optional[Path]:
 
 
 def _windows_sdk_is_present(environment: Dict[str, str]) -> bool:
-    sdk_root = environment.get("WindowsSdkDir") or environment.get("WindowsSDKDir")
+    # os.environ is case-insensitive on Windows, but dict(os.environ) is not.
+    # Normalize copied environments before reading Windows SDK variables.
+    normalized = {str(key).casefold(): value for key, value in environment.items()}
+    sdk_root = normalized.get("windowssdkdir")
     if not sdk_root:
         return False
     root = Path(sdk_root)
     include_root = root / "Include"
     lib_root = root / "Lib"
     versions = []
-    sdk_version = (environment.get("WindowsSDKVersion") or "").replace("/", "").replace(chr(92), "")
+    sdk_version = (normalized.get("windowssdkversion") or "").replace("/", "").replace(chr(92), "")
     if sdk_version:
         versions.append(sdk_version)
     if include_root.is_dir():
@@ -464,7 +467,8 @@ def _windows_sdk_is_present(environment: Dict[str, str]) -> bool:
 
 
 def _msvc_environment_tools(environment: Dict[str, str]) -> bool:
-    search_path = environment.get("PATH", "")
+    normalized = {str(key).casefold(): value for key, value in environment.items()}
+    search_path = normalized.get("path", "")
     # MSVC tools are PE executables. Probe their real filenames explicitly so
     # a missing PATHEXT cannot make a valid VS developer environment look empty.
     return all(
