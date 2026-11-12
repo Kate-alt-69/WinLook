@@ -20,7 +20,7 @@ import tarfile
 import sys
 import urllib.request
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -127,21 +127,135 @@ def _rustup_executable(root: Path) -> Path:
     return rust_paths(root)["cargo_home"] / "bin" / ("rustup" + suffix)
 
 
+def _probe_rustup_toolchain(rustup: str, toolchain: str, env: Optional[Dict[str, str]] = None) -> Tuple[bool, str]:
+    """Check the requested compiler through a specific rustup installation."""
+    rustc = subprocess.run(
+        [rustup, "run", toolchain, "rustc", "--version"],
+        text=True, capture_output=True, check=False, env=env,
+    )
+    output = (rustc.stdout or "").strip()
+    if rustc.returncode != 0 or not output.startswith("rustc " + toolchain + " "):
+        return False, output or (rustc.stderr or "").strip()
+    cargo = subprocess.run(
+        [rustup, "run", toolchain, "cargo", "--version"],
+        text=True, capture_output=True, check=False, env=env,
+    )
+    if cargo.returncode != 0:
+        return False, (cargo.stderr or cargo.stdout or "Cargo is not available for " + toolchain).strip()
+    return True, output
+
+
+def _probe_direct_rust(toolchain: str) -> Tuple[bool, str]:
+    """Check a non-rustup compiler already supplied on PATH."""
+    rustc = command_path("rustc")
+    cargo = command_path("cargo")
+    if not rustc or not cargo:
+        return False, ""
+    result = subprocess.run([rustc, "--version"], text=True, capture_output=True, check=False)
+    output = (result.stdout or "").strip()
+    if result.returncode == 0 and output.startswith("rustc " + toolchain + " "):
+        return True, output
+    return False, output
+
+
+def _select_global_rustup(runner: "Runner", rustup: str, install_if_missing: bool) -> bool:
+    """Use the user's existing rustup home and preserve its default toolchain."""
+    available, version = _probe_rustup_toolchain(rustup, RUST_TOOLCHAIN)
+    if not available and install_if_missing:
+        print("Rust " + RUST_TOOLCHAIN + " is not installed in the existing rustup home.")
+        print("Installing it side-by-side; the configured default toolchain will not be changed.")
+        runner.run(
+            "Install Rust " + RUST_TOOLCHAIN + " through existing rustup",
+            [rustup, "toolchain", "install", RUST_TOOLCHAIN, "--profile", "minimal",
+             "--component", "rustfmt", "--component", "clippy"],
+        )
+        available, version = _probe_rustup_toolchain(rustup, RUST_TOOLCHAIN)
+    if not available:
+        return False
+    runner.rust_env = {"RUSTUP_TOOLCHAIN": RUST_TOOLCHAIN}
+    append_github_environment("RUSTUP_TOOLCHAIN", RUST_TOOLCHAIN)
+    print("Using existing global Rust toolchain: " + version)
+    print("Global rustup default is unchanged; WinLook selects " + RUST_TOOLCHAIN + " for its build commands.")
+    return True
+
+
+def _select_project_rustup(runner: "Runner", rustup: Path, install_if_missing: bool) -> bool:
+    """Reuse a rustup installation already stored in this repository."""
+    env = rust_environment(runner.root)
+    available, version = _probe_rustup_toolchain(str(rustup), RUST_TOOLCHAIN, env)
+    if not available and install_if_missing:
+        runner.run(
+            "Install project-local Rust " + RUST_TOOLCHAIN,
+            [str(rustup), "toolchain", "install", RUST_TOOLCHAIN, "--profile", "minimal",
+             "--component", "rustfmt", "--component", "clippy"],
+            env=env,
+        )
+        available, version = _probe_rustup_toolchain(str(rustup), RUST_TOOLCHAIN, env)
+    if not available:
+        return False
+    runner.rust_env = {
+        "CARGO_HOME": str(rust_paths(runner.root)["cargo_home"]),
+        "RUSTUP_HOME": str(rust_paths(runner.root)["rustup_home"]),
+        "RUSTUP_TOOLCHAIN": RUST_TOOLCHAIN,
+        "PATH": str(rust_paths(runner.root)["cargo_home"] / "bin") + os.pathsep + os.environ.get("PATH", ""),
+    }
+    append_github_environment("CARGO_HOME", runner.rust_env["CARGO_HOME"])
+    append_github_environment("RUSTUP_HOME", runner.rust_env["RUSTUP_HOME"])
+    append_github_environment("RUSTUP_TOOLCHAIN", RUST_TOOLCHAIN)
+    append_github_path(str(rust_paths(runner.root)["cargo_home"] / "bin"))
+    print("Using existing WinLook-local Rust toolchain: " + version)
+    return True
+
+
 def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
-    """Install and select the repository's Rust toolchain without touching global Rust homes."""
+    """Select installed Rust 1.95 first; only bootstrap a new rustup when necessary.
+
+    Preference order:
+      1. A global rustup installation that already has 1.95.0.
+      2. A direct rustc/cargo installation that is already 1.95.0.
+      3. An existing project-local rustup installation.
+      4. Install 1.95.0 with an existing global rustup (side-by-side).
+      5. Bootstrap an isolated project-local rustup as a last resort.
+    """
+    global_rustup = command_path("rustup")
+    if global_rustup and _select_global_rustup(runner, global_rustup, install_if_missing=False):
+        return True
+
+    direct_ok, direct_version = _probe_direct_rust(RUST_TOOLCHAIN)
+    if direct_ok:
+        runner.rust_env = {}
+        print("Using existing PATH Rust toolchain: " + direct_version)
+        return True
+
+    local_rustup = _rustup_executable(runner.root)
+    if local_rustup.is_file() and _select_project_rustup(runner, local_rustup, install_if_missing=False):
+        return True
+
+    if not apply:
+        print("Rust " + RUST_TOOLCHAIN + " is not currently usable.")
+        if global_rustup:
+            print("Plan: install " + RUST_TOOLCHAIN + " side-by-side with the existing global rustup; its default will remain unchanged.")
+        else:
+            print("Plan: bootstrap a project-local rustup under " + str(rust_paths(runner.root)["rustup_home"]))
+        return False
+
+    # When rustup is already installed, use its CLI to add a side-by-side toolchain.
+    # This is much smaller and avoids downloading a second rustup installer.
+    if global_rustup and _select_global_rustup(runner, global_rustup, install_if_missing=True):
+        return True
+
+    if local_rustup.is_file() and _select_project_rustup(runner, local_rustup, install_if_missing=True):
+        return True
+
     paths = rust_paths(runner.root)
     env = rust_environment(runner.root)
-    rustup = _rustup_executable(runner.root)
     installer_suffix = ".exe" if os.name == "nt" else ""
     installer = paths["bootstrap"] / ("rustup-init" + installer_suffix)
-    if not apply:
-        print("Plan: install Rust " + RUST_TOOLCHAIN + " under " + str(paths["rustup_home"]))
-        print("Plan: keep Cargo downloads and binaries under " + str(paths["cargo_home"]))
-        return False
-    if not rustup.is_file():
+    if not local_rustup.is_file():
         host = rustup_host()
         url = RUSTUP_DIST + "/" + host + "/rustup-init" + installer_suffix
-        print("Downloading the official rustup installer for " + host + "...")
+        print("No usable Rust 1.95.0 or existing rustup installation was found.")
+        print("Last resort: downloading the official rustup installer for " + host + "...")
         _download_verified(url, installer, "rustup-init")
         if os.name != "nt":
             installer.chmod(installer.stat().st_mode | 0o111)
@@ -150,33 +264,17 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
             [str(installer), "-y", "--no-modify-path", "--default-toolchain", "none", "--profile", "minimal"],
             env=env,
         )
-    if not rustup.is_file():
-        raise BuildError("rustup installer completed but the project-local rustup executable was not created at " + str(rustup))
-    runner.run(
-        "Install/select project-local Rust " + RUST_TOOLCHAIN,
-        [str(rustup), "toolchain", "install", RUST_TOOLCHAIN, "--profile", "minimal", "--component", "rustfmt", "--component", "clippy"],
-        env=env,
-    )
-    local_bin = str(paths["cargo_home"] / "bin")
-    os.environ.update({
-        "CARGO_HOME": str(paths["cargo_home"]),
-        "RUSTUP_HOME": str(paths["rustup_home"]),
-        "CARGO_TARGET_DIR": str(build_paths(runner.root)["rust"] / "shared"),
-        "RUSTUP_TOOLCHAIN": RUST_TOOLCHAIN,
-        "PATH": local_bin + os.pathsep + os.environ.get("PATH", ""),
-    })
-    append_github_environment("CARGO_HOME", str(paths["cargo_home"]))
-    append_github_environment("RUSTUP_HOME", str(paths["rustup_home"]))
-    append_github_environment("RUSTUP_TOOLCHAIN", RUST_TOOLCHAIN)
-    append_github_path(local_bin)
+    if not local_rustup.is_file():
+        raise BuildError("rustup installer completed but the project-local rustup executable was not created at " + str(local_rustup))
+    if not _select_project_rustup(runner, local_rustup, install_if_missing=True):
+        raise BuildError("Could not install or verify project-local Rust " + RUST_TOOLCHAIN + ".")
+    version_bin = paths["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")
     version = subprocess.run(
-        [str(paths["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")), "--version"],
-        cwd=str(runner.root), env=rust_environment(runner.root), text=True,
-        capture_output=True, check=False,
+        [str(version_bin), "--version"], cwd=str(runner.root),
+        env=runner.rust_env, text=True, capture_output=True, check=False,
     )
-    if version.returncode != 0 or ("rustc " + RUST_TOOLCHAIN) not in (version.stdout or ""):
+    if version.returncode != 0 or not (version.stdout or "").startswith("rustc " + RUST_TOOLCHAIN + " "):
         raise BuildError("Project-local Rust compiler verification failed: " + (version.stderr or version.stdout or "unknown error"))
-    print("Using project-local " + (version.stdout or "").strip())
     return True
 
 
@@ -363,6 +461,7 @@ class Runner:
     root: Path = ROOT
     dry_run: bool = False
     verbose: bool = False
+    rust_env: Dict[str, str] = field(default_factory=dict)
 
     def run(
         self,
@@ -378,12 +477,8 @@ class Runner:
         if env is not None:
             process_env.update(env)
         paths = build_paths(self.root)
-        process_env.setdefault("CARGO_HOME", str(paths["rust_cache"] / "cargo-home"))
-        process_env.setdefault("RUSTUP_HOME", str(paths["rust_cache"] / "rustup-home"))
+        process_env.update(self.rust_env)
         process_env.setdefault("CARGO_TARGET_DIR", str(paths["rust"] / "shared"))
-        local_cargo_bin = str(paths["rust_cache"] / "cargo-home" / "bin")
-        process_env["PATH"] = local_cargo_bin + os.pathsep + process_env.get("PATH", "")
-        process_env.setdefault("RUSTUP_TOOLCHAIN", RUST_TOOLCHAIN)
         process_env.setdefault("SCCACHE_DIR", str(paths["rust_cache"] / "sccache"))
         process_env.setdefault("CCACHE_DIR", str(paths["c_cache"]))
         process_env.setdefault("CCACHE_BASEDIR", str(self.root))
