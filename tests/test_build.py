@@ -412,7 +412,10 @@ class BuildHelpersTests(unittest.TestCase):
             return "C:/VS/bin/" + name
 
         with mock.patch.object(build.shutil, "which", side_effect=which):
-            with mock.patch.object(build, "_windows_sdk_is_present", return_value=True):
+            with mock.patch.object(
+                build, "_windows_sdk_installation",
+                return_value=(Path("C:/Windows Kits/10"), "10.0.26100.0"),
+            ):
                 self.assertTrue(build._msvc_environment_tools({"PATH": "C:/VS/bin"}))
 
         self.assertEqual(
@@ -811,6 +814,104 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn("diagnostic marker", console.getvalue())
         self.assertIn("diagnostic marker", log)
         self.assertIn("finished with exit code 7", log)
+
+    def test_windows_sdk_probe_uses_standard_install_root_without_sdk_environment_variables(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "Windows Kits" / "10"
+            version = "10.0.26100.0"
+            header = root / "Include" / version / "um" / "Windows.h"
+            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
+            header.parent.mkdir(parents=True)
+            library.parent.mkdir(parents=True)
+            header.write_text("// SDK header", encoding="utf-8")
+            library.write_bytes(b"kernel32")
+            environment = {"ProgramFiles(x86)": temp}
+            with mock.patch.object(build, "_windows_sdk_registry_roots", return_value=[]):
+                self.assertEqual(
+                    build._windows_sdk_installation(environment),
+                    (root, version),
+                )
+
+    def test_windows_sdk_probe_uses_registry_root_when_environment_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "KitsRoot10"
+            version = "10.0.19041.0"
+            header = root / "Include" / version / "um" / "Windows.h"
+            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
+            header.parent.mkdir(parents=True)
+            library.parent.mkdir(parents=True)
+            header.write_text("// SDK header", encoding="utf-8")
+            library.write_bytes(b"kernel32")
+            with mock.patch.object(build, "_windows_sdk_registry_roots", return_value=[root]):
+                self.assertEqual(
+                    build._windows_sdk_installation({}),
+                    (root, version),
+                )
+
+    def test_windows_sdk_completion_fills_sdk_variables_and_resource_compiler_path(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "Windows Kits" / "10"
+            version = "10.0.26100.0"
+            for folder in ("ucrt", "shared", "um", "winrt", "cppwinrt"):
+                (root / "Include" / version / folder).mkdir(parents=True)
+            for folder in ("ucrt", "um"):
+                (root / "Lib" / version / folder / "x64").mkdir(parents=True)
+            sdk_bin = root / "bin" / version / "x64"
+            sdk_bin.mkdir(parents=True)
+            (sdk_bin / "rc.exe").write_bytes(b"resource compiler")
+            (root / "Include" / version / "um" / "Windows.h").write_text("// SDK header", encoding="utf-8")
+            (root / "Lib" / version / "um" / "x64" / "kernel32.lib").write_bytes(b"kernel32")
+
+            completed, sdk = build._complete_msvc_environment(
+                {"Path": "C:/VisualStudio/VC/bin", "ProgramFiles(x86)": temp}
+            )
+        self.assertEqual(sdk, (root, version))
+        self.assertEqual(completed["WindowsSdkDir"], str(root) + os.sep)
+        self.assertEqual(completed["WindowsSDKVersion"], version + os.sep)
+        self.assertIn(str(root / "Include" / version / "um"), completed["INCLUDE"])
+        self.assertIn(str(root / "Lib" / version / "um" / "x64"), completed["LIB"])
+        self.assertIn(str(sdk_bin), completed["PATH"])
+
+    def test_msvc_toolset_is_discovered_from_visual_studio_instance_when_env_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            installation = Path(temp) / "BuildTools"
+            toolset = installation / "VC" / "Tools" / "MSVC" / "14.44.35207"
+            (toolset / "include").mkdir(parents=True)
+            (toolset / "lib" / "x64").mkdir(parents=True)
+            binary = toolset / "bin" / "Hostx64" / "x64"
+            binary.mkdir(parents=True)
+            (binary / "cl.exe").write_bytes(b"compiler")
+            (binary / "link.exe").write_bytes(b"linker")
+            self.assertEqual(build._msvc_toolset_root({}, installation), toolset)
+
+    def test_visual_studio_setup_diagnostics_detect_no_update_without_component_install(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_noop.log"
+            log.write_text(
+                "Warning: Didn't find any channel feed.\\n"
+                "WebClient error RequestCanceled https://aka.ms/vs/17/release/channel\\n"
+                "Status changed to NoUpdate\\n"
+                "Closing the installer with exit code 0\\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                notes = build._visual_studio_setup_log_diagnostics(time.time() - 1)
+        self.assertTrue(any("channel feed" in note for note in notes))
+        self.assertTrue(any("NoUpdate" in note for note in notes))
+
+    def test_visual_studio_setup_diagnostics_do_not_flag_a_package_install(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_install.log"
+            log.write_text(
+                "Status changed to Applying\\n"
+                "Downloading package Microsoft.VisualStudio.Component.VC.Tools.x86.x64\\n"
+                "Installing package Microsoft.VisualStudio.Component.Windows10SDK.19041\\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                notes = build._visual_studio_setup_log_diagnostics(time.time() - 1)
+        self.assertEqual(notes, [])
+
 
 
 if __name__ == "__main__":
