@@ -8,7 +8,7 @@
 - Python 3.9+ standard library only; no pip install is required by the build runner itself.
 - The C and Rust sides share one ignored build root, while outputs and compiler caches are isolated by language.
 - Commands use argument arrays rather than shell concatenation. Missing tools and unsupported targets fail with an actionable message.
-- Tool downloads are pinned and SHA-256 checked before extraction or execution.
+- Tool downloads are SHA-256 checked before execution; the rustup-init checksum is fetched from the official Rust distribution alongside the installer.
 - No build or CI stage claims a platform is supported merely because a source manifest or compiler exists.
 
 ## 2. Build and cache directory contract
@@ -58,15 +58,21 @@ python build.py clean --yes --all also removes build/.rcache/ and build/.Ccache/
 
 From the repository root (Python 3.9+):
 
+The runner pins Rust 1.95.0 because the WinUI/Windows Reactor dependency graph declares that minimum. Rustup's `CARGO_HOME` and `RUSTUP_HOME` are redirected into `build/.rcache/cargo-home/` and `build/.rcache/rustup-home/`; the user's existing global Rust installation and persistent PATH are not changed. Rust-dependent build/test commands provision this local toolchain automatically if needed. The project-local rustup proxy is placed first on the build subprocess PATH so a global rustc/cargo cannot accidentally win command resolution.
+
+On Windows, the runner loads an existing Visual Studio C++ environment via `vswhere`/`VsDevCmd`. If it is missing, the Windows build path can install Visual Studio 2022 Build Tools with the Desktop development with C++ workload through WinGet. This Visual Studio installation is machine-wide and may require administrator approval. CMake is installed through WinGet when missing. `setup --with-c` prepares both prerequisites explicitly.
+
+From the repository root (Python 3.9+):
+
 | Command | Purpose |
 |---|---|
 | python build.py | Run the read-only doctor preflight; this is the default when no action is supplied |
 | python build.py doctor | Report Python, Rust, CMake, MSVC/GCC/Clang, cache tools and available source targets |
-| python build.py setup | Print toolchain notes; use an explicit --with-* option to select what to install |
-| python build.py setup --with-rust | Plan stable Rust installation/update without changing the machine |
-| python build.py setup --with-rust --apply | Install/update stable Rust and rustfmt/Clippy components |
+| python build.py setup | Show available setup targets; choose an explicit --with-* option |
+| python build.py setup --with-rust | Plan Rust 1.95.0 installation under build/.rcache without changing global Rust |
+| python build.py setup --with-rust --apply | Download/verify rustup and install Rust 1.95.0 + rustfmt/Clippy into build/.rcache |
 | python build.py setup --with-rust --install-rustup --apply | Use WinGet to install Rustup when missing; open a new terminal and rerun with --with-rust |
-| python build.py setup --with-cmake --apply | Install CMake through WinGet on Windows when missing |
+| python build.py setup --with-c --apply | Load or install Visual Studio 2022 C++ Build Tools and install CMake when missing |\n| python build.py setup --with-cmake --apply | Install CMake through WinGet on Windows when missing |
 | python build.py setup --open-watcom --apply | Download and SHA-256 verify the pinned Open Watcom installer; the installer itself must still be run manually |
 | python build.py fmt --check | Check Rust formatting |
 | python build.py test libraries | Test Rust and C shared libraries |
