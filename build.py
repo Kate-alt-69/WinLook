@@ -226,6 +226,31 @@ def load_msvc_environment(runner: "Runner") -> bool:
     return bool(command_path("cl") and command_path("link") and command_path("rc"))
 
 
+def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
+    """Prepare the MSVC linker/Windows SDK needed by Rust without requiring cl.exe on PATH."""
+    if os.name != "nt":
+        return
+    if command_path("link") and command_path("rc"):
+        return
+    load_msvc_environment(runner)
+    if command_path("link") and command_path("rc"):
+        return
+    if not command_path("winget"):
+        raise BuildError("The MSVC linker or Windows SDK tools are missing. Install Visual Studio C++ Build Tools.")
+    if not apply:
+        print("Plan: install Visual Studio 2022 Build Tools (Desktop development with C++) via WinGet.")
+        return
+    runner.run(
+        "Install Visual Studio 2022 C++ Build Tools",
+        ["winget", "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
+         "--accept-package-agreements", "--accept-source-agreements",
+         "--override", "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"],
+    )
+    load_msvc_environment(runner)
+    if not (command_path("link") and command_path("rc")):
+        raise BuildError("Visual Studio Build Tools installed, but link.exe/rc.exe could not be loaded. Restart the terminal and retry.")
+
+
 def ensure_windows_c_toolchain(runner: "Runner", apply: bool = True) -> None:
     if os.name != "nt":
         return
@@ -605,8 +630,6 @@ def rust_tests(runner: Runner) -> None:
 
 def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
     ensure_cmake(runner)
-    if os.name == "nt":
-        ensure_windows_c_toolchain(runner)
     source = runner.root / "C" / "library"
     if not (source / "CMakeLists.txt").is_file():
         raise BuildError("C/library/CMakeLists.txt is missing.")
@@ -631,7 +654,7 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
 
 def ui_verify(runner: Runner) -> None:
     require_windows("Windows Reactor / WinUI 3")
-    ensure_windows_c_toolchain(runner)
+    ensure_windows_linker(runner)
     if not check_ui_sources(runner.root):
         raise BuildError(
             "Manager UI manifests are not present. Merge the WinToys Manager UI implementation first."
@@ -643,7 +666,7 @@ def ui_verify(runner: Runner) -> None:
 
 def build_windows_app(runner: Runner, target: str) -> None:
     require_windows(target + " application")
-    ensure_windows_c_toolchain(runner)
+    ensure_windows_linker(runner)
     if target not in WINDOWS_APPS:
         raise BuildError("Unknown modern Windows application target: " + target)
     require_manifest(runner.root, "rust/" + target + "/Cargo.toml", "Windows " + target + " application")
