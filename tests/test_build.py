@@ -420,12 +420,12 @@ class BuildHelpersTests(unittest.TestCase):
 
     def test_windows_batch_environment_command_uses_comspec_and_keeps_arguments_separate(self):
         script = Path(
-            r"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools"
-            r"\\Common7\\Tools\\VsDevCmd.bat"
+            r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
+            r"\Common7\Tools\VsDevCmd.bat"
         )
         with mock.patch.dict(
             "os.environ",
-            {"ComSpec": r"C:\\Windows\\System32\\cmd.exe"},
+            {"ComSpec": r"C:\Windows\System32\cmd.exe"},
             clear=True,
         ):
             command = build._windows_batch_environment_command(
@@ -436,7 +436,7 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertEqual(
             command,
             [
-                r"C:\\Windows\\System32\\cmd.exe",
+                r"C:\Windows\System32\cmd.exe",
                 "/d",
                 "/c",
                 "call",
@@ -451,7 +451,7 @@ class BuildHelpersTests(unittest.TestCase):
         rendered = build.subprocess.list2cmdline(command)
         self.assertIn('call "' + str(script) + '"', rendered)
         self.assertTrue(rendered.endswith("&& set"))
-        self.assertNotIn(r'\\"', rendered)
+        self.assertNotIn(r'\"', rendered)
 
     @unittest.skipUnless(os.name == "nt", "requires the Windows command processor")
     def test_windows_batch_environment_command_executes_a_path_with_spaces(self):
@@ -460,8 +460,8 @@ class BuildHelpersTests(unittest.TestCase):
             script_dir.mkdir()
             script = script_dir / "emit-environment.cmd"
             script.write_bytes(
-                b"@echo off\\r\\n"
-                b"set WINLOOK_BATCH_ENVIRONMENT_TEST=ready\\r\\n"
+                b"@echo off\r\n"
+                b"set WINLOOK_BATCH_ENVIRONMENT_TEST=ready\r\n"
             )
             result = build.run_subprocess(
                 build._windows_batch_environment_command(script),
