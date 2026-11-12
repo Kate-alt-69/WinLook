@@ -20,28 +20,37 @@ permissions:
 
 jobs:
   shell-entry:
-    name: ${{ matrix.label }}
     runs-on: windows-2022
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: Windows PowerShell 5.1
-            shell: powershell
-          - label: PowerShell 7
-            shell: pwsh
-          - label: CMD
-            shell: cmd
-          - label: Git Bash
-            shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
-      - name: Run the common build CLI
+
+      - name: Run CLI from Windows PowerShell 5.1
         run: python build.py --help
-        shell: ${{ matrix.shell }}
-      - name: Test CMD batch invocation and paths with spaces
+        shell: powershell
+      - name: Test batch invocation from Windows PowerShell 5.1
         run: python -m unittest discover -s tests -p test_build.py -k windows_batch_environment -v
-        shell: ${{ matrix.shell }}
+        shell: powershell
+
+      - name: Run CLI from PowerShell 7
+        run: python build.py --help
+        shell: pwsh
+      - name: Test batch invocation from PowerShell 7
+        run: python -m unittest discover -s tests -p test_build.py -k windows_batch_environment -v
+        shell: pwsh
+
+      - name: Run CLI from CMD
+        run: python build.py --help
+        shell: cmd
+      - name: Test batch invocation from CMD
+        run: python -m unittest discover -s tests -p test_build.py -k windows_batch_environment -v
+        shell: cmd
+
+      - name: Run CLI from Git Bash
+        run: python build.py --help
+        shell: bash
+      - name: Test batch invocation from Git Bash
+        run: python -m unittest discover -s tests -p test_build.py -k windows_batch_environment -v
+        shell: bash
