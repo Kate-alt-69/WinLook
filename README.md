@@ -88,14 +88,15 @@ The root Python runner is the common entry point for building, testing and packa
 ```sh
 python build.py
 python build.py doctor
-python build.py setup
+python build.py setup --with-rust --apply
+python build.py setup --with-c --apply
 python build.py verify libraries --sanitizers
 python build.py build win10
 python build.py build win11
 python build.py package win10
 ```
 
-On a Windows machine with the matching Windows App Runtime installed, the Win10/Win11 Manager targets can be launched through Cargo. Their application builds use the native MSVC toolchain.
+Win10/Win11 builds automatically provision the required Rust 1.95.0 toolchain into `build/.rcache/` when it is missing or too old; an existing global Rust installation is left untouched. The build runner also loads an existing Visual Studio C++ environment or installs the Visual Studio 2022 Build Tools workload if it is missing. C library builds install CMake through WinGet when needed. Visual Studio Build Tools are machine-wide and may require administrator approval; Rust remains project-local. On a Windows machine with the matching Windows App Runtime installed, the Win10/Win11 Manager targets can then be launched through Cargo.
 
 Generated files share one ignored build root:
 
@@ -107,7 +108,7 @@ Generated files share one ignored build root:
 
 The C and Rust builds therefore share one build footprint without sharing compiler outputs or cache formats. Run python build.py clean --yes to remove compiled outputs while keeping caches; add --all only when you intentionally want to discard both caches.
 
-See [Build System and CI](plan/architecture/build-and-ci.md) for all commands, setup rules, workflow inventory, release gates and the required library → Manager UI → workflow merge order. The Win95 and BGW workflows remain source-gated until those application targets exist.
+See [Build System and CI](plan/architecture/build-and-ci.md) for all commands, project-local Rust setup, C/MSVC prerequisites, workflow inventory and release gates. The Win95 and BGW workflows remain source-gated until those application targets exist.
 
 ## Development status
 
