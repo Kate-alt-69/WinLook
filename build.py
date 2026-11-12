@@ -447,6 +447,9 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "rustup": command_path("rustup"),
         "rustc": command_path("rustc"),
         "cargo": command_path("cargo"),
+        "project_rustup": str(_rustup_executable(runner.root)) if _rustup_executable(runner.root).is_file() else None,
+        "project_rustc": str(rust_paths(runner.root)["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")) if (rust_paths(runner.root)["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")).is_file() else None,
+        "required_rust": RUST_TOOLCHAIN,
         "rustfmt": command_path("rustfmt"),
         "clippy-driver": command_path("clippy-driver"),
         "cmake": command_path("cmake"),
@@ -1050,13 +1053,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         verbose=bool(os.environ.get("WINLOOK_BUILD_VERBOSE")),
     )
     try:
-        rust_actions = {"fmt"}
-        if args.action in {"build", "verify", "test"}:
-            rust_actions.add(args.action)
         needs_rust = (
-            args.action in rust_actions
-            and getattr(args, "target", getattr(args, "scope", "")) not in {"c"}
-        ) or (args.action == "setup" and args.with_rust)
+            args.action == "fmt"
+            or (args.action == "build" and args.target in {"libraries", "ui", "win10", "win11", "bgw", "all"})
+            or (args.action == "verify" and args.target in {"rust", "libraries", "ui", "all"})
+            or (args.action == "test" and args.scope in {"rust", "libraries", "ui", "all"})
+            or (args.action == "setup" and args.with_rust)
+        )
         if needs_rust:
             ensure_rust_toolchain(runner, apply=True)
         if args.action == "doctor":
