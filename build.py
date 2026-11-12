@@ -9,6 +9,7 @@ and CMake setup use the Windows package manager when explicitly requested or nee
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -25,7 +26,7 @@ import urllib.request
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 ROOT = Path(__file__).resolve().parent
 PYTHON_MINIMUM = (3, 9)
@@ -714,8 +715,170 @@ def visual_studio_exit_reason(code: int) -> str:
     }.get(code, "Visual Studio Installer reported an unspecified failure; inspect its setup logs.")
 
 
-def _run_elevated_windows_command(command: Sequence[str], cwd: Path) -> int:
-    """Run a Windows command through the UAC runas verb and wait for its exit code."""
+
+class VisualStudioSetupLogTailer:
+    """Read only newly appended lines from Visual Studio's current setup logs."""
+
+    PATTERNS = ("dd_setup_*.log", "dd_client_*.log", "dd_bootstrapper_*.log")
+
+    def __init__(self, started_at: float) -> None:
+        self.started_at = started_at
+        self._positions: Dict[Path, Tuple[int, bytes]] = {}
+
+    def read_new_lines(self, flush_pending: bool = False) -> List[Tuple[Path, str]]:
+        log_root = Path(tempfile.gettempdir())
+        candidates = set()
+        for pattern in self.PATTERNS:
+            try:
+                candidates.update(log_root.glob(pattern))
+            except OSError:
+                continue
+
+        records: List[Tuple[Path, str]] = []
+        for path in sorted(candidates, key=lambda item: item.name.casefold()):
+            try:
+                stat = path.stat()
+                if not path.is_file() or stat.st_mtime < self.started_at - 10:
+                    continue
+                offset, pending = self._positions.get(path, (0, b""))
+                if stat.st_size < offset:
+                    offset, pending = 0, b""
+                with path.open("rb") as stream:
+                    stream.seek(offset)
+                    chunk = stream.read()
+                    next_offset = stream.tell()
+                combined = pending + chunk
+                pieces = combined.split(b"\n")
+                pending = pieces.pop() if pieces else b""
+                if flush_pending and pending:
+                    pieces.append(pending)
+                    pending = b""
+                self._positions[path] = (next_offset, pending)
+                for piece in pieces:
+                    line = piece.rstrip(b"\r").decode("utf-8", errors="replace").strip()
+                    if line:
+                        records.append((path, line))
+            except (OSError, ValueError):
+                continue
+        return records
+
+
+def visual_studio_activity(line: str) -> Optional[str]:
+    """Reduce noisy VS setup records to actionable package/channel activity."""
+    message = re.sub(r"^(?:\[[^\]]+\]){1,4}\s*", "", line.strip())
+    if not message:
+        return None
+    lower = message.casefold()
+
+    if any(token in lower for token in (" error", "error:", "failed", "failure", "exception")):
+        prefix = "ERROR"
+    elif "warning" in lower or "warn:" in lower:
+        prefix = "WARNING"
+    elif "download" in lower or "acquir" in lower:
+        prefix = "DOWNLOAD"
+    elif "install" in lower and ("package" in lower or "component" in lower):
+        prefix = "INSTALL"
+    elif any(token in lower for token in ("apply package", "applying package", "apply operation")):
+        prefix = "APPLY"
+    elif "uninstall" in lower or "removing package" in lower:
+        prefix = "REMOVE"
+    elif "verify" in lower or "authenticode" in lower or "signature" in lower:
+        prefix = "VERIFY"
+    elif "manifest" in lower:
+        prefix = "MANIFEST"
+    elif "status changed" in lower or "status:" in lower:
+        prefix = "STATUS"
+    elif "channel" in lower or "feed" in lower:
+        prefix = "CHANNEL"
+    elif "package" in lower or "component" in lower:
+        prefix = "PACKAGE"
+    else:
+        return None
+
+    return prefix + ": " + message[:360]
+
+
+def _wait_for_windows_process(
+    kernel32: Any,
+    process_handle: Any,
+    on_wait: Optional[Callable[[], None]] = None,
+    poll_interval_ms: int = 1000,
+) -> None:
+    """Wait in bounded intervals so callers can report progress while a process runs."""
+    interval = max(100, int(poll_interval_ms))
+    while True:
+        result = int(kernel32.WaitForSingleObject(process_handle, interval))
+        if result == 0:  # WAIT_OBJECT_0
+            return
+        if result == 258:  # WAIT_TIMEOUT
+            if on_wait is not None:
+                on_wait()
+            continue
+        raise BuildError(
+            "Waiting for the elevated Visual Studio Installer process failed "
+            "(Win32 result " + str(result) + ")."
+        )
+
+
+class VisualStudioProgress:
+    """A small spinner/heartbeat that never hides the most recent installer activity."""
+
+    FRAMES = "|/-\\"
+
+    def __init__(self, runner: "Runner") -> None:
+        self.runner = runner
+        self.started = time.monotonic()
+        self.last_heartbeat = 0.0
+        self.frame = 0
+        self.message = "Waiting for Visual Studio Installer activity"
+        try:
+            self.terminal = bool(sys.stdout.isatty())
+        except (AttributeError, OSError):
+            self.terminal = False
+
+    def set_activity(self, message: str) -> None:
+        self.message = message
+
+    def tick(self) -> None:
+        elapsed = max(0.0, time.monotonic() - self.started)
+        elapsed_text = time.strftime("%M:%S", time.gmtime(elapsed))
+        if self.terminal and not self.runner.debug:
+            frame = self.FRAMES[self.frame % len(self.FRAMES)]
+            self.frame += 1
+            sys.stdout.write(
+                "\r[VS Installer] " + frame + " " + self.message + " (" + elapsed_text + ")"
+            )
+            sys.stdout.flush()
+            return
+        if elapsed - self.last_heartbeat >= 10:
+            if self.runner.debug:
+                self.runner.debug_log(
+                    "Installer still running after " + elapsed_text
+                    + "; latest activity: " + self.message
+                )
+            else:
+                print(
+                    "[VS Installer] Still running after " + elapsed_text
+                    + "; " + self.message
+                )
+            self.last_heartbeat = elapsed
+
+    def finish(self, status: str) -> None:
+        elapsed = max(0.0, time.monotonic() - self.started)
+        elapsed_text = time.strftime("%M:%S", time.gmtime(elapsed))
+        if self.terminal and not self.runner.debug:
+            sys.stdout.write("\r" + (" " * 140) + "\r")
+            sys.stdout.flush()
+        print("[VS Installer] " + status + " (" + elapsed_text + ").")
+
+
+
+def _run_elevated_windows_command(
+    command: Sequence[str],
+    cwd: Path,
+    on_wait: Optional[Callable[[], None]] = None,
+) -> int:
+    """Run an elevated command and expose periodic wait callbacks for live progress."""
     if os.name != "nt":
         raise BuildError("UAC elevation is available only on Windows.")
     import ctypes
@@ -770,9 +933,7 @@ def _run_elevated_windows_command(command: Sequence[str], cwd: Path) -> int:
         )
 
     try:
-        wait_result = kernel32.WaitForSingleObject(info.hProcess, 0xFFFFFFFF)
-        if wait_result != 0:
-            raise BuildError("Waiting for the elevated Visual Studio Installer process failed (Win32 result " + str(wait_result) + ").")
+        _wait_for_windows_process(kernel32, info.hProcess, on_wait=on_wait)
         exit_code = wintypes.DWORD()
         if not kernel32.GetExitCodeProcess(info.hProcess, ctypes.byref(exit_code)):
             error = ctypes.get_last_error()
@@ -824,23 +985,48 @@ def run_visual_studio_setup(
     arguments: Sequence[str],
     operation: str = "Modify existing Visual Studio C++ workload",
 ) -> None:
-    """Run a Visual Studio bootstrapper/setup operation hidden, elevated and waitable."""
+    """Run Visual Studio setup quietly while reporting live activity from its log files."""
     command = [str(installer)] + [str(part) for part in arguments]
     rendered = subprocess.list2cmdline(command) if os.name == "nt" else shlex.join(command)
     print("\n==> " + operation)
-    print("$ " + rendered)
-    print("Requesting administrator approval through Windows UAC; the installer UI stays hidden.")
+    if runner.debug:
+        print("$ " + rendered)
     if runner.dry_run:
+        print("[VS Installer] Dry run; installer was not started.")
         return
 
     started_at = time.time()
-    exit_code = _run_elevated_windows_command(command, runner.root)
+    tailer = VisualStudioSetupLogTailer(started_at)
+    progress = VisualStudioProgress(runner)
+
+    def poll_installer_logs(flush_pending: bool = False) -> None:
+        for path, line in tailer.read_new_lines(flush_pending=flush_pending):
+            if runner.all_debug:
+                runner.debug_log("[VS RAW " + path.name + "] " + line)
+            activity = visual_studio_activity(line)
+            if activity:
+                progress.set_activity(activity)
+                if runner.debug:
+                    runner.debug_log("[VS Installer] " + activity)
+        progress.tick()
+
+    print("[VS Installer] Waiting for Windows administrator approval and installer startup...")
+    try:
+        exit_code = _run_elevated_windows_command(
+            command, runner.root, on_wait=poll_installer_logs
+        )
+        poll_installer_logs(flush_pending=True)
+    except BaseException:
+        progress.finish("stopped before a completion status was reported")
+        raise
+
     if exit_code == 0:
-        print("Visual Studio setup completed successfully.")
+        progress.finish("completed successfully")
         return
     if exit_code == 3010:
-        print("Visual Studio setup completed; Windows reports that a restart is required.")
+        progress.finish("completed; Windows reports that a restart is required")
         return
+    progress.finish("failed with exit code " + str(exit_code))
     reason = visual_studio_exit_reason(exit_code)
     logs = _recent_visual_studio_setup_logs(started_at)
     raise BuildError(
@@ -848,6 +1034,7 @@ def run_visual_studio_setup(
         + reason + "\n"
         + "Relevant Visual Studio setup log excerpts:\n" + logs
     )
+
 
 
 def _has_buildtools_instance(installations: Optional[List[Path]] = None) -> bool:
@@ -1146,6 +1333,8 @@ class Runner:
     root: Path = ROOT
     dry_run: bool = False
     verbose: bool = False
+    debug: bool = False
+    all_debug: bool = False
     rust_env: Dict[str, str] = field(default_factory=dict)
     tool_env: Dict[str, str] = field(default_factory=dict)
     c_compiler: str = ""
@@ -1174,30 +1363,48 @@ class Runner:
             process_env.setdefault("RUSTC_WRAPPER", command_path("sccache") or "sccache")
         rendered = subprocess.list2cmdline(args) if os.name == "nt" else shlex.join(args)
         print("\n==> " + label)
-        print("$ " + rendered)
+        if self.debug:
+            print("$ " + rendered)
         if self.dry_run:
             return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
         try:
+            # Capture child output so normal builds stay readable. Full output is
+            # replayed only in --all-debug mode; failures always retain a useful tail.
             result = subprocess.run(
                 args, cwd=str(location), env=process_env, check=False, text=True,
-                capture_output=capture,
+                capture_output=True,
             )
         except FileNotFoundError as exc:
             raise BuildError(
                 "Required command was not found: " + args[0]
                 + ". Run python build.py doctor for toolchain guidance."
             ) from exc
+        if self.all_debug:
+            if result.stdout:
+                print("[COMMAND STDOUT] " + label)
+                print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+            if result.stderr:
+                print("[COMMAND STDERR] " + label, file=sys.stderr)
+                print(result.stderr, end="" if result.stderr.endswith("\n") else "\n", file=sys.stderr)
         if result.returncode != 0:
-            detail = ""
-            if capture:
-                detail = (result.stderr or result.stdout or "").strip()
+            details = []
+            if result.stderr:
+                details.append("stderr:\n" + result.stderr.strip())
+            if result.stdout:
+                details.append("stdout:\n" + result.stdout.strip())
+            detail = "\n".join(details)
             raise BuildError(
                 label + " failed with exit code " + str(result.returncode)
                 + (("\n" + detail[-5000:]) if detail else "")
             )
-        if capture and self.verbose and result.stdout:
+        if capture and self.verbose and result.stdout and not self.all_debug:
             print(result.stdout)
         return result
+
+    def debug_log(self, message: str) -> None:
+        """Emit a detailed diagnostic only when a debug mode is enabled."""
+        if self.debug:
+            print(message)
 
 
 def format_command(command: Sequence[str]) -> str:
@@ -1970,6 +2177,8 @@ def command_clean(args: argparse.Namespace, runner: Runner) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = ColorArgumentParser(description="WinLook's cross-generation Windows build system.")
     parser.add_argument("--root", default=str(ROOT), help="Repository root; defaults to the directory containing build.py.")
+    parser.add_argument("--debug", action="store_true", help="Show detailed build and Visual Studio Installer activity.")
+    parser.add_argument("--all-debug", action="store_true", help="Show all captured output and save the full session to debug.log.")
     sub = parser.add_subparsers(dest="action", required=True, parser_class=ColorArgumentParser)
 
     for version, (label, _, toolchain) in WINDOWS_GENERATIONS.items():
@@ -2037,26 +2246,77 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = build_parser()
-    arguments = list(sys.argv[1:] if argv is None else argv)
-    # Running the entry point without an action should be useful, not an argparse error.
-    # The doctor command is read-only and gives users the next actionable build steps.
-    if not arguments:
-        arguments = ["doctor"]
-    args = parser.parse_args(arguments)
-    root = Path(args.root).expanduser().resolve()
-    if not (root / "Cargo.toml").is_file() or not (root / "README.md").is_file():
-        parser.error("--root must point to the WinLook repository root.")
-    runner = Runner(
-        root=root,
-        dry_run=bool(getattr(args, "dry_run", False)),
-        verbose=bool(os.environ.get("WINLOOK_BUILD_VERBOSE")),
-    )
+def _extract_debug_flags(arguments: Sequence[str]) -> Tuple[List[str], bool, bool]:
+    """Accept global debug switches before or after a subcommand."""
+    cleaned: List[str] = []
+    debug = False
+    all_debug = False
+    for argument in arguments:
+        if argument == "--debug":
+            debug = True
+        elif argument == "--all-debug":
+            all_debug = True
+        else:
+            cleaned.append(argument)
+    return cleaned, debug, all_debug
+
+
+class TeeTextIO:
+    """Mirror text written to the console into a diagnostic file."""
+
+    def __init__(self, primary: Any, mirror: Any) -> None:
+        self.primary = primary
+        self.mirror = mirror
+
+    @property
+    def encoding(self) -> str:
+        return getattr(self.primary, "encoding", None) or "utf-8"
+
+    def write(self, value: str) -> int:
+        self.primary.write(value)
+        self.mirror.write(value)
+        return len(value)
+
+    def flush(self) -> None:
+        self.primary.flush()
+        self.mirror.flush()
+
+    def isatty(self) -> bool:
+        try:
+            return bool(self.primary.isatty())
+        except (AttributeError, OSError):
+            return False
+
+
+def run_with_all_debug_log(root: Path, action: Callable[[], int]) -> int:
+    """Capture the complete run in root/debug.log while keeping console output visible."""
+    destination = root / "debug.log"
+    try:
+        log_file = destination.open("w", encoding="utf-8", buffering=1)
+    except OSError as exc:
+        raise BuildError("Could not create the requested debug log at " + str(destination) + ": " + str(exc)) from exc
+
+    try:
+        with log_file:
+            stdout = TeeTextIO(sys.stdout, log_file)
+            stderr = TeeTextIO(sys.stderr, log_file)
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                print("=== WinLook all-debug session: " + time.strftime("%Y-%m-%d %H:%M:%S") + " ===")
+                print("Python: " + sys.version.replace("\n", " "))
+                print("Arguments: " + shlex.join([str(value) for value in sys.argv[1:]]))
+                result = action()
+                print("=== WinLook finished with exit code " + str(result) + " ===")
+                print("Full diagnostic log: " + str(destination))
+                return result
+    except OSError as exc:
+        raise BuildError("Could not write the requested debug log at " + str(destination) + ": " + str(exc)) from exc
+
+
+def _run_action(args: argparse.Namespace, runner: Runner) -> int:
     try:
         needs_rust = (
             args.action == "fmt"
-            or (args.action in {"windows.10", "windows.11"} and check_windows_app(root, "win" + args.action[len("windows.") :]))
+            or (args.action in {"windows.10", "windows.11"} and check_windows_app(runner.root, "win" + args.action[len("windows.") :]))
             or (args.action == "build" and args.target in {"libraries", "ui", "win10", "win11", "bgw", "all"})
             or (args.action == "verify" and args.target in {"rust", "libraries", "ui", "all"})
             or (args.action == "test" and args.scope in {"rust", "libraries", "ui", "all"})
@@ -2130,6 +2390,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("\n[BUILD ERROR] " + str(exc), file=sys.stderr)
         return 1
     return 2
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = build_parser()
+    raw_arguments = list(sys.argv[1:] if argv is None else argv)
+    arguments, debug_flag, all_debug_flag = _extract_debug_flags(raw_arguments)
+    # Running the entry point without an action should be useful, not an argparse error.
+    if not arguments:
+        arguments = ["doctor"]
+    args = parser.parse_args(arguments)
+    args.debug = bool(getattr(args, "debug", False) or debug_flag or all_debug_flag)
+    args.all_debug = bool(getattr(args, "all_debug", False) or all_debug_flag)
+    root = Path(args.root).expanduser().resolve()
+    if not (root / "Cargo.toml").is_file() or not (root / "README.md").is_file():
+        parser.error("--root must point to the WinLook repository root.")
+    runner = Runner(
+        root=root,
+        dry_run=bool(getattr(args, "dry_run", False)),
+        verbose=bool(os.environ.get("WINLOOK_BUILD_VERBOSE")),
+        debug=args.debug,
+        all_debug=args.all_debug,
+    )
+    if runner.all_debug:
+        return run_with_all_debug_log(root, lambda: _run_action(args, runner))
+    return _run_action(args, runner)
+
+
 
 
 if __name__ == "__main__":
