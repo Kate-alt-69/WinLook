@@ -753,7 +753,7 @@ class BuildHelpersTests(unittest.TestCase):
             rendered = output.getvalue()
         self.assertIn("INSTALL:", rendered)
         self.assertIn("Microsoft.VisualStudio.Component.VC.Tools", rendered)
-        self.assertIn("completed successfully", rendered)
+        self.assertIn("validating the resulting toolchain", rendered)
 
     def test_runner_suppresses_successful_subprocess_chatter_by_default(self):
         runner = build.Runner(root=Path("."), debug=False)
