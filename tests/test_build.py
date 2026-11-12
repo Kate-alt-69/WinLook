@@ -46,11 +46,11 @@ class BuildHelpersTests(unittest.TestCase):
 
     def test_existing_global_rustup_195_is_reused_without_download(self):
         runner = build.Runner(root=Path("D:/WinLook"))
-        rustup = r"C:\\Users\\Merge\\.cargo\\bin\\rustup.exe"
-        with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None), \\
-             mock.patch.object(build, "_probe_rustup_toolchain", return_value=(True, "rustc 1.95.0 (59807616e 2026-04-14)")) as probe, \\
-             mock.patch.object(runner, "run") as run:
-            self.assertTrue(build.ensure_rust_toolchain(runner))
+        rustup = r"C:\Users\Merge\.cargo\bin\rustup.exe"
+        with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None):
+            with mock.patch.object(build, "_probe_rustup_toolchain", return_value=(True, "rustc 1.95.0 (59807616e 2026-04-14)")) as probe:
+                with mock.patch.object(runner, "run") as run:
+                    self.assertTrue(build.ensure_rust_toolchain(runner))
         self.assertEqual(runner.rust_env, {"RUSTUP_TOOLCHAIN": "1.95.0"})
         probe.assert_called_once_with(rustup, "1.95.0")
         run.assert_not_called()
@@ -58,39 +58,43 @@ class BuildHelpersTests(unittest.TestCase):
 
     def test_existing_global_rustup_default_is_not_modified(self):
         runner = build.Runner(root=Path("D:/WinLook"))
-        rustup = r"C:\\Users\\Merge\\.cargo\\bin\\rustup.exe"
-        with mock.patch.dict("os.environ", {"RUSTUP_TOOLCHAIN": "stable"}), \\
-             mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None), \\
-             mock.patch.object(build, "_probe_rustup_toolchain", return_value=(True, "rustc 1.95.0 (59807616e 2026-04-14)")):
-            self.assertTrue(build.ensure_rust_toolchain(runner))
-            self.assertEqual(build.os.environ["RUSTUP_TOOLCHAIN"], "stable")
+        rustup = r"C:\Users\Merge\.cargo\bin\rustup.exe"
+        with mock.patch.dict("os.environ", {"RUSTUP_TOOLCHAIN": "stable"}):
+            with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None):
+                with mock.patch.object(build, "_probe_rustup_toolchain", return_value=(True, "rustc 1.95.0 (59807616e 2026-04-14)")):
+                    self.assertTrue(build.ensure_rust_toolchain(runner))
+                    self.assertEqual(build.os.environ["RUSTUP_TOOLCHAIN"], "stable")
         self.assertEqual(runner.rust_env["RUSTUP_TOOLCHAIN"], "1.95.0")
 
     def test_global_rustup_installs_missing_version_side_by_side(self):
         runner = build.Runner(root=Path("D:/WinLook"))
-        rustup = r"C:\\Users\\Merge\\.cargo\\bin\\rustup.exe"
-        with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None), \\
-             mock.patch.object(build, "_probe_rustup_toolchain", side_effect=[
-                 (False, "toolchain not installed"),
-                 (True, "rustc 1.95.0 (59807616e 2026-04-14)"),
-             ]), \\
-             mock.patch.object(runner, "run") as run:
-            self.assertTrue(build.ensure_rust_toolchain(runner))
+        rustup = r"C:\Users\Merge\.cargo\bin\rustup.exe"
+        with mock.patch.object(build, "command_path", side_effect=lambda name: rustup if name == "rustup" else None):
+            with mock.patch.object(build, "_probe_rustup_toolchain", side_effect=[
+                (False, "toolchain not installed"),
+                (True, "rustc 1.95.0 (59807616e 2026-04-14)"),
+            ]):
+                with mock.patch.object(runner, "run") as run:
+                    self.assertTrue(build.ensure_rust_toolchain(runner))
         self.assertEqual(run.call_args.args[1][:3], [rustup, "toolchain", "install"])
         self.assertEqual(runner.rust_env, {"RUSTUP_TOOLCHAIN": "1.95.0"})
 
     def test_runner_does_not_force_empty_project_rust_homes_for_global_toolchain(self):
         runner = build.Runner(root=Path("D:/WinLook"), rust_env={"RUSTUP_TOOLCHAIN": "1.95.0"})
         captured = {}
+
         def fake_run(command, **kwargs):
             captured.update(kwargs)
             return build.subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-        clean_env = {key: value for key, value in build.os.environ.items()
-                     if key not in {"CARGO_HOME", "RUSTUP_HOME", "RUSTUP_TOOLCHAIN"}}
-        with mock.patch.dict("os.environ", clean_env, clear=True), \\
-             mock.patch.object(build, "command_path", return_value=None), \\
-             mock.patch.object(build.subprocess, "run", side_effect=fake_run):
-            runner.run("environment test", ["example-command"])
+
+        clean_env = {
+            key: value for key, value in build.os.environ.items()
+            if key not in {"CARGO_HOME", "RUSTUP_HOME", "RUSTUP_TOOLCHAIN"}
+        }
+        with mock.patch.dict("os.environ", clean_env, clear=True):
+            with mock.patch.object(build, "command_path", return_value=None):
+                with mock.patch.object(build.subprocess, "run", side_effect=fake_run):
+                    runner.run("environment test", ["example-command"])
         child_env = captured["env"]
         self.assertNotIn("CARGO_HOME", child_env)
         self.assertNotIn("RUSTUP_HOME", child_env)
