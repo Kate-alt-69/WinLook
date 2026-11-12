@@ -291,7 +291,7 @@ def ensure_cmake(runner: "Runner", apply: bool = True) -> None:
             "Install CMake",
             ["winget", "install", "--id", CMAKE_WINGET_ID, "--exact",
              "--accept-package-agreements", "--accept-source-agreements"],
-    )
+        )
         if command_path("cmake"):
             return
     raise BuildError("CMake is missing. Install it from https://cmake.org/download/ and reopen the terminal.")
