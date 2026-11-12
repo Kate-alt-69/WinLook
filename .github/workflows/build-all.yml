@@ -26,10 +26,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
-      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
+      - name: Install project-local Rust 1.95.0 and prepare C/MSVC tools
+        run: python build.py setup --with-rust --with-c --apply
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
