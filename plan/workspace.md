@@ -208,3 +208,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Windows C/MSVC preparation loads an existing Visual Studio C++ environment using `vswhere` and `VsDevCmd`; if absent, WinGet installs Visual Studio 2022 Build Tools with the Desktop development with C++ workload. CMake is installed through WinGet when missing. Visual Studio is necessarily machine-wide and may require elevation; Rust remains project-local.
 - CI workflows now invoke the repository setup command and use the pinned Rust toolchain instead of the floating `stable` action.
 - Regression tests cover local Rust/Cargo/Rustup paths, Windows MSVC host selection, and setup CLI flags. CI must still confirm the installer, exact toolchain, and actual Win10/Win11 builds on the next runs.
+
+
+## Reuse existing Rust 1.95 installation — 2026-11-12
+
+- User showed `rustup show` with `1.95.0-x86_64-pc-windows-msvc` already installed alongside the existing default `stable` toolchain. The build runner's previous unconditional project-local `CARGO_HOME`/`RUSTUP_HOME` redirection hid that installation and caused an unnecessary rustup-init download.
+- `Runner` now applies a selected Rust environment only after toolchain detection; it no longer forces empty project-local Rust homes on global rustup commands.
+- `ensure_rust_toolchain` probes global rustup first with `rustup run 1.95.0 rustc --version` and `cargo --version`. If present, build subprocesses receive `RUSTUP_TOOLCHAIN=1.95.0`; the user's global default and PATH are untouched.
+- If 1.95.0 is missing but global rustup exists, the CLI installs it side-by-side without changing the default. Existing project-local rustup is the next fallback; rustup-init download is now the final fallback only.
+- Regression tests cover global-toolchain reuse, preserving a pre-existing `RUSTUP_TOOLCHAIN=stable`, side-by-side installation, and not forcing project-local `CARGO_HOME`/`RUSTUP_HOME` for the global path.
