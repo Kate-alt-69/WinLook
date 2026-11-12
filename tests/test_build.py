@@ -404,6 +404,20 @@ class BuildHelpersTests(unittest.TestCase):
                 self.assertEqual(build.command_path("cl"), "C:/tools/cl.exe")
         self.assertEqual([call.args[0] for call in which.call_args_list], ["cl", "cl.exe"])
 
+    @staticmethod
+    def _create_windows_sdk_fixture(root: Path, version: str) -> None:
+        files = (
+            Path("Include") / version / "um" / "Windows.h",
+            Path("Include") / version / "shared" / "sdkddkver.h",
+            Path("Include") / version / "ucrt" / "stdio.h",
+            Path("Lib") / version / "um" / "x64" / "kernel32.lib",
+            Path("Lib") / version / "ucrt" / "x64" / "ucrt.lib",
+        )
+        for relative in files:
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(b"Windows SDK test fixture")
+
     def test_msvc_environment_probe_uses_explicit_exe_names(self):
         observed = []
 
@@ -431,13 +445,7 @@ class BuildHelpersTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             version = "10.0.26100.0"
-            header = root / "Include" / version / "um" / "Windows.h"
-            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
-            header.parent.mkdir(parents=True)
-            library.parent.mkdir(parents=True)
-            header.write_text("// Windows SDK test header", encoding="utf-8")
-            library.write_bytes(b"test")
-
+            self._create_windows_sdk_fixture(root, version)
             self.assertTrue(
                 build._windows_sdk_is_present(
                     {
@@ -446,6 +454,45 @@ class BuildHelpersTests(unittest.TestCase):
                     }
                 )
             )
+
+    def test_windows_sdk_environment_fallback_populates_compiler_paths(self):
+        with tempfile.TemporaryDirectory() as temp:
+            program_files = Path(temp) / "Program Files (x86)"
+            root = program_files / "Windows Kits" / "10"
+            version = "10.0.26100.0"
+            self._create_windows_sdk_fixture(root, version)
+            sdk_bin = root / "bin" / version / "x64"
+            sdk_bin.mkdir(parents=True)
+            sdk_include = root / "Include" / version
+            sdk_lib = root / "Lib" / version
+
+            with mock.patch.object(build, "_windows_sdk_registry_roots", return_value=[]):
+                environment = build._prepare_windows_sdk_environment(
+                    {
+                        "ProgramFiles(x86)": str(program_files),
+                        "PATH": "C:/VS/VC/bin",
+                        "INCLUDE": "C:/VS/VC/include",
+                        "LIB": "C:/VS/VC/lib/x64",
+                    }
+                )
+
+        self.assertEqual(Path(environment["WindowsSdkDir"]), root)
+        self.assertEqual(environment["WindowsSDKVersion"], version + os.sep)
+        self.assertIn(str(sdk_bin), environment["PATH"])
+        self.assertIn(str(sdk_include / "um"), environment["INCLUDE"])
+        self.assertIn(str(sdk_include / "ucrt"), environment["INCLUDE"])
+        self.assertIn(str(sdk_lib / "um" / "x64"), environment["LIB"])
+        self.assertIn(str(sdk_lib / "ucrt" / "x64"), environment["LIB"])
+        self.assertIn(str(sdk_lib / "um" / "x64"), environment["LIBPATH"])
+
+    def test_msvc_environment_status_reports_each_missing_tool_separately(self):
+        with mock.patch.object(build, "_windows_sdk_installation", return_value=None):
+            with mock.patch.object(build.shutil, "which", return_value=None):
+                status = build._msvc_environment_status({"PATH": ""})
+        self.assertEqual(
+            build._msvc_environment_missing(status),
+            ["cl.exe", "link.exe", "rc.exe", "Windows SDK headers/libraries"],
+        )
 
     def test_strict_doctor_requires_complete_msvc_for_modern_windows_apps(self):
         checks = {
@@ -819,12 +866,7 @@ class BuildHelpersTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "Windows Kits" / "10"
             version = "10.0.26100.0"
-            header = root / "Include" / version / "um" / "Windows.h"
-            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
-            header.parent.mkdir(parents=True)
-            library.parent.mkdir(parents=True)
-            header.write_text("// SDK header", encoding="utf-8")
-            library.write_bytes(b"kernel32")
+            self._create_windows_sdk_fixture(root, version)
             environment = {"ProgramFiles(x86)": temp}
             with mock.patch.object(build, "_windows_sdk_registry_roots", return_value=[]):
                 self.assertEqual(
@@ -836,12 +878,7 @@ class BuildHelpersTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "KitsRoot10"
             version = "10.0.19041.0"
-            header = root / "Include" / version / "um" / "Windows.h"
-            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
-            header.parent.mkdir(parents=True)
-            library.parent.mkdir(parents=True)
-            header.write_text("// SDK header", encoding="utf-8")
-            library.write_bytes(b"kernel32")
+            self._create_windows_sdk_fixture(root, version)
             with mock.patch.object(build, "_windows_sdk_registry_roots", return_value=[root]):
                 self.assertEqual(
                     build._windows_sdk_installation({}),
@@ -859,8 +896,7 @@ class BuildHelpersTests(unittest.TestCase):
             sdk_bin = root / "bin" / version / "x64"
             sdk_bin.mkdir(parents=True)
             (sdk_bin / "rc.exe").write_bytes(b"resource compiler")
-            (root / "Include" / version / "um" / "Windows.h").write_text("// SDK header", encoding="utf-8")
-            (root / "Lib" / version / "um" / "x64" / "kernel32.lib").write_bytes(b"kernel32")
+            self._create_windows_sdk_fixture(root, version)
 
             completed, sdk = build._complete_msvc_environment(
                 {

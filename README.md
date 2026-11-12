@@ -88,6 +88,7 @@ The root Python runner is the common entry point for building, testing and packa
 ```sh
 python build.py
 python build.py doctor
+python build.py doctor --json
 python build.py setup --with-rust --apply
 python build.py setup --with-c --apply
 python build.py verify libraries --sanitizers
@@ -106,6 +107,8 @@ python build.py build win10 --all-debug
 Use the `windows.<version>` selectors for OS-specific application builds: `windows.95`, `windows.98`, `windows.me`, `windows.nt4`, `windows.2000`, `windows.xp`, `windows.vista`, `windows.7`, `windows.8`, `windows.8.1`, `windows.10` and `windows.11`. Run `python build.py --help` for the complete list; terminal help uses ANSI colors when supported and respects `NO_COLOR`.
 
 Each selector checks that generation's application manifest **before** probing or installing a compiler. An unimplemented generation reports the expected source path and exits without downloading anything. Windows 95/98/Me use the Open Watcom legacy C path; NT 4 through Windows 8.1 use their own C/CMake target and a native MinGW-w64 GCC toolchain where the target source is implemented; Windows 10/11 use the existing Rust/WinUI 3 implementation and require the MSVC linker plus a Windows SDK.
+
+`python build.py doctor --json` reports MSVC tools and Windows SDK discovery separately, including a resolved SDK root/version when found.
 
 
 
