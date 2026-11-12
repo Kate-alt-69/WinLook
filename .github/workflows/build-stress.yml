@@ -40,6 +40,71 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
+      - name: Initialize the installed Visual Studio MSVC environment
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (-not (Test-Path $vswhere)) {
+            throw "vswhere.exe is missing: $vswhere"
+          }
+
+          $vsInstall = (& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1)
+          if ([string]::IsNullOrWhiteSpace($vsInstall)) {
+            & $vswhere -all -products '*' -property installationPath
+            throw "No Visual Studio instance with Microsoft.VisualStudio.Component.VC.Tools.x86.x64 was found."
+          }
+
+          $devCmd = Join-Path $vsInstall 'Common7\Tools\VsDevCmd.bat'
+          if (-not (Test-Path $devCmd)) {
+            throw "VsDevCmd.bat is missing from the selected Visual Studio instance: $devCmd"
+          }
+
+          $command = 'call "' + $devCmd + '" -no_logo -arch=x64 -host_arch=x64 && set'
+          $environmentLines = & $env:ComSpec /d /c $command 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $environmentLines | ForEach-Object { Write-Host $_ }
+            throw "VsDevCmd.bat failed with exit code $LASTEXITCODE."
+          }
+
+          $values = @{}
+          foreach ($line in $environmentLines) {
+            $text = [string]$line
+            $separator = $text.IndexOf('=')
+            if ($separator -gt 0) {
+              $values[$text.Substring(0, $separator)] = $text.Substring($separator + 1)
+            }
+          }
+
+          $required = @('PATH', 'INCLUDE', 'LIB', 'WindowsSdkDir', 'WindowsSDKVersion', 'VCToolsInstallDir')
+          foreach ($name in $required) {
+            if ([string]::IsNullOrWhiteSpace($values[$name])) {
+              throw "VsDevCmd.bat did not export the required environment variable: $name"
+            }
+          }
+
+          $sdkRoot = $values['WindowsSdkDir'].TrimEnd([char]'\')
+          $sdkVersion = $values['WindowsSDKVersion'].TrimEnd([char]'\')
+          $sdkHeader = Join-Path $sdkRoot "Include\$sdkVersion\um\Windows.h"
+          $sdkLibrary = Join-Path $sdkRoot "Lib\$sdkVersion\um\x64\kernel32.lib"
+          if (-not (Test-Path $sdkHeader)) { throw "Windows SDK header is missing: $sdkHeader" }
+          if (-not (Test-Path $sdkLibrary)) { throw "Windows SDK library is missing: $sdkLibrary" }
+
+          foreach ($name in @('PATH', 'INCLUDE', 'LIB', 'LIBPATH', 'WindowsSdkDir', 'WindowsSDKVersion', 'UniversalCRTSdkDir', 'UCRTVersion', 'VCToolsInstallDir', 'VCToolsVersion', 'VCINSTALLDIR', 'VSINSTALLDIR', 'VSCMD_ARG_HOST_ARCH', 'VSCMD_ARG_TGT_ARCH', 'VSCMD_VER', 'VisualStudioVersion', 'DevEnvDir')) {
+            if ($values.ContainsKey($name)) {
+              Add-Content -Path $env:GITHUB_ENV -Value "$name=$($values[$name])" -Encoding utf8
+              Set-Item -Path "Env:$name" -Value $values[$name]
+            }
+          }
+
+          foreach ($tool in @('cl.exe', 'link.exe', 'rc.exe')) {
+            $resolved = & where.exe $tool | Select-Object -First 1
+            if ([string]::IsNullOrWhiteSpace($resolved)) {
+              throw "The Visual Studio developer environment did not expose $tool on PATH."
+            }
+            Write-Host "$tool => $resolved"
+          }
+          Write-Host "Windows SDK => $sdkRoot ($sdkVersion)"
+          Write-Host "Visual Studio => $vsInstall"
       - name: Select Rust 1.95.0
         run: python build.py setup --with-rust --apply
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
