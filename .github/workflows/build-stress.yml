@@ -40,6 +40,40 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
+      - name: Select Rust 1.95.0
+        run: python build.py setup --with-rust --apply
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            build/.rcache
+            build/.Ccache
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-build-stress-libraries-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml', 'C/library/**') }}
+          restore-keys: |
+            ${{ runner.os }}-build-stress-libraries-
+      - name: Pass 1 / full Rust and C sanitizer verification
+        run: python build.py verify libraries --sanitizers
+      - name: Remove generated outputs while preserving compiler caches
+        run: python build.py clean --yes
+      - name: Pass 2 / repeat after clean
+        run: python build.py verify libraries --sanitizers
+
+  windows-applications:
+    name: ${{ matrix.target }} / repeated native build and package
+    runs-on: windows-2022
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [win10, win11]
+    env:
+      WINLOOK_STRESS_TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
       - name: Initialize the installed Visual Studio MSVC environment
         shell: pwsh
         run: |
@@ -105,40 +139,6 @@ jobs:
           }
           Write-Host "Windows SDK => $sdkRoot ($sdkVersion)"
           Write-Host "Visual Studio => $vsInstall"
-      - name: Select Rust 1.95.0
-        run: python build.py setup --with-rust --apply
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: |
-            build/.rcache
-            build/.Ccache
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-build-stress-libraries-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml', 'C/library/**') }}
-          restore-keys: |
-            ${{ runner.os }}-build-stress-libraries-
-      - name: Pass 1 / full Rust and C sanitizer verification
-        run: python build.py verify libraries --sanitizers
-      - name: Remove generated outputs while preserving compiler caches
-        run: python build.py clean --yes
-      - name: Pass 2 / repeat after clean
-        run: python build.py verify libraries --sanitizers
-
-  windows-applications:
-    name: ${{ matrix.target }} / repeated native build and package
-    runs-on: windows-2022
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [win10, win11]
-    env:
-      WINLOOK_STRESS_TARGET: ${{ matrix.target }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: "3.12"
       - name: Select Rust 1.95.0
         run: python build.py setup --with-rust --apply
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
