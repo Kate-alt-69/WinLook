@@ -779,6 +779,25 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn("$ example-tool", output.getvalue())
         self.assertIn("full compiler output", output.getvalue())
 
+    def test_all_debug_records_direct_subprocess_stdout_and_stderr(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            result = build.subprocess.CompletedProcess(
+                ["probe-tool", "--version"], 0,
+                stdout="probe version details\n", stderr="probe diagnostic details\n"
+            )
+            with mock.patch.object(build.subprocess, "run", return_value=result):
+                build.run_with_all_debug_log(
+                    root,
+                    lambda: (build.run_subprocess(
+                        ["probe-tool", "--version"], text=True, capture_output=True
+                    ), 0)[1],
+                )
+            log = (root / "debug.log").read_text(encoding="utf-8")
+        self.assertIn("[SUBPROCESS] probe-tool --version (exit 0)", log)
+        self.assertIn("probe version details", log)
+        self.assertIn("probe diagnostic details", log)
+
     def test_all_debug_writes_a_complete_session_log(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
