@@ -27,6 +27,31 @@ class BuildHelpersTests(unittest.TestCase):
         rust = parser.parse_args(["setup", "--with-rust"])
         self.assertTrue(rust.with_rust)
         self.assertFalse(rust.open_watcom)
+        c = parser.parse_args(["setup", "--with-c"])
+        self.assertTrue(c.with_c)
+        self.assertFalse(c.with_rust)
+
+
+    def test_rust_toolchain_is_scoped_to_repository_build_cache(self):
+        root = Path("D:/WinLook")
+        paths = build.rust_paths(root)
+        env = build.rust_environment(root)
+        self.assertEqual(paths["cargo_home"], root / "build" / ".rcache" / "cargo-home")
+        self.assertEqual(paths["rustup_home"], root / "build" / ".rcache" / "rustup-home")
+        self.assertEqual(env["CARGO_HOME"], str(paths["cargo_home"]))
+        self.assertEqual(env["RUSTUP_HOME"], str(paths["rustup_home"]))
+        self.assertEqual(env["RUSTUP_TOOLCHAIN"], build.RUST_TOOLCHAIN)
+        self.assertTrue(env["PATH"].startswith(str(paths["cargo_home"] / "bin")))
+
+    def test_rustup_host_selects_windows_msvc_for_windows_builds(self):
+        with mock.patch.object(build.os, "name", "nt"), mock.patch.object(build.platform, "machine", return_value="AMD64"):
+            self.assertEqual(build.rustup_host(), "x86_64-pc-windows-msvc")
+
+    def test_setup_parser_exposes_c_compiler_and_cmake_options(self):
+        args = build.build_parser().parse_args(["setup", "--with-c", "--with-cmake", "--apply"])
+        self.assertTrue(args.with_c)
+        self.assertTrue(args.with_cmake)
+        self.assertTrue(args.apply)
 
     def test_bgw_target_requires_binary_kind_and_supported_name(self):
         self.assertTrue(build.is_bgw_target("winlook.bg", ["bin"]))
