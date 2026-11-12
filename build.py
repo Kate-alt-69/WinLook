@@ -42,6 +42,7 @@ RUST_TOOLCHAIN = "1.95.0"
 RUSTUP_DIST = "https://static.rust-lang.org/rustup/dist"
 CMAKE_WINGET_ID = "Kitware.CMake"
 VS_BUILD_TOOLS_WINGET_ID = "Microsoft.VisualStudio.2022.BuildTools"
+VS_BUILD_TOOLS_BOOTSTRAPPER_URL = "https://aka.ms/vs/17/release/vs_buildtools.exe"
 ACTIONLINT_VERSION = "1.7.12"
 ACTIONLINT_URL = (
     "https://github.com/rhysd/actionlint/releases/download/v"
@@ -697,12 +698,15 @@ def _recent_visual_studio_setup_logs(started_at: float, limit: int = 3) -> str:
 
 
 def run_visual_studio_setup(
-    runner: "Runner", installer: Path, arguments: Sequence[str]
+    runner: "Runner",
+    installer: Path,
+    arguments: Sequence[str],
+    operation: str = "Modify existing Visual Studio C++ workload",
 ) -> None:
-    """Run Visual Studio setup hidden, elevated, waitable and with actionable logs."""
+    """Run a Visual Studio bootstrapper/setup operation hidden, elevated and waitable."""
     command = [str(installer)] + [str(part) for part in arguments]
     rendered = subprocess.list2cmdline(command) if os.name == "nt" else shlex.join(command)
-    print("\n==> Modify existing Visual Studio C++ workload")
+    print("\n==> " + operation)
     print("$ " + rendered)
     print("Requesting administrator approval through Windows UAC; the installer UI stays hidden.")
     if runner.dry_run:
@@ -711,12 +715,12 @@ def run_visual_studio_setup(
     started_at = time.time()
     exit_code = _run_elevated_windows_command(command, runner.root)
     if exit_code == 0:
-        print("Visual Studio Installer completed the workload modification successfully.")
+        print("Visual Studio setup completed successfully.")
         return
     reason = visual_studio_exit_reason(exit_code)
     logs = _recent_visual_studio_setup_logs(started_at)
     raise BuildError(
-        "Visual Studio workload modification failed with exit code " + str(exit_code) + ".\n"
+        "Visual Studio setup failed with exit code " + str(exit_code) + ".\n"
         + reason + "\n"
         + "Relevant Visual Studio setup log excerpts:\n" + logs
     )
@@ -727,23 +731,128 @@ def _has_buildtools_instance(installations: Optional[List[Path]] = None) -> bool
     return any(path.name.casefold() == "buildtools" for path in candidates)
 
 
-def _install_visual_studio_build_tools(runner: "Runner") -> None:
-    """Install the standalone Build Tools SKU once, only after discovery failed."""
-    winget = command_path("winget")
-    if not winget:
+def _powershell_executable() -> Optional[str]:
+    return command_path("powershell") or command_path("pwsh")
+
+
+def _verify_microsoft_authenticode(path: Path, powershell: str) -> str:
+    """Require a valid Authenticode signature issued to Microsoft Corporation."""
+    env = os.environ.copy()
+    env["WINLOOK_AUTHENTICODE_FILE"] = str(path)
+    script = (
+        "$ErrorActionPreference = 'Stop'; "
+        "$sig = Get-AuthenticodeSignature -LiteralPath $env:WINLOOK_AUTHENTICODE_FILE; "
+        "if ($sig.Status -ne 'Valid') { Write-Error ('Signature status: ' + $sig.Status); exit 2 }; "
+        "$subject = $sig.SignerCertificate.Subject; "
+        "if ($subject -notmatch 'Microsoft Corporation') { Write-Error ('Unexpected signer: ' + $subject); exit 3 }; "
+        "Write-Output $subject"
+    )
+    result = subprocess.run(
+        [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
+        text=True, capture_output=True, check=False, env=env,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "Authenticode verification failed").strip()
         raise BuildError(
-            "Visual Studio Build Tools are not available and WinGet is missing. "
-            "Install from https://visualstudio.microsoft.com/visual-cpp-build-tools/ "
-            "with 'Desktop development with C++' and a Windows 10/11 SDK."
+            "Refusing to execute the Visual Studio Build Tools bootstrapper because its "
+            "Microsoft Authenticode signature could not be verified. " + detail[-2000:]
         )
-    runner.run(
-        "Install Visual Studio 2022 C++ Build Tools",
+    signer = (result.stdout or "").strip()
+    if "Microsoft Corporation" not in signer:
+        raise BuildError(
+            "Refusing to execute the Visual Studio Build Tools bootstrapper: "
+            "the Authenticode signer is not Microsoft Corporation."
+        )
+    return signer
+
+
+def download_vs_build_tools_bootstrapper(runner: "Runner") -> Path:
+    """Reuse or download the Microsoft bootstrapper and verify its Authenticode signature."""
+    destination = (
+        build_paths(runner.root)["rust_cache"] / "installers" / "vs_buildtools_2022.exe"
+    )
+    if runner.dry_run:
+        print("Would reuse or download the Microsoft Visual Studio 2022 Build Tools bootstrapper:")
+        print("  " + VS_BUILD_TOOLS_BOOTSTRAPPER_URL)
+        print("Would verify its Microsoft Authenticode signature before execution.")
+        return destination
+
+    powershell = _powershell_executable()
+    if not powershell:
+        raise BuildError(
+            "PowerShell is unavailable, so the downloaded Visual Studio installer cannot be "
+            "Authenticode-verified. Install PowerShell or provide WinGet."
+        )
+
+    if destination.is_file():
+        try:
+            signer = _verify_microsoft_authenticode(destination, powershell)
+        except BuildError:
+            print("Cached Visual Studio bootstrapper failed signature verification; downloading a fresh copy.")
+            destination.unlink(missing_ok=True)
+        else:
+            print("Reusing cached Visual Studio Build Tools bootstrapper signed by " + signer)
+            return destination
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(destination.name + ".download")
+    request = urllib.request.Request(
+        VS_BUILD_TOOLS_BOOTSTRAPPER_URL,
+        headers={"User-Agent": "WinLook-build.py"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            with temporary.open("wb") as output:
+                shutil.copyfileobj(response, output)
+        if temporary.stat().st_size < 64 * 1024:
+            raise BuildError("The Visual Studio Build Tools bootstrapper download is unexpectedly small.")
+        signer = _verify_microsoft_authenticode(temporary, powershell)
+        temporary.replace(destination)
+        print("Downloaded and verified Visual Studio Build Tools bootstrapper: " + str(destination))
+        print("Authenticode signer: " + signer)
+    except BuildError:
+        temporary.unlink(missing_ok=True)
+        raise
+    except Exception as exc:
+        temporary.unlink(missing_ok=True)
+        raise BuildError(
+            "Could not download the official Visual Studio Build Tools bootstrapper from "
+            + VS_BUILD_TOOLS_BOOTSTRAPPER_URL + ": " + str(exc)
+        ) from exc
+    return destination
+
+
+def _install_visual_studio_build_tools(runner: "Runner") -> None:
+    """Install the standalone Build Tools SKU once, using WinGet or Microsoft's bootstrapper."""
+    winget = command_path("winget")
+    if winget:
+        runner.run(
+            "Install Visual Studio 2022 C++ Build Tools through WinGet",
+            [
+                winget, "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
+                "--accept-package-agreements", "--accept-source-agreements",
+                "--override",
+                "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended",
+            ],
+        )
+        return
+
+    print("WinGet is unavailable; using Microsoft's official Visual Studio 2022 Build Tools bootstrapper.")
+    bootstrapper = download_vs_build_tools_bootstrapper(runner)
+    if runner.dry_run:
+        return
+    install_root = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
+    install_path = install_root / "Microsoft Visual Studio" / "2022" / "BuildTools"
+    run_visual_studio_setup(
+        runner,
+        bootstrapper,
         [
-            winget, "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
-            "--accept-package-agreements", "--accept-source-agreements",
-            "--override",
-            "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended",
+            "--quiet", "--wait", "--norestart",
+            "--installPath", str(install_path),
+            "--add", "Microsoft.VisualStudio.Workload.VCTools",
+            "--includeRecommended",
         ],
+        operation="Install Visual Studio 2022 C++ Build Tools",
     )
 
 
