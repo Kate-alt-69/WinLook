@@ -716,33 +716,19 @@ def run_visual_studio_setup(
     )
 
 
-def _install_or_modify_visual_studio(runner: "Runner") -> None:
-    installations = _visual_studio_installations()
-    if installations:
-        installer = _vs_installer_path()
-        if installer is None:
-            raise BuildError(
-                "A Visual Studio installation already exists at " + str(installations[0])
-                + ", but Visual Studio Installer could not be located. Open Visual Studio Installer "
-                "and add the 'Desktop development with C++' workload; WinGet will not reinstall it."
-            )
-        run_visual_studio_setup(
-            runner,
-            installer,
-            [
-                "modify", "--installPath", str(installations[0]),
-                "--add", "Microsoft.VisualStudio.Workload.VCTools",
-                "--includeRecommended", "--quiet", "--norestart",
-            ],
-        )
-        return
+def _has_buildtools_instance(installations: Optional[List[Path]] = None) -> bool:
+    candidates = installations if installations is not None else _visual_studio_installations()
+    return any(path.name.casefold() == "buildtools" for path in candidates)
 
+
+def _install_visual_studio_build_tools(runner: "Runner") -> None:
+    """Install the standalone Build Tools SKU once, only after discovery failed."""
     winget = command_path("winget")
     if not winget:
         raise BuildError(
-            "Visual Studio Build Tools are not installed and WinGet is unavailable. "
-            "Install from https://visualstudio.microsoft.com/downloads/ and select "
-            "'Desktop development with C++' plus a Windows 10/11 SDK."
+            "Visual Studio Build Tools are not available and WinGet is missing. "
+            "Install from https://visualstudio.microsoft.com/visual-cpp-build-tools/ "
+            "with 'Desktop development with C++' and a Windows 10/11 SDK."
         )
     runner.run(
         "Install Visual Studio 2022 C++ Build Tools",
@@ -753,6 +739,36 @@ def _install_or_modify_visual_studio(runner: "Runner") -> None:
             "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended",
         ],
     )
+
+
+def _install_or_modify_visual_studio(
+    runner: "Runner", installations: Optional[List[Path]] = None
+) -> None:
+    """Modify an existing VS instance; install Build Tools only when none exist."""
+    installations = installations if installations is not None else _visual_studio_installations()
+    if installations:
+        # Prefer a Build Tools instance if one exists; never create another copy
+        # just because an Enterprise/Community instance is missing its workload.
+        build_tools = [path for path in installations if path.name.casefold() == "buildtools"]
+        selected = build_tools[0] if build_tools else installations[0]
+        installer = _vs_installer_path()
+        if installer is None:
+            raise BuildError(
+                "A Visual Studio installation already exists at " + str(selected)
+                + ", but Visual Studio Installer could not be located. "
+                "The existing instance will not be reinstalled."
+            )
+        runner.run(
+            "Add missing C++ workload to existing Visual Studio",
+            [
+                str(installer), "modify", "--installPath", str(selected),
+                "--add", "Microsoft.VisualStudio.Workload.VCTools",
+                "--includeRecommended", "--passive", "--norestart",
+            ],
+        )
+        return
+
+    _install_visual_studio_build_tools(runner)
 
 
 def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
@@ -773,16 +789,46 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
     if not apply:
         if installations:
             print("Plan: add the C++ workload to the existing Visual Studio installation.")
+            if not _has_buildtools_instance(installations):
+                print("If modifying that instance fails, install the standalone Build Tools SKU once.")
         else:
             print("Plan: install Visual Studio 2022 Build Tools through WinGet.")
         return
-    _install_or_modify_visual_studio(runner)
-    if not load_msvc_environment(runner):
-        raise BuildError(
-            "Visual Studio setup finished, but cl.exe, link.exe, rc.exe and a usable Windows SDK "
-            "were not detected. The installer was not launched again. Open Visual Studio Installer, "
-            "repair the selected instance, add 'Desktop development with C++', then rerun the build."
+
+    had_buildtools = _has_buildtools_instance(installations)
+    try:
+        _install_or_modify_visual_studio(runner, installations)
+    except BuildError as exc:
+        if had_buildtools:
+            raise BuildError(
+                "The existing Visual Studio Build Tools instance could not be modified: " + str(exc)
+            ) from exc
+        print(
+            "Existing Visual Studio modification failed; falling back to the standalone "
+            "Build Tools SKU instead of repeatedly retrying the same instance."
         )
+        _install_visual_studio_build_tools(runner)
+
+    if load_msvc_environment(runner):
+        return
+
+    # A non-BuildTools VS edition can be present without the C++ workload.
+    # If its modify operation did not produce a usable toolchain, create one
+    # standalone Build Tools instance. Future runs will discover and reuse it.
+    current_installations = _visual_studio_installations()
+    if not had_buildtools and not _has_buildtools_instance(current_installations):
+        print("The existing Visual Studio instance is still missing the C++ toolchain.")
+        print("Installing the standalone Build Tools SKU once as a fallback.")
+        _install_visual_studio_build_tools(runner)
+        if load_msvc_environment(runner):
+            return
+
+    raise BuildError(
+        "Visual Studio setup finished, but cl.exe, link.exe, rc.exe and a usable Windows SDK "
+        "were not detected. No further installer retry was started. Open Visual Studio Installer "
+        "and repair the existing Build Tools instance, add 'Desktop development with C++' and a "
+        "Windows SDK, then rerun the build."
+    )
 
 
 def ensure_windows_c_toolchain(runner: "Runner", apply: bool = True) -> str:
