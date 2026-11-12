@@ -32,6 +32,80 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertFalse(c.with_rust)
 
 
+    def test_windows_generation_selectors_include_legacy_and_modern_targets(self):
+        parser = build.build_parser()
+        expected = {
+            "windows.95", "windows.98", "windows.me", "windows.nt4",
+            "windows.2000", "windows.xp", "windows.vista", "windows.7",
+            "windows.8", "windows.8.1", "windows.10", "windows.11",
+        }
+        for selector in expected:
+            with self.subTest(selector=selector):
+                self.assertEqual(parser.parse_args([selector]).action, selector)
+        self.assertEqual(set(build.WINDOWS_BUILD_COMMANDS), expected)
+
+    def test_windows_81_selector_preserves_the_full_dotted_version(self):
+        args = build.build_parser().parse_args(["windows.8.1", "--dry-run"])
+        self.assertEqual(args.action[len("windows."):], "8.1")
+        self.assertTrue(args.dry_run)
+
+    def test_generation_source_gate_prevents_any_compiler_setup(self):
+        with tempfile.TemporaryDirectory() as temp:
+            runner = build.Runner(root=Path(temp))
+            with mock.patch.object(build, "_select_mingw_cmake") as mingw:
+                with self.assertRaisesRegex(build.BuildError, "C/win7/CMakeLists.txt"):
+                    build.build_windows_generation(runner, "7")
+                mingw.assert_not_called()
+
+    def test_win9x_source_gate_prevents_open_watcom_setup(self):
+        with tempfile.TemporaryDirectory() as temp:
+            runner = build.Runner(root=Path(temp))
+            with mock.patch.object(build, "command_path") as command:
+                with self.assertRaisesRegex(build.BuildError, "C/win95/Makefile"):
+                    build.build_windows_generation(runner, "95")
+                command.assert_not_called()
+
+    def test_generic_gcc_is_not_mistaken_for_mingw(self):
+        paths = {"gcc": "gcc.exe"}
+        with mock.patch.object(build, "command_path", side_effect=lambda name: paths.get(name)):
+            with mock.patch.object(
+                build.subprocess, "run",
+                return_value=build.subprocess.CompletedProcess(
+                    ["gcc.exe", "-dumpmachine"], 0, stdout="x86_64-pc-linux-gnu", stderr=""
+                ),
+            ):
+                self.assertIsNone(build.probe_mingw_gcc())
+
+    def test_existing_mingw_gcc_is_selected_without_installing_visual_studio(self):
+        paths = {"gcc": "C:/msys64/mingw64/bin/gcc.exe", "ninja": "C:/tools/ninja.exe"}
+        runner = build.Runner(root=Path("D:/WinLook"))
+        with mock.patch.object(build, "command_path", side_effect=lambda name: paths.get(name)):
+            with mock.patch.object(
+                build.subprocess, "run",
+                return_value=build.subprocess.CompletedProcess(
+                    ["gcc.exe", "-dumpmachine"], 0, stdout="x86_64-w64-mingw32", stderr=""
+                ),
+            ):
+                self.assertTrue(build._select_mingw_cmake(runner))
+        self.assertEqual(runner.c_compiler, "mingw")
+        self.assertEqual(runner.tool_env["CMAKE_GENERATOR"], "Ninja")
+        self.assertEqual(runner.tool_env["CC"], paths["gcc"])
+
+    def test_visual_studio_instance_is_never_reinstalled_through_winget(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        with mock.patch.object(build, "_visual_studio_installations", return_value=[Path("C:/VS/2022/BuildTools")]):
+            with mock.patch.object(build, "_vs_installer_path", return_value=None):
+                with mock.patch.object(build, "command_path", return_value="winget.exe") as command:
+                    with self.assertRaisesRegex(build.BuildError, "Visual Studio Installer could not be located"):
+                        build._install_or_modify_visual_studio(runner)
+                    command.assert_not_called()
+
+    def test_help_colorization_uses_ansi_and_respects_no_color(self):
+        rendered = build.colorize_help("usage: winlook [options]\\n  --help  Show help\\n")
+        self.assertIn("\\x1b[", rendered)
+        with mock.patch.dict("os.environ", {"NO_COLOR": "1"}):
+            self.assertFalse(build.color_enabled())
+
     def test_rust_toolchain_is_scoped_to_repository_build_cache(self):
         root = Path("D:/WinLook")
         paths = build.rust_paths(root)
