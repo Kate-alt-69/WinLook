@@ -1,7 +1,9 @@
+import contextlib
 import io
 import os
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -298,7 +300,7 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertIn("unspecified failure", build.visual_studio_exit_reason(987654))
 
     def test_help_colorization_uses_ansi_and_respects_no_color(self):
-        rendered = build.colorize_help("usage: winlook [options]\\n  --help  Show help\\n")
+        rendered = build.colorize_help("usage: winlook [options]\n  --help  Show help\n")
         self.assertIn("\x1b[", rendered)
         with mock.patch.dict("os.environ", {"NO_COLOR": "1"}):
             self.assertFalse(build.color_enabled())
@@ -410,7 +412,10 @@ class BuildHelpersTests(unittest.TestCase):
             return "C:/VS/bin/" + name
 
         with mock.patch.object(build.shutil, "which", side_effect=which):
-            with mock.patch.object(build, "_windows_sdk_is_present", return_value=True):
+            with mock.patch.object(
+                build, "_windows_sdk_installation",
+                return_value=(Path("C:/Windows Kits/10"), "10.0.26100.0"),
+            ):
                 self.assertTrue(build._msvc_environment_tools({"PATH": "C:/VS/bin"}))
 
         self.assertEqual(
@@ -657,6 +662,262 @@ class BuildHelpersTests(unittest.TestCase):
                                 with self.assertRaisesRegex(build.BuildError, "elevation was declined"):
                                     build.ensure_windows_linker(runner, apply=True)
         install.assert_not_called()
+
+    def test_debug_flags_are_removed_and_accepted_after_subcommands(self):
+        cleaned, debug, all_debug = build._extract_debug_flags(
+            ["build", "win10", "--debug", "--root", "D:/WinLook"]
+        )
+        self.assertEqual(cleaned, ["build", "win10", "--root", "D:/WinLook"])
+        self.assertTrue(debug)
+        self.assertFalse(all_debug)
+        cleaned, debug, all_debug = build._extract_debug_flags(
+            ["--all-debug", "build", "win11"]
+        )
+        self.assertEqual(cleaned, ["build", "win11"])
+        self.assertFalse(debug)
+        self.assertTrue(all_debug)
+        self.assertTrue(build.build_parser().parse_args(["--debug", "doctor"]).debug)
+
+    def test_elevated_wait_polls_and_invokes_progress_callback(self):
+        class FakeKernel:
+            def __init__(self):
+                self.results = [258, 258, 0]
+                self.timeouts = []
+
+            def WaitForSingleObject(self, handle, timeout):
+                self.timeouts.append(timeout)
+                return self.results.pop(0)
+
+        kernel = FakeKernel()
+        progress = []
+        build._wait_for_windows_process(
+            kernel, 123, on_wait=lambda: progress.append("tick"), poll_interval_ms=750
+        )
+        self.assertEqual(progress, ["tick", "tick"])
+        self.assertEqual(kernel.timeouts, [750, 750, 750])
+
+    def test_visual_studio_log_tailer_reads_only_new_appended_lines(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_test.log"
+            log.write_text("[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VC.Tools\n", encoding="utf-8")
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                tailer = build.VisualStudioSetupLogTailer(time.time() - 1)
+                first = tailer.read_new_lines()
+                self.assertEqual(len(first), 1)
+                self.assertIn("Installing package", first[0][1])
+                with log.open("a", encoding="utf-8") as output:
+                    output.write("[1234:0001][2026-11-12T12:00:01] Downloading package Microsoft.Windows.SDK\n")
+                second = tailer.read_new_lines()
+        self.assertEqual(len(second), 1)
+        self.assertIn("Downloading package", second[0][1])
+
+    def test_visual_studio_activity_classifies_package_operations(self):
+        self.assertTrue(
+            build.visual_studio_activity(
+                "[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VisualStudio.Component.VC.Tools"
+            ).startswith("INSTALL:")
+        )
+        self.assertTrue(
+            build.visual_studio_activity(
+                "[1234:0001][2026-11-12T12:00:00] Downloading package Microsoft.Windows.SDK"
+            ).startswith("DOWNLOAD:")
+        )
+        self.assertTrue(
+            build.visual_studio_activity(
+                "[1234:0001][2026-11-12T12:00:00] Error: package signature check failed"
+            ).startswith("ERROR:")
+        )
+        self.assertIsNone(build.visual_studio_activity("Installer telemetry heartbeat"))
+
+    def test_visual_studio_debug_mode_streams_live_package_events(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_test.log"
+            log.write_text(
+                "[1234:0001][2026-11-12T12:00:00] Installing package Microsoft.VisualStudio.Component.VC.Tools\n",
+                encoding="utf-8",
+            )
+            runner = build.Runner(root=Path(temp), debug=True)
+            output = io.StringIO()
+
+            def fake_elevated(command, cwd, on_wait=None):
+                if on_wait:
+                    on_wait()
+                return 0
+
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                with mock.patch.object(build, "_run_elevated_windows_command", side_effect=fake_elevated):
+                    with contextlib.redirect_stdout(output):
+                        build.run_visual_studio_setup(
+                            runner, Path("C:/VS/setup.exe"), ["modify", "--quiet"]
+                        )
+            rendered = output.getvalue()
+        self.assertIn("INSTALL:", rendered)
+        self.assertIn("Microsoft.VisualStudio.Component.VC.Tools", rendered)
+        self.assertIn("validating the resulting toolchain", rendered)
+
+    def test_runner_suppresses_successful_subprocess_chatter_by_default(self):
+        runner = build.Runner(root=Path("."), debug=False)
+        result = build.subprocess.CompletedProcess(
+            ["example-tool"], 0, stdout="verbose compiler output", stderr=""
+        )
+        output = io.StringIO()
+        with mock.patch.object(build, "command_path", return_value=None):
+            with mock.patch.object(build.subprocess, "run", return_value=result) as run:
+                with contextlib.redirect_stdout(output):
+                    runner.run("Quiet check", ["example-tool"])
+        self.assertNotIn("verbose compiler output", output.getvalue())
+        self.assertNotIn("$ example-tool", output.getvalue())
+        self.assertTrue(run.call_args.kwargs["capture_output"])
+
+    def test_runner_all_debug_replays_subprocess_output(self):
+        runner = build.Runner(root=Path("."), debug=True, all_debug=True)
+        result = build.subprocess.CompletedProcess(
+            ["example-tool"], 0, stdout="full compiler output\n", stderr=""
+        )
+        output = io.StringIO()
+        with mock.patch.object(build, "command_path", return_value=None):
+            with mock.patch.object(build.subprocess, "run", return_value=result):
+                with contextlib.redirect_stdout(output):
+                    runner.run("Detailed check", ["example-tool"])
+        self.assertIn("$ example-tool", output.getvalue())
+        self.assertIn("full compiler output", output.getvalue())
+
+    def test_all_debug_records_direct_subprocess_stdout_and_stderr(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            result = build.subprocess.CompletedProcess(
+                ["probe-tool", "--version"], 0,
+                stdout="probe version details\n", stderr="probe diagnostic details\n"
+            )
+            with mock.patch.object(build.subprocess, "run", return_value=result):
+                build.run_with_all_debug_log(
+                    root,
+                    lambda: (build.run_subprocess(
+                        ["probe-tool", "--version"], text=True, capture_output=True
+                    ), 0)[1],
+                )
+            log = (root / "debug.log").read_text(encoding="utf-8")
+        self.assertIn("[SUBPROCESS] probe-tool --version (exit 0)", log)
+        self.assertIn("probe version details", log)
+        self.assertIn("probe diagnostic details", log)
+
+    def test_all_debug_writes_a_complete_session_log(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            console = io.StringIO()
+            with mock.patch("sys.stdout", console):
+                result = build.run_with_all_debug_log(
+                    root, lambda: (print("diagnostic marker"), 7)[1]
+                )
+            log = (root / "debug.log").read_text(encoding="utf-8")
+        self.assertEqual(result, 7)
+        self.assertIn("diagnostic marker", console.getvalue())
+        self.assertIn("diagnostic marker", log)
+        self.assertIn("finished with exit code 7", log)
+
+    def test_windows_sdk_probe_uses_standard_install_root_without_sdk_environment_variables(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "Windows Kits" / "10"
+            version = "10.0.26100.0"
+            header = root / "Include" / version / "um" / "Windows.h"
+            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
+            header.parent.mkdir(parents=True)
+            library.parent.mkdir(parents=True)
+            header.write_text("// SDK header", encoding="utf-8")
+            library.write_bytes(b"kernel32")
+            environment = {"ProgramFiles(x86)": temp}
+            with mock.patch.object(build, "_windows_sdk_registry_roots", return_value=[]):
+                self.assertEqual(
+                    build._windows_sdk_installation(environment),
+                    (root, version),
+                )
+
+    def test_windows_sdk_probe_uses_registry_root_when_environment_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "KitsRoot10"
+            version = "10.0.19041.0"
+            header = root / "Include" / version / "um" / "Windows.h"
+            library = root / "Lib" / version / "um" / "x64" / "kernel32.lib"
+            header.parent.mkdir(parents=True)
+            library.parent.mkdir(parents=True)
+            header.write_text("// SDK header", encoding="utf-8")
+            library.write_bytes(b"kernel32")
+            with mock.patch.object(build, "_windows_sdk_registry_roots", return_value=[root]):
+                self.assertEqual(
+                    build._windows_sdk_installation({}),
+                    (root, version),
+                )
+
+    def test_windows_sdk_completion_fills_sdk_variables_and_resource_compiler_path(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "Windows Kits" / "10"
+            version = "10.0.26100.0"
+            for folder in ("ucrt", "shared", "um", "winrt", "cppwinrt"):
+                (root / "Include" / version / folder).mkdir(parents=True)
+            for folder in ("ucrt", "um"):
+                (root / "Lib" / version / folder / "x64").mkdir(parents=True)
+            sdk_bin = root / "bin" / version / "x64"
+            sdk_bin.mkdir(parents=True)
+            (sdk_bin / "rc.exe").write_bytes(b"resource compiler")
+            (root / "Include" / version / "um" / "Windows.h").write_text("// SDK header", encoding="utf-8")
+            (root / "Lib" / version / "um" / "x64" / "kernel32.lib").write_bytes(b"kernel32")
+
+            completed, sdk = build._complete_msvc_environment(
+                {
+                    "Path": "C:/VisualStudio/VC/bin",
+                    "WindowsSdkDir": str(root),
+                    "WindowsSDKVersion": version + os.sep,
+                    "ProgramFiles(x86)": temp,
+                }
+            )
+        self.assertEqual(sdk, (root, version))
+        self.assertEqual(completed["WindowsSdkDir"], str(root) + os.sep)
+        self.assertEqual(completed["WindowsSDKVersion"], version + os.sep)
+        self.assertIn(str(root / "Include" / version / "um"), completed["INCLUDE"])
+        self.assertIn(str(root / "Lib" / version / "um" / "x64"), completed["LIB"])
+        self.assertIn(str(sdk_bin), completed["PATH"])
+
+    def test_msvc_toolset_is_discovered_from_visual_studio_instance_when_env_is_missing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            installation = Path(temp) / "BuildTools"
+            toolset = installation / "VC" / "Tools" / "MSVC" / "14.44.35207"
+            (toolset / "include").mkdir(parents=True)
+            (toolset / "lib" / "x64").mkdir(parents=True)
+            binary = toolset / "bin" / "Hostx64" / "x64"
+            binary.mkdir(parents=True)
+            (binary / "cl.exe").write_bytes(b"compiler")
+            (binary / "link.exe").write_bytes(b"linker")
+            self.assertEqual(build._msvc_toolset_root({}, installation), toolset)
+
+    def test_visual_studio_setup_diagnostics_detect_no_update_without_component_install(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_noop.log"
+            log.write_text(
+                "Warning: Didn't find any channel feed.\n"
+                "WebClient error RequestCanceled https://aka.ms/vs/17/release/channel\n"
+                "Status changed to NoUpdate\n"
+                "Closing the installer with exit code 0\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                notes = build._visual_studio_setup_log_diagnostics(time.time() - 1)
+        self.assertTrue(any("channel feed" in note for note in notes))
+        self.assertTrue(any("NoUpdate" in note for note in notes))
+
+    def test_visual_studio_setup_diagnostics_do_not_flag_a_package_install(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "dd_setup_install.log"
+            log.write_text(
+                "Status changed to Applying\n"
+                "Downloading package Microsoft.VisualStudio.Component.VC.Tools.x86.x64\n"
+                "Installing package Microsoft.VisualStudio.Component.Windows10SDK.19041\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(build.tempfile, "gettempdir", return_value=temp):
+                notes = build._visual_studio_setup_log_diagnostics(time.time() - 1)
+        self.assertEqual(notes, [])
+
+
 
 if __name__ == "__main__":
     unittest.main()
