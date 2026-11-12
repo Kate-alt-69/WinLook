@@ -34,6 +34,10 @@ WATCOM_ASSET_URL = (
 WATCOM_ASSET_SHA256 = (
     "9d9d823c2ee040a38484ad74ad4a594e904672184e4e8fff84b3bac7090c9f6c"
 )
+RUST_TOOLCHAIN = "1.95.0"
+RUSTUP_DIST = "https://static.rust-lang.org/rustup/dist"
+CMAKE_WINGET_ID = "Kitware.CMake"
+VS_BUILD_TOOLS_WINGET_ID = "Microsoft.VisualStudio.2022.BuildTools"
 ACTIONLINT_VERSION = "1.7.12"
 ACTIONLINT_URL = (
     "https://github.com/rhysd/actionlint/releases/download/v"
@@ -60,6 +64,205 @@ WINDOWS_APPS = {
     "win10": ("winlook-win10", "build/rust/win10"),
     "win11": ("winlook-win11", "build/rust/win11"),
 }
+
+
+
+def rust_paths(root: Path) -> Dict[str, Path]:
+    cache = build_paths(root)["rust_cache"]
+    return {
+        "cargo_home": cache / "cargo-home",
+        "rustup_home": cache / "rustup-home",
+        "bootstrap": cache / "bootstrap",
+    }
+
+
+def rustup_host() -> str:
+    machine = platform.machine().lower()
+    if os.name == "nt":
+        if machine in {"arm64", "aarch64"}:
+            return "aarch64-pc-windows-msvc"
+        return "x86_64-pc-windows-msvc"
+    if sys.platform == "darwin":
+        return "aarch64-apple-darwin" if machine in {"arm64", "aarch64"} else "x86_64-apple-darwin"
+    if sys.platform.startswith("linux"):
+        return "aarch64-unknown-linux-gnu" if machine in {"arm64", "aarch64"} else "x86_64-unknown-linux-gnu"
+    raise BuildError("Automatic Rust setup is not supported on this operating system: " + sys.platform)
+
+
+def rust_environment(root: Path) -> Dict[str, str]:
+    paths = rust_paths(root)
+    env = os.environ.copy()
+    env["CARGO_HOME"] = str(paths["cargo_home"])
+    env["RUSTUP_HOME"] = str(paths["rustup_home"])
+    env["CARGO_TARGET_DIR"] = str(build_paths(root)["rust"] / "shared")
+    env["RUSTUP_TOOLCHAIN"] = RUST_TOOLCHAIN
+    bin_dir = paths["cargo_home"] / "bin"
+    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+    return env
+
+
+def _download_verified(url: str, destination: Path, label: str) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    request = urllib.request.Request(url, headers={"User-Agent": "WinLook-build.py"})
+    with urllib.request.urlopen(request, timeout=120) as response:
+        payload = response.read()
+    checksum_url = url + ".sha256"
+    checksum_request = urllib.request.Request(checksum_url, headers={"User-Agent": "WinLook-build.py"})
+    with urllib.request.urlopen(checksum_request, timeout=30) as response:
+        checksum_text = response.read(4096).decode("ascii", errors="replace")
+    expected_match = __import__("re").search(r"\b([0-9a-fA-F]{64})\b", checksum_text)
+    if expected_match is None:
+        raise BuildError("Could not read the official SHA-256 checksum for " + label + ".")
+    expected = expected_match.group(1).lower()
+    actual = hashlib.sha256(payload).hexdigest()
+    if actual != expected:
+        raise BuildError(label + " SHA-256 mismatch; refusing to execute the downloaded installer.")
+    destination.write_bytes(payload)
+    print("Verified " + label + " SHA-256: " + actual)
+
+
+def _rustup_executable(root: Path) -> Path:
+    suffix = ".exe" if os.name == "nt" else ""
+    return rust_paths(root)["cargo_home"] / "bin" / ("rustup" + suffix)
+
+
+def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
+    """Install and select the repository's Rust toolchain without touching global Rust homes."""
+    paths = rust_paths(runner.root)
+    env = rust_environment(runner.root)
+    rustup = _rustup_executable(runner.root)
+    installer_suffix = ".exe" if os.name == "nt" else ""
+    installer = paths["bootstrap"] / ("rustup-init" + installer_suffix)
+    if not apply:
+        print("Plan: install Rust " + RUST_TOOLCHAIN + " under " + str(paths["rustup_home"]))
+        print("Plan: keep Cargo downloads and binaries under " + str(paths["cargo_home"]))
+        return False
+    if not rustup.is_file():
+        host = rustup_host()
+        url = RUSTUP_DIST + "/" + host + "/rustup-init" + installer_suffix
+        print("Downloading the official rustup installer for " + host + "...")
+        _download_verified(url, installer, "rustup-init")
+        runner.run(
+            "Install project-local rustup",
+            [str(installer), "-y", "--no-modify-path", "--default-toolchain", "none", "--profile", "minimal"],
+            env=env,
+        )
+    if not rustup.is_file():
+        raise BuildError("rustup installer completed but the project-local rustup executable was not created at " + str(rustup))
+    runner.run(
+        "Install/select project-local Rust " + RUST_TOOLCHAIN,
+        [str(rustup), "toolchain", "install", RUST_TOOLCHAIN, "--profile", "minimal", "--component", "rustfmt", "--component", "clippy"],
+        env=env,
+    )
+    local_bin = str(paths["cargo_home"] / "bin")
+    os.environ.update({
+        "CARGO_HOME": str(paths["cargo_home"]),
+        "RUSTUP_HOME": str(paths["rustup_home"]),
+        "CARGO_TARGET_DIR": str(build_paths(runner.root)["rust"] / "shared"),
+        "RUSTUP_TOOLCHAIN": RUST_TOOLCHAIN,
+        "PATH": local_bin + os.pathsep + os.environ.get("PATH", ""),
+    })
+    version = subprocess.run(
+        [str(paths["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")), "--version"],
+        cwd=str(runner.root), env=rust_environment(runner.root), text=True,
+        capture_output=True, check=False,
+    )
+    if version.returncode != 0 or ("rustc " + RUST_TOOLCHAIN) not in (version.stdout or ""):
+        raise BuildError("Project-local Rust compiler verification failed: " + (version.stderr or version.stdout or "unknown error"))
+    print("Using project-local " + (version.stdout or "").strip())
+    return True
+
+
+def _vswhere_path() -> Optional[Path]:
+    candidates = []
+    program_files_x86 = os.environ.get("ProgramFiles(x86)")
+    if program_files_x86:
+        candidates.append(Path(program_files_x86) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe")
+    program_files = os.environ.get("ProgramFiles")
+    if program_files:
+        candidates.append(Path(program_files) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe")
+    found = command_path("vswhere")
+    if found:
+        candidates.append(Path(found))
+    return next((path for path in candidates if path.is_file()), None)
+
+
+def load_msvc_environment(runner: "Runner") -> bool:
+    """Load an existing Visual Studio C++ toolchain into this build process."""
+    if os.name != "nt":
+        return False
+    if command_path("cl") and command_path("link") and command_path("rc"):
+        return True
+    vswhere = _vswhere_path()
+    if vswhere is None:
+        return False
+    result = subprocess.run(
+        [str(vswhere), "-latest", "-products", "*", "-requires",
+         "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath"],
+        text=True, capture_output=True, check=False,
+    )
+    installation = (result.stdout or "").strip().splitlines()
+    if result.returncode != 0 or not installation:
+        return False
+    devcmd = Path(installation[-1]) / "Common7" / "Tools" / "VsDevCmd.bat"
+    if not devcmd.is_file():
+        return False
+    command = 'call "' + str(devcmd) + '" -no_logo -arch=x64 -host_arch=x64 && set'
+    environment = subprocess.run(
+        ["cmd.exe", "/d", "/s", "/c", command],
+        text=True, capture_output=True, check=False,
+    )
+    if environment.returncode != 0:
+        return False
+    for line in (environment.stdout or "").splitlines():
+        if "=" in line:
+            key, value = line.split("=", 1)
+            if key:
+                os.environ[key] = value
+    return bool(command_path("cl") and command_path("link") and command_path("rc"))
+
+
+def ensure_windows_c_toolchain(runner: "Runner", apply: bool = True) -> None:
+    if os.name != "nt":
+        return
+    if load_msvc_environment(runner):
+        return
+    if not command_path("winget"):
+        raise BuildError(
+            "Visual C++ Build Tools are missing. Install Visual Studio 2022 Build Tools "
+            "with the Desktop development with C++ workload, then rerun this build."
+        )
+    if not apply:
+        print("Plan: install Visual Studio 2022 Build Tools (Desktop development with C++) via WinGet.")
+        return
+    runner.run(
+        "Install Visual Studio 2022 C++ Build Tools",
+        ["winget", "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
+         "--accept-package-agreements", "--accept-source-agreements",
+         "--override", "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"],
+    )
+    if not load_msvc_environment(runner):
+        raise BuildError(
+            "Visual Studio Build Tools installation finished, but cl.exe/link.exe/rc.exe "
+            "could not be loaded. Restart the terminal and run python build.py build win10 again."
+        )
+
+
+def ensure_cmake(runner: "Runner", apply: bool = True) -> None:
+    if command_path("cmake"):
+        return
+    if os.name == "nt" and command_path("winget"):
+        if not apply:
+            print("Plan: install CMake via WinGet (" + CMAKE_WINGET_ID + ").")
+            return
+        runner.run(
+            "Install CMake",
+            ["winget", "install", "--id", CMAKE_WINGET_ID, "--exact",
+             "--accept-package-agreements", "--accept-source-agreements"],
+    )
+        if command_path("cmake"):
+            return
+    raise BuildError("CMake is missing. Install it from https://cmake.org/download/ and reopen the terminal.")
 
 
 def build_paths(root: Path) -> Dict[str, Path]:
@@ -98,7 +301,11 @@ class Runner:
             process_env.update(env)
         paths = build_paths(self.root)
         process_env.setdefault("CARGO_HOME", str(paths["rust_cache"] / "cargo-home"))
+        process_env.setdefault("RUSTUP_HOME", str(paths["rust_cache"] / "rustup-home"))
         process_env.setdefault("CARGO_TARGET_DIR", str(paths["rust"] / "shared"))
+        local_cargo_bin = str(paths["rust_cache"] / "cargo-home" / "bin")
+        process_env["PATH"] = local_cargo_bin + os.pathsep + process_env.get("PATH", "")
+        process_env.setdefault("RUSTUP_TOOLCHAIN", RUST_TOOLCHAIN)
         process_env.setdefault("SCCACHE_DIR", str(paths["rust_cache"] / "sccache"))
         process_env.setdefault("CCACHE_DIR", str(paths["c_cache"]))
         process_env.setdefault("CCACHE_BASEDIR", str(self.root))
@@ -352,61 +559,23 @@ def download_open_watcom(runner: Runner, apply: bool) -> None:
 
 
 def command_setup(args: argparse.Namespace, runner: Runner) -> int:
-    actions: List[List[str]] = []
-    rustup_missing = not command_path("rustup")
+    if not args.with_rust and not args.with_c and not args.open_watcom and not args.with_cmake:
+        print("Select at least one setup target: --with-rust, --with-c, --with-cmake, or --open-watcom.")
+        return 0
     if args.with_rust:
-        if rustup_missing:
-            if not args.install_rustup:
-                raise BuildError(
-                    "Rustup is missing. Install it from https://rustup.rs/, or pass "
-                    "--install-rustup on Windows to use WinGet."
-                )
-            if os.name != "nt" or not command_path("winget"):
-                raise BuildError(
-                    "Automatic rustup installation uses WinGet on Windows. "
-                    "Install Rust from https://rustup.rs/ and retry on other platforms."
-                )
-            actions.append(["winget", "install", "--id", "Rustlang.Rustup", "--exact"])
-        else:
-            actions.append([
-                "rustup", "toolchain", "install", "stable", "--profile", "minimal",
-                "--component", "rustfmt", "--component", "clippy",
-            ])
-    elif args.install_rustup and rustup_missing:
-        if os.name != "nt" or not command_path("winget"):
-            raise BuildError(
-                "Automatic rustup installation uses WinGet on Windows. "
-                "Install Rust from https://rustup.rs/ and retry on other platforms."
-            )
-        actions.append(["winget", "install", "--id", "Rustlang.Rustup", "--exact"])
-    if args.with_cmake and not command_path("cmake"):
-        if os.name != "nt" or not command_path("winget"):
-            raise BuildError(
-                "CMake is missing. Install it from https://cmake.org/download/ "
-                "or use your OS package manager."
-            )
-        actions.append(["winget", "install", "--id", "Kitware.CMake", "--exact"])
+        ensure_rust_toolchain(runner, apply=args.apply)
+    if args.with_c:
+        if os.name == "nt":
+            ensure_windows_c_toolchain(runner, apply=args.apply)
+        ensure_cmake(runner, apply=args.apply)
+    elif args.with_cmake:
+        ensure_cmake(runner, apply=args.apply)
     if args.open_watcom:
         download_open_watcom(runner, args.apply and not runner.dry_run)
-    for action in actions:
-        print("Planned setup: " + shlex.join(action))
     if not args.apply:
-        print("Nothing was installed. Repeat with --apply to execute the listed setup.")
-        return 0
-    rustup_was_installed = False
-    for action in actions:
-        if action[0] == "winget":
-            action.extend(["--accept-package-agreements", "--accept-source-agreements"])
-            runner.run("Install requested build prerequisite", action)
-            rustup_was_installed = rustup_was_installed or "Rustlang.Rustup" in action
-        else:
-            runner.run("Install stable Rust toolchain and components", action)
-    if rustup_was_installed:
-        raise BuildError(
-            "rustup was installed successfully. Open a new terminal (so PATH refreshes), "
-            "then rerun python build.py setup --apply to install stable Rust components."
-        )
-    print("Setup commands completed. Run python build.py doctor to verify.")
+        print("Nothing was installed. Review the plan and repeat with --apply.")
+    else:
+        print("Requested setup completed. Run python build.py doctor to verify.")
     return 0
 
 
@@ -428,7 +597,9 @@ def rust_tests(runner: Runner) -> None:
 
 
 def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
-    require_command("cmake", "Install CMake from https://cmake.org/download/.")
+    ensure_cmake(runner)
+    if os.name == "nt":
+        ensure_windows_c_toolchain(runner)
     source = runner.root / "C" / "library"
     if not (source / "CMakeLists.txt").is_file():
         raise BuildError("C/library/CMakeLists.txt is missing.")
@@ -453,6 +624,7 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
 
 def ui_verify(runner: Runner) -> None:
     require_windows("Windows Reactor / WinUI 3")
+    ensure_windows_c_toolchain(runner)
     if not check_ui_sources(runner.root):
         raise BuildError(
             "Manager UI manifests are not present. Merge the WinToys Manager UI implementation first."
@@ -464,6 +636,7 @@ def ui_verify(runner: Runner) -> None:
 
 def build_windows_app(runner: Runner, target: str) -> None:
     require_windows(target + " application")
+    ensure_windows_c_toolchain(runner)
     if target not in WINDOWS_APPS:
         raise BuildError("Unknown modern Windows application target: " + target)
     require_manifest(runner.root, "rust/" + target + "/Cargo.toml", "Windows " + target + " application")
@@ -810,9 +983,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup = sub.add_parser("setup", help="Plan or install user-scoped build prerequisites.")
     setup.add_argument("--apply", action="store_true", help="Execute setup; otherwise show the plan only.")
-    setup.add_argument("--with-rust", action="store_true", help="Install/update stable Rust and its rustfmt/Clippy components.")
+    setup.add_argument("--with-rust", action="store_true", help="Install Rust 1.95.0 and components into this repository build cache.")
     setup.add_argument("--install-rustup", action="store_true", help="Allow WinGet to install rustup when --with-rust is requested or Rustup is missing.")
-    setup.add_argument("--with-cmake", action="store_true", help="Allow WinGet to install CMake if missing.")
+    setup.add_argument("--with-c", action="store_true", help="Install/load Visual C++ Build Tools and CMake when missing (Visual Studio is machine-wide).")
+    setup.add_argument("--with-cmake", action="store_true", help="Install CMake if missing.")
     setup.add_argument("--open-watcom", action="store_true", help="Install the pinned Open Watcom Linux x64 package.")
     setup.add_argument("--dry-run", action="store_true")
 
@@ -876,6 +1050,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         verbose=bool(os.environ.get("WINLOOK_BUILD_VERBOSE")),
     )
     try:
+        rust_actions = {"fmt"}
+        if args.action in {"build", "verify", "test"}:
+            rust_actions.add(args.action)
+        needs_rust = (
+            args.action in rust_actions
+            and getattr(args, "target", getattr(args, "scope", "")) not in {"c"}
+        ) or (args.action == "setup" and args.with_rust)
+        if needs_rust:
+            ensure_rust_toolchain(runner, apply=True)
         if args.action == "doctor":
             return command_doctor(args, runner)
         if args.action == "setup":
