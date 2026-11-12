@@ -197,3 +197,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - `workflow-lint.yml` and `docs.yml` smoke-test `python build.py` in addition to syntax compilation and unit tests.
 - `build-all.yml` runs the default preflight and a strict toolchain doctor check before `verify all`; on Windows this verification includes actual supported library/UI checks and Win10/Win11 app compilation where manifests are present.
 - Distinguish workflow lint and unit tests from real compiler evidence. The latter must come from `libraries.yml` and `build-all.yml`; BGW and Win95 remain explicitly source/toolchain gated.
+
+
+## Project-local toolchain provisioning — 2026-11-12
+
+- User reproduced Win10 build failure because the process selected Rust 1.94.0 while the WinUI/Windows Reactor crates and WinLook packages declare Rust 1.95 minimum.
+- `build.py` now pins Rust 1.95.0 and bootstraps official `rustup-init` with its official `.sha256` sidecar verified before execution.
+- Rustup state/toolchains and Cargo cache/proxies are scoped to `build/.rcache/rustup-home` and `build/.rcache/cargo-home`; build subprocesses put those proxies first and select `RUSTUP_TOOLCHAIN=1.95.0`. Global Rust installs and persistent PATH are not modified.
+- Rust-dependent build/test/verify/fmt commands provision the local toolchain automatically. `setup --with-rust --apply` performs the same setup explicitly.
+- Windows C/MSVC preparation loads an existing Visual Studio C++ environment using `vswhere` and `VsDevCmd`; if absent, WinGet installs Visual Studio 2022 Build Tools with the Desktop development with C++ workload. CMake is installed through WinGet when missing. Visual Studio is necessarily machine-wide and may require elevation; Rust remains project-local.
+- CI workflows now invoke the repository setup command and use the pinned Rust toolchain instead of the floating `stable` action.
+- Regression tests cover local Rust/Cargo/Rustup paths, Windows MSVC host selection, and setup CLI flags. CI must still confirm the installer, exact toolchain, and actual Win10/Win11 builds on the next runs.
