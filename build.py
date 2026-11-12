@@ -2413,7 +2413,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         all_debug=args.all_debug,
     )
     if runner.all_debug:
-        return run_with_all_debug_log(root, lambda: _run_action(args, runner))
+        try:
+            return run_with_all_debug_log(root, lambda: _run_action(args, runner))
+        except BuildError as exc:
+            print("\n[BUILD ERROR] " + str(exc), file=sys.stderr)
+            return 1
     return _run_action(args, runner)
 
 
