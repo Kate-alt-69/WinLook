@@ -2,8 +2,9 @@
 """WinLook's cross-platform build, test, packaging, and toolchain entry point.
 
 Requires Python 3.9+. Uses only the Python standard library and invokes native
-tools with argument arrays (never through a shell). It does not install
-system-wide compilers or change PATH unless an explicit setup option is used.
+tools with argument arrays except for the fixed Visual Studio environment bootstrap.
+Rust is installed into the repository build cache; optional Visual Studio Build Tools
+and CMake setup use the Windows package manager when explicitly requested or needed.
 """
 from __future__ import annotations
 
@@ -1030,7 +1031,6 @@ def build_parser() -> argparse.ArgumentParser:
     setup = sub.add_parser("setup", help="Plan or install user-scoped build prerequisites.")
     setup.add_argument("--apply", action="store_true", help="Execute setup; otherwise show the plan only.")
     setup.add_argument("--with-rust", action="store_true", help="Install Rust 1.95.0 and components into this repository build cache.")
-    setup.add_argument("--install-rustup", action="store_true", help="Allow WinGet to install rustup when --with-rust is requested or Rustup is missing.")
     setup.add_argument("--with-c", action="store_true", help="Install/load Visual C++ Build Tools and CMake when missing (Visual Studio is machine-wide).")
     setup.add_argument("--with-cmake", action="store_true", help="Install CMake if missing.")
     setup.add_argument("--open-watcom", action="store_true", help="Install the pinned Open Watcom Linux x64 package.")
