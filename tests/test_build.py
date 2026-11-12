@@ -317,6 +317,23 @@ class BuildHelpersTests(unittest.TestCase):
         with mock.patch.object(build.os, "name", "nt"), mock.patch.object(build.platform, "machine", return_value="AMD64"):
             self.assertEqual(build.rustup_host(), "x86_64-pc-windows-msvc")
 
+    def test_strict_doctor_requires_complete_msvc_for_modern_windows_apps(self):
+        checks = {
+            "win10_project": True,
+            "win11_project": True,
+            "msvc_available": False,
+        }
+        self.assertTrue(build._windows_msvc_requirement_missing(checks, windows_host=True))
+
+        checks["msvc_available"] = True
+        self.assertFalse(build._windows_msvc_requirement_missing(checks, windows_host=True))
+        self.assertFalse(build._windows_msvc_requirement_missing(checks, windows_host=False))
+
+        checks["win10_project"] = False
+        checks["win11_project"] = False
+        checks["msvc_available"] = False
+        self.assertFalse(build._windows_msvc_requirement_missing(checks, windows_host=True))
+
     def test_setup_parser_exposes_c_compiler_and_cmake_options(self):
         args = build.build_parser().parse_args(["setup", "--with-c", "--with-cmake", "--apply"])
         self.assertTrue(args.with_c)

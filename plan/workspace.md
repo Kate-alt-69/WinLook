@@ -246,3 +246,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - An existing Build Tools instance is never reinstalled. If the standalone install was the first setup attempt and fails, the error is returned without an immediate second installer call. A user-declined UAC operation is also not retried through another installer.
 - The MinGW path is independent: native `x86_64-w64-mingw32` GCC plus Ninja/Make can build the shared C libraries, but it does not satisfy the Win10/11 Rust MSVC + WinUI linker/SDK gate.
 - Regression tests cover each single-attempt and cancellation boundary; the Windows hosted build still needs to confirm the installer can actually provide the required workload in that runner image.
+
+
+## Repeated build stress workflow — 2026-11-12
+
+- Added `.github/workflows/build-stress.yml` as a reproducible build gate for relevant pushes and pull requests, with a manual dispatch entry point.
+- The portable job runs Rust formatting/tests/Clippy/docs and C89 CMake tests with ASan/UBSan twice, cleaning generated outputs between runs while retaining toolchain caches.
+- The Windows matrix builds Win10 and Win11 independently on `windows-2022`. Each target runs strict toolchain preflight and the Manager UI tests/Clippy, then performs clean, incremental and clean-rebuild passes.
+- Each Windows pass packages the executable and validates the ZIP structure and non-empty executable; the final package is uploaded as a workflow artifact.
+- `doctor --strict` now fails when a Win10/Win11 project exists on Windows but the complete MSVC compiler/linker/resource-compiler + Windows SDK environment cannot be loaded. It also reports linker, resource compiler and SDK details for diagnosis.
+- The workflow validates the preinstalled hosted-runner toolchain and actual builds; it does not test the interactive Visual Studio installer/UAC flow or prove runtime launch on a clean desktop. Hosted results remain pending until the new workflow completes.

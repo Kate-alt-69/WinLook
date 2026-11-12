@@ -1183,6 +1183,16 @@ def print_skip(message: str) -> None:
     print("[SKIPPED] " + message)
 
 
+def _windows_msvc_requirement_missing(
+    checks: Dict[str, Any], windows_host: Optional[bool] = None
+) -> bool:
+    """Require the complete MSVC + Windows SDK toolchain for available WinUI apps."""
+    if windows_host is None:
+        windows_host = os.name == "nt"
+    has_modern_app = bool(checks.get("win10_project") or checks.get("win11_project"))
+    return bool(windows_host and has_modern_app and checks.get("msvc_available") is not True)
+
+
 def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
     mingw = probe_mingw_gcc()
     msvc_available = load_msvc_environment(runner) if os.name == "nt" else None
@@ -1211,6 +1221,11 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "cmake_generator": os.environ.get("CMAKE_GENERATOR"),
         "msvc_available": msvc_available,
         "msvc_cl": command_path("cl"),
+        "msvc_link": command_path("link"),
+        "msvc_rc": command_path("rc"),
+        "windows_sdk_dir": os.environ.get("WindowsSdkDir") or os.environ.get("WindowsSDKDir"),
+        "windows_sdk_version": os.environ.get("WindowsSDKVersion"),
+        "windows_sdk_present": _windows_sdk_is_present(dict(os.environ)) if os.name == "nt" else None,
         "visual_studio_instances": visual_studio_instances,
         "gcc": command_path("gcc"),
         "gcc_target": (mingw or {}).get("target"),
@@ -1236,6 +1251,8 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
     for tool in ("cargo", "rustc", "cmake"):
         if not checks[tool]:
             missing.append(tool)
+    if _windows_msvc_requirement_missing(checks):
+        missing.append("MSVC cl.exe, link.exe, rc.exe and a usable Windows SDK (required by Win10/Win11)")
     if args.json:
         print(json.dumps({"root": str(runner.root), "checks": checks, "missing": missing}, indent=2))
     else:

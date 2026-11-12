@@ -126,9 +126,18 @@ All third-party Actions used by these workflows are pinned to a verified commit 
 | docs.yml | Required-document checks and Python test compilation | Documentation/build-runner gate |
 | security.yml | CodeQL for C/C++, Rust, Actions and Python; dependency review; Gitleaks full-history scan | Security gate |
 | build-all.yml | Manual/main-branch strict toolchain preflight, full supported verification, and actual Win10/Win11 application compilation when source manifests exist; reruns when its own workflow or build-runner tests change | Integration build |
+| build-stress.yml | Repeated Windows 10/11 clean builds, incremental rebuilds and package inspection, plus repeated Rust/C sanitizer verification | Reproducible build stress gate |
 | release.yml | Version-tag release after library validation and both modern app builds | Publish gate |
 
 The BGW and Win95 workflows intentionally use source/toolchain detection. If a target is not implemented, it stays skipped; it is not replaced by a dummy binary or a fake passing build.
+
+### Repeated build stress gate
+
+`.github/workflows/build-stress.yml` runs on relevant pushes and pull requests and can also be started manually. Its portable job runs the Rust shared-library format/tests/Clippy/docs gate together with strict C89 CMake tests under AddressSanitizer and UndefinedBehaviorSanitizer, then cleans generated outputs and repeats the verification.
+
+The Windows matrix runs independently for Win10 and Win11 on `windows-2022`. It provisions Rust 1.95.0, runs `doctor --strict` before compilation, and runs the Manager UI test/Clippy gate. Each target then goes through three build passes: a clean build and package, an incremental rebuild, and a second clean rebuild and package. The package is inspected as a ZIP and must contain a non-empty `winlook.exe` plus `RUNTIME-REQUIREMENTS.txt`; the final archive is uploaded as a workflow artifact.
+
+This is compiler/build/package stress testing, not an installer or runtime certification. The Windows job verifies that the hosted runner already exposes `cl.exe`, `link.exe`, `rc.exe` and a usable Windows SDK; it deliberately fails at preflight rather than trying to mutate Visual Studio on a non-interactive CI runner. A passing build does not prove the framework-dependent app launches on a clean Windows machine.
 
 ### Win95 runner setup
 
