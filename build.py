@@ -465,8 +465,10 @@ def _windows_sdk_is_present(environment: Dict[str, str]) -> bool:
 
 def _msvc_environment_tools(environment: Dict[str, str]) -> bool:
     search_path = environment.get("PATH", "")
+    # MSVC tools are PE executables. Probe their real filenames explicitly so
+    # a missing PATHEXT cannot make a valid VS developer environment look empty.
     return all(
-        shutil.which(name, path=search_path)
+        shutil.which(name + ".exe", path=search_path)
         for name in ("cl", "link", "rc")
     ) and _windows_sdk_is_present(environment)
 
@@ -1077,7 +1079,12 @@ def format_command(command: Sequence[str]) -> str:
 
 
 def command_path(name: str) -> Optional[str]:
-    return shutil.which(name)
+    found = shutil.which(name)
+    if found or os.name != "nt" or name.lower().endswith((".exe", ".bat", ".cmd", ".com")):
+        return found
+    # Explicit .exe lookup remains reliable even when PATHEXT is missing or
+    # incomplete in a process launched from a stripped-down CI environment.
+    return shutil.which(name + ".exe")
 
 
 def project_has_manifest(root: Path, relative: str) -> bool:

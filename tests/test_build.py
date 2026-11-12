@@ -317,6 +317,35 @@ class BuildHelpersTests(unittest.TestCase):
         with mock.patch.object(build.os, "name", "nt"), mock.patch.object(build.platform, "machine", return_value="AMD64"):
             self.assertEqual(build.rustup_host(), "x86_64-pc-windows-msvc")
 
+    def test_command_path_falls_back_to_explicit_exe_on_windows(self):
+        with mock.patch.object(build.os, "name", "nt"):
+            with mock.patch.object(
+                build.shutil, "which",
+                side_effect=lambda name: "C:/tools/" + name if name == "cl.exe" else None,
+            ) as which:
+                self.assertEqual(build.command_path("cl"), "C:/tools/cl.exe")
+        self.assertEqual([call.args[0] for call in which.call_args_list], ["cl", "cl.exe"])
+
+    def test_msvc_environment_probe_uses_explicit_exe_names(self):
+        observed = []
+
+        def which(name, path=None):
+            observed.append((name, path))
+            return "C:/VS/bin/" + name
+
+        with mock.patch.object(build.shutil, "which", side_effect=which):
+            with mock.patch.object(build, "_windows_sdk_is_present", return_value=True):
+                self.assertTrue(build._msvc_environment_tools({"PATH": "C:/VS/bin"}))
+
+        self.assertEqual(
+            observed,
+            [
+                ("cl.exe", "C:/VS/bin"),
+                ("link.exe", "C:/VS/bin"),
+                ("rc.exe", "C:/VS/bin"),
+            ],
+        )
+
     def test_strict_doctor_requires_complete_msvc_for_modern_windows_apps(self):
         checks = {
             "win10_project": True,
