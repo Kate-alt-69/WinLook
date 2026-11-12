@@ -76,6 +76,25 @@ WINDOWS_APPS = {
     "win11": ("winlook-win11", "build/rust/win11"),
 }
 
+# These profiles are intentionally distinct. A build never silently borrows the
+# other target's compiler installation or SDK, even when both are installed.
+WINDOWS_TOOLCHAIN_PROFILES = {
+    "win10": {
+        "visual_studio_major": 17,
+        "visual_studio_label": "Visual Studio 2022 (17.x)",
+        "sdk_version": "10.0.19041.0",
+        "sdk_component": "Microsoft.VisualStudio.Component.Windows10SDK.19041",
+        "runner_image": "windows-2022",
+    },
+    "win11": {
+        "visual_studio_major": 18,
+        "visual_studio_label": "Visual Studio 18 (18.x)",
+        "sdk_version": "10.0.26100.0",
+        "sdk_component": "Microsoft.VisualStudio.Component.Windows11SDK.26100",
+        "runner_image": "windows-2025-vs2026",
+    },
+}
+
 # Canonical selectors cover every OS page in plan/compatibility. A selector is
 # intentionally available before its implementation: the build then gives a
 # source-gate message instead of silently building a different Windows version.
@@ -529,10 +548,17 @@ def _visual_studio_channel_id(installation: Path) -> str:
     )
 
 
-def _visual_studio_workload_arguments() -> List[str]:
-    """Explicitly request the compiler and SDK required by the current WinUI app."""
+def _visual_studio_workload_arguments(target: Optional[str] = None) -> List[str]:
+    """Request the compiler and SDK selected for one target profile."""
     arguments = ["--add", "Microsoft.VisualStudio.Workload.VCTools"]
-    for component_id in VS_REQUIRED_COMPONENT_IDS:
+    if target in WINDOWS_TOOLCHAIN_PROFILES:
+        component_ids = [
+            "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            WINDOWS_TOOLCHAIN_PROFILES[target]["sdk_component"],
+        ]
+    else:
+        component_ids = list(VS_REQUIRED_COMPONENT_IDS)
+    for component_id in component_ids:
         arguments.extend(["--add", component_id])
     return arguments
 
@@ -633,28 +659,35 @@ def _windows_sdk_version_sort_key(value: str) -> Tuple[int, ...]:
     return tuple(int(part) for part in parts) if parts else (0,)
 
 
-def _windows_sdk_installation(environment: Dict[str, str]) -> Optional[Tuple[Path, str]]:
-    """Return an SDK only when Windows/shared/UCRT headers and x64 libraries exist."""
+def _windows_sdk_installation(
+    environment: Dict[str, str],
+    required_version: Optional[str] = None,
+) -> Optional[Tuple[Path, str]]:
+    """Return a complete SDK; target builds can require one exact version."""
     normalized = {str(key).casefold(): value for key, value in environment.items()}
     preferred_versions: List[str] = []
-    for name in ("windowssdkversion", "windowstargetplatformversion", "targetplatformversion"):
-        value = str(normalized.get(name) or "").strip().strip("\\/ ")
-        value = value.replace("\\", "/").rstrip("/").split("/")[-1]
-        if value and value not in preferred_versions:
-            preferred_versions.append(value)
+    if required_version:
+        preferred_versions.append(required_version)
+    else:
+        for name in ("windowssdkversion", "windowstargetplatformversion", "targetplatformversion"):
+            value = str(normalized.get(name) or "").strip().strip("\\/ ")
+            value = value.replace("\\", "/").rstrip("/").split("/")[-1]
+            if value and value not in preferred_versions:
+                preferred_versions.append(value)
 
     for root in _windows_sdk_root_candidates(environment):
         include_root, lib_root = root / "Include", root / "Lib"
         versions = list(preferred_versions)
-        try:
-            available = [
-                entry.name for entry in include_root.iterdir()
-                if entry.is_dir() and entry.name not in versions
-                and re.fullmatch(r"\d+(?:\.\d+){3}", entry.name)
-            ]
-        except OSError:
-            available = []
-        versions.extend(sorted(available, key=_windows_sdk_version_sort_key, reverse=True))
+        if not required_version:
+            try:
+                available = [
+                    entry.name for entry in include_root.iterdir()
+                    if entry.is_dir() and entry.name not in versions
+                    and re.fullmatch(r"\d+(?:\.\d+){3}", entry.name)
+                ]
+            except OSError:
+                available = []
+            versions.extend(sorted(available, key=_windows_sdk_version_sort_key, reverse=True))
 
         for version in versions:
             version_include, version_lib = include_root / version, lib_root / version
@@ -705,9 +738,12 @@ def _append_environment_paths(environment: Dict[str, str], name: str, paths: Seq
         environment[key] = os.pathsep.join(([current] if current else []) + additions)
 
 
-def _prepare_windows_sdk_environment(environment: Dict[str, str]) -> Dict[str, str]:
-    """Rebuild SDK variables and compiler paths when VsDevCmd omits SDK values."""
-    detected = _windows_sdk_installation(environment)
+def _prepare_windows_sdk_environment(
+    environment: Dict[str, str],
+    required_version: Optional[str] = None,
+) -> Dict[str, str]:
+    """Rebuild SDK variables; target profiles may pin the exact SDK version."""
+    detected = _windows_sdk_installation(environment, required_version)
     if detected is None:
         return environment
     root, version = detected
@@ -805,8 +841,9 @@ def _msvc_toolset_root(
 def _complete_msvc_environment(
     environment: Dict[str, str],
     installation: Optional[Path] = None,
+    required_sdk_version: Optional[str] = None,
 ) -> Tuple[Dict[str, str], Optional[Tuple[Path, str]]]:
-    """Fill MSVC and SDK variables from detected installations without changing global settings."""
+    """Fill MSVC and the selected target's exact SDK without changing global settings."""
     completed = dict(environment)
 
     toolset_root = _msvc_toolset_root(completed, installation)
@@ -827,8 +864,8 @@ def _complete_msvc_environment(
             [toolset_root / "lib" / "x64", toolset_root / "atlmfc" / "lib" / "x64"],
         )
 
-    completed = _prepare_windows_sdk_environment(completed)
-    sdk = _windows_sdk_installation(completed)
+    completed = _prepare_windows_sdk_environment(completed, required_sdk_version)
+    sdk = _windows_sdk_installation(completed, required_sdk_version)
     if sdk is None:
         return completed, None
 
@@ -859,9 +896,10 @@ def _complete_msvc_environment(
 def _msvc_environment_issues(
     environment: Dict[str, str],
     installation: Optional[Path] = None,
+    required_sdk_version: Optional[str] = None,
 ) -> Tuple[List[str], Dict[str, str]]:
-    """Explain exactly which MSVC/SDK prerequisites are absent from a developer environment."""
-    completed, sdk = _complete_msvc_environment(environment, installation)
+    """Explain which compiler/SDK prerequisites are absent for this target profile."""
+    completed, sdk = _complete_msvc_environment(environment, installation, required_sdk_version)
     normalized = {str(key).casefold(): value for key, value in completed.items()}
     search_path = normalized.get("path", "")
     issues = [
@@ -915,6 +953,39 @@ def _msvc_environment_missing(status: Dict[str, Any]) -> List[str]:
     return missing
 
 
+def _windows_batch_parent_environment() -> Dict[str, str]:
+    """Repair quote-corrupted PATH entries before Visual Studio batch scripts parse them."""
+    environment = dict(os.environ)
+    path_key = next((key for key in environment if str(key).casefold() == "path"), "PATH")
+    value = str(environment.get(path_key) or "")
+    if '"' in value:
+        # Windows PATH entries are semicolon-delimited and must not contain shell
+        # quoting. A stray quote in one entry can break nested VS batch conditionals.
+        environment[path_key] = ";".join(
+            part.strip().replace('"', "")
+            for part in value.split(";")
+            if part.strip().replace('"', "")
+        )
+    return environment
+
+
+def _visual_studio_major_from_installation(installation: Path) -> Optional[int]:
+    """Read the Visual Studio generation from its standard installation path."""
+    parts = [part.casefold() for part in installation.parts]
+    for index, part in enumerate(parts[:-1]):
+        if part == "microsoft visual studio":
+            family = parts[index + 1]
+            if family == "2022":
+                return 17
+            if family in {"2026", "18"}:
+                return 18
+            if family == "2019":
+                return 16
+            if family.isdigit():
+                return int(family)
+    return None
+
+
 def _windows_batch_environment_command(
     script: Path,
     arguments: Sequence[str] = (),
@@ -946,20 +1017,52 @@ def _windows_batch_environment_command(
     ]
 
 
-def load_msvc_environment(runner: "Runner") -> bool:
-    """Load an existing MSVC compiler, linker and Windows SDK without reinstalling."""
+def load_msvc_environment(runner: "Runner", target: Optional[str] = None) -> bool:
+    """Load the exact Visual Studio generation and Windows SDK required by a target."""
     if os.name != "nt":
         return False
+    if target is not None and target not in WINDOWS_TOOLCHAIN_PROFILES:
+        raise BuildError("Unknown Windows toolchain profile: " + target)
 
-    current = _prepare_windows_sdk_environment(dict(os.environ))
-    current_issues, current_environment = _msvc_environment_issues(current)
+    profile = WINDOWS_TOOLCHAIN_PROFILES.get(target) if target else None
+    required_sdk_version = profile["sdk_version"] if profile else None
+    required_vs_major = profile["visual_studio_major"] if profile else None
+
+    current = _prepare_windows_sdk_environment(dict(os.environ), required_sdk_version)
+    current_issues, current_environment = _msvc_environment_issues(
+        current, required_sdk_version=required_sdk_version
+    )
+    if profile and not current_issues:
+        normalized = {str(key).casefold(): value for key, value in current_environment.items()}
+        installation_root = normalized.get("vsinstalldir") or normalized.get("vcinstalldir")
+        detected_major = (
+            _visual_studio_major_from_installation(Path(str(installation_root)))
+            if installation_root else None
+        )
+        if detected_major != required_vs_major:
+            current_issues = [
+                profile["visual_studio_label"] + " is required, but the active developer "
+                "environment does not identify that Visual Studio generation."
+            ]
     if not current_issues:
         os.environ.update(current_environment)
         runner.msvc_diagnostics = []
         return True
 
     last_issues = current_issues
-    for installation in _visual_studio_installations():
+    installations = _visual_studio_installations()
+    if profile:
+        installations = [
+            installation for installation in installations
+            if _visual_studio_major_from_installation(installation) == required_vs_major
+        ]
+        if not installations:
+            last_issues = [
+                profile["visual_studio_label"] + " with Windows SDK "
+                + required_sdk_version + " was not found. WinLook will not substitute "
+                "the other target's compiler or SDK."
+            ]
+    for installation in installations:
         scripts = (
             installation / "Common7" / "Tools" / "VsDevCmd.bat",
             installation / "VC" / "Auxiliary" / "Build" / "vcvars64.bat",
@@ -977,6 +1080,7 @@ def load_msvc_environment(runner: "Runner") -> bool:
                 result = run_subprocess(
                     command,
                     text=True, capture_output=True, check=False,
+                    env=_windows_batch_parent_environment(),
                 )
             except OSError as exc:
                 last_issues = ["Could not run " + str(script) + ": " + str(exc)]
@@ -994,8 +1098,10 @@ def load_msvc_environment(runner: "Runner") -> bool:
                     key, value = line.split("=", 1)
                     if key:
                         environment[key] = value
-            environment = _prepare_windows_sdk_environment(environment)
-            issues, completed_environment = _msvc_environment_issues(environment, installation)
+            environment = _prepare_windows_sdk_environment(environment, required_sdk_version)
+            issues, completed_environment = _msvc_environment_issues(
+                environment, installation, required_sdk_version
+            )
             if not issues:
                 # Do not contaminate this process with a partial environment.
                 os.environ.update(completed_environment)
@@ -1609,9 +1715,11 @@ def _install_visual_studio_build_tools(runner: "Runner") -> None:
 
 
 def _install_or_modify_visual_studio(
-    runner: "Runner", installations: Optional[List[Path]] = None
+    runner: "Runner",
+    installations: Optional[List[Path]] = None,
+    target: Optional[str] = None,
 ) -> None:
-    """Modify an existing VS instance; install Build Tools only when none exist."""
+    """Modify only the Visual Studio generation selected for this target."""
     installations = installations if installations is not None else _visual_studio_installations()
     if installations:
         # Prefer a Build Tools instance if one exists; never create another copy
@@ -1632,18 +1740,29 @@ def _install_or_modify_visual_studio(
             [
                 "modify", "--installPath", str(selected),
                 "--channelId", channel_id,
-            ] + _visual_studio_workload_arguments() + ["--includeRecommended", "--quiet", "--norestart"],
+            ] + _visual_studio_workload_arguments(target) + ["--includeRecommended", "--quiet", "--norestart"],
         )
         return
 
+    if target == "win11":
+        raise BuildError(
+            "Win11 requires Visual Studio 18 and Windows SDK "
+            + WINDOWS_TOOLCHAIN_PROFILES["win11"]["sdk_version"]
+            + ". Install that toolchain through Visual Studio Installer; WinLook will not "
+            "silently substitute Visual Studio 2022 or the Windows 10 SDK."
+        )
     _install_visual_studio_build_tools(runner)
 
 
-def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
-    """Prepare the MSVC linker/Windows SDK required by the Rust/WinUI targets."""
+def ensure_windows_linker(
+    runner: "Runner",
+    apply: bool = True,
+    target: Optional[str] = None,
+) -> None:
+    """Prepare the target-specific MSVC compiler and Windows SDK."""
     if os.name != "nt":
         return
-    if load_msvc_environment(runner):
+    if load_msvc_environment(runner, target):
         return
 
     gcc = probe_mingw_gcc()
@@ -1654,9 +1773,21 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
         )
 
     installations = _visual_studio_installations()
+    if target in WINDOWS_TOOLCHAIN_PROFILES:
+        profile = WINDOWS_TOOLCHAIN_PROFILES[target]
+        installations = [
+            installation for installation in installations
+            if _visual_studio_major_from_installation(installation) == profile["visual_studio_major"]
+        ]
+        if not installations and target == "win11":
+            raise BuildError(
+                profile["visual_studio_label"] + " and Windows SDK " + profile["sdk_version"]
+                + " are required for the Win11 target. No matching Visual Studio instance "
+                "was found; install that profile rather than reusing the Win10 toolchain."
+            )
     if not apply:
         if installations:
-            print("Plan: add the C++ workload to the existing Visual Studio installation.")
+            print("Plan: add the C++ workload and target SDK to the matching Visual Studio installation.")
             if not _has_buildtools_instance(installations):
                 print("If modifying that instance fails, install the standalone Build Tools SKU once.")
         else:
@@ -1667,7 +1798,7 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
     had_buildtools = _has_buildtools_instance(installations)
     standalone_install_attempted = not had_installations
     try:
-        _install_or_modify_visual_studio(runner, installations)
+        _install_or_modify_visual_studio(runner, installations, target)
     except BuildError as exc:
         message = str(exc).lower()
         if had_buildtools or not had_installations or "declined" in message or "cancelled" in message:
@@ -1687,7 +1818,7 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
             "can be used. Restart Windows, then rerun the build."
         )
 
-    if load_msvc_environment(runner):
+    if load_msvc_environment(runner, target):
         return
 
     # A non-BuildTools VS edition can be present without the C++ workload.
@@ -1704,10 +1835,16 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
         print("Installing the standalone Build Tools SKU once as a fallback.")
         _install_visual_studio_build_tools(runner)
         standalone_install_attempted = True
-        if load_msvc_environment(runner):
+        if load_msvc_environment(runner, target):
             return
 
-    diagnostics = runner.msvc_diagnostics or _msvc_environment_issues(dict(os.environ))[0]
+    diagnostics = runner.msvc_diagnostics or _msvc_environment_issues(
+        dict(os.environ),
+        required_sdk_version=(
+            WINDOWS_TOOLCHAIN_PROFILES[target]["sdk_version"]
+            if target in WINDOWS_TOOLCHAIN_PROFILES else None
+        ),
+    )[0]
     detail = ""
     if diagnostics:
         detail = "\n\nToolchain detection details:\n - " + "\n - ".join(diagnostics)
@@ -2254,15 +2391,13 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
 
 
 def ui_verify(runner: Runner) -> None:
-    require_windows("Windows Reactor / WinUI 3")
-    ensure_windows_linker(runner)
     if not check_ui_sources(runner.root):
         raise BuildError(
             "Manager UI manifests are not present. Merge the WinToys Manager UI implementation first."
         )
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Manager UI tests", ["cargo", "test", "-p", "wl_ui", "--all-targets"])
-    runner.run("Manager UI Clippy", ["cargo", "clippy", "-p", "wl_ui", "--all-targets", "--", "-D", "warnings"])
+    runner.run("Platform-neutral Manager UI model tests", ["cargo", "test", "-p", "wl_ui", "--all-targets"])
+    runner.run("Platform-neutral Manager UI model Clippy", ["cargo", "clippy", "-p", "wl_ui", "--all-targets", "--", "-D", "warnings"])
 
 
 def build_windows_app(runner: Runner, target: str) -> None:
@@ -2270,7 +2405,7 @@ def build_windows_app(runner: Runner, target: str) -> None:
         raise BuildError("Unknown modern Windows application target: " + target)
     require_manifest(runner.root, "rust/" + target + "/Cargo.toml", "Windows " + target + " application")
     require_windows(target + " application")
-    ensure_windows_linker(runner)
+    ensure_windows_linker(runner, target=target)
     require_command("cargo", "Install Rust through https://rustup.rs/.")
     package, target_dir = WINDOWS_APPS[target]
     runner.run(
