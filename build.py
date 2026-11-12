@@ -162,6 +162,10 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
         "RUSTUP_TOOLCHAIN": RUST_TOOLCHAIN,
         "PATH": local_bin + os.pathsep + os.environ.get("PATH", ""),
     })
+    append_github_environment("CARGO_HOME", str(paths["cargo_home"]))
+    append_github_environment("RUSTUP_HOME", str(paths["rustup_home"]))
+    append_github_environment("RUSTUP_TOOLCHAIN", RUST_TOOLCHAIN)
+    append_github_path(local_bin)
     version = subprocess.run(
         [str(paths["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")), "--version"],
         cwd=str(runner.root), env=rust_environment(runner.root), text=True,
