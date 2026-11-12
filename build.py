@@ -206,14 +206,14 @@ def _rustup_executable(root: Path) -> Path:
 
 def _probe_rustup_toolchain(rustup: str, toolchain: str, env: Optional[Dict[str, str]] = None) -> Tuple[bool, str]:
     """Check the requested compiler through a specific rustup installation."""
-    rustc = subprocess.run(
+    rustc = run_subprocess(
         [rustup, "run", toolchain, "rustc", "--version"],
         text=True, capture_output=True, check=False, env=env,
     )
     output = (rustc.stdout or "").strip()
     if rustc.returncode != 0 or not output.startswith("rustc " + toolchain + " "):
         return False, output or (rustc.stderr or "").strip()
-    cargo = subprocess.run(
+    cargo = run_subprocess(
         [rustup, "run", toolchain, "cargo", "--version"],
         text=True, capture_output=True, check=False, env=env,
     )
@@ -228,7 +228,7 @@ def _probe_direct_rust(toolchain: str) -> Tuple[bool, str]:
     cargo = command_path("cargo")
     if not rustc or not cargo:
         return False, ""
-    result = subprocess.run([rustc, "--version"], text=True, capture_output=True, check=False)
+    result = run_subprocess([rustc, "--version"], text=True, capture_output=True, check=False)
     output = (result.stdout or "").strip()
     if result.returncode == 0 and output.startswith("rustc " + toolchain + " "):
         return True, output
@@ -237,7 +237,7 @@ def _probe_direct_rust(toolchain: str) -> Tuple[bool, str]:
 
 def _installed_rust_components(rustup: str, toolchain: str, env: Optional[Dict[str, str]] = None) -> set:
     """Return the installed rustfmt/clippy components for one toolchain."""
-    result = subprocess.run(
+    result = run_subprocess(
         [rustup, "component", "list", "--installed", "--toolchain", toolchain],
         text=True, capture_output=True, check=False, env=env,
     )
@@ -395,7 +395,7 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
     if not _select_project_rustup(runner, local_rustup, install_if_missing=True):
         raise BuildError("Could not install or verify project-local Rust " + RUST_TOOLCHAIN + ".")
     version_bin = paths["cargo_home"] / "bin" / ("rustc.exe" if os.name == "nt" else "rustc")
-    version = subprocess.run(
+    version = run_subprocess(
         [str(version_bin), "--version"], cwd=str(runner.root),
         env=runner.rust_env, text=True, capture_output=True, check=False,
     )
@@ -427,7 +427,7 @@ def _visual_studio_installations() -> List[Path]:
     installations: List[Path] = []
     vswhere = _vswhere_path()
     if vswhere is not None:
-        result = subprocess.run(
+        result = run_subprocess(
             [str(vswhere), "-all", "-products", "*", "-property", "installationPath"],
             text=True, capture_output=True, check=False,
         )
@@ -490,7 +490,7 @@ def _visual_studio_channel_id(installation: Path) -> str:
             "or repair the instance through Visual Studio Installer."
         )
     try:
-        result = subprocess.run(
+        result = run_subprocess(
             [str(vswhere), "-all", "-products", "*", "-format", "json"],
             text=True, capture_output=True, check=False,
         )
@@ -613,7 +613,7 @@ def load_msvc_environment(runner: "Runner") -> bool:
             arguments = " -no_logo -arch=x64 -host_arch=x64" if script.name.lower() == "vsdevcmd.bat" else ""
             command = 'call "' + str(script) + '"' + arguments + " && set"
             try:
-                result = subprocess.run(
+                result = run_subprocess(
                     ["cmd.exe", "/d", "/c", command],
                     text=True, capture_output=True, check=False,
                 )
@@ -641,7 +641,7 @@ def probe_mingw_gcc() -> Optional[Dict[str, str]]:
     if not gcc:
         return None
     try:
-        result = subprocess.run([gcc, "-dumpmachine"], text=True, capture_output=True, check=False)
+        result = run_subprocess([gcc, "-dumpmachine"], text=True, capture_output=True, check=False)
     except OSError:
         return None
     target = (result.stdout or "").strip()
@@ -1059,7 +1059,7 @@ def _verify_microsoft_authenticode(path: Path, powershell: str) -> str:
         "if ($subject -notmatch 'Microsoft Corporation') { Write-Error ('Unexpected signer: ' + $subject); exit 3 }; "
         "Write-Output $subject"
     )
-    result = subprocess.run(
+    result = run_subprocess(
         [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
         text=True, capture_output=True, check=False, env=env,
     )
@@ -1328,6 +1328,36 @@ class BuildError(RuntimeError):
     """An actionable build or toolchain error."""
 
 
+_ALL_DEBUG_ACTIVE = False
+
+
+def run_subprocess(command: Any, *args: Any, **kwargs: Any) -> subprocess.CompletedProcess:
+    """Run a child process and record its captured output during --all-debug."""
+    result = subprocess.run(command, *args, **kwargs)
+    if _ALL_DEBUG_ACTIVE:
+        command_parts = (
+            [str(part) for part in command]
+            if isinstance(command, (list, tuple))
+            else [str(command)]
+        )
+        rendered = (
+            subprocess.list2cmdline(command_parts)
+            if os.name == "nt"
+            else shlex.join(command_parts)
+        )
+        print("[SUBPROCESS] " + rendered + " (exit " + str(result.returncode) + ")")
+        for stream_name in ("stdout", "stderr"):
+            value = getattr(result, stream_name, None)
+            if not value:
+                continue
+            if isinstance(value, bytes):
+                value = value.decode("utf-8", errors="replace")
+            output = str(value)
+            print("[SUBPROCESS " + stream_name.upper() + "]")
+            print(output, end="" if output.endswith("\n") else "\n")
+    return result
+
+
 @dataclass
 class Runner:
     root: Path = ROOT
@@ -1363,14 +1393,14 @@ class Runner:
             process_env.setdefault("RUSTC_WRAPPER", command_path("sccache") or "sccache")
         rendered = subprocess.list2cmdline(args) if os.name == "nt" else shlex.join(args)
         print("\n==> " + label)
-        if self.debug:
+        if self.debug and not self.all_debug:
             print("$ " + rendered)
         if self.dry_run:
             return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
         try:
             # Capture child output so normal builds stay readable. Full output is
             # replayed only in --all-debug mode; failures always retain a useful tail.
-            result = subprocess.run(
+            result = run_subprocess(
                 args, cwd=str(location), env=process_env, check=False, text=True,
                 capture_output=True,
             )
@@ -1379,13 +1409,6 @@ class Runner:
                 "Required command was not found: " + args[0]
                 + ". Run python build.py doctor for toolchain guidance."
             ) from exc
-        if self.all_debug:
-            if result.stdout:
-                print("[COMMAND STDOUT] " + label)
-                print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
-            if result.stderr:
-                print("[COMMAND STDERR] " + label, file=sys.stderr)
-                print(result.stderr, end="" if result.stderr.endswith("\n") else "\n", file=sys.stderr)
         if result.returncode != 0:
             details = []
             if result.stderr:
@@ -2296,6 +2319,9 @@ def run_with_all_debug_log(root: Path, action: Callable[[], int]) -> int:
     except OSError as exc:
         raise BuildError("Could not create the requested debug log at " + str(destination) + ": " + str(exc)) from exc
 
+    global _ALL_DEBUG_ACTIVE
+    previous_debug_state = _ALL_DEBUG_ACTIVE
+    _ALL_DEBUG_ACTIVE = True
     try:
         with log_file:
             stdout = TeeTextIO(sys.stdout, log_file)
@@ -2310,6 +2336,8 @@ def run_with_all_debug_log(root: Path, action: Callable[[], int]) -> int:
                 return result
     except OSError as exc:
         raise BuildError("Could not write the requested debug log at " + str(destination) + ": " + str(exc)) from exc
+    finally:
+        _ALL_DEBUG_ACTIVE = previous_debug_state
 
 
 def _run_action(args: argparse.Namespace, runner: Runner) -> int:
