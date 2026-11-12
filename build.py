@@ -220,7 +220,7 @@ def load_msvc_environment(runner: "Runner") -> bool:
 
     try:
         import winreg
-        registry_path = r"SOFTWARE\\Microsoft\\VisualStudio\\Setup\\Instances"
+        registry_path = r"SOFTWARE\Microsoft\VisualStudio\Setup\Instances"
         for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
             try:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, registry_path, 0, winreg.KEY_READ | view) as root_key:
