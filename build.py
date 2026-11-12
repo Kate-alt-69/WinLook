@@ -43,6 +43,10 @@ RUSTUP_DIST = "https://static.rust-lang.org/rustup/dist"
 CMAKE_WINGET_ID = "Kitware.CMake"
 VS_BUILD_TOOLS_WINGET_ID = "Microsoft.VisualStudio.2022.BuildTools"
 VS_BUILD_TOOLS_BOOTSTRAPPER_URL = "https://aka.ms/vs/17/release/vs_buildtools.exe"
+VS_REQUIRED_COMPONENT_IDS = (
+    "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+    "Microsoft.VisualStudio.Component.Windows10SDK.19041",
+)
 ACTIONLINT_VERSION = "1.7.12"
 ACTIONLINT_URL = (
     "https://github.com/rhysd/actionlint/releases/download/v"
@@ -230,6 +234,47 @@ def _probe_direct_rust(toolchain: str) -> Tuple[bool, str]:
     return False, output
 
 
+def _installed_rust_components(rustup: str, toolchain: str, env: Optional[Dict[str, str]] = None) -> set:
+    """Return the installed rustfmt/clippy components for one toolchain."""
+    result = subprocess.run(
+        [rustup, "component", "list", "--installed", "--toolchain", toolchain],
+        text=True, capture_output=True, check=False, env=env,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "rustup returned no diagnostic").strip()
+        raise BuildError("Could not inspect Rust components for " + toolchain + ": " + detail[-2000:])
+    installed = set()
+    for line in (result.stdout or "").splitlines():
+        entry = line.strip()
+        for component in ("rustfmt", "clippy"):
+            if entry == component or entry.startswith(component + "-"):
+                installed.add(component)
+    return installed
+
+
+def _ensure_rust_support_components(
+    runner: "Runner",
+    rustup: str,
+    env: Optional[Dict[str, str]] = None,
+    apply: bool = True,
+) -> None:
+    """Ensure the selected compiler can run cargo fmt and cargo clippy."""
+    required = ("rustfmt", "clippy")
+    installed = _installed_rust_components(rustup, RUST_TOOLCHAIN, env)
+    missing = [component for component in required if component not in installed]
+    if not missing:
+        return
+    if not apply:
+        print("Rust " + RUST_TOOLCHAIN + " is missing support components: " + ", ".join(missing) + ".")
+        print("Plan: add only the missing components to this toolchain; the rustup default stays unchanged.")
+        return
+    runner.run(
+        "Install missing Rust support components for " + RUST_TOOLCHAIN,
+        [rustup, "component", "add", "--toolchain", RUST_TOOLCHAIN, *missing],
+        env=env,
+    )
+
+
 def _select_global_rustup(runner: "Runner", rustup: str, install_if_missing: bool) -> bool:
     """Use the user's existing rustup home and preserve its default toolchain."""
     available, version = _probe_rustup_toolchain(rustup, RUST_TOOLCHAIN)
@@ -291,6 +336,7 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
     """
     global_rustup = command_path("rustup")
     if global_rustup and _select_global_rustup(runner, global_rustup, install_if_missing=False):
+        _ensure_rust_support_components(runner, global_rustup, apply=apply)
         return True
 
     direct_ok, direct_version = _probe_direct_rust(RUST_TOOLCHAIN)
@@ -301,6 +347,9 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
 
     local_rustup = _rustup_executable(runner.root)
     if local_rustup.is_file() and _select_project_rustup(runner, local_rustup, install_if_missing=False):
+        _ensure_rust_support_components(
+            runner, str(local_rustup), env=rust_environment(runner.root), apply=apply
+        )
         return True
 
     if not apply:
@@ -314,9 +363,13 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
     # When rustup is already installed, use its CLI to add a side-by-side toolchain.
     # This is much smaller and avoids downloading a second rustup installer.
     if global_rustup and _select_global_rustup(runner, global_rustup, install_if_missing=True):
+        _ensure_rust_support_components(runner, global_rustup, apply=True)
         return True
 
     if local_rustup.is_file() and _select_project_rustup(runner, local_rustup, install_if_missing=True):
+        _ensure_rust_support_components(
+            runner, str(local_rustup), env=rust_environment(runner.root), apply=True
+        )
         return True
 
     paths = rust_paths(runner.root)
@@ -418,6 +471,68 @@ def _visual_studio_installations() -> List[Path]:
                 if candidate.is_dir() and candidate not in installations:
                     installations.append(candidate)
     return installations
+
+
+
+def _windows_installation_path_key(value: Any) -> str:
+    """Normalize a Windows installation path for case-insensitive comparison."""
+    return str(value).replace("/", "\\").rstrip("\\").casefold()
+
+
+def _visual_studio_channel_id(installation: Path) -> str:
+    """Find the selected VS instance's exact channel ID; never guess for modify."""
+    vswhere = _vswhere_path()
+    if vswhere is None:
+        raise BuildError(
+            "vswhere.exe is required to read the Visual Studio channel ID for "
+            + str(installation) + ". Restore the Visual Studio Installer metadata "
+            "or repair the instance through Visual Studio Installer."
+        )
+    try:
+        result = subprocess.run(
+            [str(vswhere), "-all", "-products", "*", "-format", "json"],
+            text=True, capture_output=True, check=False,
+        )
+    except OSError as exc:
+        raise BuildError("Could not run vswhere.exe to identify the Visual Studio channel: " + str(exc)) from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "vswhere returned no diagnostic").strip()
+        raise BuildError("vswhere.exe could not enumerate Visual Studio channels: " + detail[-2000:])
+    try:
+        instances = json.loads(result.stdout or "[]")
+    except (TypeError, ValueError) as exc:
+        raise BuildError("vswhere.exe returned invalid JSON while reading Visual Studio channel metadata.") from exc
+    if isinstance(instances, dict):
+        instances = [instances]
+    if not isinstance(instances, list):
+        raise BuildError("vswhere.exe returned an unexpected Visual Studio instance list.")
+    requested_path = _windows_installation_path_key(installation)
+    for instance in instances:
+        if not isinstance(instance, dict):
+            continue
+        candidate = instance.get("installationPath")
+        if not candidate or _windows_installation_path_key(candidate) != requested_path:
+            continue
+        channel_id = instance.get("channelId") or instance.get("installedChannelId")
+        if channel_id:
+            return str(channel_id)
+        raise BuildError(
+            "vswhere.exe found the Visual Studio instance at " + str(installation)
+            + " but did not report its channelId. Repair the Visual Studio Installer metadata "
+            "before retrying the build."
+        )
+    raise BuildError(
+        "vswhere.exe did not return the selected Visual Studio instance at "
+        + str(installation) + ". Refusing to guess a channel ID for setup.exe modify."
+    )
+
+
+def _visual_studio_workload_arguments() -> List[str]:
+    """Explicitly request the compiler and SDK required by the current WinUI app."""
+    arguments = ["--add", "Microsoft.VisualStudio.Workload.VCTools"]
+    for component_id in VS_REQUIRED_COMPONENT_IDS:
+        arguments.extend(["--add", component_id])
+    return arguments
 
 
 def _vs_installer_path() -> Optional[Path]:
@@ -842,7 +957,12 @@ def _install_visual_studio_build_tools(runner: "Runner") -> None:
                 winget, "install", "--id", VS_BUILD_TOOLS_WINGET_ID, "--exact",
                 "--accept-package-agreements", "--accept-source-agreements",
                 "--override",
-                "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended",
+                " ".join([
+                    "--wait --passive --norestart",
+                    "--add Microsoft.VisualStudio.Workload.VCTools",
+                    *["--add " + component_id for component_id in VS_REQUIRED_COMPONENT_IDS],
+                    "--includeRecommended",
+                ]),
             ],
         )
         return
@@ -860,8 +980,11 @@ def _install_visual_studio_build_tools(runner: "Runner") -> None:
             "--quiet", "--wait", "--norestart",
             "--installPath", str(install_path),
             "--add", "Microsoft.VisualStudio.Workload.VCTools",
-            "--includeRecommended",
-        ],
+        ] + [
+            value
+            for component_id in VS_REQUIRED_COMPONENT_IDS
+            for value in ("--add", component_id)
+        ] + ["--includeRecommended"],
         operation="Install Visual Studio 2022 C++ Build Tools",
     )
 
@@ -883,14 +1006,14 @@ def _install_or_modify_visual_studio(
                 + ", but Visual Studio Installer could not be located. "
                 "The existing instance will not be reinstalled."
             )
+        channel_id = _visual_studio_channel_id(selected)
         run_visual_studio_setup(
             runner,
             installer,
             [
                 "modify", "--installPath", str(selected),
-                "--add", "Microsoft.VisualStudio.Workload.VCTools",
-                "--includeRecommended", "--quiet", "--norestart",
-            ],
+                "--channelId", channel_id,
+            ] + _visual_studio_workload_arguments() + ["--includeRecommended", "--quiet", "--norestart"],
         )
         return
 

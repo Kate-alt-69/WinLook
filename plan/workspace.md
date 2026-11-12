@@ -256,3 +256,20 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Each Windows pass packages the executable and validates the ZIP structure and non-empty executable; the final package is uploaded as a workflow artifact.
 - `doctor --strict` now fails when a Win10/Win11 project exists on Windows but the complete MSVC compiler/linker/resource-compiler + Windows SDK environment cannot be loaded. It uses explicit executable paths for MSVC probes so incomplete `PATHEXT` settings cannot hide valid tool binaries. The SDK environment checker normalizes copied environment-variable keys so Windows' case-insensitive semantics are preserved.
 - The workflow validates the preinstalled hosted-runner toolchain and actual builds; it does not test the interactive Visual Studio installer/UAC flow or prove runtime launch on a clean desktop. Hosted results remain pending until the new workflow completes.
+
+
+
+## Visual Studio modify channel and explicit component selection — 2026-11-12
+
+- The local Win10 build log showed that the Visual Studio 2022 Build Tools instance accepted a quiet `setup.exe modify` operation with exit code 0, but the following environment probe still could not find `cl.exe`, `link.exe`, `rc.exe` or a usable Windows SDK.
+- The modify invocation omitted the required `--channelId` argument. WinLook now reads the exact selected instance's `channelId` from `vswhere -format json`, matching the installation path case-insensitively. If metadata is missing or cannot identify the instance/channel, it fails with a specific diagnostic rather than guessing.
+- The C++ setup request explicitly adds `Microsoft.VisualStudio.Component.VC.Tools.x86.x64` and `Microsoft.VisualStudio.Component.Windows10SDK.19041` alongside `Microsoft.VisualStudio.Workload.VCTools`, rather than relying on optional/recommended workload defaults.
+- The Windows stress workflow now runs the build-runner Python regression suite on both hosted Windows matrix jobs before checking the preinstalled MSVC environment and performing clean/incremental builds.
+- Regression tests cover exact channel discovery, missing metadata, setup modify arguments and explicit compiler/SDK components. Actual UAC/installer execution still requires a Windows interactive build.
+
+
+## Rust verification components on reused toolchains — 2026-11-12
+
+- Windows CI reused the global Rust 1.95.0 compiler correctly, but the existing toolchain did not contain `cargo-fmt`; UI verification stopped before Clippy.
+- Rust toolchain selection now audits the selected 1.95.0 installation for `rustfmt` and `clippy`. It adds only missing components through that explicit toolchain and leaves the configured rustup default untouched. Read-only setup reports missing components and the planned action without installing them.
+- Regression coverage exercises the already-installed compiler path with and without the required support components.
