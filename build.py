@@ -218,6 +218,26 @@ def load_msvc_environment(runner: "Runner") -> bool:
                 if candidate.is_dir() and candidate not in installations:
                     installations.append(candidate)
 
+    try:
+        import winreg
+        registry_path = r"SOFTWARE\\Microsoft\\VisualStudio\\Setup\\Instances"
+        for view in (winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY):
+            try:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, registry_path, 0, winreg.KEY_READ | view) as root_key:
+                    for index in range(winreg.QueryInfoKey(root_key)[0]):
+                        try:
+                            with winreg.OpenKey(root_key, winreg.EnumKey(root_key, index)) as instance:
+                                value, _ = winreg.QueryValueEx(instance, "installationPath")
+                                candidate = Path(value)
+                                if candidate.is_dir() and candidate not in installations:
+                                    installations.append(candidate)
+                        except OSError:
+                            continue
+            except OSError:
+                continue
+    except ImportError:
+        pass
+
     roots = [
         Path(os.environ.get("ProgramFiles", r"C:\Program Files")),
         Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")),
