@@ -100,9 +100,28 @@ class BuildHelpersTests(unittest.TestCase):
                         build._install_or_modify_visual_studio(runner)
                     command.assert_not_called()
 
+    def test_existing_visual_studio_instance_uses_setup_modify_without_bootstrapper_wait(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        installation = Path("C:/Program Files/Microsoft Visual Studio/2022/Enterprise")
+        setup = Path("C:/Program Files (x86)/Microsoft Visual Studio/Installer/setup.exe")
+        with mock.patch.object(build, "_visual_studio_installations", return_value=[installation]):
+            with mock.patch.object(build, "_vs_installer_path", return_value=setup):
+                with mock.patch.object(build, "command_path") as command_path:
+                    with mock.patch.object(runner, "run") as run:
+                        build._install_or_modify_visual_studio(runner)
+        command = run.call_args.args[1]
+        self.assertEqual(command[0], str(setup))
+        self.assertEqual(command[1], "modify")
+        self.assertIn("--installPath", command)
+        self.assertIn("--add", command)
+        self.assertIn("--passive", command)
+        self.assertIn("--norestart", command)
+        self.assertNotIn("--wait", command)
+        command_path.assert_not_called()
+
     def test_help_colorization_uses_ansi_and_respects_no_color(self):
         rendered = build.colorize_help("usage: winlook [options]\\n  --help  Show help\\n")
-        self.assertIn("\\x1b[", rendered)
+        self.assertIn("\x1b[", rendered)
         with mock.patch.dict("os.environ", {"NO_COLOR": "1"}):
             self.assertFalse(build.color_enabled())
 
