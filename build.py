@@ -802,31 +802,41 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
             print("Plan: install Visual Studio 2022 Build Tools through WinGet.")
         return
 
+    had_installations = bool(installations)
     had_buildtools = _has_buildtools_instance(installations)
+    standalone_install_attempted = not had_installations
     try:
         _install_or_modify_visual_studio(runner, installations)
     except BuildError as exc:
-        if had_buildtools:
-            raise BuildError(
-                "The existing Visual Studio Build Tools instance could not be modified: " + str(exc)
-            ) from exc
+        message = str(exc).lower()
+        if had_buildtools or not had_installations or "declined" in message or "cancelled" in message:
+            # Do not retry a failed standalone installation, a Build Tools
+            # instance, or an operation the user explicitly cancelled.
+            raise
         print(
             "Existing Visual Studio modification failed; falling back to the standalone "
-            "Build Tools SKU instead of repeatedly retrying the same instance."
+            "Build Tools SKU once instead of retrying the same instance."
         )
         _install_visual_studio_build_tools(runner)
+        standalone_install_attempted = True
 
     if load_msvc_environment(runner):
         return
 
     # A non-BuildTools VS edition can be present without the C++ workload.
-    # If its modify operation did not produce a usable toolchain, create one
-    # standalone Build Tools instance. Future runs will discover and reuse it.
+    # If modification returned success but produced no usable environment,
+    # install the standalone Build Tools SKU once. Never loop after that attempt.
     current_installations = _visual_studio_installations()
-    if not had_buildtools and not _has_buildtools_instance(current_installations):
+    if (
+        had_installations
+        and not had_buildtools
+        and not standalone_install_attempted
+        and not _has_buildtools_instance(current_installations)
+    ):
         print("The existing Visual Studio instance is still missing the C++ toolchain.")
         print("Installing the standalone Build Tools SKU once as a fallback.")
         _install_visual_studio_build_tools(runner)
+        standalone_install_attempted = True
         if load_msvc_environment(runner):
             return
 
