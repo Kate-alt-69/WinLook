@@ -808,6 +808,19 @@ def check_windows_app(root: Path, target: str) -> bool:
 
 
 def target_available(root: Path, target: str) -> Tuple[bool, str]:
+    if target.startswith("windows."):
+        version = target[len("windows."):]
+        if version not in WINDOWS_GENERATIONS:
+            raise ValueError("Unknown build target: " + target)
+        label, directory, toolchain = WINDOWS_GENERATIONS[version]
+        if toolchain == "msvc":
+            path = "rust/" + directory + "/Cargo.toml"
+        elif toolchain == "watcom":
+            path = "C/" + directory + "/Makefile"
+        else:
+            path = "C/" + directory + "/CMakeLists.txt"
+        ready = project_has_manifest(root, path)
+        return ready, path + (" found" if ready else " is not present")
     if target == "libraries":
         ready = project_has_manifest(root, "Cargo.toml") and project_has_manifest(root, "C/library/CMakeLists.txt")
         return ready, "Rust workspace and C library aggregator found" if ready else "library manifests incomplete"
@@ -840,6 +853,9 @@ def print_skip(message: str) -> None:
 
 
 def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
+    mingw = probe_mingw_gcc()
+    msvc_available = load_msvc_environment(runner) if os.name == "nt" else None
+    visual_studio_instances = [str(path) for path in _visual_studio_installations()] if os.name == "nt" else []
     checks = {
         "python": sys.version.split()[0],
         "platform": platform.platform(),
@@ -862,10 +878,12 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "rust_cache": str(build_paths(runner.root)["rust_cache"]),
         "c_cache": str(build_paths(runner.root)["c_cache"]),
         "cmake_generator": os.environ.get("CMAKE_GENERATOR"),
+        "msvc_available": msvc_available,
         "msvc_cl": command_path("cl"),
+        "visual_studio_instances": visual_studio_instances,
         "gcc": command_path("gcc"),
-        "gcc_target": (probe_mingw_gcc() or {}).get("target"),
-        "mingw_build_system": (probe_mingw_gcc() or {}).get("generator") or None,
+        "gcc_target": (mingw or {}).get("target"),
+        "mingw_build_system": (mingw or {}).get("generator") or None,
         "ninja": command_path("ninja"),
         "mingw32_make": command_path("mingw32-make"),
         "clang": command_path("clang"),
@@ -876,6 +894,10 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         "win10_project": check_windows_app(runner.root, "win10"),
         "win11_project": check_windows_app(runner.root, "win11"),
         "win95_makefile": project_has_manifest(runner.root, "C/win95/Makefile"),
+        "windows_target_sources": {
+            selector: target_available(runner.root, selector)
+            for selector in WINDOWS_BUILD_COMMANDS
+        },
     }
     missing = []
     if sys.version_info < PYTHON_MINIMUM:
@@ -899,8 +921,13 @@ def command_doctor(args: argparse.Namespace, runner: Runner) -> int:
         print("  python build.py windows.7    (source-gated C/MinGW target)")
         print("  python build.py windows.95   (source-gated C/Open Watcom target)")
         print("Running without an action is equivalent to: python build.py doctor")
+        print("\nWindows target source readiness:")
+        for selector in WINDOWS_BUILD_COMMANDS:
+            available, reason = checks["windows_target_sources"][selector]
+            status = "ready" if available else "source not added"
+            print("  {:18} {:16} {}".format(selector, status, reason))
         print("\nWin10/Win11 WinUI builds require the MSVC linker and Windows SDK.")
-        print("Legacy CMake targets prefer installed MinGW GCC; Win9x targets use Open Watcom.")
+        print("Legacy NT-family CMake targets use native MinGW GCC; Win9x targets use Open Watcom.")
         print("Running WinUI 3 also requires the matching Windows App Runtime:")
         print("  " + APP_RUNTIME_URL)
         print("Win95 builds require Open Watcom and C/win95/Makefile.")
@@ -1008,12 +1035,12 @@ def rust_tests(runner: Runner) -> None:
 
 
 def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
-    ensure_cmake(runner)
-    if os.name == "nt":
-        ensure_windows_c_toolchain(runner)
     source = runner.root / "C" / "library"
     if not (source / "CMakeLists.txt").is_file():
-        raise BuildError("C/library/CMakeLists.txt is missing.")
+        raise BuildError("C/library/CMakeLists.txt is missing; no compiler setup was attempted.")
+    if os.name == "nt":
+        ensure_windows_c_toolchain(runner, apply=not runner.dry_run)
+    ensure_cmake(runner, apply=not runner.dry_run)
     suffix = "-mingw" if runner.c_compiler == "mingw" else ""
     build_dir = build_paths(runner.root)["c"] / (("library-sanitized" if sanitizers else "library-release") + suffix)
     configure = [
@@ -1058,11 +1085,11 @@ def ui_verify(runner: Runner) -> None:
 
 
 def build_windows_app(runner: Runner, target: str) -> None:
-    require_windows(target + " application")
-    ensure_windows_linker(runner)
     if target not in WINDOWS_APPS:
         raise BuildError("Unknown modern Windows application target: " + target)
     require_manifest(runner.root, "rust/" + target + "/Cargo.toml", "Windows " + target + " application")
+    require_windows(target + " application")
+    ensure_windows_linker(runner)
     require_command("cargo", "Install Rust through https://rustup.rs/.")
     package, target_dir = WINDOWS_APPS[target]
     runner.run(
@@ -1163,6 +1190,19 @@ def build_legacy_windows_c(runner: Runner, version: str) -> None:
 def build_windows_generation(runner: Runner, version: str) -> None:
     if version not in WINDOWS_GENERATIONS:
         raise BuildError("Unknown Windows generation: " + version)
+    selector = "windows." + version
+    available, reason = target_available(runner.root, selector)
+    if not available:
+        label = WINDOWS_GENERATIONS[version][0]
+        _, directory, toolchain = WINDOWS_GENERATIONS[version]
+        expected = (
+            "rust/" + directory + "/Cargo.toml" if toolchain == "msvc"
+            else "C/" + directory + ("/Makefile" if toolchain == "watcom" else "/CMakeLists.txt")
+        )
+        raise BuildError(
+            label + " application source is not implemented. Expected " + expected
+            + ". No compiler check, installer or download was started."
+        )
     _, _, toolchain = WINDOWS_GENERATIONS[version]
     if version in {"10", "11"}:
         build_windows_app(runner, "win" + version)
@@ -1534,7 +1574,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         needs_rust = (
             args.action == "fmt"
-            or (args.action in {"windows.10", "windows.11"} and check_windows_app(root, "win" + args.action.rsplit(".", 1)[1]))
+            or (args.action in {"windows.10", "windows.11"} and check_windows_app(root, "win" + args.action[len("windows.") :]))
             or (args.action == "build" and args.target in {"libraries", "ui", "win10", "win11", "bgw", "all"})
             or (args.action == "verify" and args.target in {"rust", "libraries", "ui", "all"})
             or (args.action == "test" and args.scope in {"rust", "libraries", "ui", "all"})
@@ -1542,7 +1582,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if needs_rust:
             ensure_rust_toolchain(runner, apply=True)
         if args.action in WINDOWS_BUILD_COMMANDS:
-            build_windows_generation(runner, args.action.rsplit(".", 1)[1])
+            build_windows_generation(runner, args.action[len("windows.") :])
             return 0
         if args.action == "doctor":
             return command_doctor(args, runner)
