@@ -97,11 +97,19 @@ python build.py windows.7
 python build.py windows.10
 python build.py windows.11
 python build.py package win10
+
+# Focused build and Visual Studio Installer diagnostics
+python build.py build win10 --debug
+python build.py build win10 --all-debug
 ```
 
 Use the `windows.<version>` selectors for OS-specific application builds: `windows.95`, `windows.98`, `windows.me`, `windows.nt4`, `windows.2000`, `windows.xp`, `windows.vista`, `windows.7`, `windows.8`, `windows.8.1`, `windows.10` and `windows.11`. Run `python build.py --help` for the complete list; terminal help uses ANSI colors when supported and respects `NO_COLOR`.
 
 Each selector checks that generation's application manifest **before** probing or installing a compiler. An unimplemented generation reports the expected source path and exits without downloading anything. Windows 95/98/Me use the Open Watcom legacy C path; NT 4 through Windows 8.1 use their own C/CMake target and a native MinGW-w64 GCC toolchain where the target source is implemented; Windows 10/11 use the existing Rust/WinUI 3 implementation and require the MSVC linker plus a Windows SDK.
+
+
+
+By default, successful subprocess output and raw command lines are kept quiet while high-level build stages remain visible. Add `--debug` before or after a command (for example, `python build.py build win10 --debug`) to show the command line and live Visual Studio Installer activity such as channel checks, package downloads, package installation and warnings/errors. `--all-debug` includes all captured subprocess output and raw Visual Studio setup-log lines, and writes the complete run to the repository-root `debug.log` (overwritten on each run and ignored by Git).
 
 Compiler discovery reuses what is already installed. For legacy C, the runner checks GCC's `-dumpmachine` output and requires a MinGW target plus Ninja, MinGW Make or MSYS Make; a generic Linux GCC executable is not accepted as a Windows compiler. For Win10/Win11, it scans the current environment, Visual Studio Installer metadata (`vswhere` and the registry), and normal installation locations, then loads the existing developer environment and verifies `cl`, `link`, `rc`, Windows SDK headers and libraries. If a Visual Studio instance exists but lacks the C++ toolchain, WinLook reads that exact instance's channel ID from `vswhere` and modifies it through the installed `setup.exe` using a hidden, elevated UAC operation. The request explicitly adds the x64 MSVC tools and Windows 10 SDK 19041 rather than relying on recommended workload defaults. If no instance exists, or an existing non-Build-Tools instance still cannot provide the compiler/linker/SDK after modification, it makes at most one standalone Build Tools install attempt. It uses WinGet when available; otherwise it downloads the official [Visual Studio 2022 Build Tools bootstrapper](https://aka.ms/vs/17/release/vs_buildtools.exe), caches it under `build/.rcache/installers/`, and verifies its Microsoft Authenticode signature before execution. An existing Build Tools instance is never installed over, a failed first install is not immediately retried, and declining UAC does not start a second installer. Existing MinGW GCC is reported but cannot replace the MSVC ABI/linker and Windows SDK needed by the current WinUI app. CMake is installed only when its executable is missing. Visual Studio Build Tools are machine-wide and may require administrator approval.
 
