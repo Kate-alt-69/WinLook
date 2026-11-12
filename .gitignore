@@ -24,6 +24,9 @@ Makefile.cmake
 *.so
 *.dylib
 
+# Per-run diagnostics from build.py --all-debug
+/debug.log
+
 # Editor / OS noise
 .DS_Store
 Thumbs.db
