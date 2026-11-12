@@ -279,10 +279,10 @@ def ensure_windows_linker(runner: "Runner", apply: bool = True) -> None:
     """Prepare the MSVC linker/Windows SDK needed by Rust without requiring cl.exe on PATH."""
     if os.name != "nt":
         return
-    if command_path("link") and command_path("rc"):
+    if command_path("cl") and command_path("link") and command_path("rc"):
         return
     load_msvc_environment(runner)
-    if command_path("link") and command_path("rc"):
+    if command_path("cl") and command_path("link") and command_path("rc"):
         return
     if not command_path("winget"):
         raise BuildError("The MSVC linker or Windows SDK tools are missing. Install Visual Studio C++ Build Tools.")
