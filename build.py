@@ -2430,6 +2430,13 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
     config = "Debug" if sanitizers else "Release"
     runner.run("Build all C89 libraries", ["cmake", "--build", str(build_dir), "--config", config, "--parallel"])
     runner.run("Run all C89 tests", ["ctest", "--test-dir", str(build_dir), "-C", config, "--output-on-failure"])
+    runner.run(
+        "C89 animation 60 FPS CPU workload benchmark",
+        [
+            "ctest", "--test-dir", str(build_dir), "-C", config,
+            "--verbose", "-R", "^wl_Lanimate\\.frame_budget$",
+        ],
+    )
 
 
 def ui_verify(runner: Runner) -> None:
