@@ -125,6 +125,11 @@ This lets native adapters map the typed model directly without parsing CSS.
 - `foreground(UiColor)`, `border_color(UiColor)`
 - `shadow(UiShadow)`, `text_shadow(UiShadow)`
 
+Box-shadow offsets and spread may be negative (for directional and contracting
+shadows); blur radii must be finite and non-negative. Text shadows use finite
+signed X/Y offsets and a non-negative blur; their spread field must be zero
+because CSS `text-shadow` has no spread component.
+
 Gradients are typed linear gradients with 2–16 ordered stops. A gradient angle
 must be finite and between 0 and 360 degrees; stop positions must be from 0 to
 100 percent. Image URLs, external CSS imports and arbitrary paint expressions
@@ -200,8 +205,11 @@ overflow layout).
   and shadow.
 
 Values are checked for finite ranges. Opacity must be 0–1, font weights
-1–1000, font sizes and line heights must be positive, and spacing/radius values
-must not be negative.
+1–1000, font sizes and line heights must be positive. Margins may be negative;
+padding, dimensions, gaps and radii remain non-negative. Percentage dimensions
+may exceed 100% for intentional overflow or positioning layouts. Transform
+scales may be negative to mirror content; all transform components must be
+finite.
 
 ## 4. Stylesheets and responsive rules
 
