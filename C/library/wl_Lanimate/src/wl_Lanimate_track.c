@@ -83,7 +83,9 @@ double wl_Lanimate_track_sample_cached(
     }
     left = &track->keyframes[left_index];
     right = &track->keyframes[left_index + 1U];
-    if (at_ms < left->at_ms || at_ms > right->at_ms) {
+    if (at_ms == right->at_ms) {
+        left_index++;
+    } else if (at_ms < left->at_ms || at_ms > right->at_ms) {
         low = 0U;
         high = track->count - 1U;
         while (high - low > 1U) {
