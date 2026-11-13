@@ -2074,9 +2074,9 @@ impl UiStyle {
                 "corner radii must be finite and non-negative".to_string(),
             ));
         }
-        if self.text_shadow.is_some_and(|value| !valid_shadow(value)) {
+        if self.text_shadow.is_some_and(|value| !valid_text_shadow(value)) {
             return Err(UiError::InvalidStyle(
-                "text shadow must be finite and non-negative".to_string(),
+                "text shadow offsets must be finite, blur non-negative, and spread zero".to_string(),
             ));
         }
         if let Some(value) = self.padding {
@@ -2669,6 +2669,13 @@ fn valid_shadow(shadow: UiShadow) -> bool {
         && shadow.spread.is_finite()
 }
 
+fn valid_text_shadow(shadow: UiShadow) -> bool {
+    shadow.offset_x.is_finite()
+        && shadow.offset_y.is_finite()
+        && finite_non_negative(shadow.blur)
+        && shadow.spread == 0.0
+}
+
 fn append_css_value(css: &mut String, value: impl AsRef<str>) {
     css.push_str(value.as_ref());
 }
@@ -2941,8 +2948,20 @@ mod tests {
             )
             .to_css()
             .unwrap();
-        assert!(css.contains("-2px 3px 4px -1px"));
-        assert!(css.contains("-2px 3px 4px -1px"));
+        assert!(css.contains("box-shadow:-2px 3px 4px -1px"));
+        assert!(css.contains("text-shadow:-2px 3px 4px rgba("));
+
+        let invalid_text_shadow = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Text),
+            UiStyle::new().text_shadow(UiShadow::new(
+                UiColor::rgb(0, 0, 0),
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+            )),
+        );
+        assert!(invalid_text_shadow.validate().is_err());
 
         let invalid = UiStyleSheet::new().rule(
             UiSelector::new(UiComponent::Card),
