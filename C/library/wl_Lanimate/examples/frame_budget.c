@@ -79,7 +79,8 @@ int main(void)
     checksum = 0.0;
     started = clock();
     for (frame_index = 0U; frame_index < WL_LANIMATE_BENCHMARK_FRAMES; ++frame_index) {
-        now_ms += WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS;
+        /* Host refresh is 16.666667 ms; target cadence is slightly below it. */
+        now_ms += WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS + 0.000002;
         result = wl_Lanimate_frame_clock_tick(&frame_clock, now_ms, &frame);
         if (result == WL_LANIMATE_NO_FRAME) continue;
         if (result != WL_LANIMATE_OK) {
