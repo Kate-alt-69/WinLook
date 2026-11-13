@@ -55,7 +55,10 @@ impl TrackCursor {
     }
 }
 
-/// Immutable keyframe track; sampling never allocates.
+/// Immutable keyframe track; the sampler itself does not allocate.
+///
+/// A custom `Interpolate` implementation may allocate while cloning or
+/// interpolating its value. The built-in scalar/point/colour values do not.
 #[derive(Clone, Debug)]
 pub struct KeyframeTrack<T: Interpolate> {
     keyframes: Vec<Keyframe<T>>,
