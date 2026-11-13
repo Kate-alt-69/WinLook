@@ -122,7 +122,7 @@ impl FrameClock {
                 return None;
             }
         };
-        let stalled = frame_delta > self.maximum_delta;
+        let stalled = poll_delta > self.maximum_delta && poll_delta >= self.target_interval;
 
         let accumulated = if stalled {
             poll_delta
@@ -259,6 +259,19 @@ mod tests {
         assert_eq!(clock.tick(Duration::from_millis(10_005)), None);
         let resumed = clock.tick(Duration::from_millis(10_010)).unwrap();
         assert_eq!(resumed.delta, Duration::from_millis(10));
+    }
+
+    #[test]
+    fn small_delta_cap_does_not_starve_a_slower_frame_cadence() {
+        let mut clock =
+            FrameClock::new(Duration::from_millis(16), Duration::from_millis(5)).unwrap();
+        clock.tick(Duration::ZERO).unwrap();
+        assert_eq!(clock.tick(Duration::from_millis(10)), None);
+        let first = clock.tick(Duration::from_millis(20)).unwrap();
+        assert_eq!(first.delta, Duration::from_millis(5));
+        assert_eq!(clock.tick(Duration::from_millis(30)), None);
+        let second = clock.tick(Duration::from_millis(40)).unwrap();
+        assert_eq!(second.delta, Duration::from_millis(5));
     }
 
     #[test]
