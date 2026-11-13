@@ -1115,12 +1115,21 @@ impl UiTransitionProperty {
     }
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiEasing { Linear, Ease, EaseIn, EaseOut, EaseInOut }
+pub enum UiEasing {
+    Linear,
+    Ease,
+    EaseIn,
+    EaseOut,
+    EaseInOut,
+}
 impl UiEasing {
     fn css(self) -> &'static str {
         match self {
-            Self::Linear => "linear", Self::Ease => "ease", Self::EaseIn => "ease-in",
-            Self::EaseOut => "ease-out", Self::EaseInOut => "ease-in-out",
+            Self::Linear => "linear",
+            Self::Ease => "ease",
+            Self::EaseIn => "ease-in",
+            Self::EaseOut => "ease-out",
+            Self::EaseInOut => "ease-in-out",
         }
     }
 }
@@ -1133,14 +1142,25 @@ pub struct UiTransition {
 }
 impl UiTransition {
     pub const fn new(property: UiTransitionProperty, duration_ms: u32, easing: UiEasing) -> Self {
-        Self { property, duration_ms, delay_ms: 0, easing }
+        Self {
+            property,
+            duration_ms,
+            delay_ms: 0,
+            easing,
+        }
     }
     pub const fn delay(mut self, delay_ms: u32) -> Self {
         self.delay_ms = delay_ms;
         self
     }
     fn css(self) -> String {
-        format!("{} {}ms {} {}ms", self.property.css(), self.duration_ms, self.easing.css(), self.delay_ms)
+        format!(
+            "{} {}ms {} {}ms",
+            self.property.css(),
+            self.duration_ms,
+            self.easing.css(),
+            self.delay_ms
+        )
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1153,38 +1173,68 @@ pub struct UiTransform {
 }
 impl UiTransform {
     pub const fn identity() -> Self {
-        Self { translate_x: 0.0, translate_y: 0.0, scale_x: 1.0, scale_y: 1.0, rotate_degrees: 0.0 }
+        Self {
+            translate_x: 0.0,
+            translate_y: 0.0,
+            scale_x: 1.0,
+            scale_y: 1.0,
+            rotate_degrees: 0.0,
+        }
     }
     pub const fn translate(mut self, x: f32, y: f32) -> Self {
-        self.translate_x = x; self.translate_y = y; self
+        self.translate_x = x;
+        self.translate_y = y;
+        self
     }
     pub const fn scale(mut self, x: f32, y: f32) -> Self {
-        self.scale_x = x; self.scale_y = y; self
+        self.scale_x = x;
+        self.scale_y = y;
+        self
     }
     pub const fn rotate(mut self, degrees: f32) -> Self {
-        self.rotate_degrees = degrees; self
+        self.rotate_degrees = degrees;
+        self
     }
     fn validate(self) -> bool {
-        [self.translate_x, self.translate_y, self.scale_x, self.scale_y, self.rotate_degrees]
-            .iter().all(|value| value.is_finite())
-            && self.scale_x >= 0.0 && self.scale_y >= 0.0
+        [
+            self.translate_x,
+            self.translate_y,
+            self.scale_x,
+            self.scale_y,
+            self.rotate_degrees,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+            && self.scale_x >= 0.0
+            && self.scale_y >= 0.0
     }
     fn css(self) -> String {
-        format!("translate({}px,{}px) rotate({}deg) scale({},{})",
-            number(self.translate_x), number(self.translate_y), number(self.rotate_degrees),
-            number(self.scale_x), number(self.scale_y))
+        format!(
+            "translate({}px,{}px) rotate({}deg) scale({},{})",
+            number(self.translate_x),
+            number(self.translate_y),
+            number(self.rotate_degrees),
+            number(self.scale_x),
+            number(self.scale_y)
+        )
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UiMediaCondition {
-    MinWidth(f32), MaxWidth(f32), LightScheme, DarkScheme, ReducedMotion, ForcedColors,
+    MinWidth(f32),
+    MaxWidth(f32),
+    LightScheme,
+    DarkScheme,
+    ReducedMotion,
+    ForcedColors,
 }
 impl UiMediaCondition {
     fn validate(self) -> Result<(), UiError> {
         match self {
             Self::MinWidth(value) | Self::MaxWidth(value) if finite_non_negative(value) => Ok(()),
             Self::MinWidth(_) | Self::MaxWidth(_) => Err(UiError::InvalidStyle(
-                "media width must be finite and non-negative".to_string())),
+                "media width must be finite and non-negative".to_string(),
+            )),
             _ => Ok(()),
         }
     }
