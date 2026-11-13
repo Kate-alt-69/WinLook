@@ -108,6 +108,33 @@ Features are independent. A program may enable more than one module and choose t
 
 Then call either `wl_ui::windows10` or `wl_ui::tauri2`. Do not enable a renderer just because a library happens to be installed; select it deliberately in the consuming application's manifest.
 
+## Shared animation frame clock
+
+The public facade re-exports `FrameClock` and `FrameTick` from
+`wl_animate`, and also exposes the entire library as `wl_ui::animate`.
+Every renderer/desktop host should own one clock for the active scene and
+pass the same `FrameTick::delta` to all active animations:
+
+    use std::time::Duration;
+    use wl_ui::FrameClock;
+
+    let mut clock = FrameClock::sixty_fps();
+    let mut monotonic_elapsed = Duration::ZERO;
+
+    // Call from the host's existing event/composition callback.
+    monotonic_elapsed += Duration::from_nanos(16_666_667);
+    if let Some(frame) = clock.tick(monotonic_elapsed) {
+        // Advance every active wl_ui::animate::Animation with frame.delta.
+        // Apply only changed properties through the selected renderer.
+    }
+
+The clock does not create its own event loop or timer. A native host should
+request frames only while visible animated content is active, and call
+`pause()`/`resume(now)` across hidden/suspended states. Tauri's CSS-native
+animations remain on the webview/compositor path; native renderers must apply
+the sampled values themselves and advertise animation support only when they
+actually render those properties.
+
 ## Shared styling API
 
 Every application model can carry a theme and ordered component rules:
