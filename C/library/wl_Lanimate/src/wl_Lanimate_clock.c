@@ -2,7 +2,6 @@
 
 #include <float.h>
 #include <limits.h>
-#include <math.h>
 
 static int wl_Lanimate_clock_valid_time(double value)
 {
@@ -85,7 +84,10 @@ wl_Lanimate_result wl_Lanimate_frame_clock_tick(
             return WL_LANIMATE_NO_FRAME;
         }
         clock->phase_elapsed_ms = stalled
-            ? 0.0 : fmod(accumulated_ms, clock->target_interval_ms);
+            ? 0.0 : accumulated_ms - clock->target_interval_ms;
+        if (clock->phase_elapsed_ms >= clock->target_interval_ms) {
+            clock->phase_elapsed_ms = 0.0;
+        }
     } else {
         clock->phase_elapsed_ms = 0.0;
     }
