@@ -7,6 +7,7 @@ add_library(wl_Lanimate STATIC
     src/wl_Lanimate_math.c
     src/wl_Lanimate_tween.c
     src/wl_Lanimate_track.c
+    src/wl_Lanimate_animation.c
 )
 add_library(WinLook::Lanimate ALIAS wl_Lanimate)
 
