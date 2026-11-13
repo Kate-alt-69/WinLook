@@ -3,7 +3,7 @@ AR ?= ar
 CFLAGS ?= -std=c89 -Wall -Wextra -Werror -pedantic -O2
 CPPFLAGS ?= -Iinclude
 BUILD_DIR ?= build
-SOURCES = src/wl_Lanimate_math.c src/wl_Lanimate_tween.c src/wl_Lanimate_track.c
+SOURCES = src/wl_Lanimate_math.c src/wl_Lanimate_tween.c src/wl_Lanimate_track.c src/wl_Lanimate_animation.c
 OBJECTS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SOURCES))
 LIBRARY = $(BUILD_DIR)/libwl_Lanimate.a
 TEST = $(BUILD_DIR)/test_wl_Lanimate
