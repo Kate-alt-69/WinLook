@@ -154,7 +154,9 @@ are intentionally not accepted by this API.
 `UiEdges::all(value)`, `UiEdges::xy(horizontal, vertical)` and
 `UiEdges::new(top, right, bottom, left)` are available for spacing. Lengths
 are `UiLength::Auto`, `UiLength::Px(value)` or
-`UiLength::Percent(value)`.
+`UiLength::Percent(value)`. Position insets (`top`, `right`, `bottom`,
+`left`) accept finite negative pixel and percentage values; outline offsets
+may also be negative. Width/height dimensions remain non-negative.
 
 ### Layout
 
@@ -206,7 +208,8 @@ overflow layout).
 
 Values are checked for finite ranges. Opacity must be 0–1, font weights
 1–1000, font sizes and line heights must be positive. Margins may be negative;
-padding, dimensions, gaps and radii remain non-negative. Percentage dimensions
+padding, dimensions, gaps, outline widths and radii remain non-negative.
+Position insets and outline offsets may be negative. Percentage dimensions
 may exceed 100% for intentional overflow or positioning layouts. Transform
 scales may be negative to mirror content; all transform components must be
 finite.
