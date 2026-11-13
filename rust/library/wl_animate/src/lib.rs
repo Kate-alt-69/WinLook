@@ -21,7 +21,7 @@ pub use animation::{
 };
 pub use easing::Easing;
 pub use svg::{PathCommand, SvgPathError, SvgPathErrorKind, VectorPath};
-pub use track::{Keyframe, KeyframeTrack, TrackError};
+pub use track::{Keyframe, KeyframeTrack, TrackCursor, TrackError};
 pub use tween::{PlaybackState, Tween};
 pub use values::{Interpolate, Point2, Rgba};
 pub use vector::{
