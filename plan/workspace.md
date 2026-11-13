@@ -288,3 +288,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - The Windows 10 Manager entry point explicitly calls `wl_ui::windows10::run()`; the Windows 11 Manager entry point explicitly calls `wl_ui::windows11::run()`.
 - UI remains a scaffold: navigation and page descriptions are rendered, but BGW IPC and real system-setting operations are not implemented. Runtime smoke tests, accessibility checks, low-end performance measures, installer/runtime validation, and Windows 7 VM tests remain pending.
 - Research Companion evidence is recorded in [references/SOURCES.md](references/SOURCES.md); this workspace entry is a design/implementation checkpoint, not a support declaration.
+
+
+## wl_ui design system and styling upgrade — 2026-11-13
+
+- The previously merged UI backend split is the base. New work is isolated on `feat/wl-ui-styling-studio-api`; it must not append commits to the already-merged PR #9 branch.
+- User-reported smoke test: the Windows 10 application now launches. This confirms the user's local startup test only; it does not replace CI or runtime coverage across other Windows versions.
+- The shared Rust core is extended with `UiTheme`, `UiPalette`, `UiTypography`, `UiMetrics`, `UiEffects`, semantic `UiColor`, a typed `UiStyle`/selector/stylesheet model, visual states, CSS variable generation, typed linear gradients, responsive media rules, flex/layout/sizing, transforms and transitions. `UiApplication` now carries a theme and style sheet and validates them before renderer setup.
+- Tauri 2 receives generated theme variables and selector CSS at document start and publishes it in `window.__WL_UI_BOOTSTRAP__`. Its host continues to own frontend markup, controls, JS, plugins, capabilities and permissions.
+- Win10 uses native Win32/GDI resources for the supported shell/theme properties and adds GDI32 linkage without introducing a webview or Windows App SDK dependency. Win11 applies its shared palette/typography/spacing/surface to the native WinUI shell and re-exports Windows Reactor controls from `wl_ui::windows11` on Windows.
+- Legacy C adds versioned C89 theme/style structs, initializer/setter APIs and a style capability query. The baseline reports only background, foreground and font as implemented native style fields; other flags are rejected as unsupported.
+- Public docs are under `docs/wl_ui/` and `docs/wl_ui/C/`. Rust compile/runtime verification must be done by CI and target builds; strict C89, CTest, sanitizer, and real Windows/legacy-OS GUI checks remain distinct gates.

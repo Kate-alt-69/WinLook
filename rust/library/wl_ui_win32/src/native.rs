@@ -1,5 +1,5 @@
 use std::ffi::c_void;
-use wl_ui_core::{UiApplication, UiError, UiPage};
+use wl_ui_core::{UiApplication, UiColor, UiComponent, UiError, UiPage, UiPalette};
 
 type Handle = *mut c_void;
 type WindowProcedure = unsafe extern "system" fn(Handle, u32, usize, isize) -> isize;
@@ -7,6 +7,12 @@ type WindowProcedure = unsafe extern "system" fn(Handle, u32, usize, isize) -> i
 const WM_NCCREATE: u32 = 0x0081;
 const WM_CREATE: u32 = 0x0001;
 const WM_SIZE: u32 = 0x0005;
+const WM_ERASEBKGND: u32 = 0x0014;
+const WM_SETFONT: u32 = 0x0030;
+const WM_CTLCOLOREDIT: u32 = 0x0133;
+const WM_CTLCOLORLISTBOX: u32 = 0x0134;
+const WM_CTLCOLORBTN: u32 = 0x0135;
+const WM_CTLCOLORSTATIC: u32 = 0x0138;
 const WM_DESTROY: u32 = 0x0002;
 const WM_COMMAND: u32 = 0x0111;
 const WM_NCDESTROY: u32 = 0x0082;
@@ -26,6 +32,7 @@ const LB_GETCURSEL: u32 = 0x0188;
 const LB_SETCURSEL: u32 = 0x0186;
 const LBN_SELCHANGE: usize = 1;
 const SW_SHOW: i32 = 5;
+const OPAQUE: i32 = 2;
 const CW_USEDEFAULT: i32 = 0x80000000u32 as i32;
 const ERROR_CLASS_ALREADY_EXISTS: u32 = 1410;
 const NAVIGATION_CONTROL_ID: usize = 1001;
@@ -92,6 +99,13 @@ struct WindowState {
     application: UiApplication,
     navigation: Handle,
     content: Handle,
+    window_brush: Handle,
+    navigation_brush: Handle,
+    content_brush: Handle,
+    font: Handle,
+    navigation_color: UiColor,
+    content_color: UiColor,
+    text_color: UiColor,
 }
 
 #[link(name = "user32")]
@@ -124,6 +138,8 @@ extern "system" {
     fn RemovePropW(hwnd: Handle, name: *const u16) -> Handle;
     fn SendMessageW(hwnd: Handle, message: u32, w_param: usize, l_param: isize) -> isize;
     fn SetWindowTextW(hwnd: Handle, text: *const u16) -> i32;
+    fn FillRect(dc: Handle, rect: *const Rect, brush: Handle) -> i32;
+
     fn GetClientRect(hwnd: Handle, rect: *mut Rect) -> i32;
     fn MoveWindow(hwnd: Handle, x: i32, y: i32, width: i32, height: i32, repaint: i32) -> i32;
     fn MessageBoxW(hwnd: Handle, text: *const u16, caption: *const u16, kind: u32) -> i32;
@@ -136,8 +152,60 @@ extern "system" {
     fn GetLastError() -> u32;
 }
 
+#[link(name = "gdi32")]
+extern "system" {
+    fn CreateSolidBrush(color: u32) -> Handle;
+    fn DeleteObject(object: Handle) -> i32;
+    fn SetTextColor(dc: Handle, color: u32) -> u32;
+    fn SetBkColor(dc: Handle, color: u32) -> u32;
+    fn SetBkMode(dc: Handle, mode: i32) -> i32;
+    fn CreateFontW(
+        height: i32, width: i32, escapement: i32, orientation: i32,
+        weight: i32, italic: u32, underline: u32, strike_out: u32,
+        character_set: u32, output_precision: u32, clip_precision: u32,
+        quality: u32, pitch_and_family: u32, face_name: *const u16,
+    ) -> Handle;
+}
+
 fn wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+fn colorref(color: UiColor) -> u32 {
+    u32::from(color.red) | (u32::from(color.green) << 8) | (u32::from(color.blue) << 16)
+}
+
+fn component_background(application: &UiApplication, component: UiComponent) -> Option<UiColor> {
+    application.styles().rules().iter().rev()
+        .find(|rule| rule.selector().component() == &component)
+        .and_then(|rule| rule.style().background_color())
+}
+
+fn component_foreground(application: &UiApplication, component: UiComponent) -> Option<UiColor> {
+    application.styles().rules().iter().rev()
+        .find(|rule| rule.selector().component() == &component)
+        .and_then(|rule| rule.style().foreground_color())
+}
+
+fn create_font(application: &UiApplication) -> Handle {
+    let typography = application.theme().typography_tokens();
+    let face = wide(&typography.font_family);
+    unsafe {
+        CreateFontW(
+            -(typography.size_md.round() as i32), 0, 0, 0,
+            typography.weight_regular as i32,
+            0, 0, 0, 1, 0, 0, 5, 0, face.as_ptr(),
+        )
+    }
+}
+
+fn delete_state_resources(state: &WindowState) {
+    unsafe {
+        if !state.window_brush.is_null() { DeleteObject(state.window_brush); }
+        if !state.navigation_brush.is_null() { DeleteObject(state.navigation_brush); }
+        if !state.content_brush.is_null() { DeleteObject(state.content_brush); }
+        if !state.font.is_null() { DeleteObject(state.font); }
+    }
 }
 
 fn property_name() -> Vec<u16> {
@@ -163,6 +231,34 @@ unsafe extern "system" fn window_proc(
     }
 
     let state = state_for(hwnd);
+
+    if message == WM_ERASEBKGND && !state.is_null() {
+        let mut rect = Rect { left: 0, top: 0, right: 0, bottom: 0 };
+        if unsafe { GetClientRect(hwnd, &mut rect) } != 0 {
+            unsafe { FillRect(w_param as Handle, &rect, (*state).window_brush); }
+        }
+        return 1;
+    }
+
+    if !state.is_null()
+        && (message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX
+            || message == WM_CTLCOLORSTATIC || message == WM_CTLCOLORBTN)
+    {
+        let (brush, background) = unsafe {
+            match message {
+                WM_CTLCOLORLISTBOX => ((*state).navigation_brush, (*state).navigation_color),
+                WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC => ((*state).content_brush, (*state).content_color),
+                _ => ((*state).navigation_brush, (*state).navigation_color),
+            }
+        };
+        let dc = w_param as Handle;
+        unsafe {
+            SetTextColor(dc, colorref((*state).text_color));
+            SetBkColor(dc, colorref(background));
+            SetBkMode(dc, OPAQUE);
+        }
+        return brush as isize;
+    }
 
     match message {
         WM_CREATE => {
@@ -226,6 +322,10 @@ unsafe extern "system" fn window_proc(
             unsafe {
                 (*state).navigation = navigation;
                 (*state).content = content;
+                if !(*state).font.is_null() {
+                    SendMessageW(navigation, WM_SETFONT, (*state).font as usize, 1);
+                    SendMessageW(content, WM_SETFONT, (*state).font as usize, 1);
+                }
             }
 
             for page in application.pages() {
@@ -346,7 +446,7 @@ fn register_window_class(instance: Handle) -> Result<(), UiError> {
         instance,
         icon: std::ptr::null_mut(),
         cursor,
-        background: 6usize as Handle,
+        background: std::ptr::null_mut(),
         menu_name: std::ptr::null(),
         class_name: class_name.as_ptr(),
     };
@@ -364,12 +464,33 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     let instance = unsafe { GetModuleHandleW(std::ptr::null()) };
     register_window_class(instance)?;
 
-    let state = Box::new(WindowState {
+    let palette: &UiPalette = application.theme().palette();
+    let window_color = component_background(&application, UiComponent::Window)
+        .unwrap_or(palette.window);
+    let navigation_color = component_background(&application, UiComponent::Navigation)
+        .unwrap_or(palette.surface_alt);
+    let content_color = component_background(&application, UiComponent::Surface)
+        .unwrap_or(palette.surface);
+    let text_color = component_foreground(&application, UiComponent::Text)
+        .unwrap_or(palette.text_primary);
+    let state = WindowState {
         application: application.clone(),
         navigation: std::ptr::null_mut(),
         content: std::ptr::null_mut(),
-    });
-    let state_pointer = Box::into_raw(state);
+        window_brush: unsafe { CreateSolidBrush(colorref(window_color)) },
+        navigation_brush: unsafe { CreateSolidBrush(colorref(navigation_color)) },
+        content_brush: unsafe { CreateSolidBrush(colorref(content_color)) },
+        font: create_font(&application),
+        navigation_color,
+        content_color,
+        text_color,
+    };
+    if state.window_brush.is_null() || state.navigation_brush.is_null()
+        || state.content_brush.is_null() {
+        delete_state_resources(&state);
+        return Err(UiError::Backend("CreateSolidBrush failed while preparing the UI theme".to_string()));
+    }
+    let state_pointer = Box::into_raw(Box::new(state));
     let class_name = wide(CLASS_NAME);
     let title = wide(application.window_config().title());
 
@@ -391,7 +512,10 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     };
 
     if hwnd.is_null() {
-        unsafe { drop(Box::from_raw(state_pointer)) };
+        unsafe {
+            delete_state_resources(&*state_pointer);
+            drop(Box::from_raw(state_pointer));
+        }
         let error = UiError::Backend("CreateWindowExW failed for the native Win32 UI".to_string());
         show_start_error(&error, application.window_config().title());
         return Err(error);
@@ -431,7 +555,10 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     if loop_error {
         unsafe { DestroyWindow(hwnd) };
     }
-    unsafe { drop(Box::from_raw(state_pointer)) };
+    unsafe {
+        delete_state_resources(&*state_pointer);
+        drop(Box::from_raw(state_pointer));
+    }
 
     if loop_error {
         let error =

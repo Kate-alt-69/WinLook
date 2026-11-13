@@ -2,11 +2,11 @@
 #define WL_LUI_H
 
 /*
- * wl_Lui: small C89-compatible native Win32 window-shell API.
+ * wl_Lui: C89-compatible native desktop window and styling API.
  *
- * The baseline uses ANSI User32 entry points so applications can be compiled
- * for older Win32 target environments. Newer controls and visual effects belong
- * in separate capability-checked extensions.
+ * Public structs are versioned and fixed-layout. Call the *_init functions
+ * before changing individual fields. Native backends expose their supported
+ * style subset through wl_lui_style_capabilities().
  */
 
 #ifdef __cplusplus
@@ -14,8 +14,11 @@ extern "C" {
 #endif
 
 #define WL_LUI_VERSION_MAJOR 0
-#define WL_LUI_VERSION_MINOR 1
+#define WL_LUI_VERSION_MINOR 2
 #define WL_LUI_VERSION_PATCH 0
+#define WL_LUI_THEME_VERSION 1U
+#define WL_LUI_STYLE_VERSION 1U
+#define WL_LUI_FONT_FAMILY_CAPACITY 64U
 
 typedef enum wl_lui_result {
     WL_LUI_OK = 0,
@@ -33,10 +36,124 @@ typedef struct wl_lui_window_desc {
 
 typedef struct wl_lui_window wl_lui_window;
 
+typedef struct wl_lui_color {
+    unsigned char red;
+    unsigned char green;
+    unsigned char blue;
+    unsigned char alpha;
+} wl_lui_color;
+
+typedef enum wl_lui_theme_scheme {
+    WL_LUI_THEME_SYSTEM = 0,
+    WL_LUI_THEME_LIGHT = 1,
+    WL_LUI_THEME_DARK = 2,
+    WL_LUI_THEME_HIGH_CONTRAST = 3
+} wl_lui_theme_scheme;
+
+typedef struct wl_lui_palette {
+    wl_lui_color window;
+    wl_lui_color surface;
+    wl_lui_color surface_alt;
+    wl_lui_color surface_elevated;
+    wl_lui_color text_primary;
+    wl_lui_color text_secondary;
+    wl_lui_color text_disabled;
+    wl_lui_color border;
+    wl_lui_color border_strong;
+    wl_lui_color accent;
+    wl_lui_color accent_hover;
+    wl_lui_color accent_pressed;
+    wl_lui_color accent_text;
+    wl_lui_color selection;
+    wl_lui_color selection_text;
+    wl_lui_color focus;
+    wl_lui_color success;
+    wl_lui_color success_surface;
+    wl_lui_color warning;
+    wl_lui_color warning_surface;
+    wl_lui_color danger;
+    wl_lui_color danger_surface;
+    wl_lui_color info;
+    wl_lui_color info_surface;
+    wl_lui_color shadow;
+} wl_lui_palette;
+
+typedef struct wl_lui_theme {
+    unsigned int version;
+    unsigned int struct_size;
+    wl_lui_theme_scheme scheme;
+    wl_lui_palette light;
+    wl_lui_palette dark;
+    wl_lui_palette high_contrast;
+    char font_family[WL_LUI_FONT_FAMILY_CAPACITY];
+    unsigned int font_size;
+    unsigned int font_weight;
+    unsigned int spacing_unit;
+    unsigned int corner_radius;
+    unsigned int control_height;
+    unsigned int focus_ring_width;
+    unsigned int motion_fast_ms;
+    unsigned int motion_normal_ms;
+    unsigned int motion_slow_ms;
+    unsigned int reduced_motion;
+} wl_lui_theme;
+
+/* Fields selected by wl_lui_style.flags. */
+#define WL_LUI_STYLE_BACKGROUND 0x00000001UL
+#define WL_LUI_STYLE_FOREGROUND 0x00000002UL
+#define WL_LUI_STYLE_BORDER 0x00000004UL
+#define WL_LUI_STYLE_PADDING 0x00000008UL
+#define WL_LUI_STYLE_FONT 0x00000010UL
+#define WL_LUI_STYLE_OPACITY 0x00000020UL
+#define WL_LUI_STYLE_CORNER_RADIUS 0x00000040UL
+
+typedef struct wl_lui_style {
+    unsigned int version;
+    unsigned int struct_size;
+    unsigned long flags;
+    wl_lui_color background;
+    wl_lui_color foreground;
+    wl_lui_color border;
+    unsigned int border_width;
+    unsigned int padding_top;
+    unsigned int padding_right;
+    unsigned int padding_bottom;
+    unsigned int padding_left;
+    unsigned int font_size;
+    unsigned int font_weight;
+    char font_family[WL_LUI_FONT_FAMILY_CAPACITY];
+    unsigned int opacity_milli;
+    unsigned int corner_radius;
+} wl_lui_style;
+
+/* Return bits describing native style fields accepted by this build. */
+unsigned long wl_lui_style_capabilities(void);
+
+/* Initializes usable system/light/dark/high-contrast design tokens. */
+wl_lui_result wl_lui_theme_init(
+    wl_lui_theme *theme,
+    wl_lui_theme_scheme scheme
+);
+
+/* Initializes an empty component style with no overrides. */
+wl_lui_result wl_lui_style_init(wl_lui_style *style);
+
 /* Creates a hidden native window. The caller owns the returned handle. */
 wl_lui_result wl_lui_window_create(
     const wl_lui_window_desc *description,
     wl_lui_window **window_out
+);
+
+/* Applies a complete shared theme; the renderer maps supported native tokens. */
+wl_lui_result wl_lui_window_set_theme(
+    wl_lui_window *window,
+    const wl_lui_theme *theme
+);
+
+/* Applies a component/window override or returns WL_LUI_UNSUPPORTED. */
+wl_lui_result wl_lui_window_set_style(
+    wl_lui_window *window,
+    const wl_lui_style *style
 );
 
 /* Shows and updates a previously created window. */

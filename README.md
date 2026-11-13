@@ -81,7 +81,7 @@ Detailed specifications live in [`plan/architecture/`](plan/architecture/overvie
 
 ## Manager UI prototype
 
-The public [wl_ui crate](rust/library/wl_ui/README.md) exposes backend modules from one import path: `wl_ui::windows10`, `wl_ui::windows11`, `wl_ui::windows7` and `wl_ui::tauri2`. Shared application/page types stay at the crate root; the OS renderer crates remain private optional dependencies. The Windows 10 executable uses Win32/User32, while Windows 11 uses native WinUI 3. `wl_Lui` is the separate C89 baseline for legacy Win32 applications. The Manager pages are still preview scaffolds and do not apply system settings until BGW and IPC are implemented. See [UI Architecture](plan/architecture/ui-architecture.md).
+The public [wl_ui crate](rust/library/wl_ui/README.md) exposes explicit backend modules and a shared application/design-system API. The Rust styling contract includes semantic light/dark/high-contrast palettes, typography, layout tokens, component selectors, visual states, gradients, responsive rules, transitions and generated CSS for the optional Tauri frontend. Windows 10 maps its supported semantic styles to native Win32/GDI resources; Windows 11 uses native WinUI 3 and exposes Windows Reactor controls. `wl_Lui` is the separate C89 theme/style baseline for legacy Win32 applications. Backend capabilities remain explicit; CSS-only effects are not claimed as native Win32 features. See [wl_ui documentation](docs/wl_ui/README.md), [legacy C documentation](docs/wl_ui/C/README.md) and [UI Architecture](plan/architecture/ui-architecture.md).
 
 ## Building WinLook
 

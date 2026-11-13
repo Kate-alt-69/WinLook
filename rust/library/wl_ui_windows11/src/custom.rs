@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use windows_reactor::*;
 
-use wl_ui_core::{UiApplication, UiError, UiPage};
+use wl_ui_core::{UiApplication, UiColor, UiColorScheme, UiError, UiPage};
 
 #[derive(Clone)]
 enum Message {
@@ -32,6 +32,18 @@ impl CustomShell {
         query.is_empty()
             || page.title().to_ascii_lowercase().contains(&query)
             || page.description().to_ascii_lowercase().contains(&query)
+    }
+}
+
+fn native_color(color: UiColor) -> Color {
+    Color::argb(color.alpha, color.red, color.green, color.blue)
+}
+
+fn window_theme(scheme: UiColorScheme) -> WindowTheme {
+    match scheme {
+        UiColorScheme::Light => WindowTheme::Light,
+        UiColorScheme::Dark => WindowTheme::Dark,
+        UiColorScheme::System | UiColorScheme::HighContrast => WindowTheme::System,
     }
 }
 
@@ -75,11 +87,17 @@ impl Component for CustomShell {
 
     fn view(&self, _: &UiApplication, context: &mut ViewContext<Self>) -> View {
         let window = self.application.window_config();
+        let theme = self.application.theme();
+        let palette = theme.palette();
+        let typography = theme.typography_tokens();
+        let metrics = theme.metrics();
         let page = self.selected_page();
 
         context.window_title(format!("{} — {}", window.title(), page.title()));
         context.window_visuals(
-            WindowVisuals::new().client_size(window.width() as f64, window.height() as f64),
+            WindowVisuals::new()
+                .client_size(window.width() as f64, window.height() as f64)
+                .theme(window_theme(theme.color_scheme())),
         );
 
         let visible_pages: Vec<&UiPage> = self
@@ -109,15 +127,37 @@ impl Component for CustomShell {
             .keyed_menu_items(menu_items)
             .content(
                 ScrollViewer::new().content(
-                    StackPanel::new().spacing(14.0).children((
-                        TextBlock::new().text(page.title()).font_size(28.0),
-                        TextBlock::new()
-                            .text(page.description())
-                            .text_wrapping(TextWrapping::Wrap),
-                        TextBlock::new()
-                            .text("This page is supplied by the application's shared wl_ui model.")
-                            .text_wrapping(TextWrapping::Wrap),
-                    )),
+                    Border::new()
+                        .background(native_color(palette.surface))
+                        .border_brush(native_color(palette.border))
+                        .border_thickness(Thickness::uniform(f64::from(metrics.border_width)))
+                        .corner_radius(CornerRadius::uniform(f64::from(metrics.radius_md)))
+                        .padding(Thickness::uniform(f64::from(metrics.content_padding)))
+                        .content(
+                            StackPanel::new()
+                                .spacing(f64::from(metrics.spacing_unit * 3.0))
+                                .children((
+                                    TextBlock::new()
+                                        .text(page.title())
+                                        .font_family(&typography.font_family)
+                                        .font_size(f64::from(typography.size_xl))
+                                        .font_weight(FontWeight::SEMI_BOLD)
+                                        .foreground(native_color(palette.text_primary)),
+                                    TextBlock::new()
+                                        .text(page.description())
+                                        .font_family(&typography.font_family)
+                                        .font_size(f64::from(typography.size_md))
+                                        .line_height(f64::from(typography.line_height * typography.size_md))
+                                        .foreground(native_color(palette.text_secondary))
+                                        .text_wrapping(TextWrapping::Wrap),
+                                    TextBlock::new()
+                                        .text("This page is supplied by the application's shared wl_ui model.")
+                                        .font_family(&typography.font_family)
+                                        .font_size(f64::from(typography.size_sm))
+                                        .foreground(native_color(palette.text_secondary))
+                                        .text_wrapping(TextWrapping::Wrap),
+                                )),
+                        ),
                 ),
             );
 
@@ -131,6 +171,9 @@ impl Component for CustomShell {
             .content(
                 TextBox::new()
                     .text(self.search.clone())
+                    .background(native_color(palette.surface))
+                    .border_brush(native_color(palette.border))
+                    .border_thickness(Thickness::uniform(f64::from(metrics.border_width)))
                     .placeholder_text("Search pages")
                     .on_text_changed(
                         context
@@ -139,6 +182,7 @@ impl Component for CustomShell {
             );
 
         Grid::new()
+            .background(native_color(palette.window))
             .rows([GridLength::Auto, GridLength::Star(1.0)])
             .children((title_bar, navigation))
             .into()

@@ -1,101 +1,43 @@
 #![forbid(unsafe_code)]
 
-//! A small shared application/UI model with explicitly imported renderer modules.
-//!
-//! The public API is selected like a module path:
-//!
-//! - `wl_ui::windows10` for the lightweight Win32 renderer.
-//! - `wl_ui::windows11` for native WinUI 3.
-//! - `wl_ui::tauri2` for an already configured Tauri 2 host.
-//! - `wl_ui::windows7` (or the Windows 8 aliases) for the experimental
-//!   classic Win32 backend built with the custom Rust Win7 target.
-//!
-//! Enable the module you need using Cargo features. Platform implementation
-//! crates are implementation details and are not part of the application API.
+//! Reusable app shell and styling foundation with explicit renderer modules.
+//! Keep the shared app model renderer-neutral; select a native backend explicitly.
 
-pub use wl_ui_core::{UiApplication, UiError, UiPage, UiWindowConfig};
+pub use wl_ui_core::{
+    UiAlignItems, UiApplication, UiBackground, UiBorderStyle, UiBoxSizing, UiColor,
+    UiColorScheme, UiComponent, UiCursor, UiDisplay, UiEasing, UiEdges, UiEffects,
+    UiError, UiFlexDirection, UiFlexWrap, UiGradientStop, UiJustifyContent, UiLength,
+    UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage,
+    UiPalette, UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet,
+    UiTextAlign, UiTextDecoration, UiTextTransform, UiTheme, UiTransition,
+    UiTransitionProperty, UiTransform, UiTypography, UiVisualState, UiWhiteSpace,
+    UiWindowConfig,
+};
 
 const MANAGER_PAGES: [(&str, &str, &str); 14] = [
-    (
-        "home",
-        "Home",
-        "A quick overview of WinLook and the background runtime.",
-    ),
-    (
-        "appearance",
-        "Appearance",
-        "Themes, colors, visual preferences and appearance profiles.",
-    ),
-    (
-        "audio-media",
-        "Audio & Media",
-        "Audio-session controls and system media playback information.",
-    ),
-    (
-        "file-explorer",
-        "File Explorer",
-        "File Explorer presentation and supported Shell integrations.",
-    ),
+    ("home", "Home", "A quick overview of WinLook and the background runtime."),
+    ("appearance", "Appearance", "Themes, colors, visual preferences and appearance profiles."),
+    ("audio-media", "Audio & Media", "Audio-session controls and system media playback information."),
+    ("file-explorer", "File Explorer", "File Explorer presentation and supported Shell integrations."),
     ("icons", "Icons", "Desktop and system icon presentation."),
-    (
-        "wallpaper",
-        "Wallpaper",
-        "Wallpapers, desktop scenes, widgets and playback.",
-    ),
-    (
-        "window-manager",
-        "Window Manager",
-        "Window layouts, rules, workspaces and compatibility.",
-    ),
-    (
-        "displays",
-        "Displays",
-        "Monitor topology, display settings and per-display capabilities.",
-    ),
-    (
-        "notifications",
-        "Notifications",
-        "WinLook notifications, popups and on-screen display.",
-    ),
-    (
-        "templates",
-        "Templates",
-        "Importable WinLook configurations and reusable presets.",
-    ),
-    (
-        "extensions",
-        "Extensions",
-        "Optional extensions, capabilities and permissions.",
-    ),
-    (
-        "compatibility",
-        "Compatibility",
-        "Windows build, API capabilities and verified feature support.",
-    ),
-    (
-        "diagnostics",
-        "Diagnostics",
-        "BGW health, subsystem state and resource-governor diagnostics.",
-    ),
-    (
-        "settings",
-        "Settings",
-        "Manager preferences, startup behaviour and application settings.",
-    ),
+    ("wallpaper", "Wallpaper", "Wallpapers, desktop scenes, widgets and playback."),
+    ("window-manager", "Window Manager", "Window layouts, rules, workspaces and compatibility."),
+    ("displays", "Displays", "Monitor topology, display settings and per-display capabilities."),
+    ("notifications", "Notifications", "WinLook notifications, popups and on-screen display."),
+    ("templates", "Templates", "Importable WinLook configurations and reusable presets."),
+    ("extensions", "Extensions", "Optional extensions, capabilities and permissions."),
+    ("compatibility", "Compatibility", "Windows build, API capabilities and verified feature support."),
+    ("diagnostics", "Diagnostics", "BGW health, subsystem state and resource-governor diagnostics."),
+    ("settings", "Settings", "Manager preferences, startup behaviour and application settings."),
 ];
 
 /// Creates the standard WinLook Manager navigation/application model.
-///
-/// This is only data and has no OS, windowing, rendering, WebView, or runtime
-/// dependency. Reuse it with any enabled backend or provide your own model.
 pub fn manager_app() -> UiApplication {
     let mut application =
         UiApplication::new("WinLook").window(UiWindowConfig::new("WinLook").size(1280, 820));
-
     for (id, title, description) in MANAGER_PAGES {
         application = application.page(UiPage::new(id, title, description));
     }
-
     application.initial_page("home")
 }
 
