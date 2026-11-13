@@ -85,7 +85,7 @@ mod tests {
                     .border_radius(8.0),
             ));
         assert!(app.validate().is_ok());
-        assert_eq!(app.theme().color_scheme(), UiColorScheme::Dark);
+        assert_eq!(app.theme_ref().color_scheme(), UiColorScheme::Dark);
         assert_eq!(app.styles_ref().rules().len(), 1);
     }
 }

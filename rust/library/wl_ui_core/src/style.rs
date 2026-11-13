@@ -841,6 +841,161 @@ impl From<UiColor> for UiBackground {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// How content is distributed along the cross axis of a grid container.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiAlignContent {
+    Start,
+    End,
+    Center,
+    Stretch,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly,
+}
+impl UiAlignContent {
+    fn css(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::End => "end",
+            Self::Center => "center",
+            Self::Stretch => "stretch",
+            Self::SpaceBetween => "space-between",
+            Self::SpaceAround => "space-around",
+            Self::SpaceEvenly => "space-evenly",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiJustifyItems {
+    Start,
+    End,
+    Center,
+    Stretch,
+}
+impl UiJustifyItems {
+    fn css(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::End => "end",
+            Self::Center => "center",
+            Self::Stretch => "stretch",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiFontStyle {
+    Normal,
+    Italic,
+    Oblique,
+}
+impl UiFontStyle {
+    fn css(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Italic => "italic",
+            Self::Oblique => "oblique",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiTextOverflow {
+    Clip,
+    Ellipsis,
+}
+impl UiTextOverflow {
+    fn css(self) -> &'static str {
+        match self {
+            Self::Clip => "clip",
+            Self::Ellipsis => "ellipsis",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct UiCornerRadii {
+    pub top_left: f32,
+    pub top_right: f32,
+    pub bottom_right: f32,
+    pub bottom_left: f32,
+}
+impl UiCornerRadii {
+    pub const fn uniform(value: f32) -> Self {
+        Self {
+            top_left: value,
+            top_right: value,
+            bottom_right: value,
+            bottom_left: value,
+        }
+    }
+
+    pub const fn new(
+        top_left: f32,
+        top_right: f32,
+        bottom_right: f32,
+        bottom_left: f32,
+    ) -> Self {
+        Self {
+            top_left,
+            top_right,
+            bottom_right,
+            bottom_left,
+        }
+    }
+
+    fn validate(self) -> bool {
+        [
+            self.top_left,
+            self.top_right,
+            self.bottom_right,
+            self.bottom_left,
+        ]
+        .iter()
+        .all(|value| finite_non_negative(*value))
+    }
+
+    fn css(self) -> String {
+        format!(
+            "{}px {}px {}px {}px",
+            number(self.top_left),
+            number(self.top_right),
+            number(self.bottom_right),
+            number(self.bottom_left)
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum UiGridTrack {
+    Auto,
+    Px(f32),
+    Fraction(f32),
+    MinContent,
+    MaxContent,
+}
+impl UiGridTrack {
+    fn validate(self) -> bool {
+        match self {
+            Self::Auto | Self::MinContent | Self::MaxContent => true,
+            Self::Px(value) => finite_non_negative(value),
+            Self::Fraction(value) => finite_positive(value),
+        }
+    }
+
+    fn css(self) -> String {
+        match self {
+            Self::Auto => "auto".to_string(),
+            Self::Px(value) => format!("{}px", number(value)),
+            Self::Fraction(value) => format!("{}fr", number(value)),
+            Self::MinContent => "min-content".to_string(),
+            Self::MaxContent => "max-content".to_string(),
+        }
+    }
+}
+
+/// A CSS display mode.
 pub enum UiDisplay { Block, Inline, InlineBlock, Flex, InlineFlex, Grid, None }
 impl UiDisplay {
     fn css(self) -> &'static str {
@@ -1096,6 +1251,17 @@ pub struct UiStyle {
     left: Option<UiLength>,
     transform: Option<UiTransform>,
     transitions: Vec<UiTransition>,
+    grid_columns: Option<Vec<UiGridTrack>>,
+    grid_rows: Option<Vec<UiGridTrack>>,
+    column_gap: Option<f32>,
+    row_gap: Option<f32>,
+    align_content: Option<UiAlignContent>,
+    justify_items: Option<UiJustifyItems>,
+    font_style: Option<UiFontStyle>,
+    text_overflow: Option<UiTextOverflow>,
+    aspect_ratio: Option<f32>,
+    corner_radii: Option<UiCornerRadii>,
+    text_shadow: Option<UiShadow>,
 }
 
 impl UiStyle {
@@ -1255,6 +1421,72 @@ impl UiStyle {
     pub fn left(mut self, value: UiLength) -> Self { self.left = Some(value); self }
     pub fn transform(mut self, value: UiTransform) -> Self { self.transform = Some(value); self }
     pub fn transition(mut self, value: UiTransition) -> Self { self.transitions.push(value); self }
+    pub fn grid_template(
+        mut self,
+        columns: impl IntoIterator<Item = UiGridTrack>,
+        rows: impl IntoIterator<Item = UiGridTrack>,
+    ) -> Self {
+        self.grid_columns = Some(columns.into_iter().collect());
+        self.grid_rows = Some(rows.into_iter().collect());
+        self
+    }
+
+    pub fn grid_columns(
+        mut self,
+        columns: impl IntoIterator<Item = UiGridTrack>,
+    ) -> Self {
+        self.grid_columns = Some(columns.into_iter().collect());
+        self
+    }
+
+    pub fn grid_rows(
+        mut self,
+        rows: impl IntoIterator<Item = UiGridTrack>,
+    ) -> Self {
+        self.grid_rows = Some(rows.into_iter().collect());
+        self
+    }
+
+    pub fn grid_gap(mut self, row: f32, column: f32) -> Self {
+        self.row_gap = Some(row);
+        self.column_gap = Some(column);
+        self
+    }
+
+    pub fn align_content(mut self, value: UiAlignContent) -> Self {
+        self.align_content = Some(value);
+        self
+    }
+
+    pub fn justify_items(mut self, value: UiJustifyItems) -> Self {
+        self.justify_items = Some(value);
+        self
+    }
+
+    pub fn font_style(mut self, value: UiFontStyle) -> Self {
+        self.font_style = Some(value);
+        self
+    }
+
+    pub fn text_overflow(mut self, value: UiTextOverflow) -> Self {
+        self.text_overflow = Some(value);
+        self
+    }
+
+    pub fn aspect_ratio(mut self, value: f32) -> Self {
+        self.aspect_ratio = Some(value);
+        self
+    }
+
+    pub fn corner_radii(mut self, value: UiCornerRadii) -> Self {
+        self.corner_radii = Some(value);
+        self
+    }
+
+    pub fn text_shadow(mut self, value: UiShadow) -> Self {
+        self.text_shadow = Some(value);
+        self
+    }
 
     pub fn background_color(&self) -> Option<UiColor> {
         match &self.background { Some(UiBackground::Solid(color)) => Some(*color), _ => None }
@@ -1291,30 +1523,90 @@ impl UiStyle {
             ("outline offset", self.outline_offset),
         ] {
             if value.is_some_and(|value| !finite_non_negative(value)) {
-                return Err(UiError::InvalidStyle(format!("{name} must be finite and non-negative")));
+                return Err(UiError::InvalidStyle(format!(
+                    "{name} must be finite and non-negative"
+                )));
             }
         }
         if self.font_size.is_some_and(|value| value == 0.0)
             || self.line_height.is_some_and(|value| value == 0.0)
         {
-            return Err(UiError::InvalidStyle("font size and line height must be greater than zero".to_string()));
+            return Err(UiError::InvalidStyle(
+                "font size and line height must be greater than zero".to_string(),
+            ));
         }
-        if self.font_weight.is_some_and(|value| value == 0 || value > 1000) {
-            return Err(UiError::InvalidStyle("font weight must be between 1 and 1000".to_string()));
+        if self
+            .font_weight
+            .is_some_and(|value| value == 0 || value > 1000)
+        {
+            return Err(UiError::InvalidStyle(
+                "font weight must be between 1 and 1000".to_string(),
+            ));
         }
         if self.letter_spacing.is_some_and(|value| !value.is_finite()) {
-            return Err(UiError::InvalidStyle("letter spacing must be finite".to_string()));
+            return Err(UiError::InvalidStyle(
+                "letter spacing must be finite".to_string(),
+            ));
         }
-        if self.opacity.is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value)) {
-            return Err(UiError::InvalidStyle("opacity must be between 0 and 1".to_string()));
+        if self
+            .opacity
+            .is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value))
+        {
+            return Err(UiError::InvalidStyle(
+                "opacity must be between 0 and 1".to_string(),
+            ));
         }
-        for (name, value) in [("flex grow", self.flex_grow), ("flex shrink", self.flex_shrink)] {
+        for (name, value) in [
+            ("flex grow", self.flex_grow),
+            ("flex shrink", self.flex_shrink),
+        ] {
             if value.is_some_and(|value| !finite_non_negative(value)) {
                 return Err(UiError::InvalidStyle(format!("{name} must be finite and non-negative")));
             }
         }
         if self.transform.is_some_and(|value| !value.validate()) {
-            return Err(UiError::InvalidStyle("transform values must be finite and scale cannot be negative".to_string()));
+            return Err(UiError::InvalidStyle(
+                "transform values must be finite and scale cannot be negative".to_string(),
+            ));
+        }
+        for (name, tracks) in [
+            ("grid columns", self.grid_columns.as_ref()),
+            ("grid rows", self.grid_rows.as_ref()),
+        ] {
+            if let Some(tracks) = tracks {
+                if !(1..=12).contains(&tracks.len())
+                    || !tracks.iter().copied().all(UiGridTrack::validate)
+                {
+                    return Err(UiError::InvalidStyle(format!(
+                        "{name} must contain 1 to 12 valid tracks"
+                    )));
+                }
+            }
+        }
+        for (name, value) in [
+            ("column gap", self.column_gap),
+            ("row gap", self.row_gap),
+        ] {
+            if value.is_some_and(|value| !finite_non_negative(value)) {
+                return Err(UiError::InvalidStyle(format!(
+                    "{name} must be finite and non-negative"
+                )));
+            }
+        }
+        if self.aspect_ratio.is_some_and(|value| !finite_positive(value)) {
+            return Err(UiError::InvalidStyle(
+                "aspect ratio must be finite and positive".to_string(),
+            ));
+        }
+        if self.corner_radii.is_some_and(|value| !value.validate()) {
+            return Err(UiError::InvalidStyle(
+                "corner radii must be finite and non-negative".to_string(),
+            ));
+        }
+        if self.text_shadow.is_some_and(|value| !valid_shadow(value)) {
+            return Err(UiError::InvalidStyle(
+                "text shadow must be finite and non-negative".to_string(),
+            ));
         }
         if let Some(value) = self.padding {
             value.validate("padding")?;
@@ -1336,7 +1628,9 @@ impl UiStyle {
         }
         if let Some(value) = self.shadow {
             if !valid_shadow(value) {
-                return Err(UiError::InvalidStyle("shadow values must be finite and non-negative".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "shadow values must be finite and non-negative".to_string(),
+                ));
             }
         }
         Ok(())
@@ -1437,7 +1731,10 @@ impl UiStyle {
         if self.outline_width.is_some() || self.outline_color.is_some() {
             let width = self.outline_width.unwrap_or(1.0);
             let color = self.outline_color.unwrap_or(UiColor::rgb(0, 103, 192));
-            push!("outline", format!("{}px solid {}", number(width), color.to_css()));
+            push!(
+                "outline",
+                format!("{}px solid {}", number(width), color.to_css())
+            );
         }
         if let Some(value) = self.outline_offset {
             push!("outline-offset", format!("{}px", number(value)));
@@ -1508,6 +1805,64 @@ impl UiStyle {
                     .map(UiTransition::css)
                     .collect::<Vec<_>>()
                     .join(",")
+            );
+        }
+        if let Some(value) = &self.grid_columns {
+            push!(
+                "grid-template-columns",
+                value
+                    .iter()
+                    .copied()
+                    .map(UiGridTrack::css)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
+        }
+        if let Some(value) = &self.grid_rows {
+            push!(
+                "grid-template-rows",
+                value
+                    .iter()
+                    .copied()
+                    .map(UiGridTrack::css)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
+        }
+        if let Some(value) = self.column_gap {
+            push!("column-gap", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.row_gap {
+            push!("row-gap", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.align_content {
+            push!("align-content", value.css().to_string());
+        }
+        if let Some(value) = self.justify_items {
+            push!("justify-items", value.css().to_string());
+        }
+        if let Some(value) = self.font_style {
+            push!("font-style", value.css().to_string());
+        }
+        if let Some(value) = self.text_overflow {
+            push!("text-overflow", value.css().to_string());
+        }
+        if let Some(value) = self.aspect_ratio {
+            push!("aspect-ratio", number(value));
+        }
+        if let Some(value) = self.corner_radii {
+            push!("border-radius", value.css());
+        }
+        if let Some(value) = self.text_shadow {
+            push!(
+                "text-shadow",
+                format!(
+                    "{}px {}px {}px {}",
+                    number(value.offset_x),
+                    number(value.offset_y),
+                    number(value.blur),
+                    value.color.to_css()
+                )
             );
         }
         Ok(css)
@@ -1939,6 +2294,48 @@ mod tests {
         assert!(css.contains("padding:8px 12px 8px 12px"));
         assert!(css.contains("font-weight:600"));
         assert!(css.contains("border-radius:6px"));
+    }
+
+    #[test]
+    fn grid_and_text_layout_values_emit_validated_css() {
+        let style = UiStyle::new()
+            .display(UiDisplay::Grid)
+            .grid_template(
+                [UiGridTrack::Fraction(1.0), UiGridTrack::Px(280.0)],
+                [UiGridTrack::Auto, UiGridTrack::Fraction(1.0)],
+            )
+            .grid_gap(12.0, 16.0)
+            .align_content(UiAlignContent::Start)
+            .justify_items(UiJustifyItems::Stretch)
+            .font_style(UiFontStyle::Italic)
+            .text_overflow(UiTextOverflow::Ellipsis)
+            .aspect_ratio(1.5)
+            .corner_radii(UiCornerRadii::new(8.0, 8.0, 12.0, 12.0))
+            .text_shadow(UiShadow::new(
+                UiColor::rgb(0, 0, 0),
+                0.0,
+                1.0,
+                2.0,
+                0.0,
+            ));
+        let css = UiStyleSheet::new()
+            .rule(UiSelector::new(UiComponent::Card), style)
+            .to_css()
+            .unwrap();
+
+        assert!(css.contains("grid-template-columns:1fr 280px"));
+        assert!(css.contains("grid-template-rows:auto 1fr"));
+        assert!(css.contains("row-gap:12px"));
+        assert!(css.contains("column-gap:16px"));
+        assert!(css.contains("border-radius:8px 8px 12px 12px"));
+        assert!(css.contains("font-style:italic"));
+        assert!(css.contains("text-overflow:ellipsis"));
+
+        let invalid = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Card),
+            UiStyle::new().grid_columns([UiGridTrack::Fraction(0.0)]),
+        );
+        assert!(invalid.to_css().is_err());
     }
 
     #[test]
