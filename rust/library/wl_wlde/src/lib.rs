@@ -702,9 +702,11 @@ mod tests {
 
     #[test]
     fn capabilities_gate_interactive_content_and_virtual_groups() {
-        let mut capabilities = PresentationCapabilities::default();
-        capabilities.static_wallpaper = true;
-        capabilities.virtual_groups = true;
+        let mut capabilities = PresentationCapabilities {
+            static_wallpaper: true,
+            virtual_groups: true,
+            ..PresentationCapabilities::default()
+        };
         assert!(capabilities.supports(ContentKind::StaticImage));
         assert!(!capabilities.supports(ContentKind::AnimatedMedia));
         assert!(!capabilities.supports(ContentKind::Interactive));
