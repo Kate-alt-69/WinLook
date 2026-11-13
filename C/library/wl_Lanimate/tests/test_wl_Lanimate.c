@@ -263,6 +263,8 @@ static void test_animation_runtime(void)
     assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 25.0), 2.5));
     assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 75.0), 7.5));
     assert(cursor.segment_index == 0U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 100.0), 10.0));
+    assert(cursor.segment_index == 1U);
     assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 125.0), 12.5));
     assert(cursor.segment_index == 1U);
     assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 50.0), 5.0));
