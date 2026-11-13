@@ -32,13 +32,14 @@ let opacity = fade.advance(Duration::from_millis(16));
 
 `elapsed()` includes the delay. `progress()` reports interpolation progress only. While pending or cancelled, sampling returns the current value; a finished tween returns its final value.
 
-## Windows baseline
+## Platform contract
 
-The first implementation baseline for **both** `wl_animate` and the C `wl_Lanimate` library is Windows 10. Rust/MSVC builds use the current official Windows target; the C library retains its C89-compatible source constraint and can be built on Windows with MSVC or on a host compiler. C89 compatibility is a source-language constraint, not evidence that the C library already works on pre-Windows-10 releases. Older Windows targets remain a separate future compatibility gate.
-
-The crate's `rust-version = 1.56` describes its minimum Rust compiler version, not its Windows OS minimum. A portable crate that avoids Win32 APIs does not by itself make a current Rust/MSVC application binary compatible with older Windows releases.
-
-See [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) and [WinLook's compatibility policy](../../plan/compatibility/README.md).
+The animation core has no Windows-specific API, target, windowing dependency or
+OS baseline. It can be built wherever the selected Rust toolchain supports the
+crate. The host owns the frame loop and supplies elapsed time; platform
+renderers and resource management remain separate adapters. A successful
+portable build does not certify a platform-specific renderer or application
+binary for a particular OS release.
 
 ## Scope boundary
 
