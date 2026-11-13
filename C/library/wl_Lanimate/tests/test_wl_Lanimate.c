@@ -132,6 +132,23 @@ static void test_keyframe_track(void)
     assert(wl_Lanimate_track_sample(&track, 10.0) == 0.0);
 }
 
+static void test_single_keyframe_track(void)
+{
+    wl_Lanimate_keyframe frame;
+    wl_Lanimate_track track;
+    wl_Lanimate_track_cursor cursor;
+
+    frame.at_ms = 12.0;
+    frame.value = 42.0;
+    frame.easing_to_next = WL_LANIMATE_LINEAR;
+    assert(wl_Lanimate_track_init(&track, &frame, 1U) == WL_LANIMATE_OK);
+    cursor.segment_index = 99U;
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 0.0), 42.0));
+    assert(cursor.segment_index == 0U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 100.0), 42.0));
+    assert(cursor.segment_index == 0U);
+}
+
 static void test_animation_runtime(void)
 {
     wl_Lanimate_keyframe frames[3];
@@ -239,6 +256,7 @@ int main(void)
     test_tween_delay();
     test_easing_and_values();
     test_keyframe_track();
+    test_single_keyframe_track();
     test_animation_runtime();
     test_vector_geometry();
     return 0;
