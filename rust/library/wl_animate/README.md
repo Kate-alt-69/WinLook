@@ -41,6 +41,30 @@ renderers and resource management remain separate adapters. A successful
 portable build does not certify a platform-specific renderer or application
 binary for a particular OS release.
 
+## Low-overhead 60 FPS usage
+
+Use one host frame clock and pass the same frame delta to every active
+animation. Do not create one OS timer, worker or thread per animated property.
+Each Animation owns a cached keyframe cursor, so consecutive samples within
+the same segment avoid another binary search. Tracks remain immutable and can
+be shared by multiple playback objects.
+
+Sine easing uses a degree-11 polynomial approximation rather than sin/cos in
+the frame path (maximum absolute error approximately 5.7e-8 on the supported
+interval). Tween progress uses a nanosecond ratio. Animation advancement and
+sampling do not allocate memory.
+
+Run the local 60 FPS workload microbenchmark:
+
+```sh
+cargo run --release -p wl_animate --example frame_budget
+```
+
+The example advances 1,024 animations for 600 frames and reports CPU timing
+on the current machine. It is not a GPU benchmark or a universal utilization
+guarantee. wlDE and wl_ui should share one frame clock and reuse the same
+animation objects; GPU cost depends on the host renderer and compositor path.
+
 ## Scope boundary
 
 This is the renderer-independent animation core, not the complete OS animation suite. Win32 window observation, DWM, D3D11, DirectComposition, overlay presentation, frame scheduling, target-FPS pacing and platform resource management belong in separate adapters. A backend must be selected through capability detection and retain a native fallback. The core does not inject into processes or manipulate Windows UI by itself.
