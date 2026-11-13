@@ -41,17 +41,15 @@ impl fmt::Display for AnimationError {
         match self {
             Self::InvalidDuration => {
                 f.write_str("animation duration must be positive and at most one hour")
-            },
+            }
             Self::InvalidDelay => f.write_str("animation delay must not exceed one hour"),
             Self::InvalidIterationCount => {
                 f.write_str("iteration count must be 1 to 1000 or infinite")
-            },
-            Self::InvalidKeyframeCount => {
-                f.write_str("animation must contain 2 to 64 keyframes")
-            },
+            }
+            Self::InvalidKeyframeCount => f.write_str("animation must contain 2 to 64 keyframes"),
             Self::KeyframesNeedPositiveSpan => {
                 f.write_str("keyframes must cover a positive time span")
-            },
+            }
         }
     }
 }
