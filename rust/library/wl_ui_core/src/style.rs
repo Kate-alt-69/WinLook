@@ -2965,13 +2965,7 @@ mod tests {
 
         let invalid = UiStyleSheet::new().rule(
             UiSelector::new(UiComponent::Card),
-            UiStyle::new().shadow(UiShadow::new(
-                UiColor::rgb(0, 0, 0),
-                0.0,
-                0.0,
-                -1.0,
-                0.0,
-            )),
+            UiStyle::new().shadow(UiShadow::new(UiColor::rgb(0, 0, 0), 0.0, 0.0, -1.0, 0.0)),
         );
         assert!(invalid.validate().is_err());
     }
