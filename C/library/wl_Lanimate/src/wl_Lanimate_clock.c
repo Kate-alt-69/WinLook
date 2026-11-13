@@ -2,6 +2,7 @@
 
 #include <float.h>
 #include <limits.h>
+#include <math.h>
 
 static int wl_Lanimate_clock_valid_time(double value)
 {
@@ -24,6 +25,8 @@ wl_Lanimate_result wl_Lanimate_frame_clock_init(
     clock->target_interval_ms = target_interval_ms;
     clock->maximum_delta_ms = maximum_delta_ms;
     clock->last_timestamp_ms = 0.0;
+    clock->last_frame_timestamp_ms = 0.0;
+    clock->phase_elapsed_ms = 0.0;
     clock->frame_index = 0UL;
     clock->has_last_timestamp = 0U;
     clock->paused = 0U;
@@ -36,7 +39,10 @@ wl_Lanimate_result wl_Lanimate_frame_clock_tick(
     wl_Lanimate_frame_tick *tick_out
 )
 {
-    double elapsed_ms;
+    double poll_delta_ms;
+    double frame_delta_ms;
+    double accumulated_ms;
+    int stalled;
 
     if (clock == 0 || tick_out == 0 || !wl_Lanimate_clock_valid_time(now_ms)) {
         return WL_LANIMATE_INVALID_ARGUMENT;
@@ -49,6 +55,8 @@ wl_Lanimate_result wl_Lanimate_frame_clock_tick(
 
     if (clock->has_last_timestamp == 0U) {
         clock->last_timestamp_ms = now_ms;
+        clock->last_frame_timestamp_ms = now_ms;
+        clock->phase_elapsed_ms = 0.0;
         clock->has_last_timestamp = 1U;
         if (clock->frame_index < ULONG_MAX) clock->frame_index++;
         return WL_LANIMATE_OK;
@@ -56,17 +64,34 @@ wl_Lanimate_result wl_Lanimate_frame_clock_tick(
 
     if (now_ms < clock->last_timestamp_ms) {
         clock->last_timestamp_ms = now_ms;
+        clock->last_frame_timestamp_ms = now_ms;
+        clock->phase_elapsed_ms = 0.0;
         return WL_LANIMATE_NO_FRAME;
     }
 
-    elapsed_ms = now_ms - clock->last_timestamp_ms;
-    if (elapsed_ms < clock->target_interval_ms) {
-        return WL_LANIMATE_NO_FRAME;
-    }
-
+    poll_delta_ms = now_ms - clock->last_timestamp_ms;
+    frame_delta_ms = now_ms - clock->last_frame_timestamp_ms;
     clock->last_timestamp_ms = now_ms;
-    tick_out->delta_ms = elapsed_ms > clock->maximum_delta_ms
-        ? clock->maximum_delta_ms : elapsed_ms;
+    stalled = frame_delta_ms > clock->maximum_delta_ms;
+
+    accumulated_ms = stalled
+        ? poll_delta_ms
+        : clock->phase_elapsed_ms + poll_delta_ms;
+
+    if (clock->target_interval_ms > 0.0) {
+        if (accumulated_ms < clock->target_interval_ms) {
+            clock->phase_elapsed_ms = accumulated_ms;
+            return WL_LANIMATE_NO_FRAME;
+        }
+        clock->phase_elapsed_ms = stalled
+            ? 0.0 : fmod(accumulated_ms, clock->target_interval_ms);
+    } else {
+        clock->phase_elapsed_ms = 0.0;
+    }
+
+    clock->last_frame_timestamp_ms = now_ms;
+    tick_out->delta_ms = frame_delta_ms > clock->maximum_delta_ms
+        ? clock->maximum_delta_ms : frame_delta_ms;
     tick_out->frame_index = clock->frame_index;
     if (clock->frame_index < ULONG_MAX) clock->frame_index++;
     return WL_LANIMATE_OK;
@@ -86,6 +111,8 @@ wl_Lanimate_result wl_Lanimate_frame_clock_resume(
         return WL_LANIMATE_INVALID_ARGUMENT;
     }
     clock->last_timestamp_ms = now_ms;
+    clock->last_frame_timestamp_ms = now_ms;
+    clock->phase_elapsed_ms = 0.0;
     clock->has_last_timestamp = 1U;
     clock->paused = 0U;
     return WL_LANIMATE_OK;
@@ -95,6 +122,8 @@ void wl_Lanimate_frame_clock_reset(wl_Lanimate_frame_clock *clock)
 {
     if (clock == 0) return;
     clock->last_timestamp_ms = 0.0;
+    clock->last_frame_timestamp_ms = 0.0;
+    clock->phase_elapsed_ms = 0.0;
     clock->frame_index = 0UL;
     clock->has_last_timestamp = 0U;
     clock->paused = 0U;
