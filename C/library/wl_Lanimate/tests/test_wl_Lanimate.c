@@ -76,6 +76,8 @@ static void test_easing_and_values(void)
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_LINEAR, 0.5), 0.5));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_OUT_QUART, 0.5), 0.9375));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_SINE, 0.5), 0.5));
+    assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_SINE, 1.0), 1.0));
+    assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_OUT_SINE, 1.0), 1.0));
 
     p0.x = 0.0; p0.y = 10.0;
     p1.x = 100.0; p1.y = 30.0;
@@ -130,6 +132,72 @@ static void test_keyframe_track(void)
     assert(wl_Lanimate_track_sample(&track, 10.0) == 0.0);
 }
 
+static void test_animation_runtime(void)
+{
+    wl_Lanimate_keyframe frames[3];
+    wl_Lanimate_track track;
+    wl_Lanimate_track_cursor cursor;
+    wl_Lanimate_animation animation;
+    double value;
+
+    frames[0].at_ms = 0.0; frames[0].value = 0.0; frames[0].easing_to_next = WL_LANIMATE_LINEAR;
+    frames[1].at_ms = 100.0; frames[1].value = 10.0; frames[1].easing_to_next = WL_LANIMATE_LINEAR;
+    frames[2].at_ms = 200.0; frames[2].value = 20.0; frames[2].easing_to_next = WL_LANIMATE_LINEAR;
+    assert(wl_Lanimate_track_init(&track, frames, 3U) == WL_LANIMATE_OK);
+
+    cursor.segment_index = 0U;
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 25.0), 2.5));
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 75.0), 7.5));
+    assert(cursor.segment_index == 0U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 125.0), 12.5));
+    assert(cursor.segment_index == 1U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 50.0), 5.0));
+    assert(cursor.segment_index == 0U);
+
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 100.0, 20.0, 2U,
+        WL_LANIMATE_DIRECTION_ALTERNATE, WL_LANIMATE_FILL_BOTH
+    ) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_animation_sample(&animation, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 0.0));
+    assert(wl_Lanimate_animation_advance(&animation, 70.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 10.0));
+    assert(wl_Lanimate_animation_advance(&animation, 50.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 20.0));
+    assert(wl_Lanimate_animation_advance(&animation, 100.0, &value) == WL_LANIMATE_OK);
+    assert(animation.state == WL_LANIMATE_FINISHED);
+    assert(near_value(value, 0.0));
+
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 100.0, 30.0, 1U,
+        WL_LANIMATE_DIRECTION_REVERSE, WL_LANIMATE_FILL_NONE
+    ) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_animation_sample(&animation, &value) == WL_LANIMATE_NO_VALUE);
+    assert(wl_Lanimate_animation_advance(&animation, 30.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 20.0));
+    wl_Lanimate_animation_pause(&animation);
+    assert(animation.state == WL_LANIMATE_PAUSED);
+    assert(wl_Lanimate_animation_advance(&animation, 50.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 20.0));
+    wl_Lanimate_animation_resume(&animation);
+    assert(animation.state == WL_LANIMATE_RUNNING);
+    wl_Lanimate_animation_cancel(&animation);
+    assert(animation.state == WL_LANIMATE_CANCELLED);
+    wl_Lanimate_animation_restart(&animation);
+    assert(animation.state == WL_LANIMATE_PENDING);
+    assert(animation.elapsed_ms == 0.0);
+    assert(animation.cursor.segment_index == 0U);
+
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 0.0, 0.0, 1U,
+        WL_LANIMATE_DIRECTION_NORMAL, WL_LANIMATE_FILL_BOTH
+    ) == WL_LANIMATE_INVALID_ARGUMENT);
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 10.0, 0.0, 1001U,
+        WL_LANIMATE_DIRECTION_NORMAL, WL_LANIMATE_FILL_BOTH
+    ) == WL_LANIMATE_INVALID_ARGUMENT);
+}
+
 static void test_vector_geometry(void)
 {
     wl_Lanimate_vector3 a3, b3, c3;
@@ -171,6 +239,7 @@ int main(void)
     test_tween_delay();
     test_easing_and_values();
     test_keyframe_track();
+    test_animation_runtime();
     test_vector_geometry();
     return 0;
 }
