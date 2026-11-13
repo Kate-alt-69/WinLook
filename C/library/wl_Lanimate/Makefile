@@ -7,8 +7,9 @@ SOURCES = src/wl_Lanimate_math.c src/wl_Lanimate_tween.c src/wl_Lanimate_track.c
 OBJECTS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SOURCES))
 LIBRARY = $(BUILD_DIR)/libwl_Lanimate.a
 TEST = $(BUILD_DIR)/test_wl_Lanimate
+BENCHMARK = $(BUILD_DIR)/wl_Lanimate_frame_budget
 
-.PHONY: all static test clean
+.PHONY: all static test benchmark clean
 
 all: static
 
@@ -28,6 +29,12 @@ $(TEST): tests/test_wl_Lanimate.c $(LIBRARY) include/wl_Lanimate.h
 
 test: $(TEST)
 	./$(TEST)
+
+$(BENCHMARK): examples/frame_budget.c $(LIBRARY) include/wl_Lanimate.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) examples/frame_budget.c $(LIBRARY) -lm -o $@
+
+benchmark: $(BENCHMARK)
+	./$(BENCHMARK)
 
 clean:
 	rm -rf $(BUILD_DIR)
