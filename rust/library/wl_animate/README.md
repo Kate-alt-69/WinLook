@@ -62,7 +62,7 @@ animation. Do not create one OS timer, worker or thread per animated property.
 Each Animation owns a cached keyframe cursor, so consecutive samples within
 the same segment avoid another binary search. Tracks are immutable Arc-backed
 slices, so cloning them across playback objects shares the same keyframe
-storage rather than copying a Vec for every animation.
+storage rather than copying a Vec for every animation. Keyframe tracks enforce the same 64-entry maximum even when sampled directly, so lookup work is bounded independently of whether an Animation controller is used.
 
 Sine easing uses a degree-15 polynomial approximation rather than sin/cos in
 the frame path (maximum absolute error approximately 6.1e-12 on the supported
