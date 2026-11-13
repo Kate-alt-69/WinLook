@@ -64,7 +64,7 @@ the same segment avoid another binary search. Tracks remain immutable and can
 be shared by multiple playback objects.
 
 Sine easing uses a degree-11 polynomial approximation rather than sin/cos in
-the frame path (maximum absolute error approximately 5.7e-8 on the supported
+the frame path (maximum absolute error approximately 6.1e-12 on the supported
 interval). Tween progress uses a nanosecond ratio. Animation advancement and
 sampling do not allocate memory.
 
