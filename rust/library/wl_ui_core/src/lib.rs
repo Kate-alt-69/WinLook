@@ -36,7 +36,7 @@ mod tests {
         assert!(app.validate().is_ok());
         assert_eq!(app.initial_page_id(), "settings");
         assert_eq!(app.pages().len(), 2);
-        assert_eq!(app.theme().color_scheme(), UiColorScheme::System);
+        assert_eq!(app.theme_ref().color_scheme(), UiColorScheme::System);
     }
 
     #[test]
@@ -85,6 +85,6 @@ mod tests {
             ));
         assert!(app.validate().is_ok());
         assert_eq!(app.theme().color_scheme(), UiColorScheme::Dark);
-        assert_eq!(app.styles().rules().len(), 1);
+        assert_eq!(app.styles_ref().rules().len(), 1);
     }
 }

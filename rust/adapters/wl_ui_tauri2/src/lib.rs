@@ -23,8 +23,8 @@ pub fn attach<R: Runtime>(
     application.validate()?;
 
     let window = application.window_config();
-    let theme_css = application.theme().css_variables()?;
-    let style_css = application.styles().to_css()?;
+    let theme_css = application.theme_ref().css_variables()?;
+    let style_css = application.styles_ref().to_css()?;
     let style_css = format!("{theme_css}\n{style_css}");
     let page_model = json!({
         "title": window.title(),
@@ -93,8 +93,8 @@ mod tests {
         assert!(app.validate().is_ok());
         let css = format!(
             "{}\n{}",
-            app.theme().css_variables().unwrap(),
-            app.styles().to_css().unwrap()
+            app.theme_ref().css_variables().unwrap(),
+            app.styles_ref().to_css().unwrap()
         );
         assert!(css.contains("--wl-color-surface"));
         assert!(css.contains("[data-wl-component=\"button\"].primary"));

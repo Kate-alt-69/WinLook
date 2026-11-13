@@ -418,7 +418,7 @@ impl UiTheme {
         &self.high_contrast
     }
 
-    pub fn name(&self) -> &str {
+    pub fn theme_name(&self) -> &str {
         &self.name
     }
 
@@ -440,11 +440,11 @@ impl UiTheme {
         &self.typography
     }
 
-    pub fn metrics(&self) -> &UiMetrics {
+    pub fn metrics_tokens(&self) -> &UiMetrics {
         &self.metrics
     }
 
-    pub fn effects(&self) -> &UiEffects {
+    pub fn effects_tokens(&self) -> &UiEffects {
         &self.effects
     }
 
@@ -1346,12 +1346,12 @@ impl UiStyle {
         self.validate()?;
         let mut css = String::new();
         macro_rules! push {
-            ($name:literal, $value:expr) => {
+            ($name:literal, $value:expr) => {{
                 css.push_str($name);
                 css.push(':');
                 css.push_str(&$value);
                 css.push(';');
-            };
+            }};
         }
         if let Some(value) = &self.background {
             match value {
@@ -1731,16 +1731,18 @@ fn shadow_css(shadow: UiShadow) -> String {
 fn valid_font_family(value: &str) -> bool {
     !value.trim().is_empty()
         && value.chars().all(|character| {
-            character.is_alphanumeric()
-                || matches!(character, ' ' | '\t' | '-' | '_' | ',')
+            character.is_alphanumeric() || matches!(character, ' ' | '\t' | '-' | '_' | ',')
         })
 }
 
 fn css_font_family(value: &str) -> String {
-    let families = value.split(',').map(str::trim)
+    let families = value
+        .split(',')
+        .map(str::trim)
         .filter(|family| !family.is_empty())
         .map(|family| format!("\"{family}\""))
-        .collect::<Vec<_>>().join(",");
+        .collect::<Vec<_>>()
+        .join(",");
     format!("{families},sans-serif")
 }
 
@@ -1750,7 +1752,8 @@ fn valid_identifier(value: &str) -> bool {
         Some(first) if first.is_ascii_alphabetic() || first == '_' => {}
         _ => return false,
     }
-    characters.all(|character| character.is_ascii_alphanumeric() || character == '_' || character == '-')
+    characters
+        .all(|character| character.is_ascii_alphanumeric() || character == '_' || character == '-')
 }
 
 fn finite_positive(value: f32) -> bool {
@@ -1763,7 +1766,10 @@ fn finite_non_negative(value: f32) -> bool {
 
 fn number(value: f32) -> String {
     let rendered = format!("{value:.3}");
-    rendered.trim_end_matches('0').trim_end_matches('.').to_string()
+    rendered
+        .trim_end_matches('0')
+        .trim_end_matches('.')
+        .to_string()
 }
 
 #[cfg(test)]
@@ -1772,8 +1778,14 @@ mod tests {
 
     #[test]
     fn parses_rgb_and_rgba_hex_colors() {
-        assert_eq!(UiColor::from_hex("#123456"), Some(UiColor::rgb(0x12, 0x34, 0x56)));
-        assert_eq!(UiColor::from_hex("#12345680"), Some(UiColor::rgba(0x12, 0x34, 0x56, 0x80)));
+        assert_eq!(
+            UiColor::from_hex("#123456"),
+            Some(UiColor::rgb(0x12, 0x34, 0x56))
+        );
+        assert_eq!(
+            UiColor::from_hex("#12345680"),
+            Some(UiColor::rgba(0x12, 0x34, 0x56, 0x80))
+        );
         assert_eq!(UiColor::from_hex("123456"), None);
         assert_eq!(UiColor::from_hex("#12345"), None);
         assert_eq!(UiColor::from_hex("#é23456"), None);
@@ -1787,24 +1799,29 @@ mod tests {
         assert!(css.contains("--wl-color-accent"));
         assert!(css.contains("--wl-font-family"));
         assert!(css.contains("@media(forced-colors:active)"));
-        let reduced = UiTheme::system().effects(UiEffects { reduced_motion: true, ..UiEffects::default() }).css_variables().unwrap();
+        let reduced = UiTheme::system()
+            .effects(UiEffects {
+                reduced_motion: true,
+                ..UiEffects::default()
+            })
+            .css_variables()
+            .unwrap();
         assert!(reduced.contains("--wl-motion-fast:0ms"));
         assert!(!reduced.contains("@media(prefers-reduced-motion:no-preference)"));
     }
 
     #[test]
     fn stylesheet_emits_stable_semantic_selectors_and_typed_values() {
-        let styles = UiStyleSheet::new()
-            .rule(
-                UiSelector::new(UiComponent::Button)
-                    .class("primary")
-                    .state(UiVisualState::Hover),
-                UiStyle::new()
-                    .background(UiColor::rgb(1, 2, 3))
-                    .padding(UiEdges::xy(12.0, 8.0))
-                    .border_radius(6.0)
-                    .font_weight(600),
-            );
+        let styles = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Button)
+                .class("primary")
+                .state(UiVisualState::Hover),
+            UiStyle::new()
+                .background(UiColor::rgb(1, 2, 3))
+                .padding(UiEdges::xy(12.0, 8.0))
+                .border_radius(6.0)
+                .font_weight(600),
+        );
         let css = styles.to_css().unwrap();
         assert!(css.contains("[data-wl-component=\"button\"].primary:hover"));
         assert!(css.contains("background-color:rgba(1, 2, 3, 1.000)"));

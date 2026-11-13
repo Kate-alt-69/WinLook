@@ -87,10 +87,10 @@ impl Component for CustomShell {
 
     fn view(&self, _: &UiApplication, context: &mut ViewContext<Self>) -> View {
         let window = self.application.window_config();
-        let theme = self.application.theme();
+        let theme = self.application.theme_ref();
         let palette = theme.palette();
         let typography = theme.typography_tokens();
-        let metrics = theme.metrics();
+        let metrics = theme.metrics_tokens();
         let page = self.selected_page();
 
         context.window_title(format!("{} — {}", window.title(), page.title()));

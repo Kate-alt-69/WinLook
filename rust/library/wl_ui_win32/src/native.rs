@@ -187,7 +187,7 @@ fn colorref(color: UiColor) -> u32 {
 
 fn component_background(application: &UiApplication, component: UiComponent) -> Option<UiColor> {
     application
-        .styles()
+        .styles_ref()
         .rules()
         .iter()
         .rev()
@@ -196,13 +196,17 @@ fn component_background(application: &UiApplication, component: UiComponent) -> 
 }
 
 fn component_foreground(application: &UiApplication, component: UiComponent) -> Option<UiColor> {
-    application.styles().rules().iter().rev()
+    application
+        .styles_ref()
+        .rules()
+        .iter()
+        .rev()
         .find(|rule| rule.selector().component() == &component)
         .and_then(|rule| rule.style().foreground_color())
 }
 
 fn create_font(application: &UiApplication) -> Handle {
-    let typography = application.theme().typography_tokens();
+    let typography = application.theme_ref().typography_tokens();
     let face = wide(&typography.font_family);
     unsafe {
         CreateFontW(
@@ -508,7 +512,7 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     let instance = unsafe { GetModuleHandleW(std::ptr::null()) };
     register_window_class(instance)?;
 
-    let palette: &UiPalette = application.theme().palette();
+    let palette: &UiPalette = application.theme_ref().palette();
     let window_color =
         component_background(&application, UiComponent::Window).unwrap_or(palette.window);
     let navigation_color =

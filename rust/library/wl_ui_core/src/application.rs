@@ -65,12 +65,12 @@ impl UiApplication {
     }
 
     /// Returns the shared design theme.
-    pub fn theme(&self) -> &UiTheme {
+    pub fn theme_ref(&self) -> &UiTheme {
         &self.theme
     }
 
     /// Returns component rules in cascade order.
-    pub fn styles(&self) -> &UiStyleSheet {
+    pub fn styles_ref(&self) -> &UiStyleSheet {
         &self.styles
     }
 
