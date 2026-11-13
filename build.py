@@ -2117,11 +2117,11 @@ def require_manifest(root: Path, relative: str, description: str) -> None:
 
 def check_ui_sources(root: Path) -> bool:
     required = (
-        "rust/library/wl_ui_core/Cargo.toml",
-        "rust/library/wl_ui_win32/Cargo.toml",
-        "rust/library/wl_ui_windows7/Cargo.toml",
-        "rust/library/wl_ui_windows10/Cargo.toml",
-        "rust/library/wl_ui_windows11/Cargo.toml",
+        "rust/library/wl_ui/core/Cargo.toml",
+        "rust/library/wl_ui/backends/win32/Cargo.toml",
+        "rust/library/wl_ui/backends/windows7/Cargo.toml",
+        "rust/library/wl_ui/backends/windows10/Cargo.toml",
+        "rust/library/wl_ui/backends/windows11/Cargo.toml",
         "rust/library/wl_ui/Cargo.toml",
         "rust/library/wl_ui/src/windows7/mod.rs",
         "rust/library/wl_ui/src/windows8/mod.rs",
@@ -2387,6 +2387,7 @@ def rust_verify(runner: Runner) -> None:
 def rust_tests(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
     runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features"])
+    runner.run("Portable wl_ui facade tests", ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--all-targets"])
 
 
 def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
@@ -2623,7 +2624,7 @@ def build_windows_generation(runner: Runner, version: str) -> None:
 
 def build_libraries(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
+    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "-p", "wl_ui", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
     cmake_c_test(runner)
 
 
