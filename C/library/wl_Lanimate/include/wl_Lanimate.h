@@ -143,7 +143,7 @@ typedef struct wl_Lanimate_frame_tick {
     unsigned long frame_index;
 } wl_Lanimate_frame_tick;
 
-#define WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS 16.6666666
+#define WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS 16.666665
 #define WL_LANIMATE_FRAME_DEFAULT_MAXIMUM_DELTA_MS 100.0
 
 
