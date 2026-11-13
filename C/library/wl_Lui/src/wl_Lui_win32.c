@@ -133,6 +133,7 @@ static wl_lui_result wl_lui_update_font(
     unsigned int weight
 ) {
     HFONT font;
+    HFONT previous_font;
     HWND hwnd;
     hwnd = native_window->hwnd;
     if (family == NULL || family[0] == '\0' || size == 0U || size > 256U
@@ -147,13 +148,14 @@ static wl_lui_result wl_lui_update_font(
     if (font == NULL) {
         return WL_LUI_PLATFORM_ERROR;
     }
-    if (native_window->font != NULL) {
-        DeleteObject(native_window->font);
-    }
+    previous_font = native_window->font;
     native_window->font = font;
     if (hwnd != NULL) {
         SendMessageA(hwnd, WM_SETFONT, (WPARAM)font, TRUE);
         EnumChildWindows(hwnd, wl_lui_set_child_font, (LPARAM)font);
+    }
+    if (previous_font != NULL) {
+        DeleteObject(previous_font);
     }
     return WL_LUI_OK;
 }
@@ -255,6 +257,8 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
     HBRUSH surface;
     wl_lui_color next_background;
     wl_lui_color next_foreground;
+    int update_colors;
+    wl_lui_result result;
 
     if (native_handle == NULL || style == NULL) {
         return WL_LUI_INVALID_ARGUMENT;
@@ -266,6 +270,9 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
     if (style->flags == 0UL) {
         return WL_LUI_OK;
     }
+
+    update_colors = (style->flags
+        & (WL_LUI_STYLE_BACKGROUND | WL_LUI_STYLE_FOREGROUND)) != 0UL;
     next_background = native_window->background;
     next_foreground = native_window->foreground;
     if ((style->flags & WL_LUI_STYLE_BACKGROUND) != 0UL) {
@@ -275,29 +282,46 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
         next_foreground = style->foreground;
     }
 
-    background = CreateSolidBrush(wl_lui_colorref(next_background));
-    surface = CreateSolidBrush(wl_lui_colorref(next_background));
-    if (background == NULL || surface == NULL) {
-        if (background != NULL) DeleteObject(background);
-        if (surface != NULL) DeleteObject(surface);
-        return WL_LUI_PLATFORM_ERROR;
-    }
-    if ((style->flags & WL_LUI_STYLE_FONT) != 0UL) {
-        if (wl_lui_update_font(native_window, style->font_family, style->font_size,
-                style->font_weight) != WL_LUI_OK) {
-            DeleteObject(background);
-            DeleteObject(surface);
+    background = NULL;
+    surface = NULL;
+    if (update_colors) {
+        background = CreateSolidBrush(wl_lui_colorref(next_background));
+        surface = CreateSolidBrush(wl_lui_colorref(next_background));
+        if (background == NULL || surface == NULL) {
+            if (background != NULL) DeleteObject(background);
+            if (surface != NULL) DeleteObject(surface);
             return WL_LUI_PLATFORM_ERROR;
         }
     }
 
-    if (native_window->background_brush != NULL) DeleteObject(native_window->background_brush);
-    if (native_window->surface_brush != NULL) DeleteObject(native_window->surface_brush);
-    native_window->background_brush = background;
-    native_window->surface_brush = surface;
-    native_window->background = next_background;
-    native_window->foreground = next_foreground;
-    InvalidateRect(native_window->hwnd, NULL, TRUE);
+    if ((style->flags & WL_LUI_STYLE_FONT) != 0UL) {
+        result = wl_lui_update_font(
+            native_window,
+            style->font_family,
+            style->font_size,
+            style->font_weight
+        );
+        if (result != WL_LUI_OK) {
+            if (background != NULL) DeleteObject(background);
+            if (surface != NULL) DeleteObject(surface);
+            return result;
+        }
+    }
+
+    if (update_colors) {
+        if (native_window->background_brush != NULL) {
+            DeleteObject(native_window->background_brush);
+        }
+        if (native_window->surface_brush != NULL) {
+            DeleteObject(native_window->surface_brush);
+        }
+        native_window->background_brush = background;
+        native_window->surface_brush = surface;
+        native_window->background = next_background;
+        native_window->foreground = next_foreground;
+        InvalidateRect(native_window->hwnd, NULL, TRUE);
+    }
+
     return WL_LUI_OK;
 }
 

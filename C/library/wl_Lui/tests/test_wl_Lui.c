@@ -48,6 +48,17 @@ int main(void) {
     wl_lui_theme_init(&theme, WL_LUI_THEME_DARK);
     assert(wl_lui_window_set_theme(window, &theme) == WL_LUI_OK);
     wl_lui_style_init(&style);
+    style.flags = WL_LUI_STYLE_FONT;
+    strcpy(style.font_family, "Segoe UI");
+    style.font_size = 16U;
+    style.font_weight = 600U;
+    assert(wl_lui_window_set_style(window, &style) == WL_LUI_OK);
+    wl_lui_style_init(&style);
+    style.flags = WL_LUI_STYLE_FONT;
+    style.font_family[0] = '\0';
+    assert(wl_lui_window_set_style(window, &style) == WL_LUI_INVALID_ARGUMENT);
+
+    wl_lui_style_init(&style);
     style.flags = WL_LUI_STYLE_BACKGROUND | WL_LUI_STYLE_FOREGROUND;
     style.background.red = 20U;
     style.background.green = 22U;
