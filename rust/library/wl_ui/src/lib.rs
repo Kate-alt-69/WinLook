@@ -16,6 +16,7 @@ pub use wl_ui_core::{
 };
 
 pub use wl_animate as animate;
+pub use wl_animate::{FrameClock, FrameClockError, FrameTick};
 pub use wl_ui_core::{UiBackend, UiBackendCapabilities};
 
 /// Runs a validated application through an application-provided renderer.
