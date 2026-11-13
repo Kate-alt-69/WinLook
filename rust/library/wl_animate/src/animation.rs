@@ -100,17 +100,32 @@ impl<T: crate::Interpolate> Animation<T> {
             self.elapsed = self.elapsed.saturating_add(delta);
             self.refresh_state();
         }
-        sample_animation(
-            &self.track, self.elapsed, self.delay, self.duration, self.iterations,
-            self.direction, self.fill_mode, self.state, Some(&mut self.cursor),
-        )
+
+        let sample = AnimationSample {
+            track: &self.track,
+            elapsed: self.elapsed,
+            delay: self.delay,
+            duration: self.duration,
+            iterations: self.iterations,
+            direction: self.direction,
+            fill_mode: self.fill_mode,
+            state: self.state,
+        };
+        sample_animation(sample, Some(&mut self.cursor))
     }
 
     pub fn sample(&self) -> Option<T> {
-        sample_animation(
-            &self.track, self.elapsed, self.delay, self.duration, self.iterations,
-            self.direction, self.fill_mode, self.state, None,
-        )
+        let sample = AnimationSample {
+            track: &self.track,
+            elapsed: self.elapsed,
+            delay: self.delay,
+            duration: self.duration,
+            iterations: self.iterations,
+            direction: self.direction,
+            fill_mode: self.fill_mode,
+            state: self.state,
+        };
+        sample_animation(sample, None)
     }
 
     pub fn pause(&mut self) {
@@ -118,12 +133,19 @@ impl<T: crate::Interpolate> Animation<T> {
             self.state = PlaybackState::Paused;
         }
     }
+
     pub fn resume(&mut self) {
-        if self.state == PlaybackState::Paused { self.refresh_state(); }
+        if self.state == PlaybackState::Paused {
+            self.refresh_state();
+        }
     }
+
     pub fn cancel(&mut self) {
-        if self.state != PlaybackState::Finished { self.state = PlaybackState::Cancelled; }
+        if self.state != PlaybackState::Finished {
+            self.state = PlaybackState::Cancelled;
+        }
     }
+
     pub fn restart(&mut self) {
         self.elapsed = Duration::ZERO;
         self.cursor.reset();
@@ -147,9 +169,8 @@ impl<T: crate::Interpolate> Animation<T> {
     }
 }
 
-#[inline]
-fn sample_animation<T: crate::Interpolate>(
-    track: &KeyframeTrack<T>,
+struct AnimationSample<'a, T: crate::Interpolate> {
+    track: &'a KeyframeTrack<T>,
     elapsed: Duration,
     delay: Duration,
     duration: Duration,
@@ -157,11 +178,22 @@ fn sample_animation<T: crate::Interpolate>(
     direction: Direction,
     fill_mode: FillMode,
     state: PlaybackState,
+}
+
+#[inline]
+fn sample_animation<T: crate::Interpolate>(
+    sample: AnimationSample<'_, T>,
     cursor: Option<&mut TrackCursor>,
 ) -> Option<T> {
-    if elapsed < delay {
-        if !matches!(fill_mode, FillMode::Backwards | FillMode::Both) { return None; }
-        let reverse = matches!(direction, Direction::Reverse | Direction::AlternateReverse);
+    let track = sample.track;
+    if sample.elapsed < sample.delay {
+        if !matches!(sample.fill_mode, FillMode::Backwards | FillMode::Both) {
+            return None;
+        }
+        let reverse = matches!(
+            sample.direction,
+            Direction::Reverse | Direction::AlternateReverse
+        );
         return Some(if reverse {
             track.keyframes()[track.len() - 1].value.clone()
         } else {
@@ -169,16 +201,21 @@ fn sample_animation<T: crate::Interpolate>(
         });
     }
 
-    let active = elapsed.saturating_sub(delay);
-    let duration_nanos = duration.as_nanos();
+    let active = sample.elapsed.saturating_sub(sample.delay);
+    let duration_nanos = sample.duration.as_nanos();
     let active_nanos = active.as_nanos();
-    let finished = state == PlaybackState::Finished
-        || matches!(iterations, IterationCount::Count(count)
-            if active_nanos >= duration_nanos.saturating_mul(u128::from(count)));
-    if finished && !matches!(fill_mode, FillMode::Forwards | FillMode::Both) { return None; }
+    let finished = sample.state == PlaybackState::Finished
+        || matches!(
+            sample.iterations,
+            IterationCount::Count(count)
+                if active_nanos >= duration_nanos.saturating_mul(u128::from(count))
+        );
+    if finished && !matches!(sample.fill_mode, FillMode::Forwards | FillMode::Both) {
+        return None;
+    }
 
     let (iteration, within) = if finished {
-        let count = match iterations {
+        let count = match sample.iterations {
             IterationCount::Once => 1_u128,
             IterationCount::Count(count) => u128::from(count),
             IterationCount::Infinite => 1_u128,
@@ -187,13 +224,17 @@ fn sample_animation<T: crate::Interpolate>(
     } else {
         (active_nanos / duration_nanos, active_nanos % duration_nanos)
     };
-    let reverse = match direction {
+    let reverse = match sample.direction {
         Direction::Normal => false,
         Direction::Reverse => true,
         Direction::Alternate => iteration % 2 == 1,
         Direction::AlternateReverse => iteration % 2 == 0,
     };
-    let progress = if finished { 1.0 } else { within as f64 / duration_nanos as f64 };
+    let progress = if finished {
+        1.0
+    } else {
+        within as f64 / duration_nanos as f64
+    };
     let progress = if reverse { 1.0 - progress } else { progress };
     let first = track.start_time();
     let span = track.end_time().saturating_sub(first).as_nanos() as f64;
@@ -208,6 +249,7 @@ fn sample_animation<T: crate::Interpolate>(
         None => track.sample(sample_at),
     })
 }
+}
 
 #[cfg(test)]
 mod tests {
@@ -218,15 +260,21 @@ mod tests {
         KeyframeTrack::new(vec![
             Keyframe::new(Duration::ZERO, 0.0, Easing::Linear),
             Keyframe::new(Duration::from_millis(100), 1.0, Easing::Linear),
-        ]).unwrap()
+        ])
+        .unwrap()
     }
 
     #[test]
     fn repeats_and_alternates_using_cached_cursor() {
         let mut animation = Animation::new(
-            sample_track(), Duration::from_millis(100), Duration::ZERO,
-            IterationCount::Count(2), Direction::Alternate, FillMode::Both,
-        ).unwrap();
+            sample_track(),
+            Duration::from_millis(100),
+            Duration::ZERO,
+            IterationCount::Count(2),
+            Direction::Alternate,
+            FillMode::Both,
+        )
+        .unwrap();
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.5));
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(1.0));
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.5));
@@ -237,9 +285,14 @@ mod tests {
     #[test]
     fn reverse_direction_and_backwards_fill_are_applied() {
         let mut animation = Animation::new(
-            sample_track(), Duration::from_millis(100), Duration::from_millis(30),
-            IterationCount::Once, Direction::Reverse, FillMode::Both,
-        ).unwrap();
+            sample_track(),
+            Duration::from_millis(100),
+            Duration::from_millis(30),
+            IterationCount::Once,
+            Direction::Reverse,
+            FillMode::Both,
+        )
+        .unwrap();
         assert_eq!(animation.sample(), Some(1.0));
         assert_eq!(animation.advance(Duration::from_millis(80)), Some(0.5));
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.0));
@@ -248,9 +301,14 @@ mod tests {
     #[test]
     fn pause_cancel_restart_and_limits_are_explicit() {
         let mut animation = Animation::new(
-            sample_track(), Duration::from_millis(100), Duration::ZERO,
-            IterationCount::Once, Direction::Normal, FillMode::Both,
-        ).unwrap();
+            sample_track(),
+            Duration::from_millis(100),
+            Duration::ZERO,
+            IterationCount::Once,
+            Direction::Normal,
+            FillMode::Both,
+        )
+        .unwrap();
         animation.advance(Duration::from_millis(20));
         animation.pause();
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.2));
@@ -259,9 +317,17 @@ mod tests {
         assert_eq!(animation.state(), PlaybackState::Cancelled);
         animation.restart();
         assert_eq!(animation.sample(), Some(0.0));
-        assert_eq!(Animation::new(
-            sample_track(), Duration::ZERO, Duration::ZERO,
-            IterationCount::Once, Direction::Normal, FillMode::Both,
-        ).err(), Some(AnimationError::InvalidDuration));
+        assert_eq!(
+            Animation::new(
+                sample_track(),
+                Duration::ZERO,
+                Duration::ZERO,
+                IterationCount::Once,
+                Direction::Normal,
+                FillMode::Both,
+            )
+            .err(),
+            Some(AnimationError::InvalidDuration)
+        );
     }
 }
