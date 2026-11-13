@@ -13,14 +13,13 @@ pub use application::UiApplication;
 pub use error::UiError;
 pub use page::UiPage;
 pub use style::{
-    UiAlignContent, UiAlignItems, UiBackground, UiBorderStyle, UiBoxSizing, UiColor,
-    UiColorScheme, UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing, UiEdges,
-    UiEffects, UiFlexDirection, UiFlexWrap, UiFontStyle, UiGradientStop, UiGridTrack,
-    UiJustifyContent, UiJustifyItems, UiLength, UiLinearGradient, UiMediaCondition,
-    UiMetrics, UiObjectFit, UiOverflow, UiPalette, UiPosition, UiSelector, UiShadow,
-    UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign, UiTextDecoration, UiTextOverflow,
-    UiTextTransform, UiTheme, UiTransition, UiTransitionProperty, UiTransform,
-    UiTypography, UiVisualState, UiWhiteSpace,
+    UiAlignContent, UiAlignItems, UiBackground, UiBorderStyle, UiBoxSizing, UiColor, UiColorScheme,
+    UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing, UiEdges, UiEffects, UiFlexDirection,
+    UiFlexWrap, UiFontStyle, UiGradientStop, UiGridTrack, UiJustifyContent, UiJustifyItems,
+    UiLength, UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPalette,
+    UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
+    UiTextDecoration, UiTextOverflow, UiTextTransform, UiTheme, UiTransform, UiTransition,
+    UiTransitionProperty, UiTypography, UiVisualState, UiWhiteSpace,
 };
 pub use window::UiWindowConfig;
 
