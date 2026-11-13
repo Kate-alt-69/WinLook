@@ -72,7 +72,8 @@ wl_Lanimate_result wl_Lanimate_frame_clock_tick(
     poll_delta_ms = now_ms - clock->last_timestamp_ms;
     frame_delta_ms = now_ms - clock->last_frame_timestamp_ms;
     clock->last_timestamp_ms = now_ms;
-    stalled = frame_delta_ms > clock->maximum_delta_ms;
+    stalled = poll_delta_ms > clock->maximum_delta_ms
+        && poll_delta_ms >= clock->target_interval_ms;
 
     accumulated_ms = stalled
         ? poll_delta_ms
