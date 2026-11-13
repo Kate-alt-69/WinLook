@@ -82,7 +82,7 @@ pub(crate) fn clamp_progress(progress: f64) -> f64 {
     }
 }
 
-/// Degree-11 sine approximation on [0, pi/2], using only multiply/add.
+/// Degree-15 sine approximation on [0, pi/2], using only multiply/add.
 #[inline]
 fn fast_sin(value: f64) -> f64 {
     let square = value * value;
@@ -94,5 +94,10 @@ fn fast_sin(value: f64) -> f64 {
                         * (1.0 / 120.0
                             + square
                                 * (-1.0 / 5040.0
-                                    + square * (1.0 / 362880.0 - square / 39916800.0)))))
+                                    + square
+                                        * (1.0 / 362880.0
+                                            + square
+                                                * (-1.0 / 39916800.0
+                                                    + square * (1.0 / 6227020800.0
+                                                        - square / 1307674368000.0)))))))
 }
