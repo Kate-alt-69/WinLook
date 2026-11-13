@@ -36,6 +36,8 @@ typedef struct wl_lui_window_desc {
 
 typedef struct wl_lui_window wl_lui_window;
 
+#define WL_LUI_BACKEND_VERSION 1U
+
 typedef struct wl_lui_color {
     unsigned char red;
     unsigned char green;
@@ -126,8 +128,48 @@ typedef struct wl_lui_style {
     unsigned int corner_radius;
 } wl_lui_style;
 
-/* Return bits describing native style fields accepted by this build. */
+/*
+ * Optional host-renderer interface. The library copies this versioned table,
+ * but user_data and any resources it references remain owned by the caller
+ * until wl_lui_window_destroy returns. All callbacks must be synchronous.
+ */
+typedef struct wl_lui_backend {
+    unsigned int version;
+    unsigned int struct_size;
+    unsigned long style_capabilities;
+    void *user_data;
+    wl_lui_result (*create)(
+        void *user_data,
+        const wl_lui_window_desc *description,
+        void **native_handle
+    );
+    wl_lui_result (*set_theme)(
+        void *user_data,
+        void *native_handle,
+        const wl_lui_theme *theme
+    );
+    wl_lui_result (*set_style)(
+        void *user_data,
+        void *native_handle,
+        const wl_lui_style *style
+    );
+    wl_lui_result (*show)(void *user_data, void *native_handle);
+    wl_lui_result (*run)(void *user_data, void *native_handle);
+    void (*destroy)(void *user_data, void *native_handle);
+} wl_lui_backend;
+
+/* Return bits describing style fields supported by the built-in backend. */
 unsigned long wl_lui_style_capabilities(void);
+
+/* Return style fields supported by the backend attached to this window. */
+unsigned long wl_lui_window_style_capabilities(const wl_lui_window *window);
+
+/* Creates a window using a caller-provided platform/host backend. */
+wl_lui_result wl_lui_window_create_with_backend(
+    const wl_lui_window_desc *description,
+    const wl_lui_backend *backend,
+    wl_lui_window **window_out
+);
 
 /* Initializes usable system/light/dark/high-contrast design tokens. */
 wl_lui_result wl_lui_theme_init(
