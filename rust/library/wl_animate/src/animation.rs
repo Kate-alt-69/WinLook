@@ -189,7 +189,12 @@ impl<T: crate::Interpolate> Animation<T> {
             return;
         }
         let active = self.elapsed.saturating_sub(self.delay);
-        if let IterationCount::Count(count) = self.iterations {
+        let total_iterations = match self.iterations {
+            IterationCount::Once => Some(1_u16),
+            IterationCount::Count(count) => Some(count),
+            IterationCount::Infinite => None,
+        };
+        if let Some(count) = total_iterations {
             let total = self.duration.as_nanos().saturating_mul(u128::from(count));
             if active.as_nanos() >= total {
                 self.state = PlaybackState::Finished;
@@ -235,12 +240,15 @@ fn sample_animation<T: crate::Interpolate>(
     let active = sample.elapsed.saturating_sub(sample.delay);
     let duration_nanos = sample.duration.as_nanos();
     let active_nanos = active.as_nanos();
+    let finite_iterations = match sample.iterations {
+        IterationCount::Once => Some(1_u16),
+        IterationCount::Count(count) => Some(count),
+        IterationCount::Infinite => None,
+    };
     let finished = sample.state == PlaybackState::Finished
-        || matches!(
-            sample.iterations,
-            IterationCount::Count(count)
-                if active_nanos >= duration_nanos.saturating_mul(u128::from(count))
-        );
+        || finite_iterations.is_some_and(|count| {
+            active_nanos >= duration_nanos.saturating_mul(u128::from(count))
+        });
     if finished && !matches!(sample.fill_mode, FillMode::Forwards | FillMode::Both) {
         return None;
     }
