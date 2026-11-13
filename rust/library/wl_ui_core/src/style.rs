@@ -1396,7 +1396,6 @@ impl UiTransform {
             self.rotate_degrees,
         ]
         .iter()
-        .iter()
         .all(|value| value.is_finite())
     }
     fn css(self) -> String {
