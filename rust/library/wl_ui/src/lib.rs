@@ -16,20 +16,72 @@
 pub use wl_ui_core::{UiApplication, UiError, UiPage, UiWindowConfig};
 
 const MANAGER_PAGES: [(&str, &str, &str); 14] = [
-    ("home", "Home", "A quick overview of WinLook and the background runtime."),
-    ("appearance", "Appearance", "Themes, colors, visual preferences and appearance profiles."),
-    ("audio-media", "Audio & Media", "Audio-session controls and system media playback information."),
-    ("file-explorer", "File Explorer", "File Explorer presentation and supported Shell integrations."),
+    (
+        "home",
+        "Home",
+        "A quick overview of WinLook and the background runtime.",
+    ),
+    (
+        "appearance",
+        "Appearance",
+        "Themes, colors, visual preferences and appearance profiles.",
+    ),
+    (
+        "audio-media",
+        "Audio & Media",
+        "Audio-session controls and system media playback information.",
+    ),
+    (
+        "file-explorer",
+        "File Explorer",
+        "File Explorer presentation and supported Shell integrations.",
+    ),
     ("icons", "Icons", "Desktop and system icon presentation."),
-    ("wallpaper", "Wallpaper", "Wallpapers, desktop scenes, widgets and playback."),
-    ("window-manager", "Window Manager", "Window layouts, rules, workspaces and compatibility."),
-    ("displays", "Displays", "Monitor topology, display settings and per-display capabilities."),
-    ("notifications", "Notifications", "WinLook notifications, popups and on-screen display."),
-    ("templates", "Templates", "Importable WinLook configurations and reusable presets."),
-    ("extensions", "Extensions", "Optional extensions, capabilities and permissions."),
-    ("compatibility", "Compatibility", "Windows build, API capabilities and verified feature support."),
-    ("diagnostics", "Diagnostics", "BGW health, subsystem state and resource-governor diagnostics."),
-    ("settings", "Settings", "Manager preferences, startup behaviour and application settings."),
+    (
+        "wallpaper",
+        "Wallpaper",
+        "Wallpapers, desktop scenes, widgets and playback.",
+    ),
+    (
+        "window-manager",
+        "Window Manager",
+        "Window layouts, rules, workspaces and compatibility.",
+    ),
+    (
+        "displays",
+        "Displays",
+        "Monitor topology, display settings and per-display capabilities.",
+    ),
+    (
+        "notifications",
+        "Notifications",
+        "WinLook notifications, popups and on-screen display.",
+    ),
+    (
+        "templates",
+        "Templates",
+        "Importable WinLook configurations and reusable presets.",
+    ),
+    (
+        "extensions",
+        "Extensions",
+        "Optional extensions, capabilities and permissions.",
+    ),
+    (
+        "compatibility",
+        "Compatibility",
+        "Windows build, API capabilities and verified feature support.",
+    ),
+    (
+        "diagnostics",
+        "Diagnostics",
+        "BGW health, subsystem state and resource-governor diagnostics.",
+    ),
+    (
+        "settings",
+        "Settings",
+        "Manager preferences, startup behaviour and application settings.",
+    ),
 ];
 
 /// Creates the standard WinLook Manager navigation/application model.

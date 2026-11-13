@@ -36,27 +36,22 @@ pub fn attach<R: Runtime>(
         }).collect::<Vec<_>>(),
     });
     let serialized = serde_json::to_string(&page_model).map_err(|error| {
-        UiError::Backend(format!("could not serialize the wl_ui bootstrap model: {error}"))
+        UiError::Backend(format!(
+            "could not serialize the wl_ui bootstrap model: {error}"
+        ))
     })?;
-    let initialization_script = format!(
-        "window.__WL_UI_BOOTSTRAP__ = {};",
-        serialized
-    );
+    let initialization_script = format!("window.__WL_UI_BOOTSTRAP__ = {};", serialized);
 
     let title = window.title().to_string();
     let width = window.width() as f64;
     let height = window.height() as f64;
 
     Ok(builder.setup(move |app| {
-        WebviewWindowBuilder::new(
-            app,
-            "wl-ui",
-            WebviewUrl::App("index.html".into()),
-        )
-        .title(&title)
-        .inner_size(width, height)
-        .initialization_script(initialization_script)
-        .build()?;
+        WebviewWindowBuilder::new(app, "wl-ui", WebviewUrl::App("index.html".into()))
+            .title(&title)
+            .inner_size(width, height)
+            .initialization_script(initialization_script)
+            .build()?;
         Ok(())
     }))
 }
