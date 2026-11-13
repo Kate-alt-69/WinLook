@@ -6,15 +6,13 @@
 pub use wl_ui_core::{
     UiAlignContent, UiAlignItems, UiAnimation, UiAnimationDirection, UiAnimationFillMode,
     UiAnimationIterations, UiAnimationPlayState, UiApplication, UiBackground, UiBorderStyle,
-    UiBoxSizing, UiColor,
-    UiColorScheme, UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing, UiEdges, UiEffects,
-    UiError, UiFlexDirection, UiFlexWrap, UiFontStyle, UiGradientStop, UiGridTrack,
-    UiJustifyContent, UiJustifyItems, UiKeyframe, UiKeyframes, UiLength, UiLinearGradient,
-    UiMediaCondition, UiMetrics,
-    UiObjectFit, UiOverflow, UiPage, UiPalette, UiPosition, UiSelector, UiShadow, UiStyle,
-    UiStyleRule, UiStyleSheet, UiTextAlign, UiTextDecoration, UiTextOverflow, UiTextTransform,
-    UiTheme, UiTransform, UiTransition, UiTransitionProperty, UiTypography, UiVisualState,
-    UiWhiteSpace, UiWindowConfig,
+    UiBoxSizing, UiColor, UiColorScheme, UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing,
+    UiEdges, UiEffects, UiError, UiFlexDirection, UiFlexWrap, UiFontStyle, UiGradientStop,
+    UiGridTrack, UiJustifyContent, UiJustifyItems, UiKeyframe, UiKeyframes, UiLength,
+    UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage, UiPalette,
+    UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
+    UiTextDecoration, UiTextOverflow, UiTextTransform, UiTheme, UiTransform, UiTransition,
+    UiTransitionProperty, UiTypography, UiVisualState, UiWhiteSpace, UiWindowConfig,
 };
 
 pub use wl_animate as animate;
@@ -154,8 +152,7 @@ mod tests {
 
     #[test]
     fn custom_backend_runs_without_a_windows_feature() {
-        let app = UiApplication::new("Portable")
-            .page(UiPage::new("home", "Home", "Portable host"));
+        let app = UiApplication::new("Portable").page(UiPage::new("home", "Home", "Portable host"));
         let mut backend = TestBackend { ran: false };
         run_with_backend(app, &mut backend).unwrap();
         assert!(backend.ran);
