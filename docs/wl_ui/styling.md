@@ -130,6 +130,7 @@ are intentionally not accepted by this API.
 - `font_family`, `font_size`, `font_weight`, `font_style`
 - `line_height`, `letter_spacing`, `text_align`
 - `text_decoration`, `text_transform`, `white_space`, `text_overflow`
+- `text_shadow(UiShadow)` for a validated text-shadow value
 
 ### Box model and sizing
 
@@ -152,8 +153,37 @@ none. `UiPosition` supports static, relative, absolute, fixed and sticky.
 `UiOverflow` supports visible, hidden, clip, auto and scroll.
 
 Flex properties include direction, wrapping, justify-content, align-items,
-grow and shrink. Box sizing, z-index and top/right/bottom/left offsets are
-available. Image content can use `UiObjectFit`.
+grow and shrink.
+
+Grid tracks use `UiGridTrack::Auto`, `Px(value)`, `Fraction(value)`,
+`MinContent` and `MaxContent`. A style can set both axes at once with
+`grid_template(columns, rows)`, or set either axis with `grid_columns` /
+`grid_rows`. Each axis accepts 1–12 tracks; fractional values must be
+positive and pixel values non-negative. `grid_gap(row, column)`,
+`align_content` and `justify_items` control the grid spacing/alignment.
+
+```rust
+use wl_ui::{
+    UiAlignContent, UiCornerRadii, UiDisplay, UiGridTrack, UiJustifyItems, UiStyle,
+};
+
+let panel = UiStyle::new()
+    .display(UiDisplay::Grid)
+    .grid_template(
+        [UiGridTrack::Fraction(1.0), UiGridTrack::Px(280.0)],
+        [UiGridTrack::Auto, UiGridTrack::Fraction(1.0)],
+    )
+    .grid_gap(12.0, 16.0)
+    .align_content(UiAlignContent::Start)
+    .justify_items(UiJustifyItems::Stretch)
+    .corner_radii(UiCornerRadii::new(8.0, 8.0, 12.0, 12.0));
+```
+
+Box sizing, z-index and top/right/bottom/left offsets are available. Image
+content can use `UiObjectFit`. Text styling supports `UiFontStyle` and
+`UiTextOverflow::{Clip, Ellipsis}`; the latter emits the CSS
+`text-overflow` property (the frontend remains responsible for clipping and
+overflow layout).
 
 ### Motion and transforms
 
