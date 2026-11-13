@@ -5,7 +5,6 @@
 
 #define WL_LANIMATE_MAX_TIME_MS 3600000.0
 #define WL_LANIMATE_MAX_ITERATIONS 1000U
-#define WL_LANIMATE_MAX_KEYFRAMES 64U
 
 static int wl_Lanimate_direction_valid(wl_Lanimate_direction direction)
 {
