@@ -143,7 +143,12 @@ impl FrameClock {
             let remainder = if stalled {
                 0
             } else {
-                accumulated_nanos % interval_nanos
+                let remainder = accumulated_nanos - interval_nanos;
+                if remainder >= interval_nanos {
+                    0
+                } else {
+                    remainder
+                }
             };
             self.phase_elapsed = duration_from_nanos(remainder);
         }
