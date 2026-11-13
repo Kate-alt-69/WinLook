@@ -32,13 +32,61 @@ let opacity = fade.advance(Duration::from_millis(16));
 
 `elapsed()` includes the delay. `progress()` reports interpolation progress only. While pending or cancelled, sampling returns the current value; a finished tween returns its final value.
 
-## Windows baseline
+## Platform contract
 
-The first implementation baseline for **both** `wl_animate` and the C `wl_Lanimate` library is Windows 10. Rust/MSVC builds use the current official Windows target; the C library retains its C89-compatible source constraint and can be built on Windows with MSVC or on a host compiler. C89 compatibility is a source-language constraint, not evidence that the C library already works on pre-Windows-10 releases. Older Windows targets remain a separate future compatibility gate.
+The animation core has no Windows-specific API, target, windowing dependency or
+OS baseline. It can be built wherever the selected Rust toolchain supports the
+crate. The host owns the frame loop and supplies elapsed time; platform
+renderers and resource management remain separate adapters. A successful
+portable build does not certify a platform-specific renderer or application
+binary for a particular OS release.
 
-The crate's `rust-version = 1.56` describes its minimum Rust compiler version, not its Windows OS minimum. A portable crate that avoids Win32 APIs does not by itself make a current Rust/MSVC application binary compatible with older Windows releases.
+## Shared frame-clock contract
 
-See [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) and [WinLook's compatibility policy](../../plan/compatibility/README.md).
+`FrameClock` is a small, host-driven cadence helper. The default targets
+60 FPS, clamps a long pause to 100 ms, suppresses early duplicate calls and
+resets its baseline on resume. It does not sleep, spin, create a timer or own
+an event loop. Each host should keep one clock per scene/application and pass
+the same `FrameTick::delta` to every active animation. WinLook's wl_ui and
+WLDE should use that same clock rather than creating per-widget timers.
+
+The host should stop requesting frames while the scene is hidden, fully
+occluded or has no active animated content, and resume with a fresh timestamp.
+Use the platform compositor for simple transforms/opacity where supported;
+the clock only schedules sampling and never renders to a GPU.
+
+## Low-overhead 60 FPS usage
+
+Use one host frame clock and pass the same frame delta to every active
+animation. Do not create one OS timer, worker or thread per animated property.
+Each Animation owns a cached keyframe cursor, so consecutive samples within
+the same segment avoid another binary search. Tracks are immutable Arc-backed
+slices, so cloning them across playback objects shares the same keyframe
+storage rather than copying a Vec for every animation. Keyframe tracks enforce the same 64-entry maximum even when sampled directly, so lookup work is bounded independently of whether an Animation controller is used.
+
+Sine easing uses a degree-15 polynomial approximation rather than sin/cos in
+the frame path (maximum absolute error approximately 6.1e-12 on the supported
+interval). Tween progress uses a nanosecond ratio. The playback and lookup code performs
+no internal allocation; the built-in numeric/point/colour interpolation
+implementations are also allocation-free. A third-party `Interpolate`
+implementation controls its own clone/interpolation allocation behavior.
+
+Run the local 60 FPS workload microbenchmark:
+
+```sh
+cargo run --release -p wl_animate --example frame_budget
+```
+
+The C89 implementation has a matching 1,024-animation / 600-frame workload:
+
+```sh
+make -C C/library/wl_Lanimate benchmark
+```
+
+The example advances 1,024 animations for 600 frames using the polynomial
+sine easing curves and reports elapsed wall time on the current machine. It is not a GPU benchmark or a universal utilization
+guarantee. wlDE and wl_ui should share one frame clock and reuse the same
+animation objects; GPU cost depends on the host renderer and compositor path.
 
 ## Scope boundary
 

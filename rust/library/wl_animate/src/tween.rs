@@ -97,7 +97,7 @@ impl<T: Interpolate> Tween<T> {
         }
 
         let active_elapsed = self.elapsed.saturating_sub(self.delay);
-        clamp_progress(active_elapsed.as_secs_f64() / self.duration.as_secs_f64())
+        clamp_progress(active_elapsed.as_nanos() as f64 / self.duration.as_nanos() as f64)
     }
 
     /// Samples the current value without changing playback state.

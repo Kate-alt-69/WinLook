@@ -1,6 +1,6 @@
 use std::fmt;
 
-/// Errors returned by the shared UI model or a selected backend.
+/// Errors returned by the shared UI model, styling system or a selected backend.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UiError {
     EmptyWindowTitle,
@@ -10,6 +10,7 @@ pub enum UiError {
     EmptyPageTitle,
     DuplicatePageId(String),
     UnknownInitialPage(String),
+    InvalidStyle(String),
     Backend(String),
 }
 
@@ -25,6 +26,7 @@ impl fmt::Display for UiError {
             Self::UnknownInitialPage(id) => {
                 write!(formatter, "initial page ID does not exist: {id}")
             }
+            Self::InvalidStyle(message) => write!(formatter, "invalid UI style: {message}"),
             Self::Backend(message) => formatter.write_str(message),
         }
     }

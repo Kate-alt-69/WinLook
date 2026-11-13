@@ -18,6 +18,16 @@ static double wl_Lanimate_lerp(double from_value, double to_value, double progre
     return from_value + (to_value - from_value) * wl_Lanimate_clamp01(progress);
 }
 
+static double wl_Lanimate_fast_sin(double value)
+{
+    double square;
+    square = value * value;
+    return value * (1.0 + square * (-1.0 / 6.0 + square * (
+        1.0 / 120.0 + square * (-1.0 / 5040.0 + square * (
+        1.0 / 362880.0 + square * (-1.0 / 39916800.0 + square * (
+        1.0 / 6227020800.0 - square / 1307674368000.0)))))));
+}
+
 double wl_Lanimate_ease(wl_Lanimate_easing easing, double progress)
 {
     double t;
@@ -37,14 +47,13 @@ double wl_Lanimate_ease(wl_Lanimate_easing easing, double progress)
         if (t < 0.5) return 4.0 * t * t * t;
         return 1.0 - ((-2.0 * t + 2.0) * (-2.0 * t + 2.0) * (-2.0 * t + 2.0)) / 2.0;
     case WL_LANIMATE_EASE_IN_SINE:
-        angle = t * WL_LANIMATE_PI / 2.0;
-        return 1.0 - cos(angle);
+        angle = wl_Lanimate_fast_sin(t * WL_LANIMATE_PI / 4.0);
+        return 2.0 * angle * angle;
     case WL_LANIMATE_EASE_OUT_SINE:
-        angle = t * WL_LANIMATE_PI / 2.0;
-        return sin(angle);
+        return wl_Lanimate_fast_sin(t * WL_LANIMATE_PI / 2.0);
     case WL_LANIMATE_EASE_IN_OUT_SINE:
-        angle = WL_LANIMATE_PI * t;
-        return -(cos(angle) - 1.0) / 2.0;
+        angle = wl_Lanimate_fast_sin(t * WL_LANIMATE_PI / 2.0);
+        return angle * angle;
     case WL_LANIMATE_EASE_IN_QUART: return t * t * t * t;
     case WL_LANIMATE_EASE_OUT_QUART: return 1.0 - inverse * inverse * inverse * inverse;
     case WL_LANIMATE_EASE_IN_OUT_QUART:

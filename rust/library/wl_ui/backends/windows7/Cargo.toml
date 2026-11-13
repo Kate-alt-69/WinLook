@@ -7,4 +7,4 @@ description = "Legacy-baseline Win32 backend for Windows 7 and Windows 8.x Rust 
 license = "MIT"
 
 [dependencies]
-wl_ui_win32 = { version = "0.1.0-alpha.1", path = "../wl_ui_win32" }
+wl_ui_win32 = { version = "0.1.0-alpha.1", path = "../win32" }

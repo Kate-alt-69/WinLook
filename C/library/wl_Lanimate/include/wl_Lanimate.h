@@ -11,6 +11,7 @@
 #define WL_LANIMATE_VERSION_MINOR 1
 #define WL_LANIMATE_VERSION_PATCH 0
 #define WL_LANIMATE_VERSION_PRERELEASE "alpha.2"
+#define WL_LANIMATE_MAX_KEYFRAMES 64U
 
 typedef enum wl_Lanimate_easing {
     WL_LANIMATE_LINEAR = 0,
@@ -83,12 +84,70 @@ typedef struct wl_Lanimate_track {
     unsigned int count;
 } wl_Lanimate_track;
 
+/* Per-playback lookup state; one cursor for each animated track. */
+typedef struct wl_Lanimate_track_cursor {
+    unsigned int segment_index;
+} wl_Lanimate_track_cursor;
+
+typedef enum wl_Lanimate_direction {
+    WL_LANIMATE_DIRECTION_NORMAL = 0,
+    WL_LANIMATE_DIRECTION_REVERSE = 1,
+    WL_LANIMATE_DIRECTION_ALTERNATE = 2,
+    WL_LANIMATE_DIRECTION_ALTERNATE_REVERSE = 3
+} wl_Lanimate_direction;
+
+typedef enum wl_Lanimate_fill_mode {
+    WL_LANIMATE_FILL_NONE = 0,
+    WL_LANIMATE_FILL_FORWARDS = 1,
+    WL_LANIMATE_FILL_BACKWARDS = 2,
+    WL_LANIMATE_FILL_BOTH = 3
+} wl_Lanimate_fill_mode;
+
+/* Caller-owned animation controller; the borrowed track must outlive it.
+ * iterations==0 means infinite; no heap allocation or scheduler is used. */
+typedef struct wl_Lanimate_animation {
+    wl_Lanimate_track track;
+    wl_Lanimate_track_cursor cursor;
+    double duration_ms;
+    double delay_ms;
+    double elapsed_ms;
+    unsigned int iterations;
+    wl_Lanimate_direction direction;
+    wl_Lanimate_fill_mode fill_mode;
+    wl_Lanimate_state state;
+} wl_Lanimate_animation;
+
 typedef enum wl_Lanimate_result {
     WL_LANIMATE_OK = 0,
     WL_LANIMATE_INVALID_ARGUMENT = 1,
     WL_LANIMATE_INVALID_KEYFRAME_ORDER = 2,
-    WL_LANIMATE_INVALID_KEYFRAME_TIME = 3
+    WL_LANIMATE_INVALID_KEYFRAME_TIME = 3,
+    WL_LANIMATE_NO_VALUE = 4,
+    WL_LANIMATE_NO_FRAME = 5,
+    WL_LANIMATE_INVALID_KEYFRAME_COUNT = 6
 } wl_Lanimate_result;
+
+/* One host-owned frame clock shared by every animation in a scene. */
+typedef struct wl_Lanimate_frame_clock {
+    double target_interval_ms;
+    double maximum_delta_ms;
+    double last_timestamp_ms;
+    double last_frame_timestamp_ms;
+    double phase_elapsed_ms;
+    unsigned long frame_index;
+    unsigned int has_last_timestamp;
+    unsigned int paused;
+} wl_Lanimate_frame_clock;
+
+typedef struct wl_Lanimate_frame_tick {
+    double timestamp_ms;
+    double delta_ms;
+    unsigned long frame_index;
+} wl_Lanimate_frame_tick;
+
+#define WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS 16.666665
+#define WL_LANIMATE_FRAME_DEFAULT_MAXIMUM_DELTA_MS 100.0
+
 
 /* Vector/geometry helpers. Matrix composition applies rhs, then self. */
 wl_Lanimate_vector3 wl_Lanimate_vector3_lerp(wl_Lanimate_vector3 from_value, wl_Lanimate_vector3 to_value, double progress);
@@ -140,5 +199,57 @@ wl_Lanimate_result wl_Lanimate_track_init(wl_Lanimate_track *track,
                                            const wl_Lanimate_keyframe *keyframes,
                                            unsigned int count);
 double wl_Lanimate_track_sample(const wl_Lanimate_track *track, double at_ms);
+void wl_Lanimate_track_cursor_reset(wl_Lanimate_track_cursor *cursor);
+double wl_Lanimate_track_sample_cached(
+    const wl_Lanimate_track *track,
+    wl_Lanimate_track_cursor *cursor,
+    double at_ms
+);
+
+/* One application frame loop should advance all active animations. */
+wl_Lanimate_result wl_Lanimate_animation_init(
+    wl_Lanimate_animation *animation,
+    const wl_Lanimate_track *track,
+    double duration_ms,
+    double delay_ms,
+    unsigned int iterations,
+    wl_Lanimate_direction direction,
+    wl_Lanimate_fill_mode fill_mode
+);
+wl_Lanimate_result wl_Lanimate_animation_sample(
+    wl_Lanimate_animation *animation,
+    double *value_out
+);
+wl_Lanimate_result wl_Lanimate_animation_advance(
+    wl_Lanimate_animation *animation,
+    double delta_ms,
+    double *value_out
+);
+void wl_Lanimate_animation_pause(wl_Lanimate_animation *animation);
+void wl_Lanimate_animation_resume(wl_Lanimate_animation *animation);
+void wl_Lanimate_animation_cancel(wl_Lanimate_animation *animation);
+void wl_Lanimate_animation_restart(wl_Lanimate_animation *animation);
+
+/*
+ * Host-driven frame clock. It creates no timer or worker. The host passes
+ * monotonic milliseconds from one application clock and shares each emitted
+ * delta across every active animation. First tick emits a zero delta.
+ */
+wl_Lanimate_result wl_Lanimate_frame_clock_init(
+    wl_Lanimate_frame_clock *clock,
+    double target_interval_ms,
+    double maximum_delta_ms
+);
+wl_Lanimate_result wl_Lanimate_frame_clock_tick(
+    wl_Lanimate_frame_clock *clock,
+    double now_ms,
+    wl_Lanimate_frame_tick *tick_out
+);
+void wl_Lanimate_frame_clock_pause(wl_Lanimate_frame_clock *clock);
+wl_Lanimate_result wl_Lanimate_frame_clock_resume(
+    wl_Lanimate_frame_clock *clock,
+    double now_ms
+);
+void wl_Lanimate_frame_clock_reset(wl_Lanimate_frame_clock *clock);
 
 #endif /* WL_LANIMATE_H */

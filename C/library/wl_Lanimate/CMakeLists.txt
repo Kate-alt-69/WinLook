@@ -7,8 +7,16 @@ add_library(wl_Lanimate STATIC
     src/wl_Lanimate_math.c
     src/wl_Lanimate_tween.c
     src/wl_Lanimate_track.c
+    src/wl_Lanimate_animation.c
+    src/wl_Lanimate_clock.c
 )
 add_library(WinLook::Lanimate ALIAS wl_Lanimate)
+
+# Infinite-iteration sampling uses fmod/modf on non-MSVC hosts.
+# Publish libm as a transitive requirement of the static library.
+if(NOT MSVC)
+    target_link_libraries(wl_Lanimate PUBLIC m)
+endif()
 
 target_include_directories(wl_Lanimate
     PUBLIC
@@ -34,9 +42,6 @@ include(CTest)
 if(BUILD_TESTING)
     add_executable(test_wl_Lanimate tests/test_wl_Lanimate.c)
     target_link_libraries(test_wl_Lanimate PRIVATE wl_Lanimate)
-    if(NOT MSVC)
-        target_link_libraries(test_wl_Lanimate PRIVATE m)
-    endif()
     set_target_properties(test_wl_Lanimate PROPERTIES
         C_STANDARD 90
         C_STANDARD_REQUIRED YES
@@ -48,4 +53,13 @@ if(BUILD_TESTING)
         target_compile_options(test_wl_Lanimate PRIVATE -UNDEBUG)
     endif()
     add_test(NAME wl_Lanimate.core COMMAND test_wl_Lanimate)
+
+    add_executable(wl_Lanimate_frame_budget examples/frame_budget.c)
+    target_link_libraries(wl_Lanimate_frame_budget PRIVATE wl_Lanimate)
+    set_target_properties(wl_Lanimate_frame_budget PROPERTIES
+        C_STANDARD 90
+        C_STANDARD_REQUIRED YES
+        C_EXTENSIONS NO
+    )
+    add_test(NAME wl_Lanimate.frame_budget COMMAND wl_Lanimate_frame_budget)
 endif()

@@ -1,20 +1,24 @@
-use crate::{UiError, UiPage, UiWindowConfig};
+use crate::{UiError, UiPage, UiStyleSheet, UiTheme, UiWindowConfig};
 
-/// A platform-independent description of an application's top-level UI shell.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// A platform-independent description of an application's shell and visual system.
+#[derive(Clone, Debug, PartialEq)]
 pub struct UiApplication {
     window: UiWindowConfig,
     pages: Vec<UiPage>,
     initial_page: Option<String>,
+    theme: UiTheme,
+    styles: UiStyleSheet,
 }
 
 impl UiApplication {
-    /// Creates an application shell with a 1280 × 820 logical window.
+    /// Creates an application shell with a 1280 × 820 logical window and system theme.
     pub fn new(title: impl Into<String>) -> Self {
         Self {
             window: UiWindowConfig::new(title),
             pages: Vec::new(),
             initial_page: None,
+            theme: UiTheme::default(),
+            styles: UiStyleSheet::default(),
         }
     }
 
@@ -38,6 +42,18 @@ impl UiApplication {
         self
     }
 
+    /// Replaces the shared design theme used by the selected renderer.
+    pub fn theme(mut self, theme: UiTheme) -> Self {
+        self.theme = theme;
+        self
+    }
+
+    /// Replaces the ordered component stylesheet.
+    pub fn styles(mut self, styles: UiStyleSheet) -> Self {
+        self.styles = styles;
+        self
+    }
+
     /// Returns the window configuration.
     pub fn window_config(&self) -> &UiWindowConfig {
         &self.window
@@ -48,6 +64,16 @@ impl UiApplication {
         &self.pages
     }
 
+    /// Returns the shared design theme.
+    pub fn theme_ref(&self) -> &UiTheme {
+        &self.theme
+    }
+
+    /// Returns component rules in cascade order.
+    pub fn styles_ref(&self) -> &UiStyleSheet {
+        &self.styles
+    }
+
     /// Returns the selected page ID, defaulting to the first registered page.
     pub fn initial_page_id(&self) -> &str {
         self.initial_page
@@ -56,7 +82,8 @@ impl UiApplication {
             .unwrap_or("")
     }
 
-    /// Checks the application model before a backend creates native resources.
+    /// Checks the application model, design tokens and style rules before a backend
+    /// creates native resources or injects CSS.
     pub fn validate(&self) -> Result<(), UiError> {
         if self.window.title().trim().is_empty() {
             return Err(UiError::EmptyWindowTitle);
@@ -67,6 +94,8 @@ impl UiApplication {
         if self.pages.is_empty() {
             return Err(UiError::NoPages);
         }
+        self.theme.validate()?;
+        self.styles.validate()?;
 
         let mut ids = std::collections::HashSet::with_capacity(self.pages.len());
         for page in &self.pages {

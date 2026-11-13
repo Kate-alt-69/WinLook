@@ -7,16 +7,23 @@
 
 #![forbid(unsafe_code)]
 
+mod animation;
 mod easing;
+mod frame_clock;
 mod svg;
 mod track;
 mod tween;
 mod values;
 mod vector;
 
+pub use animation::{
+    Animation, AnimationError, Direction, FillMode, IterationCount, MAX_ANIMATION_KEYFRAMES,
+    MAX_ANIMATION_TIME,
+};
 pub use easing::Easing;
+pub use frame_clock::{FrameClock, FrameClockError, FrameTick};
 pub use svg::{PathCommand, SvgPathError, SvgPathErrorKind, VectorPath};
-pub use track::{Keyframe, KeyframeTrack, TrackError};
+pub use track::{Keyframe, KeyframeTrack, TrackCursor, TrackError};
 pub use tween::{PlaybackState, Tween};
 pub use values::{Interpolate, Point2, Rgba};
 pub use vector::{
@@ -121,6 +128,19 @@ mod tests {
         assert_eq!(Easing::Linear.sample(f64::NAN), 0.0);
         assert!((Easing::EaseInSine.sample(1.0) - 1.0).abs() < 1e-12);
         assert!((Easing::EaseOutQuart.sample(0.5) - 0.9375).abs() < 1e-12);
+    }
+
+    #[test]
+    fn polynomial_sine_curves_match_reference_within_tolerance() {
+        for step in 0..=1000 {
+            let t = step as f64 / 1000.0;
+            let reference_in = 1.0 - (t * std::f64::consts::FRAC_PI_2).cos();
+            let reference_out = (t * std::f64::consts::FRAC_PI_2).sin();
+            let reference_in_out = (1.0 - (t * std::f64::consts::PI).cos()) / 2.0;
+            assert!((Easing::EaseInSine.sample(t) - reference_in).abs() < 1.0e-7);
+            assert!((Easing::EaseOutSine.sample(t) - reference_out).abs() < 1.0e-7);
+            assert!((Easing::EaseInOutSine.sample(t) - reference_in_out).abs() < 1.0e-7);
+        }
     }
 
     #[test]

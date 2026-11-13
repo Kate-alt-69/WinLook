@@ -6,6 +6,7 @@
 use crate::manager_app;
 
 pub use crate::{UiApplication, UiError, UiPage, UiWindowConfig};
+pub use wl_ui_windows11::*;
 
 /// Human-readable backend identity.
 pub const BACKEND: &str = "Native WinUI 3";

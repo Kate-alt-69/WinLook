@@ -15,6 +15,34 @@ WLDE should avoid drawing wallpaper regions that are fully occluded when visibil
 
 Video decoding is not the same as final composition: clipping a draw rectangle does not necessarily let a decoder skip processing the full compressed frame. Profile decode, upload, shader and composition costs separately.
 
+## Shared animation engine and frame scheduling
+
+Wallpaper, widget and desktop-transition animation must use the portable
+WinLook animation cores rather than implementing a separate per-widget timing
+system:
+
+- Rust hosts use `wl_animate` (also re-exported by `wl_ui::animate`).
+- C89 hosts use `wl_Lanimate`.
+- One host-owned `FrameClock` / `wl_Lanimate_frame_clock` is shared by the
+  whole visible WLDE scene. Its frame delta advances all active animation
+  tracks; no animation creates its own timer, worker thread or message pump.
+- The default target is 60 FPS with a 100 ms maximum delta after stalls. Hosts
+  pause frame requests while the scene is hidden, fully occluded, suspended by
+  Game Mode or has no active animated content, then resume from a fresh time
+  baseline.
+- Simple transforms and opacity should remain on the OS compositor/native
+  presentation path when the backend supports it. The animation libraries
+  calculate values; they do not upload textures, draw frames or guarantee
+  GPU acceleration.
+- Resource governor policies may lower the host target rate, stop requesting
+  frames, or pause animation playback. Media decoding and GPU composition are
+  measured separately from property interpolation.
+
+This gives wl_ui, the WinLook Manager and future WLDE renderers the same timing
+and easing semantics across Windows and non-Windows hosts. It does not imply
+that a WLDE renderer exists in this branch yet; the engine's platform-specific
+presentation and resource-governor integrations remain separate work.
+
 ## Resource-aware policy
 Monitor CPU, GPU engine usage, RAM, VRAM, WLDE's own cost, power state, full-screen/game state independently. The user's intended threshold is to stop animated playback/rendering when system resource pressure exceeds 90% under a sustained policy. Exact interpretation per resource, sampling window and recovery hysteresis remain to be finalized.
 

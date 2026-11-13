@@ -7,4 +7,4 @@ description = "Small baseline User32 renderer shared by wl_ui Windows backends"
 license = "MIT"
 
 [dependencies]
-wl_ui_core = { version = "0.1.0-alpha.1", path = "../wl_ui_core" }
+wl_ui_core = { version = "0.1.0-alpha.1", path = "../../core" }

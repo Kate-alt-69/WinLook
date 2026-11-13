@@ -288,3 +288,38 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - The Windows 10 Manager entry point explicitly calls `wl_ui::windows10::run()`; the Windows 11 Manager entry point explicitly calls `wl_ui::windows11::run()`.
 - UI remains a scaffold: navigation and page descriptions are rendered, but BGW IPC and real system-setting operations are not implemented. Runtime smoke tests, accessibility checks, low-end performance measures, installer/runtime validation, and Windows 7 VM tests remain pending.
 - Research Companion evidence is recorded in [references/SOURCES.md](references/SOURCES.md); this workspace entry is a design/implementation checkpoint, not a support declaration.
+
+
+## wl_ui design system and styling upgrade — 2026-11-13
+
+- The previously merged UI backend split is the base. New work is isolated on `feat/wl-ui-styling-studio-api`; it must not append commits to the already-merged PR #9 branch.
+- User-reported smoke test: the Windows 10 application now launches. This confirms the user's local startup test only; it does not replace CI or runtime coverage across other Windows versions.
+- The shared Rust core is extended with `UiTheme`, `UiPalette`, `UiTypography`, `UiMetrics`, `UiEffects`, semantic `UiColor`, a typed `UiStyle`/selector/stylesheet model, visual states, CSS variable generation, typed linear gradients, responsive media rules, flex/layout/sizing, transforms and transitions. `UiApplication` now carries a theme and style sheet and validates them before renderer setup.
+- Tauri 2 receives generated theme variables and selector CSS at document start and publishes it in `window.__WL_UI_BOOTSTRAP__`. Its host continues to own frontend markup, controls, JS, plugins, capabilities and permissions.
+- Win10 uses native Win32/GDI resources for the supported shell/theme properties and adds GDI32 linkage without introducing a webview or Windows App SDK dependency. Win11 applies its shared palette/typography/spacing/surface to the native WinUI shell and re-exports Windows Reactor controls from `wl_ui::windows11` on Windows.
+- Legacy C adds versioned C89 theme/style structs, initializer/setter APIs and a style capability query. The baseline reports only background, foreground and font as implemented native style fields; other flags are rejected as unsupported.
+- Public docs are under `docs/wl_ui/` and `docs/wl_ui/C/`. Rust compile/runtime verification must be done by CI and target builds; strict C89, CTest, sanitizer, and real Windows/legacy-OS GUI checks remain distinct gates.
+
+## CSS compatibility audit — 2026-11-13
+
+- Extended the style-range audit beyond the earlier negative-margin and percentage-length fixes. CSS transforms now accept finite negative scale values for mirrored layouts; the serializer already emits the signed values directly.
+- Box-shadow offsets and spread may be signed, while blur radii remain finite and non-negative. Text shadows accept signed X/Y offsets and non-negative blur, and reject non-zero spread because CSS `text-shadow` has no spread component.
+- Position insets (`top`, `right`, `bottom`, `left`) now validate finite values while allowing signed pixel/percentage offsets; outline offsets may be negative while outline widths remain non-negative.
+- Added regression coverage for mirrored transforms, signed box-shadow geometry, signed text-shadow offsets, invalid text-shadow spread / negative blur, signed insets / outline offsets, and non-finite insets.
+- Updated `docs/wl_ui/styling.md` to document these CSS-compatible ranges.
+- Commits for this audit: `65172cd` (initial validation changes), `86bd982` (iterator correction), `2396f4c` (text-shadow validation), `b1f4ddc` (Rust formatting), `587d274` (shadow/transform documentation), `2b4ad12` (signed inset validation), `8ed3104` (inset/outline documentation), and `599f6eb` (separate valid text-shadow test fixture).
+- Verification status: the workflow run created for the earlier `65172cd` merge candidate failed at `cargo fmt --check` on one test-call layout, before Rust compilation/tests. The formatting correction was committed as `b1f4ddc`; subsequent text-shadow and docs changes are not yet covered by a fresh confirmed CI result. Do not treat the earlier clean CI run for `48438aa` as verification of these later commits.
+
+## Portable animation runtime and shared frame clock — 2026-11-14
+
+- Added a platform-neutral Rust `wl_animate` runtime and its C89 `wl_Lanimate` counterpart. Both are caller-owned and host-driven: no timer, worker thread, message pump, OS window API or renderer is created by an animation or track.
+- The Rust `wl_ui` facade re-exports `FrameClock`, `FrameTick` and the full runtime as `wl_ui::animate`. Generic `UiBackend` implementations own their event loop and can use the same clock on non-Windows hosts. Tauri continues to use validated CSS keyframes and the webview compositor path.
+- Rust and C frame clocks share the same 60 FPS target, 100 ms delta cap, pause/resume baseline reset and fractional phase handling. Regression tests cover 90 Hz/144 Hz host polling and a maximum delta smaller than the target cadence. The C frame-clock hot path no longer calls floating modulo; the Rust path uses bounded subtraction rather than remainder.
+- Keyframe tracks are capped at 64 frames in both runtimes. Rust keyframe storage is immutable and Arc-backed, so cloned playback tracks share one allocation; playback cursors are independent and advance at exact keyframe boundaries. Sequential samples stay on the cached segment; reverse seeks use binary search.
+- The Rust and C easing paths use the degree-15 polynomial sine approximation; tests sweep the C and Rust curves against trigonometric references. Built-in Rust scalar/point/colour interpolation and C sampling do not allocate during playback. Custom Rust `Interpolate` implementations own their own clone/interpolation allocation behavior.
+- Added matching 1,024-animation / 600-frame CPU workload benchmarks for Rust and C89. `build.py verify libraries` runs both and prints timing. The benchmarks assert all 600 clock ticks were emitted; they do not include GPU rendering and do not promise universal sub-1% utilization.
+- Moved all Rust UI implementation crates beneath `rust/library/wl_ui/{core,backends}`. A tree audit confirms the old top-level `rust/library/wl_ui_core` path and the old separate `wl_ui_*` source roots are gone; Cargo package identifiers remain internal and the public consumer entry point is `wl_ui`.
+- Added [docs/wl_ui/animation.md](../docs/wl_ui/animation.md) and matching Rust/C library documentation. WLDE's architecture points to the same clock/runtime; the WLDE renderer itself is not part of this PR.
+- Relevant follow-up commits: `2ff16a6` (bounded Rust tracks), `1360b73` / `7e283b4` (exact-boundary cursors), `b4dbdc7` (C workload benchmark), `9dced0e` (verification integration), `aec6c87` / `f13a83e` / `c9684be` (C frame-count assertion and diagnostic), `7c69b40` / `4591946` (shared benchmark docs and timing distinction), `3f92a49` (Rust emitted-frame assertion), and `caf4dfb` / `392460b` (integer parity in the alternating animation hot path).
+- Earlier source-equivalent verification passed Rust tests/Clippy/docs, GCC C89 with ASan/UBSan, C89 MSVC, Win10/Win11 packaging, Manager UI tests and repeated Rust/C sanitizers. The *latest* full matrix for the benchmark, track-limit, cursor-boundary, timing-label and integer-parity changes is queued against head `c9684be`; do not treat earlier green jobs as verification of this final head.
+

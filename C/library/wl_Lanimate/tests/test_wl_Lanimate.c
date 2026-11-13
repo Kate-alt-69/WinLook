@@ -70,12 +70,27 @@ static void test_easing_and_values(void)
     wl_Lanimate_rgba c0;
     wl_Lanimate_rgba c1;
     wl_Lanimate_rgba c;
+    unsigned int step;
+    double t;
+    double reference;
 
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_CUBIC, -1.0), 0.0));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_CUBIC, 2.0), 1.0));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_LINEAR, 0.5), 0.5));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_OUT_QUART, 0.5), 0.9375));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_SINE, 0.5), 0.5));
+    assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_SINE, 1.0), 1.0));
+    assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_OUT_SINE, 1.0), 1.0));
+
+    for (step = 0U; step <= 1000U; ++step) {
+        t = (double)step / 1000.0;
+        reference = 1.0 - cos(t * 3.14159265358979323846 / 2.0);
+        assert(fabs(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_SINE, t) - reference) < 1.0e-9);
+        reference = sin(t * 3.14159265358979323846 / 2.0);
+        assert(fabs(wl_Lanimate_ease(WL_LANIMATE_EASE_OUT_SINE, t) - reference) < 1.0e-9);
+        reference = (1.0 - cos(t * 3.14159265358979323846)) / 2.0;
+        assert(fabs(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_SINE, t) - reference) < 1.0e-9);
+    }
 
     p0.x = 0.0; p0.y = 10.0;
     p1.x = 100.0; p1.y = 30.0;
@@ -130,6 +145,182 @@ static void test_keyframe_track(void)
     assert(wl_Lanimate_track_sample(&track, 10.0) == 0.0);
 }
 
+static void test_track_keyframe_limit(void)
+{
+    wl_Lanimate_keyframe frames[WL_LANIMATE_MAX_KEYFRAMES + 1U];
+    wl_Lanimate_track track;
+    unsigned int i;
+
+    for (i = 0U; i < WL_LANIMATE_MAX_KEYFRAMES + 1U; ++i) {
+        frames[i].at_ms = (double)i;
+        frames[i].value = (double)i;
+        frames[i].easing_to_next = WL_LANIMATE_LINEAR;
+    }
+    assert(wl_Lanimate_track_init(
+        &track, frames, WL_LANIMATE_MAX_KEYFRAMES + 1U
+    ) == WL_LANIMATE_INVALID_KEYFRAME_COUNT);
+    assert(track.keyframes == 0);
+    assert(track.count == 0U);
+}
+
+static void test_single_keyframe_track(void)
+{
+    wl_Lanimate_keyframe frame;
+    wl_Lanimate_track track;
+    wl_Lanimate_track_cursor cursor;
+
+    frame.at_ms = 12.0;
+    frame.value = 42.0;
+    frame.easing_to_next = WL_LANIMATE_LINEAR;
+    assert(wl_Lanimate_track_init(&track, &frame, 1U) == WL_LANIMATE_OK);
+    cursor.segment_index = 99U;
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 0.0), 42.0));
+    assert(cursor.segment_index == 0U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 100.0), 42.0));
+    assert(cursor.segment_index == 0U);
+}
+
+static void test_shared_frame_clock(void)
+{
+    wl_Lanimate_frame_clock clock;
+    wl_Lanimate_frame_tick tick;
+    unsigned int i;
+    unsigned int emitted;
+    double now_ms;
+
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.0, 100.0) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 1000.0, &tick) == WL_LANIMATE_OK);
+    assert(tick.delta_ms == 0.0);
+    assert(tick.frame_index == 0UL);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 1010.0, &tick) == WL_LANIMATE_NO_FRAME);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 1017.0, &tick) == WL_LANIMATE_OK);
+    assert(near_value(tick.delta_ms, 17.0));
+    assert(tick.frame_index == 1UL);
+
+    wl_Lanimate_frame_clock_pause(&clock);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 1034.0, &tick) == WL_LANIMATE_NO_FRAME);
+    assert(wl_Lanimate_frame_clock_resume(&clock, 5000.0) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 5005.0, &tick) == WL_LANIMATE_NO_FRAME);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 5017.0, &tick) == WL_LANIMATE_OK);
+    assert(near_value(tick.delta_ms, 17.0));
+    assert(wl_Lanimate_frame_clock_tick(&clock, 6000.0, &tick) == WL_LANIMATE_OK);
+    assert(near_value(tick.delta_ms, 100.0));
+
+    wl_Lanimate_frame_clock_reset(&clock);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 10.0, &tick) == WL_LANIMATE_OK);
+    assert(tick.frame_index == 0UL);
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.0, 0.0) == WL_LANIMATE_INVALID_ARGUMENT);
+    assert(wl_Lanimate_frame_clock_tick(&clock, -1.0, &tick) == WL_LANIMATE_INVALID_ARGUMENT);
+
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.666665, 100.0) == WL_LANIMATE_OK);
+    now_ms = 0.0;
+    emitted = 0U;
+    assert(wl_Lanimate_frame_clock_tick(&clock, now_ms, &tick) == WL_LANIMATE_OK);
+    for (i = 0U; i < 90U; ++i) {
+        now_ms += 1000.0 / 90.0;
+        if (wl_Lanimate_frame_clock_tick(&clock, now_ms, &tick) == WL_LANIMATE_OK) {
+            emitted++;
+        }
+    }
+    assert(emitted == 60U);
+
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.666665, 100.0) == WL_LANIMATE_OK);
+    now_ms = 0.0;
+    emitted = 0U;
+    assert(wl_Lanimate_frame_clock_tick(&clock, now_ms, &tick) == WL_LANIMATE_OK);
+    for (i = 0U; i < 144U; ++i) {
+        now_ms += 1000.0 / 144.0;
+        if (wl_Lanimate_frame_clock_tick(&clock, now_ms, &tick) == WL_LANIMATE_OK) {
+            emitted++;
+        }
+    }
+    assert(emitted == 60U);
+
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.0, 5.0) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 0.0, &tick) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 10.0, &tick) == WL_LANIMATE_NO_FRAME);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 20.0, &tick) == WL_LANIMATE_OK);
+    assert(near_value(tick.delta_ms, 5.0));
+    assert(wl_Lanimate_frame_clock_tick(&clock, 30.0, &tick) == WL_LANIMATE_NO_FRAME);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 40.0, &tick) == WL_LANIMATE_OK);
+    assert(near_value(tick.delta_ms, 5.0));
+}
+
+static void test_animation_runtime(void)
+{
+    wl_Lanimate_keyframe frames[3];
+    wl_Lanimate_track track;
+    wl_Lanimate_track_cursor cursor;
+    wl_Lanimate_animation animation;
+    double value;
+
+    frames[0].at_ms = 0.0; frames[0].value = 0.0; frames[0].easing_to_next = WL_LANIMATE_LINEAR;
+    frames[1].at_ms = 100.0; frames[1].value = 10.0; frames[1].easing_to_next = WL_LANIMATE_LINEAR;
+    frames[2].at_ms = 200.0; frames[2].value = 20.0; frames[2].easing_to_next = WL_LANIMATE_LINEAR;
+    assert(wl_Lanimate_track_init(&track, frames, 3U) == WL_LANIMATE_OK);
+
+    cursor.segment_index = 0U;
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 25.0), 2.5));
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 75.0), 7.5));
+    assert(cursor.segment_index == 0U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 100.0), 10.0));
+    assert(cursor.segment_index == 1U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 125.0), 12.5));
+    assert(cursor.segment_index == 1U);
+    assert(near_value(wl_Lanimate_track_sample_cached(&track, &cursor, 50.0), 5.0));
+    assert(cursor.segment_index == 0U);
+
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 100.0, 20.0, 2U,
+        WL_LANIMATE_DIRECTION_ALTERNATE, WL_LANIMATE_FILL_BOTH
+    ) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_animation_sample(&animation, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 0.0));
+    assert(wl_Lanimate_animation_advance(&animation, 70.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 10.0));
+    assert(wl_Lanimate_animation_advance(&animation, 50.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 20.0));
+    assert(wl_Lanimate_animation_advance(&animation, 100.0, &value) == WL_LANIMATE_OK);
+    assert(animation.state == WL_LANIMATE_FINISHED);
+    assert(near_value(value, 0.0));
+
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 100.0, 30.0, 1U,
+        WL_LANIMATE_DIRECTION_REVERSE, WL_LANIMATE_FILL_NONE
+    ) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_animation_advance(&animation, -1.0, &value) == WL_LANIMATE_INVALID_ARGUMENT);
+    assert(wl_Lanimate_animation_advance(&animation, 80.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 10.0));
+    assert(wl_Lanimate_animation_advance(&animation, 50.0, &value) == WL_LANIMATE_NO_VALUE);
+    assert(animation.state == WL_LANIMATE_FINISHED);
+    wl_Lanimate_animation_restart(&animation);
+    assert(animation.state == WL_LANIMATE_PENDING);
+    assert(wl_Lanimate_animation_sample(&animation, &value) == WL_LANIMATE_NO_VALUE);
+    assert(wl_Lanimate_animation_advance(&animation, 30.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 20.0));
+    wl_Lanimate_animation_pause(&animation);
+    assert(animation.state == WL_LANIMATE_PAUSED);
+    assert(wl_Lanimate_animation_advance(&animation, 50.0, &value) == WL_LANIMATE_OK);
+    assert(near_value(value, 20.0));
+    wl_Lanimate_animation_resume(&animation);
+    assert(animation.state == WL_LANIMATE_RUNNING);
+    wl_Lanimate_animation_cancel(&animation);
+    assert(animation.state == WL_LANIMATE_CANCELLED);
+    wl_Lanimate_animation_restart(&animation);
+    assert(animation.state == WL_LANIMATE_PENDING);
+    assert(animation.elapsed_ms == 0.0);
+    assert(animation.cursor.segment_index == 0U);
+
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 0.0, 0.0, 1U,
+        WL_LANIMATE_DIRECTION_NORMAL, WL_LANIMATE_FILL_BOTH
+    ) == WL_LANIMATE_INVALID_ARGUMENT);
+    assert(wl_Lanimate_animation_init(
+        &animation, &track, 10.0, 0.0, 1001U,
+        WL_LANIMATE_DIRECTION_NORMAL, WL_LANIMATE_FILL_BOTH
+    ) == WL_LANIMATE_INVALID_ARGUMENT);
+}
+
 static void test_vector_geometry(void)
 {
     wl_Lanimate_vector3 a3, b3, c3;
@@ -171,6 +362,10 @@ int main(void)
     test_tween_delay();
     test_easing_and_values();
     test_keyframe_track();
+    test_track_keyframe_limit();
+    test_single_keyframe_track();
+    test_animation_runtime();
+    test_shared_frame_clock();
     test_vector_geometry();
     return 0;
 }

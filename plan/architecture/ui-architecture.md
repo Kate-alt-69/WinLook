@@ -233,6 +233,28 @@ The stable application types (`UiApplication`, `UiPage`, `UiWindowConfig`, `UiEr
 
 The C89 counterpart is a separate package, `C/library/wl_Lui`. It is intentionally independent of Rust, WinUI and Tauri so legacy C applications can keep using baseline Win32 APIs.
 
+## Shared animation runtime and host frame ownership
+
+Rust applications use the portable `wl_animate` library through
+`wl_ui::animate`; C89 applications use `wl_Lanimate`. A host owns exactly
+one frame clock for a visible scene and passes each emitted delta to all active
+animations. The clock never starts its own timer or worker. The target cadence
+defaults to 60 FPS, preserves fractional phase for faster 90/120/144 Hz event
+loops, caps long deltas and resets when the host resumes after hiding/suspension.
+
+The runtimes cap tracks at 64 keyframes, keep playback cursors per animation,
+and are renderer-independent. Built-in interpolation is allocation-free;
+renderers apply only properties they actually support. Tauri can use validated
+CSS keyframes and browser/compositor animation, while native hosts can sample
+the same runtime from their platform event loop. WLDE is expected to share the
+same clock and animation semantics, but its renderer/presentation path remains
+a separate implementation and verification item.
+
+See [the shared animation runtime guide](../../docs/wl_ui/animation.md) for
+Rust/C examples, cadence behaviour and the CPU benchmark. The benchmark does
+not perform GPU work and is not a universal utilization guarantee.
+
+
 ## 8. OS and toolchain boundaries
 
 The Windows 10 and Windows 11 products have separate build profiles. Win10 uses Visual Studio 2022 with Windows SDK 10.0.19041.0 and the Win32 backend. Win11 uses Visual Studio 2026 with Windows SDK 10.0.26100.0 and the WinUI 3 backend. Their CI jobs run on matching hosted images. This is important because the same MSVC/SDK environment must not be silently reused for both targets.
@@ -240,3 +262,14 @@ The Windows 10 and Windows 11 products have separate build profiles. Win10 uses 
 The normal current Rust MSVC target requires Windows 10 or newer. Rust 1.77 is the last stable toolchain with built-in Windows 7 compatibility; newer Rust has a separate Tier 3 `*-win7-windows-msvc` target that requires building/providing a custom target toolchain. Those are build routes, not proof of WinLook runtime support. Tauri 2.12 has MSRV 1.90 and dropped official Windows 7 support, so the Tauri adapter is not the Win7 route. Windows 95 through Vista remain on the C/legacy compiler path.
 
 Primary references: [Rust MSVC targets](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html), [Rust Win7 MSVC target](https://doc.rust-lang.org/rustc/platform-support/win7-windows-msvc.html), [Tauri 2.12 release](https://v2.tauri.app/blog/tauri-2.12/).
+
+
+## 11. Shared design system and styling API — 2026-11-13
+
+The initial `wl_ui` model now carries a platform-neutral `UiTheme` and ordered `UiStyleSheet` alongside its window/page model. Public style values are typed and validated: semantic color palettes, typography, spacing/radius/control metrics, elevation/focus/motion tokens, component selectors and visual states, size/box styles, flex properties, gradients, transforms, transitions and responsive media conditions. CSS renderers use `UiTheme::css_variables()` and `UiStyleSheet::to_css()`; native renderers translate the semantic values that their platform can express.
+
+The Win32 Windows 10 shell applies native solid surface/text colors and font resources through GDI and the User32 control-color/window-paint messages. Windows 11 applies shared theme tokens to its WinUI shell and exposes the Windows Reactor control API from `wl_ui::windows11` on Windows. Tauri 2 publishes the same theme/style CSS to the host frontend through a document-start initialization script. Raw CSS strings, arbitrary selectors and external style imports are deliberately not accepted by the typed API.
+
+The C89 `wl_Lui` API provides versioned `wl_lui_theme` / `wl_lui_style` structs, initializers, window setters and a capability query. Its current native backend advertises background, foreground and font overrides; border/padding/opacity/radius fields are reserved and return `WL_LUI_UNSUPPORTED` until a renderer implements them. It is a legacy window/theme foundation, not a full CSS or control-layout toolkit.
+
+API and backend limits are documented in [docs/wl_ui/](../../docs/wl_ui/README.md), including [Rust styling](../../docs/wl_ui/styling.md), [renderer mapping](../../docs/wl_ui/backends.md) and [C styling](../../docs/wl_ui/C/styling.md). The user's Windows 10 launch check is reported as successful; full Rust/Windows/C CI and per-version runtime validation remain separate gates.

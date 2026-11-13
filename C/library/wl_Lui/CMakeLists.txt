@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(wl_Lui VERSION 0.1.0 LANGUAGES C)
+project(wl_Lui VERSION 0.2.0 LANGUAGES C)
 
 include(GNUInstallDirs)
 
@@ -16,7 +16,7 @@ target_include_directories(wl_Lui
 )
 
 if(WIN32)
-    target_link_libraries(wl_Lui PUBLIC user32)
+    target_link_libraries(wl_Lui PUBLIC user32 gdi32)
 endif()
 
 set_target_properties(wl_Lui PROPERTIES

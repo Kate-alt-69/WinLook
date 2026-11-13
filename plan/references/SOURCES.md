@@ -158,3 +158,15 @@ Implementation consequence: prototype Win10/Win11 Manager UI with the published 
 | BUILD-010 | [CodeQL Action v4.39.3](https://github.com/github/codeql-action/releases/tag/v4.39.3), [Dependency Review v5.0.0](https://github.com/actions/dependency-review-action/releases/tag/v5.0.0) | Current security action versions used by the branch, checked 2026-11-11 | Pinned commit SHAs are recorded in security.yml; CodeQL build-mode none is source analysis, not a compiled build |
 
 Implementation consequence: C and Rust share the build/ root but keep outputs and compiler caches distinct. Cargo outputs use build/rust/, Cargo's registry/Git and optional sccache use build/.rcache/, CMake outputs use build/c/, and ccache uses build/.Ccache/. This directory arrangement is a WinLook repository contract, not a requirement imposed by the upstream tools.
+
+
+## UI theme and styling implementation
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| UI-GDI-001 | [CreateSolidBrush](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createsolidbrush) | Creates native solid brushes for Win32 control/window surfaces; brush resources are released with DeleteObject | GDI; the API page currently lists Windows 2000 Professional as the minimum supported client; older OS runtime compatibility must be validated separately |
+| UI-GDI-002 | [CreateFontW](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createfontw) | Creates a logical GDI font from size, weight and family parameters | Actual font substitution depends on installed fonts; renderer uses the target platform's native font mapper |
+| UI-GDI-003 | [SetTextColor](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-settextcolor), [SetBkColor](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-setbkcolor) | Sets text and background colors on a device context | GDI drawing properties; not a general CSS/style engine |
+| UI-GDI-004 | [FillRect](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-fillrect) | Fills the client background using a logical brush | User32; uses a supplied GDI brush handle |
+| UI-GDI-005 | [DeleteObject](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-deleteobject) | Releases GDI brushes and fonts owned by the backend | Do not delete objects while selected into a device context |
+| TAURI-003 | [Tauri 2.12.5 WebviewWindowBuilder initialization_script](https://docs.rs/tauri/2.12.5/tauri/webview/struct.WebviewWindowBuilder.html#method.initialization_script) | Initialization script executes after the global object exists and before HTML parsing/other page scripts | Main-frame script; host frontend and permissions remain application-owned |
