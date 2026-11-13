@@ -260,7 +260,6 @@ fn sample_animation<T: crate::Interpolate>(
         None => track.sample(sample_at),
     })
 }
-}
 
 #[cfg(test)]
 mod tests {
