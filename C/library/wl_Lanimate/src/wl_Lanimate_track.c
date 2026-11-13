@@ -29,6 +29,7 @@ wl_Lanimate_result wl_Lanimate_track_init(wl_Lanimate_track *track,
     track->keyframes = 0;
     track->count = 0;
     if (keyframes == 0 || count == 0U) return WL_LANIMATE_INVALID_ARGUMENT;
+    if (count > WL_LANIMATE_MAX_KEYFRAMES) return WL_LANIMATE_INVALID_KEYFRAME_COUNT;
     for (i = 0; i < count; ++i) {
         if (!wl_Lanimate_valid_timestamp(keyframes[i].at_ms)) {
             return WL_LANIMATE_INVALID_KEYFRAME_TIME;
