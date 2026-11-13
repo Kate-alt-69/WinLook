@@ -4,12 +4,14 @@
 //! No native windowing, rendering, WebView, or OS dependency is pulled into this crate.
 
 mod application;
+mod backend;
 mod error;
 mod page;
 mod style;
 mod window;
 
 pub use application::UiApplication;
+pub use backend::{UiBackend, UiBackendCapabilities};
 pub use error::UiError;
 pub use page::UiPage;
 pub use style::{
