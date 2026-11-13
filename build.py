@@ -2433,6 +2433,7 @@ def ui_verify(runner: Runner) -> None:
         raise BuildError("One or more wl_ui facade/backend modules are missing.")
     ensure_windows_linker(runner, target="win10")
     require_command("cargo", "Install Rust through https://rustup.rs/.")
+    verify_windows_ui_dependencies(runner, "win10")
     runner.run(
         "Platform-neutral UI model tests",
         ["cargo", "test", "-p", "wl_ui_core", "--all-targets"],
@@ -2456,6 +2457,33 @@ def ui_verify(runner: Runner) -> None:
     )
 
 
+def verify_windows_ui_dependencies(runner: Runner, target: str) -> None:
+    """Assert that each Windows product resolves only its intended UI backend."""
+    if target not in WINDOWS_APPS:
+        raise BuildError("Unknown Windows UI dependency profile: " + target)
+    package, _ = WINDOWS_APPS[target]
+    result = runner.run(
+        "Inspect " + target + " UI dependency graph",
+        ["cargo", "tree", "-p", package, "--edges", "normal,build"],
+        capture=True,
+    )
+    dependency_tree = (result.stdout or "").lower()
+
+    forbidden = ["tauri v", "wry v", "webview2-com"]
+    if target == "win10":
+        forbidden.extend(["windows-reactor-pre", "windows-window-pre"])
+    found = [name for name in forbidden if name in dependency_tree]
+    if found:
+        raise BuildError(
+            target + " resolved UI dependencies reserved for another backend: "
+            + ", ".join(found)
+        )
+    if target == "win11" and "windows-reactor-pre" not in dependency_tree:
+        raise BuildError(
+            "win11 did not resolve windows-reactor-pre; its native WinUI 3 backend is missing."
+        )
+
+
 def build_windows_app(runner: Runner, target: str) -> None:
     if target not in WINDOWS_APPS:
         raise BuildError("Unknown modern Windows application target: " + target)
@@ -2463,6 +2491,7 @@ def build_windows_app(runner: Runner, target: str) -> None:
     require_windows(target + " application")
     ensure_windows_linker(runner, target=target)
     require_command("cargo", "Install Rust through https://rustup.rs/.")
+    verify_windows_ui_dependencies(runner, target)
     package, target_dir = WINDOWS_APPS[target]
     runner.run(
         "Build " + target + " Manager executable",

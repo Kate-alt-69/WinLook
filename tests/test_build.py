@@ -1070,6 +1070,53 @@ class BuildHelpersTests(unittest.TestCase):
         self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win11"]["sdk_version"], "10.0.26100.0")
         self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win11"]["runner_image"], "windows-2025-vs2026")
 
+    def test_win10_dependency_boundary_excludes_windows_app_sdk_and_tauri(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        result = build.subprocess.CompletedProcess(
+            ["cargo", "tree"],
+            0,
+            stdout="winlook-win10 v0.1.0\n  wl_ui v0.1.0\n    wl_ui_windows10 v0.1.0\n      wl_ui_win32 v0.1.0\n",
+            stderr="",
+        )
+        with mock.patch.object(runner, "run", return_value=result) as run:
+            build.verify_windows_ui_dependencies(runner, "win10")
+        self.assertIn("winlook-win10", run.call_args.args[1])
+
+    def test_win10_dependency_boundary_rejects_windows_reactor(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        result = build.subprocess.CompletedProcess(
+            ["cargo", "tree"],
+            0,
+            stdout="winlook-win10 v0.1.0\n  windows-reactor-pre v0.107.1\n",
+            stderr="",
+        )
+        with mock.patch.object(runner, "run", return_value=result):
+            with self.assertRaisesRegex(build.BuildError, "windows-reactor-pre"):
+                build.verify_windows_ui_dependencies(runner, "win10")
+
+    def test_win11_dependency_boundary_requires_windows_reactor(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        result = build.subprocess.CompletedProcess(
+            ["cargo", "tree"],
+            0,
+            stdout="winlook-win11 v0.1.0\n  windows-reactor-pre v0.107.1\n",
+            stderr="",
+        )
+        with mock.patch.object(runner, "run", return_value=result):
+            build.verify_windows_ui_dependencies(runner, "win11")
+
+    def test_win11_dependency_boundary_rejects_tauri(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        result = build.subprocess.CompletedProcess(
+            ["cargo", "tree"],
+            0,
+            stdout="winlook-win11 v0.1.0\n  windows-reactor-pre v0.107.1\n  tauri v2.12.5\n",
+            stderr="",
+        )
+        with mock.patch.object(runner, "run", return_value=result):
+            with self.assertRaisesRegex(build.BuildError, "tauri"):
+                build.verify_windows_ui_dependencies(runner, "win11")
+
     def test_ui_source_detection_requires_facade_core_and_platform_backends(self):
         required = (
             "rust/library/wl_ui_core/Cargo.toml",
