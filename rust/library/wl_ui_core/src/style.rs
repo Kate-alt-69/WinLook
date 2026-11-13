@@ -1772,7 +1772,8 @@ impl UiStyle {
             ($name:literal, $value:expr) => {{
                 css.push_str($name);
                 css.push(':');
-                css.push_str(&$value);
+                let value: &str = ($value).as_ref();
+                css.push_str(value);
                 css.push(';');
             }};
         }
@@ -1837,7 +1838,7 @@ impl UiStyle {
             push!("border-width", format!("{}px", number(value)));
         }
         if let Some(value) = self.border_style {
-            push!("border-style", value.css().to_string());
+            push!("border-style", value.css());
         }
         if let Some(value) = self.border_radius {
             push!("border-radius", format!("{}px", number(value)));
@@ -1849,13 +1850,13 @@ impl UiStyle {
             push!("box-shadow", shadow_css(value));
         }
         if let Some(value) = self.cursor {
-            push!("cursor", value.css().to_string());
+            push!("cursor", value.css());
         }
         if let Some(value) = self.text_align {
-            push!("text-align", value.css().to_string());
+            push!("text-align", value.css());
         }
         if let Some(value) = self.text_decoration {
-            push!("text-decoration", value.css().to_string());
+            push!("text-decoration", value.css());
         }
         if self.outline_width.is_some() || self.outline_color.is_some() {
             let width = self.outline_width.unwrap_or(1.0);
@@ -1869,37 +1870,37 @@ impl UiStyle {
             push!("outline-offset", format!("{}px", number(value)));
         }
         if let Some(value) = self.display {
-            push!("display", value.css().to_string());
+            push!("display", value.css());
         }
         if let Some(value) = self.position {
-            push!("position", value.css().to_string());
+            push!("position", value.css());
         }
         if let Some(value) = self.overflow {
-            push!("overflow", value.css().to_string());
+            push!("overflow", value.css());
         }
         if let Some(value) = self.flex_direction {
-            push!("flex-direction", value.css().to_string());
+            push!("flex-direction", value.css());
         }
         if let Some(value) = self.flex_wrap {
-            push!("flex-wrap", value.css().to_string());
+            push!("flex-wrap", value.css());
         }
         if let Some(value) = self.justify_content {
-            push!("justify-content", value.css().to_string());
+            push!("justify-content", value.css());
         }
         if let Some(value) = self.align_items {
-            push!("align-items", value.css().to_string());
+            push!("align-items", value.css());
         }
         if let Some(value) = self.box_sizing {
-            push!("box-sizing", value.css().to_string());
+            push!("box-sizing", value.css());
         }
         if let Some(value) = self.text_transform {
-            push!("text-transform", value.css().to_string());
+            push!("text-transform", value.css());
         }
         if let Some(value) = self.white_space {
-            push!("white-space", value.css().to_string());
+            push!("white-space", value.css());
         }
         if let Some(value) = self.object_fit {
-            push!("object-fit", value.css().to_string());
+            push!("object-fit", value.css());
         }
         if let Some(value) = self.flex_grow {
             push!("flex-grow", number(value));
@@ -1965,16 +1966,16 @@ impl UiStyle {
             push!("row-gap", format!("{}px", number(value)));
         }
         if let Some(value) = self.align_content {
-            push!("align-content", value.css().to_string());
+            push!("align-content", value.css());
         }
         if let Some(value) = self.justify_items {
-            push!("justify-items", value.css().to_string());
+            push!("justify-items", value.css());
         }
         if let Some(value) = self.font_style {
-            push!("font-style", value.css().to_string());
+            push!("font-style", value.css());
         }
         if let Some(value) = self.text_overflow {
-            push!("text-overflow", value.css().to_string());
+            push!("text-overflow", value.css());
         }
         if let Some(value) = self.aspect_ratio {
             push!("aspect-ratio", number(value));
