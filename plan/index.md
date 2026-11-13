@@ -15,6 +15,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Manager UI architecture: [architecture/ui-architecture.md](architecture/ui-architecture.md)
 - Public Rust UI foundation and styling API: [../docs/wl_ui/README.md](../docs/wl_ui/README.md)
 - Rust design tokens, selectors and CSS output: [../docs/wl_ui/styling.md](../docs/wl_ui/styling.md)
+- Shared Rust/C animation runtime and host frame clock: [../docs/wl_ui/animation.md](../docs/wl_ui/animation.md)
 - UI renderer capability map: [../docs/wl_ui/backends.md](../docs/wl_ui/backends.md)
 - Legacy C UI API: [../docs/wl_ui/C/README.md](../docs/wl_ui/C/README.md) and [../docs/wl_ui/C/styling.md](../docs/wl_ui/C/styling.md)
 - Build system, shared output/cache layout and GitHub Actions: [architecture/build-and-ci.md](architecture/build-and-ci.md)
