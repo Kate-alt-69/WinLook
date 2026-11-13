@@ -28,12 +28,12 @@ wl_Lanimate_result wl_Lanimate_track_init(wl_Lanimate_track *track,
     if (track == 0) return WL_LANIMATE_INVALID_ARGUMENT;
     track->keyframes = 0;
     track->count = 0;
-    if (keyframes == 0 || count == 0) return WL_LANIMATE_INVALID_ARGUMENT;
+    if (keyframes == 0 || count == 0U) return WL_LANIMATE_INVALID_ARGUMENT;
     for (i = 0; i < count; ++i) {
         if (!wl_Lanimate_valid_timestamp(keyframes[i].at_ms)) {
             return WL_LANIMATE_INVALID_KEYFRAME_TIME;
         }
-        if (i > 0 && keyframes[i - 1].at_ms >= keyframes[i].at_ms) {
+        if (i > 0U && keyframes[i - 1U].at_ms >= keyframes[i].at_ms) {
             return WL_LANIMATE_INVALID_KEYFRAME_ORDER;
         }
     }
@@ -42,29 +42,65 @@ wl_Lanimate_result wl_Lanimate_track_init(wl_Lanimate_track *track,
     return WL_LANIMATE_OK;
 }
 
-double wl_Lanimate_track_sample(const wl_Lanimate_track *track, double at_ms)
+void wl_Lanimate_track_cursor_reset(wl_Lanimate_track_cursor *cursor)
 {
-    unsigned int i;
+    if (cursor != 0) cursor->segment_index = 0U;
+}
+
+double wl_Lanimate_track_sample_cached(
+    const wl_Lanimate_track *track,
+    wl_Lanimate_track_cursor *cursor,
+    double at_ms
+)
+{
+    unsigned int left_index;
+    unsigned int low;
+    unsigned int high;
+    unsigned int middle;
     const wl_Lanimate_keyframe *left;
     const wl_Lanimate_keyframe *right;
     double span;
     double progress;
-    if (track == 0 || track->keyframes == 0 || track->count == 0) return 0.0;
+
+    if (track == 0 || track->keyframes == 0 || track->count == 0U) return 0.0;
     if (at_ms != at_ms || at_ms <= track->keyframes[0].at_ms) {
+        if (cursor != 0) cursor->segment_index = 0U;
         return track->keyframes[0].value;
     }
-    if (at_ms >= track->keyframes[track->count - 1].at_ms) {
-        return track->keyframes[track->count - 1].value;
+    if (at_ms >= track->keyframes[track->count - 1U].at_ms) {
+        if (cursor != 0) cursor->segment_index = track->count - 2U;
+        return track->keyframes[track->count - 1U].value;
     }
-    for (i = 0; i + 1 < track->count; ++i) {
-        left = &track->keyframes[i];
-        right = &track->keyframes[i + 1];
-        if (at_ms <= right->at_ms) {
-            span = right->at_ms - left->at_ms;
-            progress = span <= 0.0 ? 1.0 : (at_ms - left->at_ms) / span;
-            return wl_Lanimate_lerp(left->value, right->value,
-                                    wl_Lanimate_ease(left->easing_to_next, progress));
+
+    left_index = 0U;
+    if (cursor != 0 && cursor->segment_index < track->count - 1U) {
+        left_index = cursor->segment_index;
+    }
+    left = &track->keyframes[left_index];
+    right = &track->keyframes[left_index + 1U];
+    if (at_ms < left->at_ms || at_ms > right->at_ms) {
+        low = 0U;
+        high = track->count - 1U;
+        while (high - low > 1U) {
+            middle = low + (high - low) / 2U;
+            if (at_ms < track->keyframes[middle].at_ms) high = middle;
+            else low = middle;
         }
+        left_index = low;
     }
-    return track->keyframes[track->count - 1].value;
+
+    if (cursor != 0) cursor->segment_index = left_index;
+    left = &track->keyframes[left_index];
+    right = &track->keyframes[left_index + 1U];
+    span = right->at_ms - left->at_ms;
+    progress = span <= 0.0 ? 1.0 : (at_ms - left->at_ms) / span;
+    return wl_Lanimate_lerp(left->value, right->value,
+                            wl_Lanimate_ease(left->easing_to_next, progress));
+}
+
+double wl_Lanimate_track_sample(const wl_Lanimate_track *track, double at_ms)
+{
+    wl_Lanimate_track_cursor cursor;
+    cursor.segment_index = 0U;
+    return wl_Lanimate_track_sample_cached(track, &cursor, at_ms);
 }
