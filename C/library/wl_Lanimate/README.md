@@ -33,7 +33,9 @@ The C library provides `wl_Lanimate_frame_clock` for the single host-owned
 frame loop. Pass monotonic milliseconds to `wl_Lanimate_frame_clock_tick`;
 only emitted ticks should advance the active animations. The default 60 FPS
 interval is `WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS`, and the default maximum
-delta is 100 ms. Pause/resume discards time spent hidden or suspended.
+delta is 100 ms. Fractional cadence is retained so faster 90/120/144 Hz host
+poll rates can average 60 emitted frames per second instead of collapsing to
+a fixed divisor. Pause/resume discards time spent hidden or suspended.
 
 One clock is shared by the entire application/scene (wl_ui or WLDE). The host
 decides whether to request another frame based on visibility and active
