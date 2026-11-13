@@ -1,6 +1,9 @@
 use crate::easing::clamp_progress;
 
 /// Interpolates a value between `self` and `end` for normalized progress 0..=1.
+///
+/// The built-in numeric, point and colour implementations are allocation-free.
+/// Custom implementations control their own clone/interpolation allocation behavior.
 pub trait Interpolate: Clone {
     fn interpolate(&self, end: &Self, progress: f64) -> Self;
 }
