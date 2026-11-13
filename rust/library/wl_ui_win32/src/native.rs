@@ -192,19 +192,38 @@ fn create_font(application: &UiApplication) -> Handle {
     let face = wide(&typography.font_family);
     unsafe {
         CreateFontW(
-            -(typography.size_md.round() as i32), 0, 0, 0,
+            -(typography.size_md.round() as i32),
+            0,
+            0,
+            0,
             typography.weight_regular as i32,
-            0, 0, 0, 1, 0, 0, 5, 0, face.as_ptr(),
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            5,
+            0,
+            face.as_ptr(),
         )
     }
 }
 
 fn delete_state_resources(state: &WindowState) {
     unsafe {
-        if !state.window_brush.is_null() { DeleteObject(state.window_brush); }
-        if !state.navigation_brush.is_null() { DeleteObject(state.navigation_brush); }
-        if !state.content_brush.is_null() { DeleteObject(state.content_brush); }
-        if !state.font.is_null() { DeleteObject(state.font); }
+        if !state.window_brush.is_null() {
+            DeleteObject(state.window_brush);
+        }
+        if !state.navigation_brush.is_null() {
+            DeleteObject(state.navigation_brush);
+        }
+        if !state.content_brush.is_null() {
+            DeleteObject(state.content_brush);
+        }
+        if !state.font.is_null() {
+            DeleteObject(state.font);
+        }
     }
 }
 
@@ -233,21 +252,32 @@ unsafe extern "system" fn window_proc(
     let state = state_for(hwnd);
 
     if message == WM_ERASEBKGND && !state.is_null() {
-        let mut rect = Rect { left: 0, top: 0, right: 0, bottom: 0 };
+        let mut rect = Rect {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
         if unsafe { GetClientRect(hwnd, &mut rect) } != 0 {
-            unsafe { FillRect(w_param as Handle, &rect, (*state).window_brush); }
+            unsafe {
+                FillRect(w_param as Handle, &rect, (*state).window_brush);
+            }
         }
         return 1;
     }
 
     if !state.is_null()
-        && (message == WM_CTLCOLOREDIT || message == WM_CTLCOLORLISTBOX
-            || message == WM_CTLCOLORSTATIC || message == WM_CTLCOLORBTN)
+        && (message == WM_CTLCOLOREDIT
+            || message == WM_CTLCOLORLISTBOX
+            || message == WM_CTLCOLORSTATIC
+            || message == WM_CTLCOLORBTN)
     {
         let (brush, background) = unsafe {
             match message {
                 WM_CTLCOLORLISTBOX => ((*state).navigation_brush, (*state).navigation_color),
-                WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC => ((*state).content_brush, (*state).content_color),
+                WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC => {
+                    ((*state).content_brush, (*state).content_color)
+                },
                 _ => ((*state).navigation_brush, (*state).navigation_color),
             }
         };
@@ -465,14 +495,14 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     register_window_class(instance)?;
 
     let palette: &UiPalette = application.theme().palette();
-    let window_color = component_background(&application, UiComponent::Window)
-        .unwrap_or(palette.window);
-    let navigation_color = component_background(&application, UiComponent::Navigation)
-        .unwrap_or(palette.surface_alt);
-    let content_color = component_background(&application, UiComponent::Surface)
-        .unwrap_or(palette.surface);
-    let text_color = component_foreground(&application, UiComponent::Text)
-        .unwrap_or(palette.text_primary);
+    let window_color =
+        component_background(&application, UiComponent::Window).unwrap_or(palette.window);
+    let navigation_color =
+        component_background(&application, UiComponent::Navigation).unwrap_or(palette.surface_alt);
+    let content_color =
+        component_background(&application, UiComponent::Surface).unwrap_or(palette.surface);
+    let text_color =
+        component_foreground(&application, UiComponent::Text).unwrap_or(palette.text_primary);
     let state = WindowState {
         application: application.clone(),
         navigation: std::ptr::null_mut(),
@@ -485,10 +515,14 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
         content_color,
         text_color,
     };
-    if state.window_brush.is_null() || state.navigation_brush.is_null()
-        || state.content_brush.is_null() {
+    if state.window_brush.is_null()
+        || state.navigation_brush.is_null()
+        || state.content_brush.is_null()
+    {
         delete_state_resources(&state);
-        return Err(UiError::Backend("CreateSolidBrush failed while preparing the UI theme".to_string()));
+        return Err(UiError::Backend(
+            "CreateSolidBrush failed while preparing the UI theme".to_string(),
+        ));
     }
     let state_pointer = Box::into_raw(Box::new(state));
     let class_name = wide(CLASS_NAME);
