@@ -197,5 +197,12 @@ cargo run --release -p wl_animate --example frame_budget
 
 It advances 1,024 built-in scalar animations for 600 frames through the shared
 60 FPS clock using the polynomial sine easing curves, then reports CPU time
-on the current machine. It is a repeatable
-workload, not a GPU benchmark or a universal performance target.
+on the current machine. The matching C89 workload is available with:
+
+```sh
+make -C C/library/wl_Lanimate benchmark
+```
+
+CMake/CTest also runs `wl_Lanimate.frame_budget` and prints its timings in
+the library verification logs. Both are repeatable CPU workloads, not GPU
+benchmarks or universal performance targets.
