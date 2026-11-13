@@ -1,7 +1,7 @@
 # wl_Lui
 
 `wl_Lui` is the C89 companion to the Rust `wl_ui` family. It provides a
-native Win32 window lifecycle and a versioned, fixed-layout theme/style API.
+versioned, fixed-layout theme/style API with a built-in Win32 window backend and a caller-provided portable backend interface.
 The public header remains C89/C90-compatible and does not require C++ or C99.
 
 ## Quick start
@@ -46,13 +46,13 @@ field is rendered just because it exists in the ABI. The current Win32 baseline
 supports window background, foreground and font overrides. Border, padding,
 opacity and corner radius are reserved in the stable style contract but return
 `WL_LUI_UNSUPPORTED` until the selected native renderer implements them.
-The portable non-Windows contract backend reports no native style capabilities.
+The built-in non-Windows fallback reports no native style capabilities. Applications can provide a host backend with `wl_lui_window_create_with_backend` and query its capabilities per window using `wl_lui_window_style_capabilities`. The library copies the callback table; the caller must keep `user_data` and its resources alive until the window is destroyed.
 
 ## Compatibility and limits
 
 - No WinUI, WinRT, Windows App SDK, WebView2, hidden worker thread, process hook,
   Shell replacement, or code injection.
-- Uses the classic Win32 desktop surface and C89-compatible code.
+- The built-in renderer uses the classic Win32 desktop surface; custom backends are supplied by the host through a versioned C89 callback table.
 - The C backend applies native GDI colors and fonts; it does not emulate CSS
   gradients, blur, web layout engines, or unsupported modern visual effects.
 - Build with CMake using `add_subdirectory(wl_Lui)` or link the `wl_Lui` static library.
