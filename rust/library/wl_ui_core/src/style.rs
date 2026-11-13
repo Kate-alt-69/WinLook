@@ -1390,6 +1390,21 @@ impl UiAnimationDirection {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiAnimationPlayState {
+    Running,
+    Paused,
+}
+
+impl UiAnimationPlayState {
+    fn css(self) -> &'static str {
+        match self {
+            Self::Running => "running",
+            Self::Paused => "paused",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UiAnimationFillMode {
     None,
     Forwards,
@@ -1416,6 +1431,7 @@ pub struct UiAnimation {
     iterations: UiAnimationIterations,
     direction: UiAnimationDirection,
     fill_mode: UiAnimationFillMode,
+    play_state: UiAnimationPlayState,
     easing: UiEasing,
 }
 impl UiAnimation {
@@ -1427,6 +1443,7 @@ impl UiAnimation {
             iterations: UiAnimationIterations::Once,
             direction: UiAnimationDirection::Normal,
             fill_mode: UiAnimationFillMode::Both,
+            play_state: UiAnimationPlayState::Running,
             easing: UiEasing::Ease,
         }
     }
@@ -1434,6 +1451,7 @@ impl UiAnimation {
     pub fn iterations(mut self, value: UiAnimationIterations) -> Self { self.iterations = value; self }
     pub fn direction(mut self, value: UiAnimationDirection) -> Self { self.direction = value; self }
     pub fn fill_mode(mut self, value: UiAnimationFillMode) -> Self { self.fill_mode = value; self }
+    pub fn play_state(mut self, value: UiAnimationPlayState) -> Self { self.play_state = value; self }
     pub fn easing(mut self, value: UiEasing) -> Self { self.easing = value; self }
     pub fn name(&self) -> &str { &self.name }
     pub fn duration_ms(&self) -> u32 { self.duration_ms }
@@ -1459,9 +1477,9 @@ impl UiAnimation {
             UiAnimationIterations::Infinite => "infinite".to_string(),
         };
         format!(
-            "{} {}ms {} {}ms {} {} {}",
+            "{} {}ms {} {}ms {} {} {} {}",
             self.name, self.duration_ms, self.easing.css(), self.delay_ms,
-            iterations, self.direction.css(), self.fill_mode.css()
+            iterations, self.direction.css(), self.fill_mode.css(), self.play_state.css()
         )
     }
 }
@@ -2799,6 +2817,14 @@ impl UiStyleSheet {
         for rule in &self.rules {
             rule.selector.css()?;
             rule.style.validate()?;
+            for animation in &rule.style.animations {
+                if !self.keyframes.iter().any(|keyframes| keyframes.name == animation.name) {
+                    return Err(UiError::InvalidStyle(format!(
+                        "animation '{}' has no matching keyframe definition",
+                        animation.name
+                    )));
+                }
+            }
             if let Some(media) = rule.media {
                 media.validate()?;
             }
