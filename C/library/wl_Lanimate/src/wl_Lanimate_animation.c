@@ -149,9 +149,19 @@ wl_Lanimate_result wl_Lanimate_animation_sample(
         progress = 1.0;
     } else {
         cycle = active_elapsed / animation->duration_ms;
-        fraction = modf(cycle, &whole_iteration);
+        if (animation->iterations != 0U) {
+            iteration = (unsigned int)cycle;
+            fraction = cycle - (double)iteration;
+        } else {
+            fraction = modf(cycle, &whole_iteration);
+            if (animation->direction == WL_LANIMATE_DIRECTION_ALTERNATE
+                || animation->direction == WL_LANIMATE_DIRECTION_ALTERNATE_REVERSE) {
+                iteration = fmod(whole_iteration, 2.0) >= 1.0 ? 1U : 0U;
+            } else {
+                iteration = 0U;
+            }
+        }
         progress = fraction;
-        iteration = fmod(whole_iteration, 2.0) >= 1.0 ? 1U : 0U;
     }
 
     reverse = wl_Lanimate_is_reverse(animation->direction, iteration);
