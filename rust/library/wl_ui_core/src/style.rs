@@ -1830,10 +1830,13 @@ mod tests {
 
     #[test]
     fn gradient_layout_and_responsive_styles_emit_typed_css() {
-        let gradient = UiLinearGradient::new(90.0, [
-            UiGradientStop::new(UiColor::rgb(0, 0, 0), 0.0),
-            UiGradientStop::new(UiColor::rgb(255, 255, 255), 100.0),
-        ]);
+        let gradient = UiLinearGradient::new(
+            90.0,
+            [
+                UiGradientStop::new(UiColor::rgb(0, 0, 0), 0.0),
+                UiGradientStop::new(UiColor::rgb(255, 255, 255), 100.0),
+            ],
+        );
         let sheet = UiStyleSheet::new().media_rule(
             UiSelector::new(UiComponent::Card).class("hero"),
             UiStyle::new()
@@ -1843,7 +1846,11 @@ mod tests {
                 .justify_content(UiJustifyContent::SpaceBetween)
                 .overflow(UiOverflow::Hidden)
                 .transform(UiTransform::identity().translate(2.0, 3.0))
-                .transition(UiTransition::new(UiTransitionProperty::Opacity, 120, UiEasing::EaseOut)),
+                .transition(UiTransition::new(
+                    UiTransitionProperty::Opacity,
+                    120,
+                    UiEasing::EaseOut,
+                )),
             UiMediaCondition::MinWidth(720.0),
         );
         let css = sheet.to_css().unwrap();
@@ -1856,18 +1863,27 @@ mod tests {
 
     #[test]
     fn rejects_invalid_gradients_and_transform_scales() {
-        let invalid_gradient = UiLinearGradient::new(400.0, [
-            UiGradientStop::new(UiColor::rgb(0, 0, 0), 0.0),
-            UiGradientStop::new(UiColor::rgb(255, 255, 255), 100.0),
-        ]);
-        assert!(UiStyleSheet::new().rule(
-            UiSelector::new(UiComponent::Surface),
-            UiStyle::new().linear_gradient(invalid_gradient),
-        ).to_css().is_err());
-        assert!(UiStyleSheet::new().rule(
-            UiSelector::new(UiComponent::Surface),
-            UiStyle::new().transform(UiTransform::identity().scale(-1.0, 1.0)),
-        ).to_css().is_err());
+        let invalid_gradient = UiLinearGradient::new(
+            400.0,
+            [
+                UiGradientStop::new(UiColor::rgb(0, 0, 0), 0.0),
+                UiGradientStop::new(UiColor::rgb(255, 255, 255), 100.0),
+            ],
+        );
+        assert!(UiStyleSheet::new()
+            .rule(
+                UiSelector::new(UiComponent::Surface),
+                UiStyle::new().linear_gradient(invalid_gradient),
+            )
+            .to_css()
+            .is_err());
+        assert!(UiStyleSheet::new()
+            .rule(
+                UiSelector::new(UiComponent::Surface),
+                UiStyle::new().transform(UiTransform::identity().scale(-1.0, 1.0)),
+            )
+            .to_css()
+            .is_err());
     }
 
     #[test]

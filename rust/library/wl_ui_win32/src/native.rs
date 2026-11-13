@@ -160,10 +160,20 @@ extern "system" {
     fn SetBkColor(dc: Handle, color: u32) -> u32;
     fn SetBkMode(dc: Handle, mode: i32) -> i32;
     fn CreateFontW(
-        height: i32, width: i32, escapement: i32, orientation: i32,
-        weight: i32, italic: u32, underline: u32, strike_out: u32,
-        character_set: u32, output_precision: u32, clip_precision: u32,
-        quality: u32, pitch_and_family: u32, face_name: *const u16,
+        height: i32,
+        width: i32,
+        escapement: i32,
+        orientation: i32,
+        weight: i32,
+        italic: u32,
+        underline: u32,
+        strike_out: u32,
+        character_set: u32,
+        output_precision: u32,
+        clip_precision: u32,
+        quality: u32,
+        pitch_and_family: u32,
+        face_name: *const u16,
     ) -> Handle;
 }
 
@@ -176,7 +186,11 @@ fn colorref(color: UiColor) -> u32 {
 }
 
 fn component_background(application: &UiApplication, component: UiComponent) -> Option<UiColor> {
-    application.styles().rules().iter().rev()
+    application
+        .styles()
+        .rules()
+        .iter()
+        .rev()
         .find(|rule| rule.selector().component() == &component)
         .and_then(|rule| rule.style().background_color())
 }
@@ -277,7 +291,7 @@ unsafe extern "system" fn window_proc(
                 WM_CTLCOLORLISTBOX => ((*state).navigation_brush, (*state).navigation_color),
                 WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC => {
                     ((*state).content_brush, (*state).content_color)
-                },
+                }
                 _ => ((*state).navigation_brush, (*state).navigation_color),
             }
         };
