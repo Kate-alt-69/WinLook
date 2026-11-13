@@ -12,7 +12,7 @@ add_library(wl_Lanimate STATIC
 )
 add_library(WinLook::Lanimate ALIAS wl_Lanimate)
 
-# The portable clock and animation runtime use fmod/modf on non-MSVC hosts.
+# Infinite-iteration sampling uses fmod/modf on non-MSVC hosts.
 # Publish libm as a transitive requirement of the static library.
 if(NOT MSVC)
     target_link_libraries(wl_Lanimate PUBLIC m)
