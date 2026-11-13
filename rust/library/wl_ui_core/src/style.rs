@@ -221,8 +221,8 @@ pub struct UiTypography {
 impl Default for UiTypography {
     fn default() -> Self {
         Self {
-            font_family: "Segoe UI".to_string(),
-            monospace_family: "Cascadia Mono".to_string(),
+            font_family: "system-ui".to_string(),
+            monospace_family: "monospace".to_string(),
             size_xs: 11.0,
             size_sm: 12.0,
             size_md: 14.0,
