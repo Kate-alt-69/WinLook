@@ -158,9 +158,7 @@ unsafe extern "system" fn window_proc(
     if message == WM_NCCREATE {
         let create = unsafe { &*(l_param as *const CreateStruct) };
         let name = property_name();
-        let stored = unsafe {
-            SetPropW(hwnd, name.as_ptr(), create.create_parameters)
-        };
+        let stored = unsafe { SetPropW(hwnd, name.as_ptr(), create.create_parameters) };
         return if stored != 0 { 1 } else { 0 };
     }
 
@@ -181,8 +179,13 @@ unsafe extern "system" fn window_proc(
                     0,
                     list_class.as_ptr(),
                     std::ptr::null(),
-                    WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_TABSTOP
-                        | WS_BORDER | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
+                    WS_CHILD
+                        | WS_VISIBLE
+                        | WS_VSCROLL
+                        | WS_TABSTOP
+                        | WS_BORDER
+                        | LBS_NOTIFY
+                        | LBS_NOINTEGRALHEIGHT,
                     16,
                     64,
                     248,
@@ -198,8 +201,13 @@ unsafe extern "system" fn window_proc(
                     0,
                     content_class.as_ptr(),
                     std::ptr::null(),
-                    WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER
-                        | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+                    WS_CHILD
+                        | WS_VISIBLE
+                        | WS_VSCROLL
+                        | WS_BORDER
+                        | ES_MULTILINE
+                        | ES_AUTOVSCROLL
+                        | ES_READONLY,
                     280,
                     64,
                     900,

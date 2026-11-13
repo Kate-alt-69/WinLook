@@ -22,7 +22,9 @@ impl fmt::Display for UiError {
             Self::EmptyPageId => formatter.write_str("page IDs cannot be empty"),
             Self::EmptyPageTitle => formatter.write_str("page titles cannot be empty"),
             Self::DuplicatePageId(id) => write!(formatter, "duplicate page ID: {id}"),
-            Self::UnknownInitialPage(id) => write!(formatter, "initial page ID does not exist: {id}"),
+            Self::UnknownInitialPage(id) => {
+                write!(formatter, "initial page ID does not exist: {id}")
+            }
             Self::Backend(message) => formatter.write_str(message),
         }
     }

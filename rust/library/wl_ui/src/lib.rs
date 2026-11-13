@@ -37,8 +37,8 @@ const MANAGER_PAGES: [(&str, &str, &str); 14] = [
 /// This is only data and has no OS, windowing, rendering, WebView, or runtime
 /// dependency. Reuse it with any enabled backend or provide your own model.
 pub fn manager_app() -> UiApplication {
-    let mut application = UiApplication::new("WinLook")
-        .window(UiWindowConfig::new("WinLook").size(1280, 820));
+    let mut application =
+        UiApplication::new("WinLook").window(UiWindowConfig::new("WinLook").size(1280, 820));
 
     for (id, title, description) in MANAGER_PAGES {
         application = application.page(UiPage::new(id, title, description));
@@ -47,18 +47,18 @@ pub fn manager_app() -> UiApplication {
     application.initial_page("home")
 }
 
+#[cfg(feature = "tauri2")]
+pub mod tauri2;
+#[cfg(feature = "windows10")]
+pub mod windows10;
+#[cfg(feature = "windows11")]
+pub mod windows11;
 #[cfg(any(feature = "windows7", feature = "windows8", feature = "windows81"))]
 pub mod windows7;
 #[cfg(feature = "windows8")]
 pub mod windows8;
 #[cfg(feature = "windows81")]
 pub mod windows81;
-#[cfg(feature = "windows10")]
-pub mod windows10;
-#[cfg(feature = "windows11")]
-pub mod windows11;
-#[cfg(feature = "tauri2")]
-pub mod tauri2;
 
 #[cfg(test)]
 mod tests {

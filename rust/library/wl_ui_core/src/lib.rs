@@ -23,7 +23,11 @@ mod tests {
     fn validates_a_complete_application() {
         let app = UiApplication::new("Example")
             .page(UiPage::new("home", "Home", "Application overview"))
-            .page(UiPage::new("settings", "Settings", "Application preferences"))
+            .page(UiPage::new(
+                "settings",
+                "Settings",
+                "Application preferences",
+            ))
             .initial_page("settings");
 
         assert!(app.validate().is_ok());
@@ -57,7 +61,10 @@ mod tests {
 
     #[test]
     fn rejects_empty_applications_and_invalid_window_sizes() {
-        assert_eq!(UiApplication::new("Example").validate(), Err(UiError::NoPages));
+        assert_eq!(
+            UiApplication::new("Example").validate(),
+            Err(UiError::NoPages)
+        );
 
         let invalid = UiApplication::new("Example")
             .window(UiWindowConfig::new("Example").size(0, 0))
