@@ -663,7 +663,13 @@ impl UiEdges {
     }
 
     fn css(self) -> String {
-        format!("{}px {}px {}px {}px", number(self.top), number(self.right), number(self.bottom), number(self.left))
+        format!(
+            "{}px {}px {}px {}px",
+            number(self.top),
+            number(self.right),
+            number(self.bottom),
+            number(self.left)
+        )
     }
 }
 
@@ -681,7 +687,9 @@ impl UiLength {
             Self::Auto => Ok(()),
             Self::Px(value) if finite_non_negative(value) => Ok(()),
             Self::Percent(value) if finite_non_negative(value) && value <= 100.0 => Ok(()),
-            _ => Err(UiError::InvalidStyle(format!("{name} is outside its valid range"))),
+            _ => Err(UiError::InvalidStyle(format!(
+                "{name} is outside its valid range"
+            ))),
         }
     }
 
@@ -778,7 +786,6 @@ impl UiTextDecoration {
     }
 }
 
-
 /// A color stop in a linear gradient, positioned from 0 to 100 percent.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiGradientStop {
@@ -787,7 +794,10 @@ pub struct UiGradientStop {
 }
 impl UiGradientStop {
     pub const fn new(color: UiColor, position_percent: f32) -> Self {
-        Self { color, position_percent }
+        Self {
+            color,
+            position_percent,
+        }
     }
 }
 
@@ -799,16 +809,27 @@ pub struct UiLinearGradient {
 }
 impl UiLinearGradient {
     pub fn new(angle_degrees: f32, stops: impl IntoIterator<Item = UiGradientStop>) -> Self {
-        Self { angle_degrees, stops: stops.into_iter().collect() }
+        Self {
+            angle_degrees,
+            stops: stops.into_iter().collect(),
+        }
     }
-    pub fn angle_degrees(&self) -> f32 { self.angle_degrees }
-    pub fn stops(&self) -> &[UiGradientStop] { &self.stops }
+    pub fn angle_degrees(&self) -> f32 {
+        self.angle_degrees
+    }
+    pub fn stops(&self) -> &[UiGradientStop] {
+        &self.stops
+    }
     fn validate(&self) -> Result<(), UiError> {
         if !self.angle_degrees.is_finite() || !(0.0..=360.0).contains(&self.angle_degrees) {
-            return Err(UiError::InvalidStyle("gradient angle must be between 0 and 360 degrees".to_string()));
+            return Err(UiError::InvalidStyle(
+                "gradient angle must be between 0 and 360 degrees".to_string(),
+            ));
         }
         if !(2..=16).contains(&self.stops.len()) {
-            return Err(UiError::InvalidStyle("a gradient must contain between 2 and 16 stops".to_string()));
+            return Err(UiError::InvalidStyle(
+                "a gradient must contain between 2 and 16 stops".to_string(),
+            ));
         }
         let mut previous = -1.0;
         for stop in &self.stops {
@@ -816,16 +837,21 @@ impl UiLinearGradient {
                 || stop.position_percent > 100.0
                 || stop.position_percent < previous
             {
-                return Err(UiError::InvalidStyle("gradient stops must be ordered between 0 and 100 percent".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "gradient stops must be ordered between 0 and 100 percent".to_string(),
+                ));
             }
             previous = stop.position_percent;
         }
         Ok(())
     }
     fn css(&self) -> String {
-        let stops = self.stops.iter().map(|stop| {
-            format!("{} {}%", stop.color.to_css(), number(stop.position_percent))
-        }).collect::<Vec<_>>().join(",");
+        let stops = self
+            .stops
+            .iter()
+            .map(|stop| format!("{} {}%", stop.color.to_css(), number(stop.position_percent)))
+            .collect::<Vec<_>>()
+            .join(",");
         format!("linear-gradient({}deg,{stops})", number(self.angle_degrees))
     }
 }
@@ -837,7 +863,9 @@ pub enum UiBackground {
     LinearGradient(UiLinearGradient),
 }
 impl From<UiColor> for UiBackground {
-    fn from(value: UiColor) -> Self { Self::Solid(value) }
+    fn from(value: UiColor) -> Self {
+        Self::Solid(value)
+    }
 }
 
 /// How content is distributed along the cross axis of a grid container.
@@ -930,12 +958,7 @@ impl UiCornerRadii {
         }
     }
 
-    pub const fn new(
-        top_left: f32,
-        top_right: f32,
-        bottom_right: f32,
-        bottom_left: f32,
-    ) -> Self {
+    pub const fn new(top_left: f32, top_right: f32, bottom_right: f32, bottom_left: f32) -> Self {
         Self {
             top_left,
             top_right,
