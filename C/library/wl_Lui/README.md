@@ -65,6 +65,29 @@ event loop and applies sampled values only to properties supported by its
 selected backend. See [wl_Lanimate](../wl_Lanimate/README.md) and the
 [shared animation runtime guide](../../../docs/wl_ui/animation.md).
 
+## Portable animation integration
+
+The companion C89 library is `C/library/wl_Lanimate`. It is intentionally a
+separate dependency: `wl_Lui` supplies the window/theme/style contract, while
+`wl_Lanimate` samples property values. A custom `wl_lui_backend` owns its host
+event loop and can keep one `wl_Lanimate_frame_clock` for the whole UI scene,
+advance all active animations from each emitted delta, then call
+`wl_lui_window_set_style` only for changed values. Neither library creates a
+timer or worker per widget.
+
+The built-in Win32 backend still has a deliberately small capability set:
+background, foreground and font. Border, padding, opacity and radius remain
+unsupported there, so the animation library cannot make those properties
+appear on that backend. A custom backend may implement additional fields and
+advertise them through `style_capabilities`. The built-in blocking
+`wl_lui_window_run` loop does not expose a generic frame callback; use a
+custom backend/event loop when the application needs to combine message
+dispatch with host-driven animation updates.
+
+Link `wl_Lui` and `wl_Lanimate` as separate CMake targets (or static
+libraries). The latter is portable C89 and can also be used without any UI
+library.
+
 ## Compatibility and limits
 
 - No WinUI, WinRT, Windows App SDK, WebView2, hidden worker thread, process hook,
