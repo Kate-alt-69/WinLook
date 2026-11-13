@@ -8,6 +8,56 @@ struct wl_lui_window {
     void *native_handle;
     wl_lui_theme theme;
     wl_lui_style style;
+    wl_lui_backend backend;
+};
+
+static wl_lui_result wl_lui_default_create(
+    void *user_data, const wl_lui_window_desc *description, void **native_handle
+) {
+    (void)user_data;
+    return wl_lui_platform_create(description, native_handle);
+}
+
+static wl_lui_result wl_lui_default_set_theme(
+    void *user_data, void *native_handle, const wl_lui_theme *theme
+) {
+    (void)user_data;
+    return wl_lui_platform_set_theme(native_handle, theme);
+}
+
+static wl_lui_result wl_lui_default_set_style(
+    void *user_data, void *native_handle, const wl_lui_style *style
+) {
+    (void)user_data;
+    return wl_lui_platform_set_style(native_handle, style);
+}
+
+static wl_lui_result wl_lui_default_show(void *user_data, void *native_handle) {
+    (void)user_data;
+    return wl_lui_platform_show(native_handle);
+}
+
+static wl_lui_result wl_lui_default_run(void *user_data, void *native_handle) {
+    (void)user_data;
+    return wl_lui_platform_run(native_handle);
+}
+
+static void wl_lui_default_destroy(void *user_data, void *native_handle) {
+    (void)user_data;
+    wl_lui_platform_destroy(native_handle);
+}
+
+static const wl_lui_backend wl_lui_default_backend = {
+    WL_LUI_BACKEND_VERSION,
+    (unsigned int)sizeof(wl_lui_backend),
+    0UL,
+    NULL,
+    wl_lui_default_create,
+    wl_lui_default_set_theme,
+    wl_lui_default_set_style,
+    wl_lui_default_show,
+    wl_lui_default_run,
+    wl_lui_default_destroy
 };
 
 static wl_lui_color wl_lui_rgb(unsigned char red, unsigned char green, unsigned char blue) {
@@ -162,47 +212,81 @@ wl_lui_result wl_lui_window_create(
     const wl_lui_window_desc *description,
     wl_lui_window **window_out
 ) {
+    wl_lui_backend backend;
+    backend = wl_lui_default_backend;
+    backend.style_capabilities = wl_lui_style_capabilities();
+    return wl_lui_window_create_with_backend(description, &backend, window_out);
+}
+
+wl_lui_result wl_lui_window_create_with_backend(
+    const wl_lui_window_desc *description,
+    const wl_lui_backend *backend,
+    wl_lui_window **window_out
+) {
     wl_lui_window *window;
     wl_lui_result result;
 
-    if (window_out == NULL) {
-        return WL_LUI_INVALID_ARGUMENT;
-    }
+    if (window_out == NULL) return WL_LUI_INVALID_ARGUMENT;
     *window_out = NULL;
-
     if (description == NULL || description->title == NULL
         || description->title[0] == '\0'
         || description->width < 320U || description->height < 240U
-        || description->width > 16384U || description->height > 16384U) {
+        || description->width > 16384U || description->height > 16384U
+        || backend == NULL
+        || backend->version != WL_LUI_BACKEND_VERSION
+        || backend->struct_size < (unsigned int)sizeof(wl_lui_backend)
+        || backend->create == NULL || backend->show == NULL
+        || backend->run == NULL || backend->destroy == NULL
+        || (backend->style_capabilities & ~(WL_LUI_STYLE_BACKGROUND
+            | WL_LUI_STYLE_FOREGROUND | WL_LUI_STYLE_BORDER
+            | WL_LUI_STYLE_PADDING | WL_LUI_STYLE_FONT
+            | WL_LUI_STYLE_OPACITY | WL_LUI_STYLE_CORNER_RADIUS)) != 0UL) {
         return WL_LUI_INVALID_ARGUMENT;
     }
 
     window = (wl_lui_window *)malloc(sizeof(wl_lui_window));
-    if (window == NULL) {
-        return WL_LUI_OUT_OF_MEMORY;
-    }
-
+    if (window == NULL) return WL_LUI_OUT_OF_MEMORY;
     window->native_handle = NULL;
+    window->backend = *backend;
     wl_lui_theme_init(&window->theme, WL_LUI_THEME_SYSTEM);
     wl_lui_style_init(&window->style);
-    result = wl_lui_platform_create(description, &window->native_handle);
-    if (result != WL_LUI_OK) {
+
+    result = window->backend.create(
+        window->backend.user_data, description, &window->native_handle
+    );
+    if (result != WL_LUI_OK || window->native_handle == NULL) {
         free(window);
-        return result;
+        return result == WL_LUI_OK ? WL_LUI_PLATFORM_ERROR : result;
     }
 
-    result = wl_lui_platform_set_theme(window->native_handle, &window->theme);
-    if (result == WL_LUI_OK) {
-        result = wl_lui_platform_set_style(window->native_handle, &window->style);
+    if (window->backend.set_theme != NULL) {
+        result = window->backend.set_theme(
+            window->backend.user_data, window->native_handle, &window->theme
+        );
+        if (result != WL_LUI_OK) {
+            window->backend.destroy(window->backend.user_data, window->native_handle);
+            free(window);
+            return result;
+        }
     }
-    if (result != WL_LUI_OK) {
-        wl_lui_platform_destroy(window->native_handle);
-        free(window);
-        return result;
+    if (window->backend.set_style != NULL) {
+        result = window->backend.set_style(
+            window->backend.user_data, window->native_handle, &window->style
+        );
+        if (result != WL_LUI_OK) {
+            window->backend.destroy(window->backend.user_data, window->native_handle);
+            free(window);
+            return result;
+        }
     }
 
     *window_out = window;
     return WL_LUI_OK;
+}
+
+unsigned long wl_lui_window_style_capabilities(const wl_lui_window *window) {
+    if (window == NULL) return 0UL;
+    return window->backend.style_capabilities;
 }
 
 wl_lui_result wl_lui_window_set_theme(
@@ -229,7 +313,8 @@ wl_lui_result wl_lui_window_set_theme(
         || memchr(theme->font_family, '\0', WL_LUI_FONT_FAMILY_CAPACITY) == NULL) {
         return WL_LUI_INVALID_ARGUMENT;
     }
-    result = wl_lui_platform_set_theme(window->native_handle, theme);
+    if (window->backend.set_theme == NULL) return WL_LUI_UNSUPPORTED;
+    result = window->backend.set_theme(window->backend.user_data, window->native_handle, theme);
     if (result == WL_LUI_OK) {
         window->theme = *theme;
     }
@@ -274,7 +359,12 @@ wl_lui_result wl_lui_window_set_style(
         && style->corner_radius > 8192U) {
         return WL_LUI_INVALID_ARGUMENT;
     }
-    result = wl_lui_platform_set_style(window->native_handle, style);
+    if ((style->flags & ~window->backend.style_capabilities) != 0UL
+        || (style->flags != 0UL && window->backend.set_style == NULL)) {
+        return WL_LUI_UNSUPPORTED;
+    }
+    if (window->backend.set_style == NULL) return WL_LUI_OK;
+    result = window->backend.set_style(window->backend.user_data, window->native_handle, style);
     if (result == WL_LUI_OK) {
         window->style = *style;
     }
@@ -285,14 +375,14 @@ wl_lui_result wl_lui_window_show(wl_lui_window *window) {
     if (window == NULL || window->native_handle == NULL) {
         return WL_LUI_INVALID_ARGUMENT;
     }
-    return wl_lui_platform_show(window->native_handle);
+    return window->backend.show(window->backend.user_data, window->native_handle);
 }
 
 wl_lui_result wl_lui_window_run(wl_lui_window *window) {
     if (window == NULL || window->native_handle == NULL) {
         return WL_LUI_INVALID_ARGUMENT;
     }
-    return wl_lui_platform_run(window->native_handle);
+    return window->backend.run(window->backend.user_data, window->native_handle);
 }
 
 void wl_lui_window_destroy(wl_lui_window *window) {
@@ -300,7 +390,7 @@ void wl_lui_window_destroy(wl_lui_window *window) {
         return;
     }
     if (window->native_handle != NULL) {
-        wl_lui_platform_destroy(window->native_handle);
+        window->backend.destroy(window->backend.user_data, window->native_handle);
         window->native_handle = NULL;
     }
     free(window);
