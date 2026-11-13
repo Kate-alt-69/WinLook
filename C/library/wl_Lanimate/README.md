@@ -42,6 +42,9 @@ decides whether to request another frame based on visibility and active
 animations. The library does not create a timer, thread, message pump or GPU
 resource. This avoids waking the machine once per widget/property.
 
+A track may contain one to 64 keyframes; larger tracks are rejected at
+initialization so the direct sampler also has a bounded lookup workload.
+
 ## Efficient host scheduling
 
 Keep one frame clock per application or scene (for example wl_ui or wlDE),
