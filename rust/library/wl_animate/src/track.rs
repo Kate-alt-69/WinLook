@@ -209,6 +209,22 @@ mod tests {
     }
 
     #[test]
+    fn cursor_advances_on_exact_keyframe_boundaries() {
+        let track = sample_track();
+        let mut cursor = TrackCursor::default();
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_millis(100), &mut cursor),
+            10.0
+        );
+        assert_eq!(cursor.segment_index(), 1);
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_millis(125), &mut cursor),
+            12.5
+        );
+        assert_eq!(cursor.segment_index(), 1);
+    }
+
+    #[test]
     fn cursor_binary_searches_reverse_seeks_and_clamps() {
         let track = sample_track();
         let mut cursor = TrackCursor::default();
