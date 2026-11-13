@@ -65,8 +65,10 @@ be shared by multiple playback objects.
 
 Sine easing uses a degree-15 polynomial approximation rather than sin/cos in
 the frame path (maximum absolute error approximately 6.1e-12 on the supported
-interval). Tween progress uses a nanosecond ratio. Animation advancement and
-sampling do not allocate memory.
+interval). Tween progress uses a nanosecond ratio. The playback and lookup code performs
+no internal allocation; the built-in numeric/point/colour interpolation
+implementations are also allocation-free. A third-party `Interpolate`
+implementation controls its own clone/interpolation allocation behavior.
 
 Run the local 60 FPS workload microbenchmark:
 
