@@ -63,6 +63,10 @@ double wl_Lanimate_track_sample_cached(
     double progress;
 
     if (track == 0 || track->keyframes == 0 || track->count == 0U) return 0.0;
+    if (track->count == 1U) {
+        if (cursor != 0) cursor->segment_index = 0U;
+        return track->keyframes[0].value;
+    }
     if (at_ms != at_ms || at_ms <= track->keyframes[0].at_ms) {
         if (cursor != 0) cursor->segment_index = 0U;
         return track->keyframes[0].value;
