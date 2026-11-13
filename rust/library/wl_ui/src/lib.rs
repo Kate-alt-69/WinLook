@@ -4,12 +4,13 @@
 //! Keep the shared app model renderer-neutral; select a native backend explicitly.
 
 pub use wl_ui_core::{
-    UiAlignItems, UiApplication, UiBackground, UiBorderStyle, UiBoxSizing, UiColor,
-    UiColorScheme, UiComponent, UiCursor, UiDisplay, UiEasing, UiEdges, UiEffects,
-    UiError, UiFlexDirection, UiFlexWrap, UiGradientStop, UiJustifyContent, UiLength,
-    UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage,
-    UiPalette, UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet,
-    UiTextAlign, UiTextDecoration, UiTextTransform, UiTheme, UiTransition,
+    UiAlignContent, UiAlignItems, UiApplication, UiBackground, UiBorderStyle, UiBoxSizing,
+    UiColor, UiColorScheme, UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing,
+    UiEdges, UiEffects, UiError, UiFlexDirection, UiFlexWrap, UiFontStyle, UiGradientStop,
+    UiGridTrack, UiJustifyContent, UiJustifyItems, UiLength, UiLinearGradient,
+    UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage, UiPalette, UiPosition,
+    UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
+    UiTextDecoration, UiTextOverflow, UiTextTransform, UiTheme, UiTransition,
     UiTransitionProperty, UiTransform, UiTypography, UiVisualState, UiWhiteSpace,
     UiWindowConfig,
 };
