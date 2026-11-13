@@ -306,6 +306,28 @@ class BuildHelpersTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {"NO_COLOR": "1"}):
             self.assertFalse(build.color_enabled())
 
+    def test_direct_rust_support_probe_detects_missing_cargo_components(self):
+        responses = [
+            build.subprocess.CompletedProcess(["cargo", "fmt", "--version"], 1, stdout="", stderr="missing rustfmt"),
+            build.subprocess.CompletedProcess(["cargo", "clippy", "--version"], 0, stdout="clippy 0.1", stderr=""),
+        ]
+        with mock.patch.object(build, "run_subprocess", side_effect=responses) as run:
+            missing = build._missing_direct_rust_support_components("cargo")
+        self.assertEqual(missing, ["rustfmt"])
+        self.assertEqual(
+            [call.args[0] for call in run.call_args_list],
+            [["cargo", "fmt", "--version"], ["cargo", "clippy", "--version"]],
+        )
+
+    def test_direct_rust_without_format_and_clippy_components_is_not_accepted(self):
+        runner = build.Runner(root=Path("D:/WinLook"))
+        with mock.patch.object(build, "command_path", side_effect=lambda name: "cargo.exe" if name == "cargo" else None):
+            with mock.patch.object(build, "_probe_direct_rust", return_value=(True, "rustc 1.95.0 (fixture)")):
+                with mock.patch.object(build, "_missing_direct_rust_support_components", return_value=["rustfmt", "clippy"]):
+                    with mock.patch.object(build, "_rustup_executable", return_value=Path("D:/WinLook/build/.rcache/cargo-home/bin/rustup.exe")):
+                        self.assertFalse(build.ensure_rust_toolchain(runner, apply=False))
+        self.assertEqual(runner.rust_env, {})
+
     def test_rust_toolchain_is_scoped_to_repository_build_cache(self):
         root = Path("D:/WinLook")
         paths = build.rust_paths(root)

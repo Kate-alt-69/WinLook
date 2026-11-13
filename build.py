@@ -255,6 +255,24 @@ def _probe_direct_rust(toolchain: str) -> Tuple[bool, str]:
     return False, output
 
 
+def _missing_direct_rust_support_components(cargo: str) -> List[str]:
+    """Check the two Cargo subcommands required by the repository verification gates."""
+    missing: List[str] = []
+    for component, command in (
+        ("rustfmt", "fmt"),
+        ("clippy", "clippy"),
+    ):
+        result = run_subprocess(
+            [cargo, command, "--version"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            missing.append(component)
+    return missing
+
+
 def _installed_rust_components(rustup: str, toolchain: str, env: Optional[Dict[str, str]] = None) -> set:
     """Return the installed rustfmt/clippy components for one toolchain."""
     result = run_subprocess(
@@ -362,9 +380,17 @@ def ensure_rust_toolchain(runner: "Runner", apply: bool = True) -> bool:
 
     direct_ok, direct_version = _probe_direct_rust(RUST_TOOLCHAIN)
     if direct_ok:
-        runner.rust_env = {}
-        print("Using existing PATH Rust toolchain: " + direct_version)
-        return True
+        cargo = command_path("cargo") or "cargo"
+        missing_components = _missing_direct_rust_support_components(cargo)
+        if not missing_components:
+            runner.rust_env = {}
+            print("Using existing PATH Rust toolchain: " + direct_version)
+            return True
+        print(
+            "Existing PATH Rust " + RUST_TOOLCHAIN + " is missing required Cargo "
+            + "subcommands: " + ", ".join("cargo " + item for item in missing_components) + "."
+        )
+        print("WinLook will provision its pinned toolchain with the missing verification components.")
 
     local_rustup = _rustup_executable(runner.root)
     if local_rustup.is_file() and _select_project_rustup(runner, local_rustup, install_if_missing=False):
