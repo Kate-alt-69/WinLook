@@ -70,6 +70,9 @@ static void test_easing_and_values(void)
     wl_Lanimate_rgba c0;
     wl_Lanimate_rgba c1;
     wl_Lanimate_rgba c;
+    unsigned int step;
+    double t;
+    double reference;
 
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_CUBIC, -1.0), 0.0));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_CUBIC, 2.0), 1.0));
@@ -78,6 +81,16 @@ static void test_easing_and_values(void)
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_SINE, 0.5), 0.5));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_SINE, 1.0), 1.0));
     assert(near_value(wl_Lanimate_ease(WL_LANIMATE_EASE_OUT_SINE, 1.0), 1.0));
+
+    for (step = 0U; step <= 1000U; ++step) {
+        t = (double)step / 1000.0;
+        reference = 1.0 - cos(t * 3.14159265358979323846 / 2.0);
+        assert(fabs(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_SINE, t) - reference) < 1.0e-9);
+        reference = sin(t * 3.14159265358979323846 / 2.0);
+        assert(fabs(wl_Lanimate_ease(WL_LANIMATE_EASE_OUT_SINE, t) - reference) < 1.0e-9);
+        reference = (1.0 - cos(t * 3.14159265358979323846)) / 2.0;
+        assert(fabs(wl_Lanimate_ease(WL_LANIMATE_EASE_IN_OUT_SINE, t) - reference) < 1.0e-9);
+    }
 
     p0.x = 0.0; p0.y = 10.0;
     p1.x = 100.0; p1.y = 30.0;
