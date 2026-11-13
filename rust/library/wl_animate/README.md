@@ -41,6 +41,20 @@ renderers and resource management remain separate adapters. A successful
 portable build does not certify a platform-specific renderer or application
 binary for a particular OS release.
 
+## Shared frame-clock contract
+
+`FrameClock` is a small, host-driven cadence helper. The default targets
+60 FPS, clamps a long pause to 100 ms, suppresses early duplicate calls and
+resets its baseline on resume. It does not sleep, spin, create a timer or own
+an event loop. Each host should keep one clock per scene/application and pass
+the same `FrameTick::delta` to every active animation. WinLook's wl_ui and
+WLDE should use that same clock rather than creating per-widget timers.
+
+The host should stop requesting frames while the scene is hidden, fully
+occluded or has no active animated content, and resume with a fresh timestamp.
+Use the platform compositor for simple transforms/opacity where supported;
+the clock only schedules sampling and never renders to a GPU.
+
 ## Low-overhead 60 FPS usage
 
 Use one host frame clock and pass the same frame delta to every active
