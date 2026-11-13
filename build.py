@@ -2377,8 +2377,12 @@ def rust_verify(runner: Runner) -> None:
     commands = [
         ("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"]),
         ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features"]),
+        ("Portable wl_ui facade tests", ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--all-targets"]),
         ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"]),
+        ("Portable wl_ui facade Clippy", ["cargo", "clippy", "-p", "wl_ui", "--no-default-features", "--all-targets", "--", "-D", "warnings"]),
         ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--no-deps"]),
+        ("Portable wl_ui public API documentation", ["cargo", "doc", "-p", "wl_ui", "--no-deps"]),
+        ("Animation 60 FPS CPU workload benchmark", ["cargo", "run", "--release", "-p", "wl_animate", "--example", "frame_budget"]),
     ]
     for label, command in commands:
         runner.run(label, command)
