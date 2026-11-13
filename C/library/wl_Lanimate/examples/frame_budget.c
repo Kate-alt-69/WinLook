@@ -19,6 +19,7 @@ int main(void)
     wl_Lanimate_result result;
     unsigned int i;
     unsigned int frame_index;
+    unsigned int emitted_frames;
     double now_ms;
     double value;
     double checksum;
@@ -77,6 +78,7 @@ int main(void)
     if (result != WL_LANIMATE_OK) return 4;
 
     checksum = 0.0;
+    emitted_frames = 0U;
     started = clock();
     for (frame_index = 0U; frame_index < WL_LANIMATE_BENCHMARK_FRAMES; ++frame_index) {
         /* Host refresh is 16.666667 ms; target cadence is slightly below it. */
@@ -108,6 +110,12 @@ int main(void)
         || finished < started || CLOCKS_PER_SEC <= 0) {
         fprintf(stderr, "The C runtime clock is unavailable for this benchmark.\n");
         return 7;
+    }
+
+    if (emitted_frames != WL_LANIMATE_BENCHMARK_FRAMES) {
+        fprintf(stderr, "Expected %u emitted frames, received %u.\\n",
+                WL_LANIMATE_BENCHMARK_FRAMES, emitted_frames);
+        return 8;
     }
 
     elapsed_ticks = finished - started;
