@@ -1364,6 +1364,156 @@ impl UiTransition {
         )
     }
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiAnimationIterations {
+    Once,
+    Count(u16),
+    Infinite,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiAnimationDirection {
+    Normal,
+    Reverse,
+    Alternate,
+    AlternateReverse,
+}
+impl UiAnimationDirection {
+    fn css(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Reverse => "reverse",
+            Self::Alternate => "alternate",
+            Self::AlternateReverse => "alternate-reverse",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UiAnimationFillMode {
+    None,
+    Forwards,
+    Backwards,
+    Both,
+}
+impl UiAnimationFillMode {
+    fn css(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Forwards => "forwards",
+            Self::Backwards => "backwards",
+            Self::Both => "both",
+        }
+    }
+}
+
+/// Declarative animation settings. This model contains no script or callbacks.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiAnimation {
+    name: String,
+    duration_ms: u32,
+    delay_ms: i32,
+    iterations: UiAnimationIterations,
+    direction: UiAnimationDirection,
+    fill_mode: UiAnimationFillMode,
+    easing: UiEasing,
+}
+impl UiAnimation {
+    pub fn new(name: impl Into<String>, duration_ms: u32) -> Self {
+        Self {
+            name: name.into(),
+            duration_ms,
+            delay_ms: 0,
+            iterations: UiAnimationIterations::Once,
+            direction: UiAnimationDirection::Normal,
+            fill_mode: UiAnimationFillMode::Both,
+            easing: UiEasing::Ease,
+        }
+    }
+    pub fn delay(mut self, delay_ms: i32) -> Self { self.delay_ms = delay_ms; self }
+    pub fn iterations(mut self, value: UiAnimationIterations) -> Self { self.iterations = value; self }
+    pub fn direction(mut self, value: UiAnimationDirection) -> Self { self.direction = value; self }
+    pub fn fill_mode(mut self, value: UiAnimationFillMode) -> Self { self.fill_mode = value; self }
+    pub fn easing(mut self, value: UiEasing) -> Self { self.easing = value; self }
+    pub fn name(&self) -> &str { &self.name }
+    pub fn duration_ms(&self) -> u32 { self.duration_ms }
+    pub fn delay_ms(&self) -> i32 { self.delay_ms }
+    fn validate(&self) -> Result<(), UiError> {
+        if !valid_identifier(&self.name) {
+            return Err(UiError::InvalidStyle("animation name must be a valid identifier".to_string()));
+        }
+        if self.duration_ms > 3_600_000 || self.delay_ms.unsigned_abs() > 3_600_000 {
+            return Err(UiError::InvalidStyle("animation duration and delay must not exceed one hour".to_string()));
+        }
+        if let UiAnimationIterations::Count(count) = self.iterations {
+            if count == 0 || count > 1000 {
+                return Err(UiError::InvalidStyle("animation iteration count must be 1 to 1000 or infinite".to_string()));
+            }
+        }
+        Ok(())
+    }
+    fn css(&self) -> String {
+        let iterations = match self.iterations {
+            UiAnimationIterations::Once => "1".to_string(),
+            UiAnimationIterations::Count(count) => count.to_string(),
+            UiAnimationIterations::Infinite => "infinite".to_string(),
+        };
+        format!(
+            "{} {}ms {} {}ms {} {} {}",
+            self.name, self.duration_ms, self.easing.css(), self.delay_ms,
+            iterations, self.direction.css(), self.fill_mode.css()
+        )
+    }
+}
+
+/// One typed keyframe; offsets are percentages from 0 through 100.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiKeyframe {
+    offset_percent: f32,
+    style: UiStyle,
+}
+impl UiKeyframe {
+    pub fn new(offset_percent: f32, style: UiStyle) -> Self { Self { offset_percent, style } }
+    pub fn offset_percent(&self) -> f32 { self.offset_percent }
+    pub fn style(&self) -> &UiStyle { &self.style }
+}
+
+/// Named, bounded keyframe definitions for CSS-capable renderers.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiKeyframes {
+    name: String,
+    frames: Vec<UiKeyframe>,
+}
+impl UiKeyframes {
+    pub fn new(name: impl Into<String>, frames: impl IntoIterator<Item = UiKeyframe>) -> Self {
+        Self { name: name.into(), frames: frames.into_iter().collect() }
+    }
+    pub fn name(&self) -> &str { &self.name }
+    pub fn frames(&self) -> &[UiKeyframe] { &self.frames }
+    fn validate(&self) -> Result<(), UiError> {
+        if !valid_identifier(&self.name) {
+            return Err(UiError::InvalidStyle("keyframe name must be a valid identifier".to_string()));
+        }
+        if !(2..=64).contains(&self.frames.len()) {
+            return Err(UiError::InvalidStyle("keyframes must contain 2 to 64 frames".to_string()));
+        }
+        let mut previous = -1.0_f32;
+        for frame in &self.frames {
+            if !frame.offset_percent.is_finite()
+                || !(0.0..=100.0).contains(&frame.offset_percent)
+                || frame.offset_percent <= previous
+            {
+                return Err(UiError::InvalidStyle("keyframe offsets must be strictly increasing from 0 to 100".to_string()));
+            }
+            frame.style.validate()?;
+            if !frame.style.transitions.is_empty() || !frame.style.animations.is_empty() {
+                return Err(UiError::InvalidStyle("keyframe declarations cannot nest transitions or animations".to_string()));
+            }
+            previous = frame.offset_percent;
+        }
+        Ok(())
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiTransform {
     pub translate_x: f32,
