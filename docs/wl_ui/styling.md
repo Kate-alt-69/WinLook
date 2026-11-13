@@ -214,6 +214,62 @@ may exceed 100% for intentional overflow or positioning layouts. Transform
 scales may be negative to mirror content; all transform components must be
 finite.
 
+### Declarative keyframe animations
+
+Animations are described with typed values rather than raw CSS or script.
+A stylesheet must contain the matching keyframe definition before a component
+can reference it:
+
+```rust
+use wl_ui::{
+    UiAnimation, UiAnimationDirection, UiAnimationFillMode,
+    UiAnimationIterations, UiComponent, UiKeyframe, UiKeyframes,
+    UiSelector, UiStyle, UiStyleSheet,
+};
+
+let fade = UiKeyframes::new(
+    "fade_in",
+    [
+        UiKeyframe::new(0.0, UiStyle::new().opacity(0.0)),
+        UiKeyframe::new(100.0, UiStyle::new().opacity(1.0)),
+    ],
+);
+
+let styles = UiStyleSheet::new()
+    .keyframes(fade)
+    .rule(
+        UiSelector::new(UiComponent::Card).class("entering"),
+        UiStyle::new().animation(
+            UiAnimation::new("fade_in", 240)
+                .iterations(UiAnimationIterations::Once)
+                .direction(UiAnimationDirection::Normal)
+                .fill_mode(UiAnimationFillMode::Both),
+        ),
+    );
+```
+
+The animation API also supports signed start delays, bounded repeat counts or
+infinite repetition, direction, fill mode, easing and running/paused state.
+Animation/keyframe names are validated identifiers (maximum 64 characters);
+each keyframe set contains 2–64 strictly ordered frames; a stylesheet permits
+at most 64 keyframe sets and each component at most 8 simultaneous animations.
+Durations and delays are capped at one hour and repeat counts at 1000. Nested
+animations/transitions inside keyframe declarations are rejected.
+
+The generated CSS uses the shared `--wl-motion-enabled` token and includes
+reduced-motion overrides for system preferences. A theme with
+`UiEffects::reduced_motion = true` also disables repeated motion. No
+JavaScript, callback, external stylesheet, arbitrary selector or raw CSS value
+is accepted by these APIs.
+
+`wl_ui::animate` re-exports the portable `wl_animate` crate for host-driven
+native animation. It provides caller-driven tweens and keyframe sampling; the
+host supplies elapsed time and owns its frame loop. CSS-capable renderers such
+as Tauri use the validated CSS keyframes and the browser's native animation
+engine. Native renderers must explicitly implement animation capability or
+report it unsupported; the shared model never pretends an unimplemented
+backend renders animation.
+
 ## 4. Stylesheets and responsive rules
 
 Rules are ordered: later matching rules are emitted later and win in the CSS
