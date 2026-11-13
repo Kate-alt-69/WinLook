@@ -245,9 +245,13 @@ fn sample_animation<T: crate::Interpolate>(
         IterationCount::Count(count) => Some(count),
         IterationCount::Infinite => None,
     };
-    let finished = sample.state == PlaybackState::Finished
-        || finite_iterations
-            .is_some_and(|count| active_nanos >= duration_nanos.saturating_mul(u128::from(count)));
+    let finished_by_iteration = match finite_iterations {
+        Some(count) => {
+            active_nanos >= duration_nanos.saturating_mul(u128::from(count))
+        }
+        None => false,
+    };
+    let finished = sample.state == PlaybackState::Finished || finished_by_iteration;
     if finished && !matches!(sample.fill_mode, FillMode::Forwards | FillMode::Both) {
         return None;
     }
