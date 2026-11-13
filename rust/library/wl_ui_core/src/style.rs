@@ -3308,7 +3308,7 @@ mod tests {
         let css = stylesheet.to_css().unwrap();
         assert!(css.contains("@keyframes fade_in{0%{opacity:0;}"));
         assert!(css.contains("100%{opacity:1;"));
-        assert!(css.contains("animation:fade_in calc(240ms * var(--wl-motion-enabled,1)) ease-out calc(-20ms * var(--wl-motion-enabled,1)) 2 alternate both paused;"));
+        assert!(css.contains("animation:fade_in 240ms ease-out -20ms 2 alternate both paused;"));
         assert!(css.contains("prefers-reduced-motion:reduce"));
     }
 
