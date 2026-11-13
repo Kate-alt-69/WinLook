@@ -217,6 +217,15 @@ static void test_shared_frame_clock(void)
         }
     }
     assert(emitted == 60U);
+
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.0, 5.0) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 0.0, &tick) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 10.0, &tick) == WL_LANIMATE_NO_FRAME);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 20.0, &tick) == WL_LANIMATE_OK);
+    assert(near_value(tick.delta_ms, 5.0));
+    assert(wl_Lanimate_frame_clock_tick(&clock, 30.0, &tick) == WL_LANIMATE_NO_FRAME);
+    assert(wl_Lanimate_frame_clock_tick(&clock, 40.0, &tick) == WL_LANIMATE_OK);
+    assert(near_value(tick.delta_ms, 5.0));
 }
 
 static void test_animation_runtime(void)
