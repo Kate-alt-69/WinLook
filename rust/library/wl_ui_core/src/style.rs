@@ -2964,10 +2964,11 @@ mod tests {
     #[test]
     fn shadow_offsets_and_spread_may_be_negative_but_blur_may_not() {
         let shadow = UiShadow::new(UiColor::rgb(0, 0, 0), -2.0, 3.0, 4.0, -1.0);
+        let text_shadow = UiShadow::new(UiColor::rgb(0, 0, 0), -2.0, 3.0, 4.0, 0.0);
         let css = UiStyleSheet::new()
             .rule(
                 UiSelector::new(UiComponent::Card),
-                UiStyle::new().shadow(shadow).text_shadow(shadow),
+                UiStyle::new().shadow(shadow).text_shadow(text_shadow),
             )
             .to_css()
             .unwrap();
