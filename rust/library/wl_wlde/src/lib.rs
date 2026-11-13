@@ -38,7 +38,12 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(x: f64, y: f64, width: f64, height: f64) -> Result<Self, GeometryError> {
-        let value = Self { x, y, width, height };
+        let value = Self {
+            x,
+            y,
+            width,
+            height,
+        };
         if value.is_valid() {
             Ok(value)
         } else {
@@ -87,9 +92,13 @@ pub enum GeometryError {
 impl std::fmt::Display for GeometryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidRectangle => f.write_str("rectangle must have finite coordinates and positive dimensions"),
+            Self::InvalidRectangle => {
+                f.write_str("rectangle must have finite coordinates and positive dimensions")
+            }
             Self::InvalidSize => f.write_str("source size must be finite and positive"),
-            Self::NonFiniteAspectRatio => f.write_str("aspect-ratio calculation is outside the finite range"),
+            Self::NonFiniteAspectRatio => {
+                f.write_str("aspect-ratio calculation is outside the finite range")
+            }
         }
     }
 }
@@ -122,7 +131,12 @@ impl Monitor {
         if !bounds.is_valid() || !work_area.is_valid() {
             return Err(TopologyError::InvalidGeometry);
         }
-        Ok(Self { id, bounds, work_area, primary })
+        Ok(Self {
+            id,
+            bounds,
+            work_area,
+            primary,
+        })
     }
 
     pub fn id(&self) -> &str {
