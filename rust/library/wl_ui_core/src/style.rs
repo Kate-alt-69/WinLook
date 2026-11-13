@@ -1912,8 +1912,7 @@ impl UiStyle {
             ($name:literal, $value:expr) => {{
                 css.push_str($name);
                 css.push(':');
-                let value: &str = ($value).as_ref();
-                css.push_str(value);
+                append_css_value(&mut css, $value);
                 css.push(';');
             }};
         }
@@ -2451,6 +2450,10 @@ fn valid_shadow(shadow: UiShadow) -> bool {
     [shadow.offset_x, shadow.offset_y, shadow.blur, shadow.spread]
         .iter()
         .all(|value| finite_non_negative(*value))
+}
+
+fn append_css_value(css: &mut String, value: impl AsRef<str>) {
+    css.push_str(value.as_ref());
 }
 
 fn shadow_css(shadow: UiShadow) -> String {
