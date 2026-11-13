@@ -157,10 +157,14 @@ impl std::fmt::Display for TopologyError {
         match self {
             Self::EmptyMonitorId => f.write_str("monitor ID cannot be empty"),
             Self::MonitorIdTooLong => f.write_str("monitor ID exceeds the 63-byte portable limit"),
-            Self::InvalidGeometry => f.write_str("monitor bounds and work area must be finite and positive"),
+            Self::InvalidGeometry => {
+                f.write_str("monitor bounds and work area must be finite and positive")
+            }
             Self::TooManyMonitors => f.write_str("monitor topology exceeds the 16-monitor bound"),
             Self::DuplicateMonitorId => f.write_str("monitor IDs must be unique within a topology"),
-            Self::MultiplePrimaryMonitors => f.write_str("a topology may contain at most one primary monitor"),
+            Self::MultiplePrimaryMonitors => {
+                f.write_str("a topology may contain at most one primary monitor")
+            }
         }
     }
 }
@@ -218,7 +222,10 @@ fn validate_topology(monitors: &[Monitor]) -> Result<(), TopologyError> {
         if monitor.primary {
             primary_count += 1;
         }
-        if monitors[..index].iter().any(|previous| previous.id == monitor.id) {
+        if monitors[..index]
+            .iter()
+            .any(|previous| previous.id == monitor.id)
+        {
             return Err(TopologyError::DuplicateMonitorId);
         }
     }
@@ -262,12 +269,21 @@ pub fn compute_placement(
 
     let source_ratio = source.width / source.height;
     let viewport_ratio = viewport.width / viewport.height;
-    if !finite(source_ratio) || !finite(viewport_ratio) || source_ratio <= 0.0 || viewport_ratio <= 0.0 {
+    if !finite(source_ratio)
+        || !finite(viewport_ratio)
+        || source_ratio <= 0.0
+        || viewport_ratio <= 0.0
+    {
         return Err(GeometryError::NonFiniteAspectRatio);
     }
 
     let mut destination = viewport;
-    let mut source_crop = Rect { x: 0.0, y: 0.0, width: 1.0, height: 1.0 };
+    let mut source_crop = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 1.0,
+        height: 1.0,
+    };
 
     match mode {
         ScaleMode::Fill => {
@@ -306,7 +322,10 @@ pub fn compute_placement(
     if !destination.is_valid() || !source_crop.is_valid() {
         return Err(GeometryError::NonFiniteAspectRatio);
     }
-    Ok(Placement { destination, source_crop })
+    Ok(Placement {
+        destination,
+        source_crop,
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -557,7 +576,10 @@ mod tests {
             monitor("DISPLAY-A", 0.0, true),
             monitor("DISPLAY-A", 1920.0, false),
         ];
-        assert_eq!(topology.replace(duplicate), Err(TopologyError::DuplicateMonitorId));
+        assert_eq!(
+            topology.replace(duplicate),
+            Err(TopologyError::DuplicateMonitorId)
+        );
         assert_eq!(topology.len(), 2);
 
         let multiple_primary = vec![
@@ -613,7 +635,10 @@ mod tests {
         });
         assert_eq!(scene.frame_action(), FrameAction::Animate);
         assert_eq!(scene.tick(Duration::ZERO).unwrap().delta, Duration::ZERO);
-        assert_eq!(scene.tick(Duration::from_millis(17)).unwrap().delta, Duration::from_millis(17));
+        assert_eq!(
+            scene.tick(Duration::from_millis(17)).unwrap().delta,
+            Duration::from_millis(17)
+        );
 
         scene.set_conditions(SceneConditions {
             visibility: Visibility::FullyOccluded,
@@ -677,7 +702,11 @@ mod tests {
     #[test]
     fn resource_governors_use_the_existing_cpuv_and_gpuv_contracts() {
         let mut resources = ResourceGovernors::new(
-            wl_cpuv::Policy { window_budget: 100, critical_reserve: 20, max_in_flight: 2 },
+            wl_cpuv::Policy {
+                window_budget: 100,
+                critical_reserve: 20,
+                max_in_flight: 2,
+            },
             wl_gpuv::Policy {
                 memory_budget_bytes: 1024,
                 critical_reserve_bytes: 128,
@@ -686,10 +715,16 @@ mod tests {
         )
         .unwrap();
 
-        let cpu_ticket = resources.cpu.try_acquire(wl_cpuv::WorkClass::Background, 80).unwrap();
+        let cpu_ticket = resources
+            .cpu
+            .try_acquire(wl_cpuv::WorkClass::Background, 80)
+            .unwrap();
         assert!(!resources.cpu.complete(cpu_ticket, 70).unwrap().overrun);
 
-        let gpu_ticket = resources.gpu.try_reserve(wl_gpuv::WorkClass::Background, 896).unwrap();
+        let gpu_ticket = resources
+            .gpu
+            .try_reserve(wl_gpuv::WorkClass::Background, 896)
+            .unwrap();
         assert_eq!(resources.gpu.allocated_bytes(), 896);
         resources.gpu.release(gpu_ticket).unwrap();
 
