@@ -175,6 +175,7 @@ actually mapped there.
 
 Detailed API reference:
 - [wl_ui design system and styling](../../../docs/wl_ui/styling.md)
+- [shared animation runtime and frame clock](../../../docs/wl_ui/animation.md)
 - [renderer capability map](../../../docs/wl_ui/backends.md)
 - [legacy C styling](../../../docs/wl_ui/C/styling.md)
 
