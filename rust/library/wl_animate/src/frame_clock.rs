@@ -86,14 +86,20 @@ impl FrameClock {
             return None;
         }
 
-        let Some(last) = self.last_timestamp else {
-            self.last_timestamp = Some(now);
-            return Some(self.emit(now, Duration::ZERO));
+        let last = match self.last_timestamp {
+            Some(last) => last,
+            None => {
+                self.last_timestamp = Some(now);
+                return Some(self.emit(now, Duration::ZERO));
+            }
         };
 
-        let Some(elapsed) = now.checked_sub(last) else {
-            self.last_timestamp = Some(now);
-            return None;
+        let elapsed = match now.checked_sub(last) {
+            Some(elapsed) => elapsed,
+            None => {
+                self.last_timestamp = Some(now);
+                return None;
+            }
         };
         if elapsed < self.target_interval {
             return None;
