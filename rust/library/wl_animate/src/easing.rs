@@ -60,7 +60,7 @@ impl Easing {
             Self::EaseInOutSine => {
                 let value = fast_sin(t * std::f64::consts::FRAC_PI_2);
                 value * value
-            },
+            }
             Self::EaseInQuart => t.powi(4),
             Self::EaseOutQuart => 1.0 - inverse.powi(4),
             Self::EaseInOutQuart => {
@@ -82,7 +82,6 @@ pub(crate) fn clamp_progress(progress: f64) -> f64 {
     }
 }
 
-
 /// Degree-11 sine approximation on [0, pi/2], using only multiply/add.
 #[inline]
 fn fast_sin(value: f64) -> f64 {
@@ -95,7 +94,5 @@ fn fast_sin(value: f64) -> f64 {
                         * (1.0 / 120.0
                             + square
                                 * (-1.0 / 5040.0
-                                    + square
-                                        * (1.0 / 362880.0
-                                            - square / 39916800.0)))))
+                                    + square * (1.0 / 362880.0 - square / 39916800.0)))))
 }
