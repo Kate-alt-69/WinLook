@@ -10,19 +10,38 @@
 - `Point2`, RGBA, Vector3/4 and rectangle interpolation helpers.
 - Affine `Matrix3x2` composition/point transformation, normalized opacity and shortest-arc `Transform2D` interpolation.
 - The C implementation does not yet include the Rust SVG path parser or full vector scene model.
-- Caller-owned scalar keyframe arrays and timestamp sampling with input validation.
+- Caller-owned scalar keyframe arrays with binary-search sampling and a cached per-playback segment cursor.
+- Caller-owned keyframe playback with delay, repeat/alternate direction, fill modes, pause/resume/cancel/restart and host-driven advancement.
 
 ## C and resource contract
 
 - C89-compatible public header and implementation.
 - Static library output; no third-party runtime dependency beyond the platform C math library.
 - No heap allocation in the per-frame path.
-- No internal worker thread, timer or message pump; the host owns scheduling.
+- No internal worker thread, timer, message pump or per-animation wake-up; one host frame loop advances all active animations.
+- The cached per-frame path does not allocate and normally needs only a segment-bound check, easing and scalar interpolation.
+- Sine easing uses a degree-11 polynomial approximation (about 5.7e-8 maximum absolute error) rather than trigonometric library calls.
 - Caller retains storage for tween and keyframe structures.
 - No DWM, DirectComposition, D3D, modern CRT or modern Win32 imports in this portable core.
 - Platform drawing, GDI resources, timers and window lifecycle belong in separate OS adapters.
 
 C89 compatibility is an implementation constraint, not an OS compatibility claim. The core can be compiled on any host with a conforming C compiler and the platform math library; integrating it with a UI still requires a renderer and host-owned frame scheduler.
+
+## Efficient host scheduling
+
+Keep one frame clock per application or scene (for example wl_ui or wlDE),
+compute the frame delta once, and advance active animations from that loop.
+Store one wl_Lanimate_animation per animated track. Do not create one timer
+or thread per view/property. The animation controller and cursor are caller-
+owned; the library performs no heap allocation during sampling. Update native
+properties only when sampled values change and let a compositor retain simple
+transforms/opacity when supported.
+
+The C library calculates property values; it does not render to a GPU. GPU
+utilization depends on the host renderer and whether transforms or opacity
+remain on a compositor path without repainting full surfaces. No universal
+sub-1% CPU/GPU guarantee is meaningful across different machines, drivers,
+backends and scene sizes.
 
 ## Build and test on a host compiler
 
