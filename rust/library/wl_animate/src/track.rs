@@ -1,6 +1,7 @@
 use crate::easing::Easing;
 use crate::values::Interpolate;
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
@@ -61,7 +62,7 @@ impl TrackCursor {
 /// interpolating its value. The built-in scalar/point/colour values do not.
 #[derive(Clone, Debug)]
 pub struct KeyframeTrack<T: Interpolate> {
-    keyframes: Vec<Keyframe<T>>,
+    keyframes: Arc<[Keyframe<T>]>,
 }
 
 impl<T: Interpolate> KeyframeTrack<T> {
@@ -72,7 +73,9 @@ impl<T: Interpolate> KeyframeTrack<T> {
         if keyframes.windows(2).any(|pair| pair[0].at >= pair[1].at) {
             return Err(TrackError::KeyframesMustBeStrictlyIncreasing);
         }
-        Ok(Self { keyframes })
+        Ok(Self {
+            keyframes: Arc::from(keyframes),
+        })
     }
 
     pub fn keyframes(&self) -> &[Keyframe<T>] {
@@ -153,6 +156,14 @@ mod tests {
             Keyframe::new(Duration::from_millis(300), 30.0, Easing::Linear),
         ])
         .unwrap()
+    }
+
+    #[test]
+    fn cloned_tracks_share_immutable_keyframe_storage() {
+        let track = sample_track();
+        let clone = track.clone();
+        assert!(Arc::ptr_eq(&track.keyframes, &clone.keyframes));
+        assert_eq!(clone.keyframes().len(), track.keyframes().len());
     }
 
     #[test]
