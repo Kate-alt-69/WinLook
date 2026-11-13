@@ -24,7 +24,8 @@ static double wl_Lanimate_fast_sin(double value)
     square = value * value;
     return value * (1.0 + square * (-1.0 / 6.0 + square * (
         1.0 / 120.0 + square * (-1.0 / 5040.0 + square * (
-        1.0 / 362880.0 - square / 39916800.0)))));
+        1.0 / 362880.0 + square * (-1.0 / 39916800.0 + square * (
+        1.0 / 6227020800.0 - square / 1307674368000.0)))))));
 }
 
 double wl_Lanimate_ease(wl_Lanimate_easing easing, double progress)
