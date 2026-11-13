@@ -1477,7 +1477,7 @@ impl UiAnimation {
             UiAnimationIterations::Infinite => "infinite".to_string(),
         };
         format!(
-            "{} calc({}ms * var(--wl-motion-enabled,1)) {} calc({}ms * var(--wl-motion-enabled,1)) {} {} {} {}",
+            "{} {}ms {} {}ms {} {} {} {}",
             self.name, self.duration_ms, self.easing.css(), self.delay_ms,
             iterations, self.direction.css(), self.fill_mode.css(), self.play_state.css()
         )
