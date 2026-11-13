@@ -1807,6 +1807,158 @@ impl UiStyle {
         self.padding
     }
 
+    /// Returns the configured background paint, including gradients.
+    pub fn background_value(&self) -> Option<&UiBackground> {
+        self.background.as_ref()
+    }
+    pub fn margin_value(&self) -> Option<UiEdges> {
+        self.margin
+    }
+    pub fn gap_value(&self) -> Option<f32> {
+        self.gap
+    }
+    pub fn width_value(&self) -> Option<UiLength> {
+        self.width
+    }
+    pub fn height_value(&self) -> Option<UiLength> {
+        self.height
+    }
+    pub fn min_width_value(&self) -> Option<UiLength> {
+        self.min_width
+    }
+    pub fn min_height_value(&self) -> Option<UiLength> {
+        self.min_height
+    }
+    pub fn max_width_value(&self) -> Option<UiLength> {
+        self.max_width
+    }
+    pub fn max_height_value(&self) -> Option<UiLength> {
+        self.max_height
+    }
+    pub fn border_style_value(&self) -> Option<UiBorderStyle> {
+        self.border_style
+    }
+    pub fn border_radius_value(&self) -> Option<f32> {
+        self.border_radius
+    }
+    pub fn corner_radii_value(&self) -> Option<UiCornerRadii> {
+        self.corner_radii
+    }
+    pub fn opacity_value(&self) -> Option<f32> {
+        self.opacity
+    }
+    pub fn shadow_value(&self) -> Option<UiShadow> {
+        self.shadow
+    }
+    pub fn text_shadow_value(&self) -> Option<UiShadow> {
+        self.text_shadow
+    }
+    pub fn cursor_value(&self) -> Option<UiCursor> {
+        self.cursor
+    }
+    pub fn text_align_value(&self) -> Option<UiTextAlign> {
+        self.text_align
+    }
+    pub fn text_decoration_value(&self) -> Option<UiTextDecoration> {
+        self.text_decoration
+    }
+    pub fn outline_color_value(&self) -> Option<UiColor> {
+        self.outline_color
+    }
+    pub fn outline_width_value(&self) -> Option<f32> {
+        self.outline_width
+    }
+    pub fn outline_offset_value(&self) -> Option<f32> {
+        self.outline_offset
+    }
+    pub fn display_value(&self) -> Option<UiDisplay> {
+        self.display
+    }
+    pub fn position_value(&self) -> Option<UiPosition> {
+        self.position
+    }
+    pub fn overflow_value(&self) -> Option<UiOverflow> {
+        self.overflow
+    }
+    pub fn flex_direction_value(&self) -> Option<UiFlexDirection> {
+        self.flex_direction
+    }
+    pub fn flex_wrap_value(&self) -> Option<UiFlexWrap> {
+        self.flex_wrap
+    }
+    pub fn justify_content_value(&self) -> Option<UiJustifyContent> {
+        self.justify_content
+    }
+    pub fn align_items_value(&self) -> Option<UiAlignItems> {
+        self.align_items
+    }
+    pub fn box_sizing_value(&self) -> Option<UiBoxSizing> {
+        self.box_sizing
+    }
+    pub fn text_transform_value(&self) -> Option<UiTextTransform> {
+        self.text_transform
+    }
+    pub fn white_space_value(&self) -> Option<UiWhiteSpace> {
+        self.white_space
+    }
+    pub fn object_fit_value(&self) -> Option<UiObjectFit> {
+        self.object_fit
+    }
+    pub fn flex_grow_value(&self) -> Option<f32> {
+        self.flex_grow
+    }
+    pub fn flex_shrink_value(&self) -> Option<f32> {
+        self.flex_shrink
+    }
+    pub fn z_index_value(&self) -> Option<i32> {
+        self.z_index
+    }
+    pub fn top_value(&self) -> Option<UiLength> {
+        self.top
+    }
+    pub fn right_value(&self) -> Option<UiLength> {
+        self.right
+    }
+    pub fn bottom_value(&self) -> Option<UiLength> {
+        self.bottom
+    }
+    pub fn left_value(&self) -> Option<UiLength> {
+        self.left
+    }
+    pub fn transform_value(&self) -> Option<UiTransform> {
+        self.transform
+    }
+    pub fn transitions_value(&self) -> &[UiTransition] {
+        &self.transitions
+    }
+    pub fn grid_columns_value(&self) -> Option<&[UiGridTrack]> {
+        self.grid_columns.as_deref()
+    }
+    pub fn grid_rows_value(&self) -> Option<&[UiGridTrack]> {
+        self.grid_rows.as_deref()
+    }
+    pub fn row_gap_value(&self) -> Option<f32> {
+        self.row_gap
+    }
+    pub fn column_gap_value(&self) -> Option<f32> {
+        self.column_gap
+    }
+    pub fn align_content_value(&self) -> Option<UiAlignContent> {
+        self.align_content
+    }
+    pub fn justify_items_value(&self) -> Option<UiJustifyItems> {
+        self.justify_items
+    }
+    pub fn font_style_value(&self) -> Option<UiFontStyle> {
+        self.font_style
+    }
+    pub fn text_overflow_value(&self) -> Option<UiTextOverflow> {
+        self.text_overflow
+    }
+    pub fn aspect_ratio_value(&self) -> Option<f32> {
+        self.aspect_ratio
+    }
+
     pub fn outline(mut self, width: f32, offset: f32, color: UiColor) -> Self {
         self.outline_width = Some(width);
         self.outline_offset = Some(offset);
@@ -2315,6 +2467,18 @@ impl UiSelector {
         &self.component
     }
 
+    pub fn class_name(&self) -> Option<&str> {
+        self.class.as_deref()
+    }
+
+    pub fn id_name(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+
+    pub fn visual_state(&self) -> Option<UiVisualState> {
+        self.state
+    }
+
     fn css(&self) -> Result<String, UiError> {
         let component = self.component.as_str();
         if !valid_identifier(component) {
@@ -2614,6 +2778,40 @@ mod tests {
         assert!(css.contains("padding:8px 12px 8px 12px"));
         assert!(css.contains("font-weight:600"));
         assert!(css.contains("border-radius:6px"));
+    }
+
+    #[test]
+    fn typed_style_values_can_be_read_without_css_parsing() {
+        let style = UiStyle::new()
+            .display(UiDisplay::Grid)
+            .font_size(16.0)
+            .font_style(UiFontStyle::Italic)
+            .grid_columns([UiGridTrack::Fraction(1.0), UiGridTrack::Px(240.0)])
+            .corner_radii(UiCornerRadii::uniform(8.0))
+            .opacity(0.9)
+            .transition(UiTransition::new(
+                UiTransitionProperty::Opacity,
+                120,
+                UiEasing::EaseOut,
+            ));
+        assert_eq!(style.display_value(), Some(UiDisplay::Grid));
+        assert_eq!(style.font_size_value(), Some(16.0));
+        assert_eq!(style.font_style_value(), Some(UiFontStyle::Italic));
+        assert_eq!(
+            style.grid_columns_value(),
+            Some(&[UiGridTrack::Fraction(1.0), UiGridTrack::Px(240.0)][..])
+        );
+        assert_eq!(style.corner_radii_value(), Some(UiCornerRadii::uniform(8.0)));
+        assert_eq!(style.opacity_value(), Some(0.9));
+        assert_eq!(style.transitions_value().len(), 1);
+
+        let selector = UiSelector::new(UiComponent::Button)
+            .class("primary")
+            .id("save")
+            .state(UiVisualState::Focused);
+        assert_eq!(selector.class_name(), Some("primary"));
+        assert_eq!(selector.id_name(), Some("save"));
+        assert_eq!(selector.visual_state(), Some(UiVisualState::Focused));
     }
 
     #[test]

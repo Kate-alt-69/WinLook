@@ -111,7 +111,12 @@ syntax.
 ## 3. Style declarations
 
 `UiStyle` is a builder. Unset properties inherit from the theme or the
-selected renderer's defaults.
+selected renderer's defaults. Builder methods consume and return the style value.
+Renderers can inspect every configured property through the corresponding
+read-only `*_value()` accessor (for list-backed values such as grid tracks and
+transitions, the accessor returns a borrowed slice). `UiSelector` likewise
+exposes `component()`, `class_name()`, `id_name()` and `visual_state()`.
+This lets native adapters map the typed model directly without parsing CSS.
 
 ### Colors and paint
 
