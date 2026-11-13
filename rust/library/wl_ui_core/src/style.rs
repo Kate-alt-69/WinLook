@@ -996,124 +996,241 @@ impl UiGridTrack {
 
 /// A CSS display mode.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiDisplay { Block, Inline, InlineBlock, Flex, InlineFlex, Grid, None }
+pub enum UiDisplay {
+    Block,
+    Inline,
+    InlineBlock,
+    Flex,
+    InlineFlex,
+    Grid,
+    None,
+}
 impl UiDisplay {
     fn css(self) -> &'static str {
         match self {
-            Self::Block => "block", Self::Inline => "inline", Self::InlineBlock => "inline-block",
-            Self::Flex => "flex", Self::InlineFlex => "inline-flex", Self::Grid => "grid",
+            Self::Block => "block",
+            Self::Inline => "inline",
+            Self::InlineBlock => "inline-block",
+            Self::Flex => "flex",
+            Self::InlineFlex => "inline-flex",
+            Self::Grid => "grid",
             Self::None => "none",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiPosition { Static, Relative, Absolute, Fixed, Sticky }
+pub enum UiPosition {
+    Static,
+    Relative,
+    Absolute,
+    Fixed,
+    Sticky,
+}
 impl UiPosition {
     fn css(self) -> &'static str {
         match self {
-            Self::Static => "static", Self::Relative => "relative", Self::Absolute => "absolute",
-            Self::Fixed => "fixed", Self::Sticky => "sticky",
+            Self::Static => "static",
+            Self::Relative => "relative",
+            Self::Absolute => "absolute",
+            Self::Fixed => "fixed",
+            Self::Sticky => "sticky",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiOverflow { Visible, Hidden, Clip, Auto, Scroll }
+pub enum UiOverflow {
+    Visible,
+    Hidden,
+    Clip,
+    Auto,
+    Scroll,
+}
 impl UiOverflow {
     fn css(self) -> &'static str {
         match self {
-            Self::Visible => "visible", Self::Hidden => "hidden", Self::Clip => "clip",
-            Self::Auto => "auto", Self::Scroll => "scroll",
+            Self::Visible => "visible",
+            Self::Hidden => "hidden",
+            Self::Clip => "clip",
+            Self::Auto => "auto",
+            Self::Scroll => "scroll",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiFlexDirection { Row, RowReverse, Column, ColumnReverse }
+pub enum UiFlexDirection {
+    Row,
+    RowReverse,
+    Column,
+    ColumnReverse,
+}
 impl UiFlexDirection {
     fn css(self) -> &'static str {
         match self {
-            Self::Row => "row", Self::RowReverse => "row-reverse", Self::Column => "column",
+            Self::Row => "row",
+            Self::RowReverse => "row-reverse",
+            Self::Column => "column",
             Self::ColumnReverse => "column-reverse",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiFlexWrap { NoWrap, Wrap, WrapReverse }
+pub enum UiFlexWrap {
+    NoWrap,
+    Wrap,
+    WrapReverse,
+}
 impl UiFlexWrap {
     fn css(self) -> &'static str {
         match self {
-            Self::NoWrap => "nowrap", Self::Wrap => "wrap", Self::WrapReverse => "wrap-reverse",
+            Self::NoWrap => "nowrap",
+            Self::Wrap => "wrap",
+            Self::WrapReverse => "wrap-reverse",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiJustifyContent { Start, End, Center, SpaceBetween, SpaceAround, SpaceEvenly }
+pub enum UiJustifyContent {
+    Start,
+    End,
+    Center,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly,
+}
 impl UiJustifyContent {
     fn css(self) -> &'static str {
         match self {
-            Self::Start => "flex-start", Self::End => "flex-end", Self::Center => "center",
-            Self::SpaceBetween => "space-between", Self::SpaceAround => "space-around",
+            Self::Start => "flex-start",
+            Self::End => "flex-end",
+            Self::Center => "center",
+            Self::SpaceBetween => "space-between",
+            Self::SpaceAround => "space-around",
             Self::SpaceEvenly => "space-evenly",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiAlignItems { Start, End, Center, Stretch, Baseline }
+pub enum UiAlignItems {
+    Start,
+    End,
+    Center,
+    Stretch,
+    Baseline,
+}
 impl UiAlignItems {
     fn css(self) -> &'static str {
         match self {
-            Self::Start => "flex-start", Self::End => "flex-end", Self::Center => "center",
-            Self::Stretch => "stretch", Self::Baseline => "baseline",
+            Self::Start => "flex-start",
+            Self::End => "flex-end",
+            Self::Center => "center",
+            Self::Stretch => "stretch",
+            Self::Baseline => "baseline",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiBoxSizing { ContentBox, BorderBox }
+pub enum UiBoxSizing {
+    ContentBox,
+    BorderBox,
+}
 impl UiBoxSizing {
     fn css(self) -> &'static str {
-        match self { Self::ContentBox => "content-box", Self::BorderBox => "border-box" }
+        match self {
+            Self::ContentBox => "content-box",
+            Self::BorderBox => "border-box",
+        }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiTextTransform { None, Uppercase, Lowercase, Capitalize }
+pub enum UiTextTransform {
+    None,
+    Uppercase,
+    Lowercase,
+    Capitalize,
+}
 impl UiTextTransform {
     fn css(self) -> &'static str {
         match self {
-            Self::None => "none", Self::Uppercase => "uppercase", Self::Lowercase => "lowercase",
+            Self::None => "none",
+            Self::Uppercase => "uppercase",
+            Self::Lowercase => "lowercase",
             Self::Capitalize => "capitalize",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiWhiteSpace { Normal, NoWrap, Pre, PreWrap, PreLine }
+pub enum UiWhiteSpace {
+    Normal,
+    NoWrap,
+    Pre,
+    PreWrap,
+    PreLine,
+}
 impl UiWhiteSpace {
     fn css(self) -> &'static str {
         match self {
-            Self::Normal => "normal", Self::NoWrap => "nowrap", Self::Pre => "pre",
-            Self::PreWrap => "pre-wrap", Self::PreLine => "pre-line",
+            Self::Normal => "normal",
+            Self::NoWrap => "nowrap",
+            Self::Pre => "pre",
+            Self::PreWrap => "pre-wrap",
+            Self::PreLine => "pre-line",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiObjectFit { Fill, Contain, Cover, None, ScaleDown }
+pub enum UiObjectFit {
+    Fill,
+    Contain,
+    Cover,
+    None,
+    ScaleDown,
+}
 impl UiObjectFit {
     fn css(self) -> &'static str {
         match self {
-            Self::Fill => "fill", Self::Contain => "contain", Self::Cover => "cover",
-            Self::None => "none", Self::ScaleDown => "scale-down",
+            Self::Fill => "fill",
+            Self::Contain => "contain",
+            Self::Cover => "cover",
+            Self::None => "none",
+            Self::ScaleDown => "scale-down",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UiTransitionProperty { All, Opacity, Transform, Color, Background, Border, Shadow }
+pub enum UiTransitionProperty {
+    All,
+    Opacity,
+    Transform,
+    Color,
+    Background,
+    Border,
+    Shadow,
+}
 impl UiTransitionProperty {
     fn css(self) -> &'static str {
         match self {
-            Self::All => "all", Self::Opacity => "opacity", Self::Transform => "transform",
-            Self::Color => "color", Self::Background => "background-color",
-            Self::Border => "border-color", Self::Shadow => "box-shadow",
+            Self::All => "all",
+            Self::Opacity => "opacity",
+            Self::Transform => "transform",
+            Self::Color => "color",
+            Self::Background => "background-color",
+            Self::Border => "border-color",
+            Self::Shadow => "box-shadow",
         }
     }
 }
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UiEasing {
     Linear,
