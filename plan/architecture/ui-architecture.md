@@ -233,6 +233,28 @@ The stable application types (`UiApplication`, `UiPage`, `UiWindowConfig`, `UiEr
 
 The C89 counterpart is a separate package, `C/library/wl_Lui`. It is intentionally independent of Rust, WinUI and Tauri so legacy C applications can keep using baseline Win32 APIs.
 
+## Shared animation runtime and host frame ownership
+
+Rust applications use the portable `wl_animate` library through
+`wl_ui::animate`; C89 applications use `wl_Lanimate`. A host owns exactly
+one frame clock for a visible scene and passes each emitted delta to all active
+animations. The clock never starts its own timer or worker. The target cadence
+defaults to 60 FPS, preserves fractional phase for faster 90/120/144 Hz event
+loops, caps long deltas and resets when the host resumes after hiding/suspension.
+
+The runtimes cap tracks at 64 keyframes, keep playback cursors per animation,
+and are renderer-independent. Built-in interpolation is allocation-free;
+renderers apply only properties they actually support. Tauri can use validated
+CSS keyframes and browser/compositor animation, while native hosts can sample
+the same runtime from their platform event loop. WLDE is expected to share the
+same clock and animation semantics, but its renderer/presentation path remains
+a separate implementation and verification item.
+
+See [the shared animation runtime guide](../../docs/wl_ui/animation.md) for
+Rust/C examples, cadence behaviour and the CPU benchmark. The benchmark does
+not perform GPU work and is not a universal utilization guarantee.
+
+
 ## 8. OS and toolchain boundaries
 
 The Windows 10 and Windows 11 products have separate build profiles. Win10 uses Visual Studio 2022 with Windows SDK 10.0.19041.0 and the Win32 backend. Win11 uses Visual Studio 2026 with Windows SDK 10.0.26100.0 and the WinUI 3 backend. Their CI jobs run on matching hosted images. This is important because the same MSVC/SDK environment must not be silently reused for both targets.
