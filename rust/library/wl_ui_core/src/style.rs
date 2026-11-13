@@ -359,7 +359,9 @@ impl UiTheme {
     }
 
     pub fn high_contrast() -> Self {
-        Self::system().scheme(UiColorScheme::HighContrast).name("High contrast")
+        Self::system()
+            .scheme(UiColorScheme::HighContrast)
+            .name("High contrast")
     }
 
     pub fn name(mut self, name: impl Into<String>) -> Self {
@@ -453,7 +455,9 @@ impl UiTheme {
             || !valid_font_family(&self.typography.font_family)
             || !valid_font_family(&self.typography.monospace_family)
         {
-            return Err(UiError::InvalidStyle("theme name or font family is invalid".to_string()));
+            return Err(UiError::InvalidStyle(
+                "theme name or font family is invalid".to_string(),
+            ));
         }
 
         let typography = &self.typography;
@@ -467,7 +471,9 @@ impl UiTheme {
             typography.line_height,
         ] {
             if !finite_positive(value) {
-                return Err(UiError::InvalidStyle("typography values must be finite and positive".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "typography values must be finite and positive".to_string(),
+                ));
             }
         }
         if !typography.letter_spacing.is_finite()
@@ -476,9 +482,13 @@ impl UiTheme {
                 typography.weight_medium,
                 typography.weight_semibold,
                 typography.weight_bold,
-            ].iter().any(|weight| *weight == 0 || *weight > 1000)
+            ]
+            .iter()
+            .any(|weight| *weight == 0 || *weight > 1000)
         {
-            return Err(UiError::InvalidStyle("typography weight or letter spacing is invalid".to_string()));
+            return Err(UiError::InvalidStyle(
+                "typography weight or letter spacing is invalid".to_string(),
+            ));
         }
 
         let metrics = &self.metrics;
@@ -503,7 +513,9 @@ impl UiTheme {
             metrics.scrollbar_width,
         ] {
             if !finite_non_negative(value) {
-                return Err(UiError::InvalidStyle("metric values must be finite and non-negative".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "metric values must be finite and non-negative".to_string(),
+                ));
             }
         }
 
@@ -514,7 +526,9 @@ impl UiTheme {
             || !valid_shadow(effects.shadow_md)
             || !valid_shadow(effects.shadow_lg)
         {
-            return Err(UiError::InvalidStyle("effect values must be finite and non-negative".to_string()));
+            return Err(UiError::InvalidStyle(
+                "effect values must be finite and non-negative".to_string(),
+            ));
         }
         Ok(())
     }
@@ -641,15 +655,30 @@ pub struct UiEdges {
 
 impl UiEdges {
     pub const fn all(value: f32) -> Self {
-        Self { top: value, right: value, bottom: value, left: value }
+        Self {
+            top: value,
+            right: value,
+            bottom: value,
+            left: value,
+        }
     }
 
     pub const fn xy(horizontal: f32, vertical: f32) -> Self {
-        Self { top: vertical, right: horizontal, bottom: vertical, left: horizontal }
+        Self {
+            top: vertical,
+            right: horizontal,
+            bottom: vertical,
+            left: horizontal,
+        }
     }
 
     pub const fn new(top: f32, right: f32, bottom: f32, left: f32) -> Self {
-        Self { top, right, bottom, left }
+        Self {
+            top,
+            right,
+            bottom,
+            left,
+        }
     }
 
     fn validate(self, name: &str) -> Result<(), UiError> {
@@ -657,7 +686,9 @@ impl UiEdges {
             .iter()
             .any(|value| !value.is_finite() || *value < 0.0)
         {
-            return Err(UiError::InvalidStyle(format!("{name} values must be finite and non-negative")));
+            return Err(UiError::InvalidStyle(format!(
+                "{name} values must be finite and non-negative"
+            )));
         }
         Ok(())
     }
