@@ -180,11 +180,14 @@ wl_Lanimate_result wl_Lanimate_animation_advance(
     double *value_out
 )
 {
-    if (animation == 0 || value_out == 0) return WL_LANIMATE_INVALID_ARGUMENT;
+    if (animation == 0 || value_out == 0
+        || delta_ms != delta_ms || delta_ms < 0.0 || delta_ms > DBL_MAX) {
+        return WL_LANIMATE_INVALID_ARGUMENT;
+    }
 
     if (animation->state == WL_LANIMATE_PENDING
         || animation->state == WL_LANIMATE_RUNNING) {
-        if (delta_ms == delta_ms && delta_ms > 0.0 && delta_ms <= DBL_MAX) {
+        if (delta_ms > 0.0) {
             if (delta_ms > DBL_MAX - animation->elapsed_ms) {
                 animation->elapsed_ms = DBL_MAX;
             } else {
