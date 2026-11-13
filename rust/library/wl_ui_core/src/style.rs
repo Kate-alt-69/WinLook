@@ -2745,6 +2745,7 @@ impl UiStyleRule {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UiStyleSheet {
     rules: Vec<UiStyleRule>,
+    keyframes: Vec<UiKeyframes>,
 }
 
 impl UiStyleSheet {
@@ -2772,11 +2773,29 @@ impl UiStyleSheet {
         self
     }
 
+    pub fn keyframes(mut self, keyframes: UiKeyframes) -> Self {
+        self.keyframes.push(keyframes);
+        self
+    }
+
     pub fn rules(&self) -> &[UiStyleRule] {
         &self.rules
     }
 
+    pub fn keyframes_value(&self) -> &[UiKeyframes] {
+        &self.keyframes
+    }
+
     pub fn validate(&self) -> Result<(), UiError> {
+        if self.keyframes.len() > 64 {
+            return Err(UiError::InvalidStyle("a stylesheet cannot define more than 64 keyframe sets".to_string()));
+        }
+        for (index, keyframes) in self.keyframes.iter().enumerate() {
+            keyframes.validate()?;
+            if self.keyframes[..index].iter().any(|previous| previous.name == keyframes.name) {
+                return Err(UiError::InvalidStyle("keyframe names must be unique within a stylesheet".to_string()));
+            }
+        }
         for rule in &self.rules {
             rule.selector.css()?;
             rule.style.validate()?;
@@ -2792,6 +2811,17 @@ impl UiStyleSheet {
     pub fn to_css(&self) -> Result<String, UiError> {
         self.validate()?;
         let mut css = String::new();
+        for keyframes in &self.keyframes {
+            css.push_str("@keyframes ");
+            css.push_str(&keyframes.name);
+            css.push('{');
+            for frame in &keyframes.frames {
+                css.push_str(&format!("{}%{{", number(frame.offset_percent)));
+                css.push_str(&frame.style.css_declarations()?);
+                css.push('}');
+            }
+            css.push('}');
+        }
         for rule in &self.rules {
             let declarations = rule.style.css_declarations()?;
             if !declarations.is_empty() {
