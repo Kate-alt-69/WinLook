@@ -21,4 +21,5 @@ a complete legacy control/layout toolkit. The modern Rust and C APIs share
 the concepts and semantic theme roles, not identical implementation details.
 
 See [styling.md](styling.md) for the full public theme/style structures, flags,
-example and current backend support.
+example and current backend support. The portable animation counterpart is
+[`wl_Lanimate`](../../../C/library/wl_Lanimate/README.md).
