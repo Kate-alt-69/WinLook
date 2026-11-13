@@ -745,6 +745,17 @@ impl UiLength {
         }
     }
 
+    fn validate_signed(self, name: &str) -> Result<(), UiError> {
+        match self {
+            Self::Auto => Ok(()),
+            Self::Px(value) if value.is_finite() => Ok(()),
+            Self::Percent(value) if value.is_finite() => Ok(()),
+            _ => Err(UiError::InvalidStyle(format!(
+                "{name} must be finite"
+            ))),
+        }
+    }
+
     fn css(self) -> String {
         match self {
             Self::Auto => "auto".to_string(),
@@ -1989,13 +2000,17 @@ impl UiStyle {
             ("border radius", self.border_radius),
             ("gap", self.gap),
             ("outline width", self.outline_width),
-            ("outline offset", self.outline_offset),
         ] {
             if value.is_some_and(|value| !finite_non_negative(value)) {
                 return Err(UiError::InvalidStyle(format!(
                     "{name} must be finite and non-negative"
                 )));
             }
+        }
+        if self.outline_offset.is_some_and(|value| !value.is_finite()) {
+            return Err(UiError::InvalidStyle(
+                "outline offset must be finite".to_string(),
+            ));
         }
         if self.font_size.is_some_and(|value| value == 0.0)
             || self.line_height.is_some_and(|value| value == 0.0)
@@ -2084,6 +2099,16 @@ impl UiStyle {
         }
         if let Some(value) = self.margin {
             value.validate("margin", true)?;
+        }
+        for (name, value) in [
+            ("top", self.top),
+            ("right", self.right),
+            ("bottom", self.bottom),
+            ("left", self.left),
+        ] {
+            if let Some(value) = value {
+                value.validate_signed(name)?;
+            }
         }
         for (name, value) in [
             ("width", self.width),
@@ -2987,6 +3012,30 @@ mod tests {
             UiStyle::new().padding(UiEdges::all(-1.0)),
         );
         assert!(invalid_padding.validate().is_err());
+    }
+
+    #[test]
+    fn supports_signed_position_insets_and_outline_offsets() {
+        let css = UiStyleSheet::new()
+            .rule(
+                UiSelector::new(UiComponent::Card),
+                UiStyle::new()
+                    .position(UiPosition::Absolute)
+                    .top(UiLength::Px(-12.0))
+                    .left(UiLength::Percent(-5.0))
+                    .outline(2.0, -3.0, UiColor::rgb(1, 2, 3)),
+            )
+            .to_css()
+            .unwrap();
+        assert!(css.contains("top:-12px"));
+        assert!(css.contains("left:-5%"));
+        assert!(css.contains("outline-offset:-3px"));
+
+        let invalid = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Card),
+            UiStyle::new().top(UiLength::Px(f32::INFINITY)),
+        );
+        assert!(invalid.validate().is_err());
     }
 
     #[test]
