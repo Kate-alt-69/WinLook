@@ -53,6 +53,29 @@ used by old toolchains and is kept separate from modern Rust dependencies.
 The current C style capability query reports only supported fields; see
 [the legacy guide](C/styling.md).
 
+## Custom and non-Windows host renderers
+
+The shared Rust model has no required OS backend. Applications can implement
+`wl_ui::UiBackend` and call `wl_ui::run_with_backend`; the trait reports
+capabilities explicitly and receives a validated `UiApplication`. This is
+the extension point for SDL, GTK, Cocoa, browser, embedded and application-
+specific hosts. The trait does not provide a renderer automatically: the
+application supplies its event loop, controls, accessibility mapping, resource
+lifecycle and frame scheduling.
+
+The C89 `wl_Lui` API offers the equivalent versioned `wl_lui_backend`
+callback table and `wl_lui_window_create_with_backend`. The library copies
+the callback table, while the caller keeps `user_data` and referenced
+resources alive until the window is destroyed. Each backend declares its style
+capabilities and unsupported requests are rejected. The built-in default
+backend remains Win32; custom backends can be supplied on any host platform.
+
+`wl_animate` and `wl_Lanimate` are portable caller-driven animation cores.
+They do not create threads, timers, windows or graphics contexts. Platform
+adapters decide how to schedule frames and apply sampled values. A portable
+core build is not evidence that a particular native renderer exists or is
+runtime-tested on every OS.
+
 ## Runtime verification
 
 Feature availability and compiler success do not prove a Windows release's
