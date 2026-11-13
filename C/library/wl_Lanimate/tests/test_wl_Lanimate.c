@@ -145,6 +145,24 @@ static void test_keyframe_track(void)
     assert(wl_Lanimate_track_sample(&track, 10.0) == 0.0);
 }
 
+static void test_track_keyframe_limit(void)
+{
+    wl_Lanimate_keyframe frames[WL_LANIMATE_MAX_KEYFRAMES + 1U];
+    wl_Lanimate_track track;
+    unsigned int i;
+
+    for (i = 0U; i < WL_LANIMATE_MAX_KEYFRAMES + 1U; ++i) {
+        frames[i].at_ms = (double)i;
+        frames[i].value = (double)i;
+        frames[i].easing_to_next = WL_LANIMATE_LINEAR;
+    }
+    assert(wl_Lanimate_track_init(
+        &track, frames, WL_LANIMATE_MAX_KEYFRAMES + 1U
+    ) == WL_LANIMATE_INVALID_KEYFRAME_COUNT);
+    assert(track.keyframes == 0);
+    assert(track.count == 0U);
+}
+
 static void test_single_keyframe_track(void)
 {
     wl_Lanimate_keyframe frame;
@@ -342,6 +360,7 @@ int main(void)
     test_tween_delay();
     test_easing_and_values();
     test_keyframe_track();
+    test_track_keyframe_limit();
     test_single_keyframe_track();
     test_animation_runtime();
     test_shared_frame_clock();
