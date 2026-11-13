@@ -131,10 +131,20 @@ mod tests {
     }
 
     impl UiBackend for TestBackend {
-        fn name(&self) -> &'static str { "test-host" }
-        fn capabilities(&self) -> UiBackendCapabilities {
-            UiBackendCapabilities { native_window: true, css: true, animation: true, reduced_motion: true, accessibility: true }
+        fn name(&self) -> &'static str {
+            "test-host"
         }
+
+        fn capabilities(&self) -> UiBackendCapabilities {
+            UiBackendCapabilities {
+                native_window: true,
+                css: true,
+                animation: true,
+                reduced_motion: true,
+                accessibility: true,
+            }
+        }
+
         fn run(&mut self, application: UiApplication) -> Result<(), UiError> {
             application.validate()?;
             self.ran = true;
