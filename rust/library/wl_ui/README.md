@@ -151,6 +151,23 @@ Detailed API reference:
 - [renderer capability map](../../../docs/wl_ui/backends.md)
 - [legacy C styling](../../../docs/wl_ui/C/styling.md)
 
+## Internal crate layout
+
+The public facade is the only top-level UI library directory:
+
+- `core/` — platform-neutral application, navigation, theme and style contracts.
+- `backends/win32/` — small baseline User32 renderer shared by classic Windows targets.
+- `backends/windows7/`, `backends/windows10/`, `backends/windows11/` — opt-in platform implementations.
+
+These remain separate Cargo packages so renderer feature boundaries and target
+dependencies stay explicit, but their source and manifests live beneath
+`rust/library/wl_ui/` instead of cluttering the shared-library root. Consumers
+depend on `wl_ui`; the internal package names are not the primary public API.
+
+The matching animation cores are separate portable libraries:
+Rust `wl_animate` and C89 `wl_Lanimate`. Both are host-driven and intended
+to share a single application/desktop-engine frame clock.
+
 ## Compatibility and toolchains
 
 - **Windows 10:** standard Rust MSVC target + the Windows 10 Win32 backend. Build with the Windows 10 SDK / Visual Studio 2022 toolchain profile.
