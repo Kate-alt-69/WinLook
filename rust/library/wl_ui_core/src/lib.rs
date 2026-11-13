@@ -13,14 +13,13 @@ pub use application::UiApplication;
 pub use error::UiError;
 pub use page::UiPage;
 pub use style::{
-    UiAlignContent, UiAlignItems, UiBackground, UiBorderStyle, UiBoxSizing, UiColor,
-    UiColorScheme, UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing, UiEdges,
-    UiEffects, UiFlexDirection, UiFlexWrap, UiFontStyle, UiGradientStop, UiGridTrack,
-    UiJustifyContent, UiJustifyItems, UiLength, UiLinearGradient, UiMediaCondition,
-    UiMetrics, UiObjectFit, UiOverflow, UiPalette, UiPosition, UiSelector, UiShadow,
-    UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign, UiTextDecoration, UiTextOverflow,
-    UiTextTransform, UiTheme, UiTransition, UiTransitionProperty, UiTransform,
-    UiTypography, UiVisualState, UiWhiteSpace,
+    UiAlignContent, UiAlignItems, UiBackground, UiBorderStyle, UiBoxSizing, UiColor, UiColorScheme,
+    UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing, UiEdges, UiEffects, UiFlexDirection,
+    UiFlexWrap, UiFontStyle, UiGradientStop, UiGridTrack, UiJustifyContent, UiJustifyItems,
+    UiLength, UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPalette,
+    UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
+    UiTextDecoration, UiTextOverflow, UiTextTransform, UiTheme, UiTransform, UiTransition,
+    UiTransitionProperty, UiTypography, UiVisualState, UiWhiteSpace,
 };
 pub use window::UiWindowConfig;
 
@@ -32,7 +31,11 @@ mod tests {
     fn validates_a_complete_application() {
         let app = UiApplication::new("Example")
             .page(UiPage::new("home", "Home", "Application overview"))
-            .page(UiPage::new("settings", "Settings", "Application preferences"))
+            .page(UiPage::new(
+                "settings",
+                "Settings",
+                "Application preferences",
+            ))
             .initial_page("settings");
         assert!(app.validate().is_ok());
         assert_eq!(app.initial_page_id(), "settings");
@@ -58,7 +61,10 @@ mod tests {
 
     #[test]
     fn rejects_empty_applications_and_invalid_window_sizes() {
-        assert_eq!(UiApplication::new("Example").validate(), Err(UiError::NoPages));
+        assert_eq!(
+            UiApplication::new("Example").validate(),
+            Err(UiError::NoPages)
+        );
         let invalid = UiApplication::new("Example")
             .window(UiWindowConfig::new("Example").size(0, 0))
             .page(UiPage::new("home", "Home", "Overview"));
@@ -78,12 +84,14 @@ mod tests {
         let app = UiApplication::new("Styled")
             .page(UiPage::new("home", "Home", "Overview"))
             .theme(UiTheme::dark())
-            .styles(UiStyleSheet::new().rule(
-                UiSelector::new(UiComponent::Button).class("primary"),
-                UiStyle::new()
-                    .background(UiColor::rgb(40, 120, 220))
-                    .border_radius(8.0),
-            ));
+            .styles(
+                UiStyleSheet::new().rule(
+                    UiSelector::new(UiComponent::Button).class("primary"),
+                    UiStyle::new()
+                        .background(UiColor::rgb(40, 120, 220))
+                        .border_radius(8.0),
+                ),
+            );
         assert!(app.validate().is_ok());
         assert_eq!(app.theme_ref().color_scheme(), UiColorScheme::Dark);
         assert_eq!(app.styles_ref().rules().len(), 1);

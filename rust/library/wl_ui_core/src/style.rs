@@ -11,11 +11,21 @@ pub struct UiColor {
 
 impl UiColor {
     pub const fn rgb(red: u8, green: u8, blue: u8) -> Self {
-        Self { red, green, blue, alpha: 255 }
+        Self {
+            red,
+            green,
+            blue,
+            alpha: 255,
+        }
     }
 
     pub const fn rgba(red: u8, green: u8, blue: u8, alpha: u8) -> Self {
-        Self { red, green, blue, alpha }
+        Self {
+            red,
+            green,
+            blue,
+            alpha,
+        }
     }
 
     /// Parses #RRGGBB or #RRGGBBAA. Returns None for other forms.
@@ -289,7 +299,13 @@ pub struct UiShadow {
 
 impl UiShadow {
     pub const fn new(color: UiColor, offset_x: f32, offset_y: f32, blur: f32, spread: f32) -> Self {
-        Self { color, offset_x, offset_y, blur, spread }
+        Self {
+            color,
+            offset_x,
+            offset_y,
+            blur,
+            spread,
+        }
     }
 }
 
