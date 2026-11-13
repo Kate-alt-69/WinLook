@@ -68,11 +68,21 @@ impl<T: Interpolate> KeyframeTrack<T> {
         Ok(Self { keyframes })
     }
 
-    pub fn keyframes(&self) -> &[Keyframe<T>] { &self.keyframes }
-    pub fn start_time(&self) -> Duration { self.keyframes[0].at }
-    pub fn end_time(&self) -> Duration { self.keyframes[self.keyframes.len() - 1].at }
-    pub fn len(&self) -> usize { self.keyframes.len() }
-    pub fn is_empty(&self) -> bool { self.keyframes.is_empty() }
+    pub fn keyframes(&self) -> &[Keyframe<T>] {
+        &self.keyframes
+    }
+    pub fn start_time(&self) -> Duration {
+        self.keyframes[0].at
+    }
+    pub fn end_time(&self) -> Duration {
+        self.keyframes[self.keyframes.len() - 1].at
+    }
+    pub fn len(&self) -> usize {
+        self.keyframes.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.keyframes.is_empty()
+    }
 
     /// Convenience sampler. Retain a cursor for repeated animation playback.
     #[inline]
@@ -119,7 +129,8 @@ impl<T: Interpolate> KeyframeTrack<T> {
         let span = (right.at - left.at).as_nanos() as f64;
         let offset = (at - left.at).as_nanos() as f64;
         let progress = if span <= 0.0 { 1.0 } else { offset / span };
-        left.value.interpolate(&right.value, left.easing_to_next.sample(progress))
+        left.value
+            .interpolate(&right.value, left.easing_to_next.sample(progress))
     }
 }
 
@@ -133,17 +144,27 @@ mod tests {
             Keyframe::new(Duration::from_millis(100), 10.0, Easing::Linear),
             Keyframe::new(Duration::from_millis(200), 20.0, Easing::Linear),
             Keyframe::new(Duration::from_millis(300), 30.0, Easing::Linear),
-        ]).unwrap()
+        ])
+        .unwrap()
     }
 
     #[test]
     fn cursor_reuses_forward_segment_and_advances_at_boundaries() {
         let track = sample_track();
         let mut cursor = TrackCursor::default();
-        assert_eq!(track.sample_with_cursor(Duration::from_millis(25), &mut cursor), 2.5);
-        assert_eq!(track.sample_with_cursor(Duration::from_millis(75), &mut cursor), 7.5);
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_millis(25), &mut cursor),
+            2.5
+        );
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_millis(75), &mut cursor),
+            7.5
+        );
         assert_eq!(cursor.segment_index(), 0);
-        assert_eq!(track.sample_with_cursor(Duration::from_millis(125), &mut cursor), 12.5);
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_millis(125), &mut cursor),
+            12.5
+        );
         assert_eq!(cursor.segment_index(), 1);
     }
 
@@ -151,9 +172,18 @@ mod tests {
     fn cursor_binary_searches_reverse_seeks_and_clamps() {
         let track = sample_track();
         let mut cursor = TrackCursor::default();
-        assert_eq!(track.sample_with_cursor(Duration::from_millis(275), &mut cursor), 27.5);
-        assert_eq!(track.sample_with_cursor(Duration::from_millis(50), &mut cursor), 5.0);
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_millis(275), &mut cursor),
+            27.5
+        );
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_millis(50), &mut cursor),
+            5.0
+        );
         assert_eq!(cursor.segment_index(), 0);
-        assert_eq!(track.sample_with_cursor(Duration::from_secs(2), &mut cursor), 30.0);
+        assert_eq!(
+            track.sample_with_cursor(Duration::from_secs(2), &mut cursor),
+            30.0
+        );
     }
 }
