@@ -646,9 +646,9 @@ impl UiTheme {
         ));
         css.push('}');
         if self.effects.reduced_motion {
-            css.push_str(":root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;}");
+            css.push_str(":root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;transition-delay:0ms!important;}");
         } else {
-            css.push_str("@media(prefers-reduced-motion:reduce){:root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;}}");
+            css.push_str("@media(prefers-reduced-motion:reduce){:root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;transition-delay:0ms!important;}}");
         }
         Ok(css)
     }
@@ -2855,7 +2855,7 @@ impl UiStyleSheet {
             css.push('}');
         }
         if !self.keyframes.is_empty() {
-            css.push_str("@media(prefers-reduced-motion:reduce){[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;}}");
+            css.push_str("@media(prefers-reduced-motion:reduce){[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;transition-delay:0ms!important;}}");
         }
         for rule in &self.rules {
             let declarations = rule.style.css_declarations()?;
