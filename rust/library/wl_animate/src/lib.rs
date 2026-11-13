@@ -7,6 +7,7 @@
 
 #![forbid(unsafe_code)]
 
+mod animation;
 mod easing;
 mod svg;
 mod track;
@@ -14,6 +15,10 @@ mod tween;
 mod values;
 mod vector;
 
+pub use animation::{
+    Animation, AnimationError, Direction, FillMode, IterationCount, MAX_ANIMATION_KEYFRAMES,
+    MAX_ANIMATION_TIME,
+};
 pub use easing::Easing;
 pub use svg::{PathCommand, SvgPathError, SvgPathErrorKind, VectorPath};
 pub use track::{Keyframe, KeyframeTrack, TrackError};
