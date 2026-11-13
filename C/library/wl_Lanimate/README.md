@@ -68,7 +68,9 @@ make -C C/library/wl_Lanimate all
 make -C C/library/wl_Lanimate test
 ```
 
-This creates `build/libwl_Lanimate.a` and runs the test executable.
+This creates `build/libwl_Lanimate.a` and runs the test executable. When
+linking the static library into a non-MSVC application, also link the platform
+math library (for example, `-lm` on GCC/Clang Unix-like toolchains).
 
 ## Build and test with Windows MSVC
 
@@ -80,4 +82,4 @@ cmake --build build/wl_Lanimate-msvc --config Release
 ctest --test-dir build/wl_Lanimate-msvc -C Release --output-on-failure
 ```
 
-CMake produces the platform-native static library (`wl_Lanimate.lib` with MSVC) and installs the public header/library using `cmake --install`. This verifies compilation with the selected Windows toolchain; it does not certify any platform-specific UI renderer.
+CMake produces the platform-native static library (`wl_Lanimate.lib` with MSVC) and installs the public header/library using `cmake --install`. Non-MSVC consumers inherit the `m` link requirement from the exported CMake target. This verifies compilation with the selected Windows toolchain; it does not certify any platform-specific UI renderer.
