@@ -1650,6 +1650,7 @@ pub struct UiStyle {
     left: Option<UiLength>,
     transform: Option<UiTransform>,
     transitions: Vec<UiTransition>,
+    animations: Vec<UiAnimation>,
     grid_columns: Option<Vec<UiGridTrack>>,
     grid_rows: Option<Vec<UiGridTrack>>,
     column_gap: Option<f32>,
@@ -1880,6 +1881,11 @@ impl UiStyle {
         self.transitions.push(value);
         self
     }
+
+    pub fn animation(mut self, value: UiAnimation) -> Self {
+        self.animations.push(value);
+        self
+    }
     pub fn grid_template(
         mut self,
         columns: impl IntoIterator<Item = UiGridTrack>,
@@ -2093,6 +2099,9 @@ impl UiStyle {
     pub fn transitions_value(&self) -> &[UiTransition] {
         &self.transitions
     }
+    pub fn animations_value(&self) -> &[UiAnimation] {
+        &self.animations
+    }
     pub fn grid_columns_value(&self) -> Option<&[UiGridTrack]> {
         self.grid_columns.as_deref()
     }
@@ -2197,6 +2206,9 @@ impl UiStyle {
                     "{name} must be finite and non-negative"
                 )));
             }
+        }
+        for animation in &self.animations {
+            animation.validate()?;
         }
         if self.transform.is_some_and(|value| !value.validate()) {
             return Err(UiError::InvalidStyle(
@@ -2449,6 +2461,12 @@ impl UiStyle {
                     .map(UiTransition::css)
                     .collect::<Vec<_>>()
                     .join(",")
+            );
+        }
+        if !self.animations.is_empty() {
+            push!(
+                "animation",
+                self.animations.iter().map(UiAnimation::css).collect::<Vec<_>>().join(",")
             );
         }
         if let Some(value) = &self.grid_columns {
