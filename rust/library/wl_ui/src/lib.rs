@@ -18,6 +18,17 @@ pub use wl_ui_core::{
 };
 
 pub use wl_animate as animate;
+pub use wl_ui_core::{UiBackend, UiBackendCapabilities};
+
+/// Runs a validated application through an application-provided renderer.
+/// This is the portable entry point for platforms without a built-in adapter.
+pub fn run_with_backend<B: UiBackend>(
+    application: UiApplication,
+    backend: &mut B,
+) -> Result<(), UiError> {
+    application.validate()?;
+    backend.run(application)
+}
 
 const MANAGER_PAGES: [(&str, &str, &str); 14] = [
     (
@@ -114,6 +125,33 @@ pub mod windows81;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct TestBackend {
+        ran: bool,
+    }
+
+    impl UiBackend for TestBackend {
+        fn name(&self) -> &'static str { "test-host" }
+        fn capabilities(&self) -> UiBackendCapabilities {
+            UiBackendCapabilities { native_window: true, css: true, animation: true, reduced_motion: true, accessibility: true }
+        }
+        fn run(&mut self, application: UiApplication) -> Result<(), UiError> {
+            application.validate()?;
+            self.ran = true;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn custom_backend_runs_without_a_windows_feature() {
+        let app = UiApplication::new("Portable")
+            .page(UiPage::new("home", "Home", "Portable host"));
+        let mut backend = TestBackend { ran: false };
+        run_with_backend(app, &mut backend).unwrap();
+        assert!(backend.ran);
+        assert!(backend.capabilities().animation);
+        assert_eq!(backend.name(), "test-host");
+    }
 
     #[test]
     fn manager_navigation_ids_are_unique_and_ordered() {
