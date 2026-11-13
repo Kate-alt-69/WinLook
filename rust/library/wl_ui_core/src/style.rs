@@ -1434,6 +1434,7 @@ pub struct UiAnimation {
     play_state: UiAnimationPlayState,
     easing: UiEasing,
 }
+
 impl UiAnimation {
     pub fn new(name: impl Into<String>, duration_ms: u32) -> Self {
         Self {
@@ -1447,29 +1448,70 @@ impl UiAnimation {
             easing: UiEasing::Ease,
         }
     }
-    pub fn delay(mut self, delay_ms: i32) -> Self { self.delay_ms = delay_ms; self }
-    pub fn iterations(mut self, value: UiAnimationIterations) -> Self { self.iterations = value; self }
-    pub fn direction(mut self, value: UiAnimationDirection) -> Self { self.direction = value; self }
-    pub fn fill_mode(mut self, value: UiAnimationFillMode) -> Self { self.fill_mode = value; self }
-    pub fn play_state(mut self, value: UiAnimationPlayState) -> Self { self.play_state = value; self }
-    pub fn easing(mut self, value: UiEasing) -> Self { self.easing = value; self }
-    pub fn name(&self) -> &str { &self.name }
-    pub fn duration_ms(&self) -> u32 { self.duration_ms }
-    pub fn delay_ms(&self) -> i32 { self.delay_ms }
+
+    pub fn delay(mut self, delay_ms: i32) -> Self {
+        self.delay_ms = delay_ms;
+        self
+    }
+
+    pub fn iterations(mut self, value: UiAnimationIterations) -> Self {
+        self.iterations = value;
+        self
+    }
+
+    pub fn direction(mut self, value: UiAnimationDirection) -> Self {
+        self.direction = value;
+        self
+    }
+
+    pub fn fill_mode(mut self, value: UiAnimationFillMode) -> Self {
+        self.fill_mode = value;
+        self
+    }
+
+    pub fn play_state(mut self, value: UiAnimationPlayState) -> Self {
+        self.play_state = value;
+        self
+    }
+
+    pub fn easing(mut self, value: UiEasing) -> Self {
+        self.easing = value;
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn duration_ms(&self) -> u32 {
+        self.duration_ms
+    }
+
+    pub fn delay_ms(&self) -> i32 {
+        self.delay_ms
+    }
+
     fn validate(&self) -> Result<(), UiError> {
         if self.name.len() > 64 || !valid_identifier(&self.name) {
-            return Err(UiError::InvalidStyle("animation name must be a valid identifier of at most 64 characters".to_string()));
+            return Err(UiError::InvalidStyle(
+                "animation name must be a valid identifier of at most 64 characters".to_string(),
+            ));
         }
         if self.duration_ms > 3_600_000 || self.delay_ms.unsigned_abs() > 3_600_000 {
-            return Err(UiError::InvalidStyle("animation duration and delay must not exceed one hour".to_string()));
+            return Err(UiError::InvalidStyle(
+                "animation duration and delay must not exceed one hour".to_string(),
+            ));
         }
         if let UiAnimationIterations::Count(count) = self.iterations {
             if count == 0 || count > 1000 {
-                return Err(UiError::InvalidStyle("animation iteration count must be 1 to 1000 or infinite".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "animation iteration count must be 1 to 1000 or infinite".to_string(),
+                ));
             }
         }
         Ok(())
     }
+
     fn css(&self) -> String {
         let iterations = match self.iterations {
             UiAnimationIterations::Once => "1".to_string(),
@@ -1478,8 +1520,14 @@ impl UiAnimation {
         };
         format!(
             "{} {}ms {} {}ms {} {} {} {}",
-            self.name, self.duration_ms, self.easing.css(), self.delay_ms,
-            iterations, self.direction.css(), self.fill_mode.css(), self.play_state.css()
+            self.name,
+            self.duration_ms,
+            self.easing.css(),
+            self.delay_ms,
+            iterations,
+            self.direction.css(),
+            self.fill_mode.css(),
+            self.play_state.css()
         )
     }
 }
@@ -1490,10 +1538,22 @@ pub struct UiKeyframe {
     offset_percent: f32,
     style: UiStyle,
 }
+
 impl UiKeyframe {
-    pub fn new(offset_percent: f32, style: UiStyle) -> Self { Self { offset_percent, style } }
-    pub fn offset_percent(&self) -> f32 { self.offset_percent }
-    pub fn style(&self) -> &UiStyle { &self.style }
+    pub fn new(offset_percent: f32, style: UiStyle) -> Self {
+        Self {
+            offset_percent,
+            style,
+        }
+    }
+
+    pub fn offset_percent(&self) -> f32 {
+        self.offset_percent
+    }
+
+    pub fn style(&self) -> &UiStyle {
+        &self.style
+    }
 }
 
 /// Named, bounded keyframe definitions for CSS-capable renderers.
@@ -1502,18 +1562,33 @@ pub struct UiKeyframes {
     name: String,
     frames: Vec<UiKeyframe>,
 }
+
 impl UiKeyframes {
     pub fn new(name: impl Into<String>, frames: impl IntoIterator<Item = UiKeyframe>) -> Self {
-        Self { name: name.into(), frames: frames.into_iter().collect() }
+        Self {
+            name: name.into(),
+            frames: frames.into_iter().collect(),
+        }
     }
-    pub fn name(&self) -> &str { &self.name }
-    pub fn frames(&self) -> &[UiKeyframe] { &self.frames }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn frames(&self) -> &[UiKeyframe] {
+        &self.frames
+    }
+
     fn validate(&self) -> Result<(), UiError> {
         if self.name.len() > 64 || !valid_identifier(&self.name) {
-            return Err(UiError::InvalidStyle("keyframe name must be a valid identifier of at most 64 characters".to_string()));
+            return Err(UiError::InvalidStyle(
+                "keyframe name must be a valid identifier of at most 64 characters".to_string(),
+            ));
         }
         if !(2..=64).contains(&self.frames.len()) {
-            return Err(UiError::InvalidStyle("keyframes must contain 2 to 64 frames".to_string()));
+            return Err(UiError::InvalidStyle(
+                "keyframes must contain 2 to 64 frames".to_string(),
+            ));
         }
         let mut previous = -1.0_f32;
         for frame in &self.frames {
@@ -1521,17 +1596,22 @@ impl UiKeyframes {
                 || !(0.0..=100.0).contains(&frame.offset_percent)
                 || frame.offset_percent <= previous
             {
-                return Err(UiError::InvalidStyle("keyframe offsets must be strictly increasing from 0 to 100".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "keyframe offsets must be strictly increasing from 0 to 100".to_string(),
+                ));
             }
             frame.style.validate()?;
             if !frame.style.transitions.is_empty() || !frame.style.animations.is_empty() {
-                return Err(UiError::InvalidStyle("keyframe declarations cannot nest transitions or animations".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "keyframe declarations cannot nest transitions or animations".to_string(),
+                ));
             }
             previous = frame.offset_percent;
         }
         Ok(())
     }
 }
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiTransform {
     pub translate_x: f32,
@@ -2809,22 +2889,35 @@ impl UiStyleSheet {
 
     pub fn validate(&self) -> Result<(), UiError> {
         if self.keyframes.len() > 64 {
-            return Err(UiError::InvalidStyle("a stylesheet cannot define more than 64 keyframe sets".to_string()));
+            return Err(UiError::InvalidStyle(
+                "a stylesheet cannot define more than 64 keyframe sets".to_string(),
+            ));
         }
         for (index, keyframes) in self.keyframes.iter().enumerate() {
             keyframes.validate()?;
-            if self.keyframes[..index].iter().any(|previous| previous.name == keyframes.name) {
-                return Err(UiError::InvalidStyle("keyframe names must be unique within a stylesheet".to_string()));
+            if self.keyframes[..index]
+                .iter()
+                .any(|previous| previous.name == keyframes.name)
+            {
+                return Err(UiError::InvalidStyle(
+                    "keyframe names must be unique within a stylesheet".to_string(),
+                ));
             }
         }
         if self.rules.len() > 4096 {
-            return Err(UiError::InvalidStyle("a stylesheet cannot contain more than 4096 rules".to_string()));
+            return Err(UiError::InvalidStyle(
+                "a stylesheet cannot contain more than 4096 rules".to_string(),
+            ));
         }
         for rule in &self.rules {
             rule.selector.css()?;
             rule.style.validate()?;
             for animation in &rule.style.animations {
-                if !self.keyframes.iter().any(|keyframes| keyframes.name == animation.name) {
+                if !self
+                    .keyframes
+                    .iter()
+                    .any(|keyframes| keyframes.name == animation.name)
+                {
                     return Err(UiError::InvalidStyle(format!(
                         "animation '{}' has no matching keyframe definition",
                         animation.name
