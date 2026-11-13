@@ -267,8 +267,8 @@ fn sample_animation<T: crate::Interpolate>(
     let reverse = match sample.direction {
         Direction::Normal => false,
         Direction::Reverse => true,
-        Direction::Alternate => iteration % 2 == 1,
-        Direction::AlternateReverse => iteration % 2 == 0,
+        Direction::Alternate => iteration & 1 == 1,
+        Direction::AlternateReverse => iteration & 1 == 0,
     };
     let progress = if finished {
         1.0
