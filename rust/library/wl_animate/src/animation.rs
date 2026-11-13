@@ -219,3 +219,94 @@ impl<T: crate::Interpolate> Animation<T> {
         Some(self.track.sample(sample_time))
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Easing, Keyframe, KeyframeTrack};
+
+    fn sample_track() -> KeyframeTrack<f64> {
+        KeyframeTrack::new(vec![
+            Keyframe::new(Duration::ZERO, 0.0, Easing::Linear),
+            Keyframe::new(Duration::from_millis(100), 1.0, Easing::Linear),
+        ]).unwrap()
+    }
+
+    #[test]
+    fn repeats_and_alternates_without_a_scheduler() {
+        let mut animation = Animation::new(
+            sample_track(),
+            Duration::from_millis(100),
+            Duration::ZERO,
+            IterationCount::Count(2),
+            Direction::Alternate,
+            FillMode::Both,
+        ).unwrap();
+
+        assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.5));
+        assert_eq!(animation.advance(Duration::from_millis(50)), Some(1.0));
+        assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.5));
+        assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.0));
+        assert_eq!(animation.state(), PlaybackState::Finished);
+        assert_eq!(animation.sample(), Some(0.0));
+    }
+
+    #[test]
+    fn delay_and_fill_mode_control_pre_animation_sampling() {
+        let none = Animation::new(
+            sample_track(),
+            Duration::from_millis(100),
+            Duration::from_millis(30),
+            IterationCount::Once,
+            Direction::Normal,
+            FillMode::None,
+        ).unwrap();
+        assert_eq!(none.sample(), None);
+
+        let backwards = Animation::new(
+            sample_track(),
+            Duration::from_millis(100),
+            Duration::from_millis(30),
+            IterationCount::Once,
+            Direction::Normal,
+            FillMode::Backwards,
+        ).unwrap();
+        assert_eq!(backwards.sample(), Some(0.0));
+    }
+
+    #[test]
+    fn pause_cancel_restart_and_limits_are_explicit() {
+        let mut animation = Animation::new(
+            sample_track(),
+            Duration::from_millis(100),
+            Duration::ZERO,
+            IterationCount::Once,
+            Direction::Normal,
+            FillMode::Both,
+        ).unwrap();
+        animation.advance(Duration::from_millis(20));
+        animation.pause();
+        assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.2));
+        animation.resume();
+        animation.advance(Duration::from_millis(10));
+        animation.cancel();
+        assert_eq!(animation.state(), PlaybackState::Cancelled);
+        assert_eq!(animation.sample(), Some(0.3));
+        animation.restart();
+        assert_eq!(animation.state(), PlaybackState::Pending);
+        assert_eq!(animation.sample(), None);
+
+        assert_eq!(
+            Animation::new(
+                sample_track(),
+                Duration::ZERO,
+                Duration::ZERO,
+                IterationCount::Once,
+                Direction::Normal,
+                FillMode::Both,
+            ).err(),
+            Some(AnimationError::InvalidDuration)
+        );
+    }
+}
