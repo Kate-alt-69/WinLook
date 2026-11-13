@@ -125,7 +125,7 @@ All third-party Actions used by these workflows are pinned to a verified commit 
 | Workflow | Responsibility | Gate |
 |---|---|---|
 | workflow-lint.yml | Python syntax/unit tests, default CLI smoke test, workflow-command parser coverage and actionlint validation for every workflow | Must pass before workflow changes merge |
-| libraries.yml | Rust shared-library formatting/tests/Clippy/docs (wl_animate, wl_cpuv and wl_gpuv only); C89 MSVC; C89 GCC ASan/UBSan | Portable library gate |
+| libraries.yml | Rust shared-library formatting/tests/Clippy/docs (wl_animate, wl_cpuv, wl_gpuv and wl_wlde); C89 wl_Lanimate/wl_Lcpuv/wl_Lgpuv/wl_Lwlde MSVC and GCC ASan/UBSan | Portable library gate |
 | manager-ui.yml | WinUI 3 Manager unit tests and Clippy | Runs only when all UI manifests exist |
 | win10.yml | Windows 10 Manager build and preview package | Runs only when the Win10 app manifest exists |
 | win11.yml | Windows 11 Manager build and preview package | Runs only when the Win11 app manifest exists |

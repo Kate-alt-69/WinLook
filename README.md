@@ -8,17 +8,17 @@ The project aims to cover Windows 95 and later, but that ambition is not a relea
 
 ## Project status
 
-**Early implementation; shared libraries are in place and the Win10/Win11 Manager has an initial native UI prototype.**
+**Early implementation; shared libraries and the first WLDE scene core are in place, alongside the initial Win10/Win11 Manager UI prototype.**
 
-This repository is not yet a complete Windows application. It contains the living architecture/compatibility plan, portable shared-library cores and an initial native WinUI 3 Manager shell. The BGW background runtime and OS-specific system-integration implementations remain future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
+This repository is not yet a complete Windows application. It contains the living architecture/compatibility plan, portable shared-library cores, an initial WLDE scene/policy core in Rust and C, and a native WinUI 3 Manager shell. The BGW background runtime and OS-specific system-integration implementations remain future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
 
-The first implementation work is focused on the paired animation libraries, both using **Windows 10 as their initial target baseline**:
-- [`wl_animate`](rust/library/wl_animate/README.md) — Rust animation, vector math and SVG path-data core.
-- [`wl_Lanimate`](C/library/wl_Lanimate/README.md) — C89-compatible animation and vector-math core.
-- [`wl_cpuv`](rust/library/wl_cpuv/README.md) / [`wl_Lcpuv`](C/library/wl_Lcpuv/README.md) — CPU work admission/accounting cores.
-- [`wl_gpuv`](rust/library/wl_gpuv/README.md) / [`wl_Lgpuv`](C/library/wl_Lgpuv/README.md) — GPU memory/submission admission cores.
+The shared foundations and first WLDE scene layer use **Windows 10 as the modern implementation baseline**:
+- [`wl_animate`](rust/library/wl_animate/README.md) / [`wl_Lanimate`](C/library/wl_Lanimate/README.md) — paired animation, vector math and shared host-driven frame clocks.
+- [`wl_cpuv`](rust/library/wl_cpuv/README.md) / [`wl_Lcpuv`](C/library/wl_Lcpuv/README.md) — CPU work admission/accounting.
+- [`wl_gpuv`](rust/library/wl_gpuv/README.md) / [`wl_Lgpuv`](C/library/wl_Lgpuv/README.md) — GPU memory/submission admission.
+- [`wl_wlde`](rust/library/wl_wlde/README.md) / [`wl_Lwlde`](C/library/wl_Lwlde/README.md) — portable Desktop Engine scene policy, monitor topology, placement and visibility-aware frame scheduling.
 
-Both cores are renderer-independent: no Windows drawing backend, timer, scheduler, window hook or process injection is included yet. C89 is a source-language constraint, not a claim of support on pre-Windows-10 releases. See the [Animation Suite plan](plan/architecture/animation-suite.md) for implementation status and remaining gates.
+WLDE is **not a complete desktop renderer yet**: there is no OS presentation adapter, media decoder, widget runtime, Store client or desktop-icon/Groups integration in this core. The shared animation and resource libraries remain renderer-independent. C89 is a source-language constraint, not a claim of support on pre-Windows-10 releases. See the [WLDE implementation notes](docs/wlde/README.md) and [Animation Suite plan](plan/architecture/animation-suite.md).
 
 ## Design principles
 

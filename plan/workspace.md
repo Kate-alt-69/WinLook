@@ -323,3 +323,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Relevant follow-up commits: `2ff16a6` (bounded Rust tracks), `1360b73` / `7e283b4` (exact-boundary cursors), `b4dbdc7` (C workload benchmark), `9dced0e` (verification integration), `aec6c87` / `f13a83e` / `c9684be` (C frame-count assertion and diagnostic), `7c69b40` / `4591946` (shared benchmark docs and timing distinction), `3f92a49` (Rust emitted-frame assertion), and `caf4dfb` / `392460b` (integer parity in the alternating animation hot path).
 - Earlier source-equivalent verification passed Rust tests/Clippy/docs, GCC C89 with ASan/UBSan, C89 MSVC, Win10/Win11 packaging, Manager UI tests and repeated Rust/C sanitizers. The *latest* full matrix for the benchmark, track-limit, cursor-boundary, timing-label and integer-parity changes is queued against head `c9684be`; do not treat earlier green jobs as verification of this final head.
 
+
+
+## WLDE portable scene core — 2026-11-14
+
+- Started a separate WLDE implementation branch from the merged PR #10 baseline; PR #10 remains closed and is not being rewritten.
+- Added Rust package wl_wlde and C89 companion wl_Lwlde. Both consume the existing animation frame clock and CPUv/GPUv admission contracts rather than introducing another timer or resource governor.
+- Implemented bounded monitor topology snapshots, Fill/Fit/Stretch/Center placement math, conservative visibility scheduling, 60/30 FPS Normal/Optimize policies, Suspend handling and explicit presentation capability gates.
+- C uses caller-owned storage for a maximum of 16 monitors and holds non-owning pointers to already-initialized wl_Lcpuv/wl_Lgpuv governor objects. Its placement/condition/tick paths do not allocate.
+- Local validation completed for the C89 WLDE source with GCC 14 strict flags and focused contract tests using a small frame-clock test stub. This validates the new C contract/source syntax, not full integration with the repository C archives or MSVC.
+- Cargo is not installed in the current implementation environment. Rust formatting, compilation, tests, Clippy and documentation must therefore be established by hosted CI; they are not claimed locally.
+- This is an initial portable policy/scene layer, not a completed desktop presentation engine. OS monitor enumeration, actual static/animated desktop surfaces, decoders, GPU renderer/device-loss recovery, package/Store/widget/Rainmeter runtimes and recoverable Groups remain open. The full WLDE acceptance checklist stays open.

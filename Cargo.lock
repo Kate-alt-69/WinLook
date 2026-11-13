@@ -4468,6 +4468,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wl_wlde"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "wl_animate",
+ "wl_cpuv",
+ "wl_gpuv",
+]
+
+[[package]]
 name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

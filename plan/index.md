@@ -16,6 +16,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Public Rust UI foundation and styling API: [../docs/wl_ui/README.md](../docs/wl_ui/README.md)
 - Rust design tokens, selectors and CSS output: [../docs/wl_ui/styling.md](../docs/wl_ui/styling.md)
 - Shared Rust/C animation runtime and host frame clock: [../docs/wl_ui/animation.md](../docs/wl_ui/animation.md)
+- WLDE portable scene core and platform-renderer gates: [../docs/wlde/README.md](../docs/wlde/README.md)
 - UI renderer capability map: [../docs/wl_ui/backends.md](../docs/wl_ui/backends.md)
 - Legacy C UI API: [../docs/wl_ui/C/README.md](../docs/wl_ui/C/README.md) and [../docs/wl_ui/C/styling.md](../docs/wl_ui/C/styling.md)
 - Build system, shared output/cache layout and GitHub Actions: [architecture/build-and-ci.md](architecture/build-and-ci.md)
@@ -50,8 +51,8 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Shared libraries now live under `rust/library/` and `C/library/`; historical `crates/` and `legacy/` prototype copies are scheduled for removal as part of this migration.
 
 ## Shared library implementation
-- Rust: [`wl_animate`](../rust/library/wl_animate/README.md), [`wl_cpuv`](../rust/library/wl_cpuv/README.md), [`wl_gpuv`](../rust/library/wl_gpuv/README.md), and public [`wl_ui`](../rust/library/wl_ui/README.md).
-- C: [`wl_Lanimate`](../C/library/wl_Lanimate/README.md), [`wl_Lcpuv`](../C/library/wl_Lcpuv/README.md), [`wl_Lgpuv`](../C/library/wl_Lgpuv/README.md), and legacy Win32 [`wl_Lui`](../C/library/wl_Lui/README.md).
+- Rust: [`wl_animate`](../rust/library/wl_animate/README.md), [`wl_cpuv`](../rust/library/wl_cpuv/README.md), [`wl_gpuv`](../rust/library/wl_gpuv/README.md), [`wl_wlde`](../rust/library/wl_wlde/README.md), and public [`wl_ui`](../rust/library/wl_ui/README.md).
+- C: [`wl_Lanimate`](../C/library/wl_Lanimate/README.md), [`wl_Lcpuv`](../C/library/wl_Lcpuv/README.md), [`wl_Lgpuv`](../C/library/wl_Lgpuv/README.md), [`wl_Lwlde`](../C/library/wl_Lwlde/README.md), and legacy Win32 [`wl_Lui`](../C/library/wl_Lui/README.md).
 - UI backend paths: `wl_ui::windows10`, `wl_ui::windows11`, `wl_ui::tauri2`, and experimental `wl_ui::windows7` / `windows8` / `windows81`.
 - Vector/SVG contract: [Vector Animation](architecture/vector-animation.md).
 - Resource-governor contract: [CPUv/GPUv](architecture/resource-governors.md).

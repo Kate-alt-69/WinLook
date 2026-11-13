@@ -170,3 +170,14 @@ Implementation consequence: C and Rust share the build/ root but keep outputs an
 | UI-GDI-004 | [FillRect](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-fillrect) | Fills the client background using a logical brush | User32; uses a supplied GDI brush handle |
 | UI-GDI-005 | [DeleteObject](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-deleteobject) | Releases GDI brushes and fonts owned by the backend | Do not delete objects while selected into a device context |
 | TAURI-003 | [Tauri 2.12.5 WebviewWindowBuilder initialization_script](https://docs.rs/tauri/2.12.5/tauri/webview/struct.WebviewWindowBuilder.html#method.initialization_script) | Initialization script executes after the global object exists and before HTML parsing/other page scripts | Main-frame script; host frontend and permissions remain application-owned |
+
+
+## WLDE desktop presentation research — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-001 | [IDesktopWallpaper::SetWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-idesktopwallpaper-setwallpaper) | The documented Windows desktop wallpaper interface accepts a monitor ID and static wallpaper path | Windows 8+ desktop API; setting a file path is not an animated frame-surface or decoder API |
+| WLDE-002 | [IDesktopWallpaper interface](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-idesktopwallpaper) | Provides per-monitor desktop wallpaper management and monitor geometry information | Establishes static wallpaper management/topology access, not a supported custom surface behind desktop icons |
+| WLDE-003 | [Windows.UI.Composition visual layer](https://learn.microsoft.com/en-us/windows/apps/develop/ui/visual-layer/) | Provides visual composition primitives for application UI | App visual composition alone does not establish a desktop wallpaper-layer attachment or Explorer icon ordering contract |
+
+Implementation consequence: keep static wallpaper path management and animated desktop presentation as separate adapter capabilities. Do not treat a composition API as proof of desktop-layer placement, and do not depend on undocumented WorkerW/Progman parenting without an independently reviewed/recoverable OS contract.

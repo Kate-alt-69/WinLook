@@ -46,10 +46,10 @@ presentation and resource-governor integrations remain separate work.
 ## Resource-aware policy
 Monitor CPU, GPU engine usage, RAM, VRAM, WLDE's own cost, power state, full-screen/game state independently. The user's intended threshold is to stop animated playback/rendering when system resource pressure exceeds 90% under a sustained policy. Exact interpretation per resource, sampling window and recovery hysteresis remain to be finalized.
 
-Quality ladder: normal configured quality; lower FPS; lower resolution/render scale; disable expensive effects; pause expensive interactive work; freeze/static frame; suspend animation/rendering when pressure is severe or profile says Suspend. Foreground apps/games take priority.
+Quality policy: preserve the user's selected source image/video fidelity. Under sustained pressure, reduce the amount and frequency of WinLook-owned work: defer nonessential updates, stop optional interactive/effect work, pause background or occluded animation and media decoding, hold the last-known-good frame, release recoverable decoder/GPU caches, and suspend WLDE when needed. Never silently downsample or re-encode the user's source assets. Foreground apps/games take priority.
 
 ## Game Mode
-Per-app profiles: Normal, Optimize, Suspend. Optimize lowers FPS/resolution/effects and background work. Suspend stops animation and unnecessary renderer/decoder work where feasible. Detect through several signals, not executable name alone. Examples include MW4, Roblox and Minecraft but are not hardcoded special cases. Resume smoothly after game exit/focus loss.
+Per-app profiles: Normal, Optimize, Suspend. Optimize reduces target frame cadence and nonessential background work, suspends optional interactive work, and preserves configured source-media fidelity. Suspend stops animation and unnecessary renderer/decoder work where feasible. Detect through several signals, not executable name alone. Examples include MW4, Roblox and Minecraft but are not hardcoded special cases. Resume smoothly after game exit/focus loss.
 
 ## Desktop Groups
 - Disabled by default.
@@ -112,19 +112,18 @@ The intended severe-pressure threshold is 90%. Sampling window, sustained durati
 
 Proposed quality ladder:
 1. Normal configured quality and frame rate.
-2. Reduce target frame rate/background updates.
-3. Lower render scale or effect quality.
-4. Stop nonessential audio-reactive, particle or expensive widget work.
-5. Pause background/occluded animation and interactive work.
-6. Freeze a last-known-good static frame where safe.
-7. Suspend render/decode pipeline and use lightweight/native fallback.
+2. Reduce target frame rate and defer nonessential background updates.
+3. Stop optional effects, audio-reactive work and expensive widget updates without changing source-media fidelity.
+4. Pause background/occluded animation and media decoding.
+5. Freeze a last-known-good static frame and release recoverable decoder/GPU caches where safe.
+6. Suspend the render/decode pipeline and use a lightweight/native fallback.
 
 Distinguish a brief spike from sustained pressure. Recovery needs hysteresis to avoid oscillation. The user may choose a stricter profile, but not a setting that prevents preserving system responsiveness.
 
 ## Game Mode contract
 
 - **Normal:** respect wallpaper/widget settings and normal resource policy.
-- **Optimize:** reduce render rate/scale/effects, suspend background refresh and lower nonessential work.
+- **Optimize:** reduce render rate and nonessential background updates, suspend optional interactive work and preserve configured source-media fidelity.
 - **Suspend:** stop animation, decoding and interactive processing where feasible; keep the minimum safe static/native presentation.
 
 Detection combines foreground ownership, fullscreen state, user-selected application rules and system signals. Executable names alone are insufficient. User override must be possible. Return to Normal predictably when the trigger ends.
@@ -175,3 +174,19 @@ The supported subset is open. Parsing an RMSKIN archive is not equivalent to exe
 - [ ] Groups remain disabled unless original icon presentation is restored after crash/disable/uninstall.
 - [ ] Rainmeter compatibility is an explicit subset and licensing is reviewed.
 
+
+
+## Portable scene-core implementation — 2026-11-14
+
+The first Rust/C implementation layer now exists as paired libraries:
+
+- Rust: rust/library/wl_wlde (package wl_wlde).
+- C: C/library/wl_Lwlde (C89, caller-owned fixed-capacity storage).
+- Both cores validate a maximum 16-monitor topology, keep monitor bounds and work areas separate, and calculate Fill/Fit/Stretch/Center placement.
+- Both use one scene-owned wl_animate/wl_Lanimate clock for all active tracks. Normal schedules at 60 FPS, Optimize and Power Saver at 30 FPS, and Suspend/known full occlusion/static-only states request no animation frames. Unknown visibility remains eligible.
+- Rust owns CPUv/GPUv governor instances. C accepts non-owning references to initialized wl_Lcpuv/wl_Lgpuv governors. Estimates and completion signals remain caller-supplied admission/accounting values, not system telemetry.
+- Presentation capabilities are explicit. Interactive content remains unsupported unless an isolated adapter reports it; Groups require both virtual presentation and crash-safe restore capabilities.
+
+This is a portable scene/policy core, not a functioning desktop renderer. The branch does not yet implement OS monitor enumeration, static/animated desktop surfaces, image/video decoding, package parsing, widget execution, Store/catalogue, Rainmeter, Groups, or device-loss recovery. Do not mark the WLDE acceptance gates below complete from these portable tests.
+
+For Windows 8 and later, Microsoft's IDesktopWallpaper API documents setting/querying static wallpaper paths per monitor. It is not an animated frame-surface API. Windows.UI.Composition provides application visual composition, but that capability alone does not define a supported desktop-wallpaper layer behind Explorer icons. A future adapter must establish that surface/ownership contract with documented behaviour and restoration; do not assume WorkerW/Progman parenting. References: [IDesktopWallpaper::SetWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-idesktopwallpaper-setwallpaper), [IDesktopWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-idesktopwallpaper), [Windows.UI.Composition](https://learn.microsoft.com/en-us/windows/apps/develop/ui/visual-layer/).
