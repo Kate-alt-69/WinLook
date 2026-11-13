@@ -140,3 +140,12 @@ This API uses the classic Win32 desktop surface and C89 syntax. It does not
 provide CSS, gradients, blur/acrylic, CSS grid/flex, HTML, WebView2 or modern
 WinUI controls. Treat C89 compile tests, native Windows builds and real
 legacy-OS runtime tests as separate verification gates.
+
+
+## Runtime animation companion
+
+The C theme stores motion preferences and duration tokens, but `wl_Lui` does
+not create animation timers or automatically animate control properties. For
+caller-driven native transitions, pair it with the portable C89
+[`wl_Lanimate` runtime](../animation.md). One host-owned frame clock advances
+all active tracks; the selected renderer applies only supported native values.
