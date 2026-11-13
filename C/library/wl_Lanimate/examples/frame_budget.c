@@ -114,7 +114,7 @@ int main(void)
     }
 
     if (emitted_frames != WL_LANIMATE_BENCHMARK_FRAMES) {
-        fprintf(stderr, "Expected %u emitted frames, received %u.\\n",
+        fprintf(stderr, "Expected %u emitted frames, received %u.\n",
                 WL_LANIMATE_BENCHMARK_FRAMES, emitted_frames);
         return 8;
     }
