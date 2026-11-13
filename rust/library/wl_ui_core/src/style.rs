@@ -750,9 +750,7 @@ impl UiLength {
             Self::Auto => Ok(()),
             Self::Px(value) if value.is_finite() => Ok(()),
             Self::Percent(value) if value.is_finite() => Ok(()),
-            _ => Err(UiError::InvalidStyle(format!(
-                "{name} must be finite"
-            ))),
+            _ => Err(UiError::InvalidStyle(format!("{name} must be finite"))),
         }
     }
 
