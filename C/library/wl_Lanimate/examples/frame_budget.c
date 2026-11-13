@@ -129,10 +129,10 @@ int main(void)
 
     printf("Animations: %u\n", WL_LANIMATE_BENCHMARK_ANIMATIONS);
     printf("Frames: %u at 60 FPS\n", emitted_frames);
-    printf("Total CPU time: %.3f ms\n", elapsed_ms);
-    printf("Average update time per frame: %.3f us\n",
+    printf("Total process CPU time: %.3f ms\n", elapsed_ms);
+    printf("Average process CPU time per frame: %.3f us\n",
            elapsed_ms * 1000.0 / (double)WL_LANIMATE_BENCHMARK_FRAMES);
-    printf("Average time per animation sample: %.1f ns\n", nanoseconds_per_sample);
+    printf("Average process CPU time per animation sample: %.1f ns\n", nanoseconds_per_sample);
     printf("Checksum: %.6f\n", checksum);
     printf("No timers, threads, renderer or GPU calls are created by this benchmark.\n");
     return 0;
