@@ -69,9 +69,11 @@ With a C89-capable compiler, Make and an archiver:
 make -C C/library/wl_Lanimate clean
 make -C C/library/wl_Lanimate all
 make -C C/library/wl_Lanimate test
+make -C C/library/wl_Lanimate benchmark
 ```
 
-This creates `build/libwl_Lanimate.a` and runs the test executable. When
+This creates `build/libwl_Lanimate.a`, runs the test executable, and reports
+the C89 1,024-animation / 600-frame CPU benchmark. When
 linking the static library into a non-MSVC application, also link the platform
 math library (for example, `-lm` on GCC/Clang Unix-like toolchains).
 
