@@ -543,7 +543,7 @@ impl UiTheme {
             || !valid_shadow(effects.shadow_lg)
         {
             return Err(UiError::InvalidStyle(
-                "effect values must be finite and non-negative".to_string(),
+                "effect values must be finite and shadow blur radii non-negative".to_string(),
             ));
         }
         Ok(())
@@ -1396,9 +1396,8 @@ impl UiTransform {
             self.rotate_degrees,
         ]
         .iter()
+        .iter()
         .all(|value| value.is_finite())
-            && self.scale_x >= 0.0
-            && self.scale_y >= 0.0
     }
     fn css(self) -> String {
         format!(
@@ -2039,7 +2038,7 @@ impl UiStyle {
         }
         if self.transform.is_some_and(|value| !value.validate()) {
             return Err(UiError::InvalidStyle(
-                "transform values must be finite and scale cannot be negative".to_string(),
+                "transform values must be finite".to_string(),
             ));
         }
         for (name, tracks) in [
@@ -2102,7 +2101,7 @@ impl UiStyle {
         if let Some(value) = self.shadow {
             if !valid_shadow(value) {
                 return Err(UiError::InvalidStyle(
-                    "shadow values must be finite and non-negative".to_string(),
+                    "shadow values must be finite and blur non-negative".to_string(),
                 ));
             }
         }
@@ -2663,9 +2662,12 @@ fn append_palette_variables(css: &mut String, palette: &UiPalette) {
 }
 
 fn valid_shadow(shadow: UiShadow) -> bool {
-    [shadow.offset_x, shadow.offset_y, shadow.blur, shadow.spread]
-        .iter()
-        .all(|value| finite_non_negative(*value))
+    // CSS permits signed offsets and spread (inset/contracting shadows); only
+    // the blur radius is constrained to be non-negative.
+    shadow.offset_x.is_finite()
+        && shadow.offset_y.is_finite()
+        && finite_non_negative(shadow.blur)
+        && shadow.spread.is_finite()
 }
 
 fn append_css_value(css: &mut String, value: impl AsRef<str>) {
@@ -2907,7 +2909,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_gradients_and_transform_scales() {
+    fn rejects_invalid_gradients_but_supports_mirrored_transforms() {
         let invalid_gradient = UiLinearGradient::new(
             400.0,
             [
@@ -2922,13 +2924,38 @@ mod tests {
             )
             .to_css()
             .is_err());
-        assert!(UiStyleSheet::new()
+
+        let mirrored = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Surface),
+            UiStyle::new().transform(UiTransform::identity().scale(-1.0, 1.0)),
+        );
+        assert!(mirrored.to_css().unwrap().contains("scale(-1,1)"));
+    }
+
+    #[test]
+    fn shadow_offsets_and_spread_may_be_negative_but_blur_may_not() {
+        let shadow = UiShadow::new(UiColor::rgb(0, 0, 0), -2.0, 3.0, 4.0, -1.0);
+        let css = UiStyleSheet::new()
             .rule(
-                UiSelector::new(UiComponent::Surface),
-                UiStyle::new().transform(UiTransform::identity().scale(-1.0, 1.0)),
+                UiSelector::new(UiComponent::Card),
+                UiStyle::new().shadow(shadow).text_shadow(shadow),
             )
             .to_css()
-            .is_err());
+            .unwrap();
+        assert!(css.contains("-2px 3px 4px -1px"));
+        assert!(css.contains("-2px 3px 4px -1px"));
+
+        let invalid = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Card),
+            UiStyle::new().shadow(UiShadow::new(
+                UiColor::rgb(0, 0, 0),
+                0.0,
+                0.0,
+                -1.0,
+                0.0,
+            )),
+        );
+        assert!(invalid.validate().is_err());
     }
 
     #[test]
