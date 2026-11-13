@@ -20,7 +20,7 @@
 - No heap allocation in the per-frame path.
 - No internal worker thread, timer, message pump or per-animation wake-up; one host frame loop advances all active animations.
 - The cached per-frame path does not allocate and normally needs only a segment-bound check, easing and scalar interpolation.
-- Sine easing uses a degree-11 polynomial approximation (about 5.7e-8 maximum absolute error) rather than trigonometric library calls.
+- Sine easing uses a degree-15 polynomial approximation (about 6.1e-12 maximum absolute error) rather than trigonometric library calls.
 - Caller retains storage for tween and keyframe structures.
 - No DWM, DirectComposition, D3D, modern CRT or modern Win32 imports in this portable core.
 - Platform drawing, GDI resources, timers and window lifecycle belong in separate OS adapters.
