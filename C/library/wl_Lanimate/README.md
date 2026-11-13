@@ -1,6 +1,6 @@
 # wl_Lanimate
 
-`wl_Lanimate` is the C animation library paired with the modern Rust `wl_animate` crate. Both libraries share the same initial Windows 10 implementation baseline and matching animation concepts; they do not share source code or require the same application runtime.
+`wl_Lanimate` is the C animation library paired with the modern Rust `wl_animate` crate. Both libraries are platform-neutral caller-driven animation cores with matching animation concepts; they do not share source code or require the same application runtime. Neither core contains Windows APIs or creates an OS event loop.
 
 ## Initial API
 
@@ -22,7 +22,7 @@
 - No DWM, DirectComposition, D3D, modern CRT or modern Win32 imports in this portable core.
 - Platform drawing, GDI resources, timers and window lifecycle belong in separate OS adapters.
 
-C89 compatibility is an implementation constraint, **not** a claim of Windows 95–8.1 support. The current library build and test baseline is Windows 10; older OS/compiler/runtime combinations require separate evidence and are not claimed by this alpha.
+C89 compatibility is an implementation constraint, not an OS compatibility claim. The core can be compiled on any host with a conforming C compiler and the platform math library; integrating it with a UI still requires a renderer and host-owned frame scheduler.
 
 ## Build and test on a host compiler
 
@@ -46,4 +46,4 @@ cmake --build build/wl_Lanimate-msvc --config Release
 ctest --test-dir build/wl_Lanimate-msvc -C Release --output-on-failure
 ```
 
-CMake produces the platform-native static library (`wl_Lanimate.lib` with MSVC) and installs the public header/library using `cmake --install`. This verifies compilation with the selected Windows toolchain; it does not replace an actual Windows 10 client runtime test.
+CMake produces the platform-native static library (`wl_Lanimate.lib` with MSVC) and installs the public header/library using `cmake --install`. This verifies compilation with the selected Windows toolchain; it does not certify any platform-specific UI renderer.
