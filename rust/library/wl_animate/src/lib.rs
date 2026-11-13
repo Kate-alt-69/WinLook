@@ -129,6 +129,19 @@ mod tests {
     }
 
     #[test]
+    fn polynomial_sine_curves_match_reference_within_tolerance() {
+        for step in 0..=1000 {
+            let t = step as f64 / 1000.0;
+            let reference_in = 1.0 - (t * std::f64::consts::FRAC_PI_2).cos();
+            let reference_out = (t * std::f64::consts::FRAC_PI_2).sin();
+            let reference_in_out = (1.0 - (t * std::f64::consts::PI).cos()) / 2.0;
+            assert!((Easing::EaseInSine.sample(t) - reference_in).abs() < 1.0e-7);
+            assert!((Easing::EaseOutSine.sample(t) - reference_out).abs() < 1.0e-7);
+            assert!((Easing::EaseInOutSine.sample(t) - reference_in_out).abs() < 1.0e-7);
+        }
+    }
+
+    #[test]
     fn point_and_colour_interpolate_all_channels() {
         let point = Point2::new(0.0, 10.0).interpolate(&Point2::new(100.0, 30.0), 0.5);
         assert_eq!(point, Point2::new(50.0, 20.0));
