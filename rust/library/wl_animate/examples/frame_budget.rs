@@ -7,9 +7,9 @@ fn main() {
     const ANIMATION_COUNT: usize = 1024;
     const FRAME_COUNT: usize = 600;
     let track = KeyframeTrack::new(vec![
-        Keyframe::new(Duration::ZERO, 0.0_f64, Easing::EaseOutCubic),
+        Keyframe::new(Duration::ZERO, 0.0_f64, Easing::EaseOutSine),
         Keyframe::new(Duration::from_millis(180), 1.0_f64, Easing::EaseOutCubic),
-        Keyframe::new(Duration::from_millis(360), 0.0_f64, Easing::EaseInOutCubic),
+        Keyframe::new(Duration::from_millis(360), 0.0_f64, Easing::EaseInOutSine),
     ])
     .expect("valid sample track");
 
