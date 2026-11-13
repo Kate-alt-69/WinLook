@@ -232,11 +232,13 @@ static void test_animation_runtime(void)
         &animation, &track, 100.0, 30.0, 1U,
         WL_LANIMATE_DIRECTION_REVERSE, WL_LANIMATE_FILL_NONE
     ) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_animation_advance(&animation, -1.0, &value) == WL_LANIMATE_INVALID_ARGUMENT);
     assert(wl_Lanimate_animation_advance(&animation, 80.0, &value) == WL_LANIMATE_OK);
     assert(near_value(value, 10.0));
     assert(wl_Lanimate_animation_advance(&animation, 50.0, &value) == WL_LANIMATE_NO_VALUE);
     assert(animation.state == WL_LANIMATE_FINISHED);
-    assert(wl_Lanimate_animation_restart(&animation), 1);
+    wl_Lanimate_animation_restart(&animation);
+    assert(animation.state == WL_LANIMATE_PENDING);
     assert(wl_Lanimate_animation_sample(&animation, &value) == WL_LANIMATE_NO_VALUE);
     assert(wl_Lanimate_animation_advance(&animation, 30.0, &value) == WL_LANIMATE_OK);
     assert(near_value(value, 20.0));
