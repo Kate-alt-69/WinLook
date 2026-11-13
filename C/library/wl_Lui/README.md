@@ -48,6 +48,23 @@ opacity and corner radius are reserved in the stable style contract but return
 `WL_LUI_UNSUPPORTED` until the selected native renderer implements them.
 The built-in non-Windows fallback reports no native style capabilities. Applications can provide a host backend with `wl_lui_window_create_with_backend` and query its capabilities per window using `wl_lui_window_style_capabilities`. The library copies the callback table; the caller must keep `user_data` and its resources alive until the window is destroyed.
 
+## Runtime animation companion
+
+`wl_Lui` provides the native window/theme/style contract; it does not create
+per-control animation timers or automatically animate every style field.
+Pair it with the separate C89 `wl_Lanimate` static library when an application
+needs host-driven tweens/keyframe tracks:
+
+```cmake
+target_link_libraries(my_app PRIVATE WinLook::Lui WinLook::Lanimate)
+```
+
+Use one `wl_Lanimate_frame_clock` for the visible scene and pass the same
+emitted `tick.delta_ms` to all active animation controllers. The host owns the
+event loop and applies sampled values only to properties supported by its
+selected backend. See [wl_Lanimate](../wl_Lanimate/README.md) and the
+[shared animation runtime guide](../../../docs/wl_ui/animation.md).
+
 ## Compatibility and limits
 
 - No WinUI, WinRT, Windows App SDK, WebView2, hidden worker thread, process hook,
