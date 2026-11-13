@@ -180,7 +180,7 @@ wl_lui_result wl_lui_theme_init(wl_lui_theme *theme, wl_lui_theme_scheme scheme)
     wl_lui_palette_light(&theme->light);
     wl_lui_palette_dark(&theme->dark);
     wl_lui_palette_high_contrast(&theme->high_contrast);
-    strcpy(theme->font_family, "Segoe UI");
+    strcpy(theme->font_family, "sans-serif");
     theme->font_size = 14U;
     theme->font_weight = 400U;
     theme->spacing_unit = 4U;
@@ -201,7 +201,7 @@ wl_lui_result wl_lui_style_init(wl_lui_style *style) {
     memset(style, 0, sizeof(*style));
     style->version = WL_LUI_STYLE_VERSION;
     style->struct_size = (unsigned int)sizeof(*style);
-    strcpy(style->font_family, "Segoe UI");
+    strcpy(style->font_family, "sans-serif");
     style->font_size = 14U;
     style->font_weight = 400U;
     style->opacity_milli = 1000U;
