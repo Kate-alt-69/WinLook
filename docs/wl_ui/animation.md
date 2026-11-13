@@ -203,6 +203,8 @@ on the current machine. The matching C89 workload is available with:
 make -C C/library/wl_Lanimate benchmark
 ```
 
-CMake/CTest also runs `wl_Lanimate.frame_budget` and prints its timings in
-the library verification logs. Both are repeatable CPU workloads, not GPU
-benchmarks or universal performance targets.
+CMake/CTest also runs `wl_Lanimate.frame_budget` and prints its process CPU-time
+metrics in the library verification logs. Rust's `Instant` timing is elapsed
+wall time, while C's `clock()` timing is process CPU time, so these diagnostics
+are useful individually but are not a strict apples-to-apples comparison. Neither
+is a GPU benchmark or a universal performance target.
