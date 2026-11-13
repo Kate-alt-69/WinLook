@@ -70,16 +70,3 @@ jobs:
           restore-keys: ${{ runner.os }}-manager-ui-
       - name: Verify Manager UI
         run: python build.py verify ui
-      - name: Export resolved Cargo lockfile for reproducibility
-        shell: pwsh
-        run: |
-          $bytes = [System.IO.File]::ReadAllBytes("Cargo.lock")
-          $encoded = [Convert]::ToBase64String($bytes)
-          Write-Output "WINLOOK_CARGO_LOCK_BEGIN"
-          for ($offset = 0; $offset -lt $encoded.Length; $offset += 2000) {
-            $length = [Math]::Min(2000, $encoded.Length - $offset)
-            $index = [int]($offset / 2000)
-            $chunk = $encoded.Substring($offset, $length)
-            Write-Output ("WINLOOK_CARGO_LOCK_{0:D4}={1}" -f $index, $chunk)
-          }
-          Write-Output "WINLOOK_CARGO_LOCK_END"
