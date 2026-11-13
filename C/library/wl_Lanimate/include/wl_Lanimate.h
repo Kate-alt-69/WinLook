@@ -11,6 +11,7 @@
 #define WL_LANIMATE_VERSION_MINOR 1
 #define WL_LANIMATE_VERSION_PATCH 0
 #define WL_LANIMATE_VERSION_PRERELEASE "alpha.2"
+#define WL_LANIMATE_MAX_KEYFRAMES 64U
 
 typedef enum wl_Lanimate_easing {
     WL_LANIMATE_LINEAR = 0,
@@ -122,7 +123,8 @@ typedef enum wl_Lanimate_result {
     WL_LANIMATE_INVALID_KEYFRAME_ORDER = 2,
     WL_LANIMATE_INVALID_KEYFRAME_TIME = 3,
     WL_LANIMATE_NO_VALUE = 4,
-    WL_LANIMATE_NO_FRAME = 5
+    WL_LANIMATE_NO_FRAME = 5,
+    WL_LANIMATE_INVALID_KEYFRAME_COUNT = 6
 } wl_Lanimate_result;
 
 /* One host-owned frame clock shared by every animation in a scene. */
