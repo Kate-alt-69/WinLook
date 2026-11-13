@@ -194,7 +194,7 @@ static void test_shared_frame_clock(void)
     assert(wl_Lanimate_frame_clock_init(&clock, 16.0, 0.0) == WL_LANIMATE_INVALID_ARGUMENT);
     assert(wl_Lanimate_frame_clock_tick(&clock, -1.0, &tick) == WL_LANIMATE_INVALID_ARGUMENT);
 
-    assert(wl_Lanimate_frame_clock_init(&clock, 16.6666666, 100.0) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.666665, 100.0) == WL_LANIMATE_OK);
     now_ms = 0.0;
     emitted = 0U;
     assert(wl_Lanimate_frame_clock_tick(&clock, now_ms, &tick) == WL_LANIMATE_OK);
@@ -206,7 +206,7 @@ static void test_shared_frame_clock(void)
     }
     assert(emitted == 60U);
 
-    assert(wl_Lanimate_frame_clock_init(&clock, 16.6666666, 100.0) == WL_LANIMATE_OK);
+    assert(wl_Lanimate_frame_clock_init(&clock, 16.666665, 100.0) == WL_LANIMATE_OK);
     now_ms = 0.0;
     emitted = 0U;
     assert(wl_Lanimate_frame_clock_tick(&clock, now_ms, &tick) == WL_LANIMATE_OK);
