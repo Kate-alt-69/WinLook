@@ -215,8 +215,12 @@ impl<T: crate::Interpolate> Animation<T> {
 
         let first = self.track.start_time();
         let span = self.track.end_time().saturating_sub(first);
-        let sample_time = first + Duration::from_secs_f64(span.as_secs_f64() * progress.clamp(0.0, 1.0));
-        Some(self.track.sample(sample_time))
+        let offset_nanos = (span.as_nanos() as f64 * progress.clamp(0.0, 1.0)).round() as u128;
+        let offset = Duration::new(
+            (offset_nanos / 1_000_000_000).min(u128::from(u64::MAX)) as u64,
+            (offset_nanos % 1_000_000_000) as u32,
+        );
+        Some(self.track.sample(first.saturating_add(offset)))
     }
 }
 
