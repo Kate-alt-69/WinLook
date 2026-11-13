@@ -196,5 +196,6 @@ cargo run --release -p wl_animate --example frame_budget
 ```
 
 It advances 1,024 built-in scalar animations for 600 frames through the shared
-60 FPS clock and reports CPU time on the current machine. It is a repeatable
+60 FPS clock using the polynomial sine easing curves, then reports CPU time
+on the current machine. It is a repeatable
 workload, not a GPU benchmark or a universal performance target.
