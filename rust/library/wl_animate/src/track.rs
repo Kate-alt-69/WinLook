@@ -12,7 +12,11 @@ pub struct Keyframe<T> {
 
 impl<T> Keyframe<T> {
     pub fn new(at: Duration, value: T, easing_to_next: Easing) -> Self {
-        Self { at, value, easing_to_next }
+        Self {
+            at,
+            value,
+            easing_to_next,
+        }
     }
 }
 
