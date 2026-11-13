@@ -60,8 +60,9 @@ the clock only schedules sampling and never renders to a GPU.
 Use one host frame clock and pass the same frame delta to every active
 animation. Do not create one OS timer, worker or thread per animated property.
 Each Animation owns a cached keyframe cursor, so consecutive samples within
-the same segment avoid another binary search. Tracks remain immutable and can
-be shared by multiple playback objects.
+the same segment avoid another binary search. Tracks are immutable Arc-backed
+slices, so cloning them across playback objects shares the same keyframe
+storage rather than copying a Vec for every animation.
 
 Sine easing uses a degree-15 polynomial approximation rather than sin/cos in
 the frame path (maximum absolute error approximately 6.1e-12 on the supported
