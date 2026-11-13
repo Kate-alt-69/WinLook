@@ -12,6 +12,12 @@ add_library(wl_Lanimate STATIC
 )
 add_library(WinLook::Lanimate ALIAS wl_Lanimate)
 
+# The portable clock and animation runtime use fmod/modf on non-MSVC hosts.
+# Publish libm as a transitive requirement of the static library.
+if(NOT MSVC)
+    target_link_libraries(wl_Lanimate PUBLIC m)
+endif()
+
 target_include_directories(wl_Lanimate
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -36,9 +42,6 @@ include(CTest)
 if(BUILD_TESTING)
     add_executable(test_wl_Lanimate tests/test_wl_Lanimate.c)
     target_link_libraries(test_wl_Lanimate PRIVATE wl_Lanimate)
-    if(NOT MSVC)
-        target_link_libraries(test_wl_Lanimate PRIVATE m)
-    endif()
     set_target_properties(test_wl_Lanimate PROPERTIES
         C_STANDARD 90
         C_STANDARD_REQUIRED YES
