@@ -646,9 +646,9 @@ impl UiTheme {
         ));
         css.push('}');
         if self.effects.reduced_motion {
-            css.push_str(":root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}");
+            css.push_str(":root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;}");
         } else {
-            css.push_str("@media(prefers-reduced-motion:reduce){:root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}}");
+            css.push_str("@media(prefers-reduced-motion:reduce){:root{--wl-motion-enabled:0;--wl-motion-fast:0ms;--wl-motion-normal:0ms;--wl-motion-slow:0ms;}[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;}}");
         }
         Ok(css)
     }
@@ -1457,8 +1457,8 @@ impl UiAnimation {
     pub fn duration_ms(&self) -> u32 { self.duration_ms }
     pub fn delay_ms(&self) -> i32 { self.delay_ms }
     fn validate(&self) -> Result<(), UiError> {
-        if !valid_identifier(&self.name) {
-            return Err(UiError::InvalidStyle("animation name must be a valid identifier".to_string()));
+        if self.name.len() > 64 || !valid_identifier(&self.name) {
+            return Err(UiError::InvalidStyle("animation name must be a valid identifier of at most 64 characters".to_string()));
         }
         if self.duration_ms > 3_600_000 || self.delay_ms.unsigned_abs() > 3_600_000 {
             return Err(UiError::InvalidStyle("animation duration and delay must not exceed one hour".to_string()));
@@ -1509,8 +1509,8 @@ impl UiKeyframes {
     pub fn name(&self) -> &str { &self.name }
     pub fn frames(&self) -> &[UiKeyframe] { &self.frames }
     fn validate(&self) -> Result<(), UiError> {
-        if !valid_identifier(&self.name) {
-            return Err(UiError::InvalidStyle("keyframe name must be a valid identifier".to_string()));
+        if self.name.len() > 64 || !valid_identifier(&self.name) {
+            return Err(UiError::InvalidStyle("keyframe name must be a valid identifier of at most 64 characters".to_string()));
         }
         if !(2..=64).contains(&self.frames.len()) {
             return Err(UiError::InvalidStyle("keyframes must contain 2 to 64 frames".to_string()));
