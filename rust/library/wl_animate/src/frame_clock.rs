@@ -156,8 +156,8 @@ mod tests {
 
     #[test]
     fn long_gaps_are_clamped_and_resume_discards_hidden_time() {
-        let mut clock = FrameClock::new(Duration::from_millis(10), Duration::from_millis(50))
-            .unwrap();
+        let mut clock =
+            FrameClock::new(Duration::from_millis(10), Duration::from_millis(50)).unwrap();
         clock.tick(Duration::from_secs(1)).unwrap();
         let delayed = clock.tick(Duration::from_secs(2)).unwrap();
         assert_eq!(delayed.delta, Duration::from_millis(50));
@@ -172,8 +172,8 @@ mod tests {
 
     #[test]
     fn backwards_timestamps_reset_the_baseline_without_a_spike() {
-        let mut clock = FrameClock::new(Duration::from_millis(10), Duration::from_millis(100))
-            .unwrap();
+        let mut clock =
+            FrameClock::new(Duration::from_millis(10), Duration::from_millis(100)).unwrap();
         clock.tick(Duration::from_millis(100)).unwrap();
         assert_eq!(clock.tick(Duration::from_millis(90)), None);
         let next = clock.tick(Duration::from_millis(100)).unwrap();
