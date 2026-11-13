@@ -304,8 +304,9 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 
 - Extended the style-range audit beyond the earlier negative-margin and percentage-length fixes. CSS transforms now accept finite negative scale values for mirrored layouts; the serializer already emits the signed values directly.
 - Box-shadow offsets and spread may be signed, while blur radii remain finite and non-negative. Text shadows accept signed X/Y offsets and non-negative blur, and reject non-zero spread because CSS `text-shadow` has no spread component.
-- Added regression coverage for mirrored transforms, signed box-shadow geometry, signed text-shadow offsets, and invalid text-shadow spread / negative blur.
+- Position insets (`top`, `right`, `bottom`, `left`) now validate finite values while allowing signed pixel/percentage offsets; outline offsets may be negative while outline widths remain non-negative.
+- Added regression coverage for mirrored transforms, signed box-shadow geometry, signed text-shadow offsets, invalid text-shadow spread / negative blur, signed insets / outline offsets, and non-finite insets.
 - Updated `docs/wl_ui/styling.md` to document these CSS-compatible ranges.
-- Commits for this audit: `65172cd` (initial validation changes), `86bd982` (iterator correction), `2396f4c` (text-shadow validation), `b1f4ddc` (Rust formatting), and `587d274` (documentation).
+- Commits for this audit: `65172cd` (initial validation changes), `86bd982` (iterator correction), `2396f4c` (text-shadow validation), `b1f4ddc` (Rust formatting), `587d274` (shadow/transform documentation), `2b4ad12` (signed inset validation), and `8ed3104` (inset/outline documentation).
 - Verification status: the workflow run created for the earlier `65172cd` merge candidate failed at `cargo fmt --check` on one test-call layout, before Rust compilation/tests. The formatting correction was committed as `b1f4ddc`; subsequent text-shadow and docs changes are not yet covered by a fresh confirmed CI result. Do not treat the earlier clean CI run for `48438aa` as verification of these later commits.
 
