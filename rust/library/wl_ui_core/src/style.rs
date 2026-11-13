@@ -1477,7 +1477,7 @@ impl UiAnimation {
             UiAnimationIterations::Infinite => "infinite".to_string(),
         };
         format!(
-            "{} {}ms {} {}ms {} {} {} {}",
+            "{} calc({}ms * var(--wl-motion-enabled,1)) {} calc({}ms * var(--wl-motion-enabled,1)) {} {} {} {}",
             self.name, self.duration_ms, self.easing.css(), self.delay_ms,
             iterations, self.direction.css(), self.fill_mode.css(), self.play_state.css()
         )
@@ -2225,6 +2225,9 @@ impl UiStyle {
                 )));
             }
         }
+        if self.animations.len() > 8 {
+            return Err(UiError::InvalidStyle("a component cannot have more than 8 simultaneous animations".to_string()));
+        }
         for animation in &self.animations {
             animation.validate()?;
         }
@@ -2814,6 +2817,9 @@ impl UiStyleSheet {
                 return Err(UiError::InvalidStyle("keyframe names must be unique within a stylesheet".to_string()));
             }
         }
+        if self.rules.len() > 4096 {
+            return Err(UiError::InvalidStyle("a stylesheet cannot contain more than 4096 rules".to_string()));
+        }
         for rule in &self.rules {
             rule.selector.css()?;
             rule.style.validate()?;
@@ -2847,6 +2853,9 @@ impl UiStyleSheet {
                 css.push('}');
             }
             css.push('}');
+        }
+        if !self.keyframes.is_empty() {
+            css.push_str("@media(prefers-reduced-motion:reduce){[data-wl-component]{animation-duration:0.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;}}");
         }
         for rule in &self.rules {
             let declarations = rule.style.css_declarations()?;
@@ -3268,6 +3277,73 @@ mod tests {
             UiStyle::new().opacity(1.5),
         );
         assert!(invalid.validate().is_err());
+    }
+
+    #[test]
+    fn emits_typed_keyframes_and_animation_declarations() {
+        let keyframes = UiKeyframes::new(
+            "fade_in",
+            [
+                UiKeyframe::new(0.0, UiStyle::new().opacity(0.0)),
+                UiKeyframe::new(
+                    100.0,
+                    UiStyle::new().opacity(1.0).transform(UiTransform::identity().translate(0.0, 0.0)),
+                ),
+            ],
+        );
+        let stylesheet = UiStyleSheet::new()
+            .keyframes(keyframes)
+            .rule(
+                UiSelector::new(UiComponent::Card).class("entering"),
+                UiStyle::new().animation(
+                    UiAnimation::new("fade_in", 240)
+                        .delay(-20)
+                        .iterations(UiAnimationIterations::Count(2))
+                        .direction(UiAnimationDirection::Alternate)
+                        .fill_mode(UiAnimationFillMode::Both)
+                        .play_state(UiAnimationPlayState::Paused)
+                        .easing(UiEasing::EaseOut),
+                ),
+            );
+        let css = stylesheet.to_css().unwrap();
+        assert!(css.contains("@keyframes fade_in{0%{opacity:0;}"));
+        assert!(css.contains("100%{opacity:1;"));
+        assert!(css.contains("animation:fade_in calc(240ms * var(--wl-motion-enabled,1)) ease-out calc(-20ms * var(--wl-motion-enabled,1)) 2 alternate both paused;"));
+        assert!(css.contains("prefers-reduced-motion:reduce"));
+    }
+
+    #[test]
+    fn rejects_untrusted_or_unbounded_animation_definitions() {
+        let unsafe_name = UiStyleSheet::new().keyframes(UiKeyframes::new(
+            "fade;body",
+            [
+                UiKeyframe::new(0.0, UiStyle::new().opacity(0.0)),
+                UiKeyframe::new(100.0, UiStyle::new().opacity(1.0)),
+            ],
+        ));
+        assert!(unsafe_name.validate().is_err());
+
+        let missing_definition = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Card),
+            UiStyle::new().animation(UiAnimation::new("missing", 100)),
+        );
+        assert!(missing_definition.validate().is_err());
+
+        let invalid_iterations = UiStyleSheet::new()
+            .keyframes(UiKeyframes::new(
+                "pulse",
+                [
+                    UiKeyframe::new(0.0, UiStyle::new().opacity(0.2)),
+                    UiKeyframe::new(100.0, UiStyle::new().opacity(1.0)),
+                ],
+            ))
+            .rule(
+                UiSelector::new(UiComponent::Card),
+                UiStyle::new().animation(
+                    UiAnimation::new("pulse", 100).iterations(UiAnimationIterations::Count(1001)),
+                ),
+            );
+        assert!(invalid_iterations.validate().is_err());
     }
 
     #[test]
