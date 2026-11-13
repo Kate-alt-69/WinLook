@@ -2442,6 +2442,14 @@ def ui_verify(runner: Runner) -> None:
         "Windows 10 facade/backend tests",
         ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--features", "windows10", "--all-targets"],
     )
+    for legacy_feature in ("windows7", "windows8", "windows81"):
+        runner.run(
+            "Compile wl_ui " + legacy_feature + " module",
+            [
+                "cargo", "test", "-p", "wl_ui", "--no-default-features",
+                "--features", legacy_feature, "--all-targets",
+            ],
+        )
     runner.run(
         "UI facade and Win32 backend Clippy",
         [
