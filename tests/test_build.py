@@ -604,15 +604,27 @@ class BuildHelpersTests(unittest.TestCase):
             [("winlook-win10", "winlook.bg"), ("winlook-win11", "winlook-bg")],
         )
 
-    def test_manager_ui_requires_all_three_manifests(self):
+    def test_manager_ui_requires_facade_and_all_public_backend_modules(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.assertFalse(build.check_ui_sources(root))
-            for path in (
+            required = (
+                "rust/library/wl_ui_core/Cargo.toml",
+                "rust/library/wl_ui_win32/Cargo.toml",
+                "rust/library/wl_ui_windows7/Cargo.toml",
+                "rust/library/wl_ui_windows10/Cargo.toml",
+                "rust/library/wl_ui_windows11/Cargo.toml",
                 "rust/library/wl_ui/Cargo.toml",
+                "rust/library/wl_ui/src/windows7/mod.rs",
+                "rust/library/wl_ui/src/windows8/mod.rs",
+                "rust/library/wl_ui/src/windows81/mod.rs",
+                "rust/library/wl_ui/src/windows10/mod.rs",
+                "rust/library/wl_ui/src/windows11/mod.rs",
+                "rust/library/wl_ui/src/tauri2/mod.rs",
                 "rust/win10/Cargo.toml",
                 "rust/win11/Cargo.toml",
-            ):
+            )
+            for path in required:
                 target = root / path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text("[package]\nname = 'test'\n", encoding="utf-8")

@@ -282,9 +282,7 @@ unsafe extern "system" fn window_proc(
                 && notification == LBN_SELCHANGE
             {
                 let application = unsafe { &(*state).application };
-                let selected = unsafe {
-                    SendMessageW((*state).navigation, LB_GETCURSEL, 0, 0)
-                };
+                let selected = unsafe { SendMessageW((*state).navigation, LB_GETCURSEL, 0, 0) };
                 if selected >= 0 {
                     if let Some(page) = application.pages().get(selected as usize) {
                         unsafe { set_page_content((*state).content, page) };
@@ -331,9 +329,7 @@ fn show_start_error(error: &UiError, title: &str) {
 
 fn register_window_class(instance: Handle) -> Result<(), UiError> {
     let class_name = wide(CLASS_NAME);
-    let cursor = unsafe {
-        LoadCursorW(std::ptr::null_mut(), 32512usize as *const u16)
-    };
+    let cursor = unsafe { LoadCursorW(std::ptr::null_mut(), 32512usize as *const u16) };
     let class = WindowClass {
         style: 0x0002 | 0x0001,
         window_proc: Some(window_proc),
@@ -388,9 +384,7 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
 
     if hwnd.is_null() {
         unsafe { drop(Box::from_raw(state_pointer)) };
-        let error = UiError::Backend(
-            "CreateWindowExW failed for the native Win32 UI".to_string(),
-        );
+        let error = UiError::Backend("CreateWindowExW failed for the native Win32 UI".to_string());
         show_start_error(&error, application.window_config().title());
         return Err(error);
     }
@@ -412,9 +406,7 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
 
     let mut loop_error = false;
     loop {
-        let result = unsafe {
-            GetMessageW(&mut message, std::ptr::null_mut(), 0, 0)
-        };
+        let result = unsafe { GetMessageW(&mut message, std::ptr::null_mut(), 0, 0) };
         if result == -1 {
             loop_error = true;
             break;
@@ -434,7 +426,8 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     unsafe { drop(Box::from_raw(state_pointer)) };
 
     if loop_error {
-        let error = UiError::Backend("GetMessageW failed in the native Win32 message loop".to_string());
+        let error =
+            UiError::Backend("GetMessageW failed in the native Win32 message loop".to_string());
         show_start_error(&error, application.window_config().title());
         Err(error)
     } else {

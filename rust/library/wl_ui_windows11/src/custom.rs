@@ -79,8 +79,7 @@ impl Component for CustomShell {
 
         context.window_title(format!("{} — {}", window.title(), page.title()));
         context.window_visuals(
-            WindowVisuals::new()
-                .client_size(window.width() as f64, window.height() as f64),
+            WindowVisuals::new().client_size(window.width() as f64, window.height() as f64),
         );
 
         let visible_pages: Vec<&UiPage> = self
@@ -110,17 +109,15 @@ impl Component for CustomShell {
             .keyed_menu_items(menu_items)
             .content(
                 ScrollViewer::new().content(
-                    StackPanel::new()
-                        .spacing(14.0)
-                        .children((
-                            TextBlock::new().text(page.title()).font_size(28.0),
-                            TextBlock::new()
-                                .text(page.description())
-                                .text_wrapping(TextWrapping::Wrap),
-                            TextBlock::new()
-                                .text("This page is supplied by the application's shared wl_ui model.")
-                                .text_wrapping(TextWrapping::Wrap),
-                        )),
+                    StackPanel::new().spacing(14.0).children((
+                        TextBlock::new().text(page.title()).font_size(28.0),
+                        TextBlock::new()
+                            .text(page.description())
+                            .text_wrapping(TextWrapping::Wrap),
+                        TextBlock::new()
+                            .text("This page is supplied by the application's shared wl_ui model.")
+                            .text_wrapping(TextWrapping::Wrap),
+                    )),
                 ),
             );
 
@@ -136,9 +133,8 @@ impl Component for CustomShell {
                     .text(self.search.clone())
                     .placeholder_text("Search pages")
                     .on_text_changed(
-                        context.callback(|value: Rc<str>| {
-                            Message::SearchChanged(value.to_string())
-                        }),
+                        context
+                            .callback(|value: Rc<str>| Message::SearchChanged(value.to_string())),
                     ),
             );
 
