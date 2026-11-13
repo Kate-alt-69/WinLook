@@ -207,7 +207,12 @@ fn component_foreground(application: &UiApplication, component: UiComponent) -> 
 
 fn create_font(application: &UiApplication) -> Handle {
     let typography = application.theme_ref().typography_tokens();
-    let face = wide(&typography.font_family);
+    let family = match typography.font_family.as_str() {
+        "system-ui" | "sans-serif" => "Segoe UI",
+        "monospace" => "Consolas",
+        value => value,
+    };
+    let face = wide(family);
     unsafe {
         CreateFontW(
             -(typography.size_md.round() as i32),
