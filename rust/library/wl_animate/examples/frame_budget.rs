@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
-use wl_animate::{Animation, Direction, Easing, FillMode, IterationCount, Keyframe, KeyframeTrack};
+use wl_animate::{
+    Animation, Direction, Easing, FillMode, FrameClock, IterationCount, Keyframe, KeyframeTrack,
+};
 
 fn main() {
     const ANIMATION_COUNT: usize = 1024;
@@ -26,12 +28,17 @@ fn main() {
         .collect::<Vec<_>>();
 
     let frame_delta = Duration::from_nanos(16_666_667);
+    let mut frame_clock = FrameClock::sixty_fps();
+    let mut host_timestamp = Duration::ZERO;
     let started = Instant::now();
     let mut checksum = 0.0_f64;
     for _ in 0..FRAME_COUNT {
-        for animation in &mut animations {
-            if let Some(value) = animation.advance(frame_delta) {
-                checksum += value;
+        host_timestamp = host_timestamp.saturating_add(frame_delta);
+        if let Some(frame) = frame_clock.tick(host_timestamp) {
+            for animation in &mut animations {
+                if let Some(value) = animation.advance(frame.delta) {
+                    checksum += value;
+                }
             }
         }
     }
