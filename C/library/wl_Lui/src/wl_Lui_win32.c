@@ -135,15 +135,22 @@ static wl_lui_result wl_lui_update_font(
     HFONT font;
     HFONT previous_font;
     HWND hwnd;
+    const char *native_family;
     hwnd = native_window->hwnd;
     if (family == NULL || family[0] == '\0' || size == 0U || size > 256U
         || weight == 0U || weight > 1000U) {
         return WL_LUI_INVALID_ARGUMENT;
     }
+    native_family = family;
+    if (strcmp(family, "sans-serif") == 0 || strcmp(family, "system-ui") == 0) {
+        native_family = "Segoe UI";
+    } else if (strcmp(family, "monospace") == 0) {
+        native_family = "Consolas";
+    }
     font = CreateFontA(
         -(int)size, 0, 0, 0, (int)weight, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, native_family
     );
     if (font == NULL) {
         return WL_LUI_PLATFORM_ERROR;
