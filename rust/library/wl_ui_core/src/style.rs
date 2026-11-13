@@ -840,7 +840,6 @@ impl From<UiColor> for UiBackground {
     fn from(value: UiColor) -> Self { Self::Solid(value) }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 /// How content is distributed along the cross axis of a grid container.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UiAlignContent {
@@ -996,6 +995,7 @@ impl UiGridTrack {
 }
 
 /// A CSS display mode.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UiDisplay { Block, Inline, InlineBlock, Flex, InlineFlex, Grid, None }
 impl UiDisplay {
     fn css(self) -> &'static str {
@@ -1439,10 +1439,7 @@ impl UiStyle {
         self
     }
 
-    pub fn grid_rows(
-        mut self,
-        rows: impl IntoIterator<Item = UiGridTrack>,
-    ) -> Self {
+    pub fn grid_rows(mut self, rows: impl IntoIterator<Item = UiGridTrack>) -> Self {
         self.grid_rows = Some(rows.into_iter().collect());
         self
     }
@@ -1489,15 +1486,32 @@ impl UiStyle {
     }
 
     pub fn background_color(&self) -> Option<UiColor> {
-        match &self.background { Some(UiBackground::Solid(color)) => Some(*color), _ => None }
+        match &self.background {
+            Some(UiBackground::Solid(color)) => Some(*color),
+            _ => None,
+        }
     }
-    pub fn foreground_color(&self) -> Option<UiColor> { self.foreground }
-    pub fn border_color_value(&self) -> Option<UiColor> { self.border_color }
-    pub fn font_family_value(&self) -> Option<&str> { self.font_family.as_deref() }
-    pub fn font_size_value(&self) -> Option<f32> { self.font_size }
-    pub fn font_weight_value(&self) -> Option<u16> { self.font_weight }
-    pub fn border_width_value(&self) -> Option<f32> { self.border_width }
-    pub fn padding_value(&self) -> Option<UiEdges> { self.padding }
+    pub fn foreground_color(&self) -> Option<UiColor> {
+        self.foreground
+    }
+    pub fn border_color_value(&self) -> Option<UiColor> {
+        self.border_color
+    }
+    pub fn font_family_value(&self) -> Option<&str> {
+        self.font_family.as_deref()
+    }
+    pub fn font_size_value(&self) -> Option<f32> {
+        self.font_size
+    }
+    pub fn font_weight_value(&self) -> Option<u16> {
+        self.font_weight
+    }
+    pub fn border_width_value(&self) -> Option<f32> {
+        self.border_width
+    }
+    pub fn padding_value(&self) -> Option<UiEdges> {
+        self.padding
+    }
 
     pub fn outline(mut self, width: f32, offset: f32, color: UiColor) -> Self {
         self.outline_width = Some(width);
@@ -1507,8 +1521,14 @@ impl UiStyle {
     }
 
     pub fn validate(&self) -> Result<(), UiError> {
-        if self.font_family.as_ref().is_some_and(|family| !valid_font_family(family)) {
-            return Err(UiError::InvalidStyle("font family contains unsupported CSS characters".to_string()));
+        if self
+            .font_family
+            .as_ref()
+            .is_some_and(|family| !valid_font_family(family))
+        {
+            return Err(UiError::InvalidStyle(
+                "font family contains unsupported CSS characters".to_string(),
+            ));
         }
         if let Some(UiBackground::LinearGradient(gradient)) = &self.background {
             gradient.validate()?;
@@ -1561,7 +1581,9 @@ impl UiStyle {
             ("flex shrink", self.flex_shrink),
         ] {
             if value.is_some_and(|value| !finite_non_negative(value)) {
-                return Err(UiError::InvalidStyle(format!("{name} must be finite and non-negative")));
+                return Err(UiError::InvalidStyle(format!(
+                    "{name} must be finite and non-negative"
+                )));
             }
         }
         if self.transform.is_some_and(|value| !value.validate()) {
@@ -1583,17 +1605,17 @@ impl UiStyle {
                 }
             }
         }
-        for (name, value) in [
-            ("column gap", self.column_gap),
-            ("row gap", self.row_gap),
-        ] {
+        for (name, value) in [("column gap", self.column_gap), ("row gap", self.row_gap)] {
             if value.is_some_and(|value| !finite_non_negative(value)) {
                 return Err(UiError::InvalidStyle(format!(
                     "{name} must be finite and non-negative"
                 )));
             }
         }
-        if self.aspect_ratio.is_some_and(|value| !finite_positive(value)) {
+        if self
+            .aspect_ratio
+            .is_some_and(|value| !finite_positive(value))
+        {
             return Err(UiError::InvalidStyle(
                 "aspect ratio must be finite and positive".to_string(),
             ));
@@ -2311,13 +2333,7 @@ mod tests {
             .text_overflow(UiTextOverflow::Ellipsis)
             .aspect_ratio(1.5)
             .corner_radii(UiCornerRadii::new(8.0, 8.0, 12.0, 12.0))
-            .text_shadow(UiShadow::new(
-                UiColor::rgb(0, 0, 0),
-                0.0,
-                1.0,
-                2.0,
-                0.0,
-            ));
+            .text_shadow(UiShadow::new(UiColor::rgb(0, 0, 0), 0.0, 1.0, 2.0, 0.0));
         let css = UiStyleSheet::new()
             .rule(UiSelector::new(UiComponent::Card), style)
             .to_css()
