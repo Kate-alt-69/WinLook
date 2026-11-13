@@ -51,9 +51,16 @@ impl Easing {
                     1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
                 }
             }
-            Self::EaseInSine => 1.0 - (t * std::f64::consts::FRAC_PI_2).cos(),
-            Self::EaseOutSine => (t * std::f64::consts::FRAC_PI_2).sin(),
-            Self::EaseInOutSine => -((std::f64::consts::PI * t).cos() - 1.0) / 2.0,
+            // Polynomial sine avoids transcendental calls in the 60 FPS hot path.
+            Self::EaseInSine => {
+                let value = fast_sin(t * std::f64::consts::FRAC_PI_4);
+                2.0 * value * value
+            }
+            Self::EaseOutSine => fast_sin(t * std::f64::consts::FRAC_PI_2),
+            Self::EaseInOutSine => {
+                let value = fast_sin(t * std::f64::consts::FRAC_PI_2);
+                value * value
+            },
             Self::EaseInQuart => t.powi(4),
             Self::EaseOutQuart => 1.0 - inverse.powi(4),
             Self::EaseInOutQuart => {
@@ -73,4 +80,22 @@ pub(crate) fn clamp_progress(progress: f64) -> f64 {
     } else {
         progress.clamp(0.0, 1.0)
     }
+}
+
+
+/// Degree-11 sine approximation on [0, pi/2], using only multiply/add.
+#[inline]
+fn fast_sin(value: f64) -> f64 {
+    let square = value * value;
+    value
+        * (1.0
+            + square
+                * (-1.0 / 6.0
+                    + square
+                        * (1.0 / 120.0
+                            + square
+                                * (-1.0 / 5040.0
+                                    + square
+                                        * (1.0 / 362880.0
+                                            - square / 39916800.0)))))
 }
