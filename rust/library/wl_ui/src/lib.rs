@@ -162,6 +162,14 @@ mod tests {
     }
 
     #[test]
+    fn shared_frame_clock_is_reexported_by_wl_ui() {
+        let mut clock = FrameClock::sixty_fps();
+        let first = clock.tick(std::time::Duration::ZERO).unwrap();
+        assert_eq!(first.delta, std::time::Duration::ZERO);
+        assert_eq!(first.frame_index, 0);
+    }
+
+    #[test]
     fn manager_navigation_ids_are_unique_and_ordered() {
         let application = manager_app();
         assert!(application.validate().is_ok());
