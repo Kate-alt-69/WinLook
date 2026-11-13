@@ -88,10 +88,21 @@ impl<T: crate::Interpolate> Animation<T> {
         })
     }
 
-    pub fn state(&self) -> PlaybackState { self.state }
-    pub fn elapsed(&self) -> Duration { self.elapsed }
-    pub fn duration(&self) -> Duration { self.duration }
-    pub fn delay(&self) -> Duration { self.delay }
+    pub fn state(&self) -> PlaybackState {
+        self.state
+    }
+
+    pub fn elapsed(&self) -> Duration {
+        self.elapsed
+    }
+
+    pub fn duration(&self) -> Duration {
+        self.duration
+    }
+
+    pub fn delay(&self) -> Duration {
+        self.delay
+    }
 
     /// Called once by the shared host frame loop. No per-animation wakeup.
     #[inline]
