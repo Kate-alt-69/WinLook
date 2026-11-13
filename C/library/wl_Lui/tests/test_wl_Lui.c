@@ -128,7 +128,7 @@ int main(void) {
     assert(wl_lui_theme_init(0, WL_LUI_THEME_SYSTEM) == WL_LUI_INVALID_ARGUMENT);
     assert(wl_lui_theme_init(&theme, WL_LUI_THEME_SYSTEM) == WL_LUI_OK);
     assert(theme.version == WL_LUI_THEME_VERSION);
-    assert(strcmp(theme.font_family, "Segoe UI") == 0);
+    assert(strcmp(theme.font_family, "sans-serif") == 0);
     assert(theme.light.accent.red == 0U);
     assert(theme.dark.window.red == 24U);
     assert(theme.high_contrast.focus.red == 255U);
