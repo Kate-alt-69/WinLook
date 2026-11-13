@@ -24,6 +24,7 @@ impl<T> Keyframe<T> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TrackError {
     Empty,
+    TooManyKeyframes,
     KeyframesMustBeStrictlyIncreasing,
 }
 
@@ -31,6 +32,7 @@ impl fmt::Display for TrackError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Empty => f.write_str("a keyframe track cannot be empty"),
+            Self::TooManyKeyframes => f.write_str("a keyframe track cannot exceed 64 keyframes"),
             Self::KeyframesMustBeStrictlyIncreasing => {
                 f.write_str("keyframe timestamps must be strictly increasing")
             }
@@ -69,6 +71,9 @@ impl<T: Interpolate> KeyframeTrack<T> {
     pub fn new(keyframes: Vec<Keyframe<T>>) -> Result<Self, TrackError> {
         if keyframes.is_empty() {
             return Err(TrackError::Empty);
+        }
+        if keyframes.len() > crate::MAX_ANIMATION_KEYFRAMES {
+            return Err(TrackError::TooManyKeyframes);
         }
         if keyframes.windows(2).any(|pair| pair[0].at >= pair[1].at) {
             return Err(TrackError::KeyframesMustBeStrictlyIncreasing);
@@ -156,6 +161,23 @@ mod tests {
             Keyframe::new(Duration::from_millis(300), 30.0, Easing::Linear),
         ])
         .unwrap()
+    }
+
+    #[test]
+    fn rejects_tracks_over_the_shared_keyframe_limit() {
+        let keyframes = (0..=crate::MAX_ANIMATION_KEYFRAMES)
+            .map(|index| {
+                Keyframe::new(
+                    Duration::from_millis(index as u64),
+                    index as f64,
+                    Easing::Linear,
+                )
+            })
+            .collect();
+        assert_eq!(
+            KeyframeTrack::new(keyframes).err(),
+            Some(TrackError::TooManyKeyframes)
+        );
     }
 
     #[test]
