@@ -9,6 +9,7 @@
 
 mod animation;
 mod easing;
+mod frame_clock;
 mod svg;
 mod track;
 mod tween;
@@ -20,6 +21,7 @@ pub use animation::{
     MAX_ANIMATION_TIME,
 };
 pub use easing::Easing;
+pub use frame_clock::{FrameClock, FrameClockError, FrameTick};
 pub use svg::{PathCommand, SvgPathError, SvgPathErrorKind, VectorPath};
 pub use track::{Keyframe, KeyframeTrack, TrackCursor, TrackError};
 pub use tween::{PlaybackState, Tween};
