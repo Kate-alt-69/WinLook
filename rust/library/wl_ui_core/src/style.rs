@@ -697,13 +697,18 @@ impl UiEdges {
         }
     }
 
-    fn validate(self, name: &str) -> Result<(), UiError> {
+    fn validate(self, name: &str, allow_negative: bool) -> Result<(), UiError> {
         if [self.top, self.right, self.bottom, self.left]
             .iter()
-            .any(|value| !value.is_finite() || *value < 0.0)
+            .any(|value| !value.is_finite() || (!allow_negative && *value < 0.0))
         {
+            let range = if allow_negative {
+                "finite"
+            } else {
+                "finite and non-negative"
+            };
             return Err(UiError::InvalidStyle(format!(
-                "{name} values must be finite and non-negative"
+                "{name} values must be {range}"
             )));
         }
         Ok(())
@@ -733,7 +738,7 @@ impl UiLength {
         match self {
             Self::Auto => Ok(()),
             Self::Px(value) if finite_non_negative(value) => Ok(()),
-            Self::Percent(value) if finite_non_negative(value) && value <= 100.0 => Ok(()),
+            Self::Percent(value) if finite_non_negative(value) => Ok(()),
             _ => Err(UiError::InvalidStyle(format!(
                 "{name} is outside its valid range"
             ))),
@@ -2077,10 +2082,10 @@ impl UiStyle {
             ));
         }
         if let Some(value) = self.padding {
-            value.validate("padding")?;
+            value.validate("padding", false)?;
         }
         if let Some(value) = self.margin {
-            value.validate("margin")?;
+            value.validate("margin", true)?;
         }
         for (name, value) in [
             ("width", self.width),
@@ -2924,6 +2929,25 @@ mod tests {
             )
             .to_css()
             .is_err());
+    }
+
+    #[test]
+    fn supports_negative_margins_and_percentages_over_one_hundred() {
+        let style = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Card),
+            UiStyle::new()
+                .margin(UiEdges::new(-8.0, 0.0, 4.0, -12.0))
+                .width(UiLength::Percent(125.0)),
+        );
+        let css = style.to_css().unwrap();
+        assert!(css.contains("margin:-8px 0px 4px -12px"));
+        assert!(css.contains("width:125%"));
+
+        let invalid_padding = UiStyleSheet::new().rule(
+            UiSelector::new(UiComponent::Card),
+            UiStyle::new().padding(UiEdges::all(-1.0)),
+        );
+        assert!(invalid_padding.validate().is_err());
     }
 
     #[test]
