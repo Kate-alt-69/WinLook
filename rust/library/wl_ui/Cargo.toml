@@ -17,6 +17,7 @@ windows11 = ["dep:wl_ui_windows11"]
 tauri2 = ["dep:wl_ui_tauri2"]
 
 [dependencies]
+wl_animate = { version = "0.2.0-beta.1", path = "../wl_animate" }
 wl_ui_core = { version = "0.1.0-alpha.1", path = "../wl_ui_core" }
 wl_ui_windows7 = { version = "0.1.0-alpha.1", path = "../wl_ui_windows7", optional = true }
 wl_ui_windows10 = { version = "0.1.0-alpha.1", path = "../wl_ui_windows10", optional = true }
