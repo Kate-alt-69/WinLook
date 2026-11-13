@@ -77,6 +77,12 @@ Run the local 60 FPS workload microbenchmark:
 cargo run --release -p wl_animate --example frame_budget
 ```
 
+The C89 implementation has a matching 1,024-animation / 600-frame workload:
+
+```sh
+make -C C/library/wl_Lanimate benchmark
+```
+
 The example advances 1,024 animations for 600 frames using the polynomial
 sine easing curves and reports CPU timing on the current machine. It is not a GPU benchmark or a universal utilization
 guarantee. wlDE and wl_ui should share one frame clock and reuse the same
