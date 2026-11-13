@@ -13,7 +13,10 @@
 | `wl_ui::windows8` | `windows8` | Alias of the classic Win32 backend |
 | `wl_ui::windows81` | `windows81` | Alias of the classic Win32 backend |
 
-The shared application and styling types are imported from the crate root:
+The shared application and styling types are imported from the crate root.
+The portable `UiBackend` trait and `run_with_backend` entry point allow
+application-owned renderers on platforms without a built-in adapter.
+`wl_ui::animate` re-exports the portable `wl_animate` engine.
 `UiApplication`, `UiPage`, `UiWindowConfig`, `UiError`, `UiTheme`,
 `UiPalette`, `UiTypography`, `UiMetrics`, `UiEffects`, `UiColor`,
 `UiStyle`, `UiSelector`, `UiStyleSheet` and typed layout/motion values.
@@ -131,8 +134,10 @@ Every application model can carry a theme and ordered component rules:
 The theme contains semantic light/dark/high-contrast palettes, typography,
 spacing/radius/size tokens, shadows, focus and motion settings. The style model
 provides validated component selectors, visual states, box/flex layout,
-sizing, borders, gradients, text styles, transforms, transitions and
-responsive media rules.
+sizing, borders, gradients, text styles, transforms, transitions, bounded
+keyframe animations and responsive media rules. Animation definitions are
+typed and sanitized; Tauri uses CSS-native playback, while native hosts use
+the shared animation engine and must advertise actual backend support.
 
 Tauri 2 receives generated theme variables and selector CSS. The Windows 10
 renderer maps solid semantic colors and typography to native Win32/GDI
@@ -152,7 +157,7 @@ Detailed API reference:
 - **Windows 11:** WinUI 3 backend + the Windows 11 SDK / Visual Studio 2026 toolchain profile.
 - **Windows 7/8/8.1:** experimental classic Win32 route. Use Rust 1.77's compatible standard library or build a custom Tier 3 `*-win7-windows-msvc` toolchain; the current standard `*-pc-windows-msvc` target still requires Windows 10 or newer.
 - **Windows 95 through Vista:** use the separate C library `wl_Lui`, not the modern Rust standard-library target.
-- **macOS/Linux:** use the optional Tauri 2 module for a webview-based cross-platform application, or use the application model without a renderer.
+- **macOS/Linux/other hosts:** use Tauri 2 where its platform dependencies are available, or implement `UiBackend` and use the platform-neutral application model. The custom backend API is an extension contract, not a bundled GTK/Cocoa/SDL renderer.
 
 A feature being available for compilation does not mean that every OS has passed a runtime compatibility test. See the compatibility matrix and per-version notes in `plan/compatibility/`.
 
