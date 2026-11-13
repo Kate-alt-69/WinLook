@@ -89,7 +89,7 @@ if (wl_lui_window_set_style(window, &style) == WL_LUI_UNSUPPORTED) {
 
 ## Capability flags
 
-Call `wl_lui_style_capabilities()` before choosing optional style fields.
+Call `wl_lui_style_capabilities()` for the built-in backend, or `wl_lui_window_style_capabilities(window)` for the selected window backend before choosing optional style fields.
 The current native Win32 implementation supports:
 
 - `WL_LUI_STYLE_BACKGROUND`
@@ -118,6 +118,21 @@ capability flags without changing the meaning of the existing ones.
   from arbitrary threads unless the host application serializes UI access.
 - The current native backend uses GDI brushes/fonts and releases its owned
   resources when the window is destroyed.
+
+## Custom host backends
+
+A non-Windows host can supply a versioned `wl_lui_backend` table to
+`wl_lui_window_create_with_backend`. The callbacks own native creation,
+theme/style application, show/run and destruction. The table is copied, but
+`user_data` and any resources it references must remain valid until
+`wl_lui_window_destroy` returns. All callbacks are synchronous and the host
+must serialize UI calls according to its own threading rules.
+
+Each backend declares its supported style flags. Requests for unsupported
+fields return `WL_LUI_UNSUPPORTED`; a custom backend does not inherit the
+Win32 implementation or claim native rendering merely by accepting the
+shared data structures. The default `wl_lui_window_create` still selects the
+built-in Win32 backend where available.
 
 ## Platform limits
 
