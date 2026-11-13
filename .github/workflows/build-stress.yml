@@ -61,12 +61,18 @@ jobs:
 
   windows-applications:
     name: ${{ matrix.target }} / repeated native build and package
-    runs-on: windows-2022
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        target: [win10, win11]
+        include:
+          - target: win10
+            runner: windows-2022
+            compiler: "Visual Studio 2022 / Windows SDK 10.0.19041.0"
+          - target: win11
+            runner: windows-2025-vs2026
+            compiler: "Visual Studio 2026 / Windows SDK 10.0.26100.0"
     env:
       WINLOOK_STRESS_TARGET: ${{ matrix.target }}
     steps:
@@ -76,86 +82,31 @@ jobs:
           python-version: "3.12"
       - name: Run build-runner regression tests on Windows
         run: python -m unittest discover -s tests -v
-      - name: Initialize the installed Visual Studio MSVC environment
-        shell: pwsh
-        run: |
-          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-          if (-not (Test-Path $vswhere)) {
-            throw "vswhere.exe is missing: $vswhere"
-          }
-
-          $vsInstall = (& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1)
-          if ([string]::IsNullOrWhiteSpace($vsInstall)) {
-            & $vswhere -all -products '*' -property installationPath
-            throw "No Visual Studio instance with Microsoft.VisualStudio.Component.VC.Tools.x86.x64 was found."
-          }
-
-          $devCmd = Join-Path $vsInstall 'Common7\Tools\VsDevCmd.bat'
-          if (-not (Test-Path $devCmd)) {
-            throw "VsDevCmd.bat is missing from the selected Visual Studio instance: $devCmd"
-          }
-
-          $command = 'call "' + $devCmd + '" -no_logo -arch=x64 -host_arch=x64 && set'
-          $environmentLines = & $env:ComSpec /d /c $command 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            $environmentLines | ForEach-Object { Write-Host $_ }
-            throw "VsDevCmd.bat failed with exit code $LASTEXITCODE."
-          }
-
-          $values = @{}
-          foreach ($line in $environmentLines) {
-            $text = [string]$line
-            $separator = $text.IndexOf('=')
-            if ($separator -gt 0) {
-              $values[$text.Substring(0, $separator)] = $text.Substring($separator + 1)
-            }
-          }
-
-          $required = @('PATH', 'INCLUDE', 'LIB', 'WindowsSdkDir', 'WindowsSDKVersion', 'VCToolsInstallDir')
-          foreach ($name in $required) {
-            if ([string]::IsNullOrWhiteSpace($values[$name])) {
-              throw "VsDevCmd.bat did not export the required environment variable: $name"
-            }
-          }
-
-          $sdkRoot = $values['WindowsSdkDir'].TrimEnd([char]'\')
-          $sdkVersion = $values['WindowsSDKVersion'].TrimEnd([char]'\')
-          $sdkHeader = Join-Path $sdkRoot "Include\$sdkVersion\um\Windows.h"
-          $sdkLibrary = Join-Path $sdkRoot "Lib\$sdkVersion\um\x64\kernel32.lib"
-          if (-not (Test-Path $sdkHeader)) { throw "Windows SDK header is missing: $sdkHeader" }
-          if (-not (Test-Path $sdkLibrary)) { throw "Windows SDK library is missing: $sdkLibrary" }
-
-          foreach ($name in @('PATH', 'INCLUDE', 'LIB', 'LIBPATH', 'WindowsSdkDir', 'WindowsSDKVersion', 'UniversalCRTSdkDir', 'UCRTVersion', 'VCToolsInstallDir', 'VCToolsVersion', 'VCINSTALLDIR', 'VSINSTALLDIR', 'VSCMD_ARG_HOST_ARCH', 'VSCMD_ARG_TGT_ARCH', 'VSCMD_VER', 'VisualStudioVersion', 'DevEnvDir')) {
-            if ($values.ContainsKey($name)) {
-              Add-Content -Path $env:GITHUB_ENV -Value "$name=$($values[$name])" -Encoding utf8
-              Set-Item -Path "Env:$name" -Value $values[$name]
-            }
-          }
-
-          foreach ($tool in @('cl.exe', 'link.exe', 'rc.exe')) {
-            $resolved = & where.exe $tool | Select-Object -First 1
-            if ([string]::IsNullOrWhiteSpace($resolved)) {
-              throw "The Visual Studio developer environment did not expose $tool on PATH."
-            }
-            Write-Host "$tool => $resolved"
-          }
-          Write-Host "Windows SDK => $sdkRoot ($sdkVersion)"
-          Write-Host "Visual Studio => $vsInstall"
       - name: Select Rust 1.95.0
         run: python build.py setup --with-rust --apply
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
             build/.rcache
+            build/rust/${{ matrix.target }}
             ~/.cargo/registry
             ~/.cargo/git
           key: ${{ runner.os }}-${{ matrix.target }}-build-stress-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-build-stress-
-      - name: Require the complete MSVC and Windows SDK toolchain
+      - name: Require the matching MSVC and Windows SDK profile
         run: python build.py doctor --strict
-      - name: Verify WinUI Manager tests and Clippy
-        run: python build.py verify ui
+      - name: Verify the selected wl_ui backend
+        shell: pwsh
+        run: |
+          if ('${{ matrix.target }}' -eq 'win10') {
+            python build.py verify ui
+          } else {
+            cargo fmt --all -- --check
+            cargo test -p wl_ui_core --all-targets
+            cargo test -p wl_ui --no-default-features --features windows11 --all-targets
+            cargo clippy -p wl_ui_core -p wl_ui_windows11 -p wl_ui --no-default-features --features wl_ui/windows11 --all-targets -- -D warnings
+          }
       - name: Pass 1 / clean build and package
         run: |
           python build.py clean --yes

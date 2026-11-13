@@ -1,4 +1,3 @@
-
 name: Manager UI verification
 
 on:
@@ -6,6 +5,12 @@ on:
     branches: [main, github/workflow]
     paths:
       - "rust/library/wl_ui/**"
+      - "rust/library/wl_ui_core/**"
+      - "rust/library/wl_ui_win32/**"
+      - "rust/library/wl_ui_windows7/**"
+      - "rust/library/wl_ui_windows10/**"
+      - "rust/library/wl_ui_windows11/**"
+      - "rust/adapters/wl_ui_tauri2/**"
       - "rust/win10/**"
       - "rust/win11/**"
       - "Cargo.toml"
@@ -16,6 +21,9 @@ on:
     branches: [main, feature/wintoys-manager-ui]
     paths:
       - "rust/library/wl_ui/**"
+      - "rust/library/wl_ui_core/**"
+      - "rust/library/wl_ui_win32/**"
+      - "rust/library/wl_ui_windows10/**"
       - "rust/win10/**"
       - "rust/win11/**"
       - "Cargo.toml"
@@ -42,7 +50,7 @@ jobs:
         run: python build.py status ui --github-output
 
   verify:
-    name: WinUI 3 / Manager tests and lint
+    name: wl_ui facade / Windows 10 Win32 tests
     needs: detect
     if: needs.detect.outputs.available == 'true'
     runs-on: windows-2022

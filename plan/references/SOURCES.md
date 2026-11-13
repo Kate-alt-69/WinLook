@@ -1,6 +1,18 @@
 # WinLook Technical Source Ledger
 
-Last verified: 2026-11-10. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
+Last verified: 2026-11-13. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
+
+## Rust / UI runtime / hosted toolchains
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| RUST-001 | [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) | Standard `*-pc-windows-msvc` target requires Windows 10+ client installs | Does not mean every Win10 API is available; verify imported APIs independently |
+| RUST-002 | [Rust Windows 7 MSVC target](https://doc.rust-lang.org/rustc/platform-support/win7-windows-msvc.html) | Win7 MSVC triples exist as Tier 3 and are not shipped as prebuilt rustup components | Requires custom Rust build / build-std; not an automatic stable installation |
+| TAURI-001 | [Tauri 2.12 announcement](https://v2.tauri.app/blog/tauri-2.12/) | Tauri 2.12 raises MSRV to 1.90 and drops official Windows 7 support | Use a different backend for the Win7 baseline |
+| TAURI-002 | [Tauri WebView versions](https://tauri.app/reference/webview-versions/) | Tauri uses platform WebViews, including system WebView2 on Windows | Runtime/system package requirements remain platform-dependent |
+| BUILD-011 | [GitHub Actions runner images](https://github.com/actions/runner-images) | `windows-2022` is the VS 2022 image; `windows-2025-vs2026` is the VS 2026 image | Image contents change; validate exact VS/SDK components in the workflow |
+| BUILD-012 | [Windows 2022 hosted image inventory](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md) | VS 2022 hosted image includes Windows SDK 10.0.19041 and matching compiler tools | Current image inventory checked 2026-11-13; versions can change |
+| BUILD-013 | [Windows 2025 VS 2026 hosted image inventory](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-VS2026-Readme.md) | Dedicated hosted image provides VS 2026 and Windows 11 SDK 26100 | Current image inventory checked 2026-11-13; versions can change |
 
 ## Microsoft Windows / Win32
 

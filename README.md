@@ -47,15 +47,17 @@ RGB/peripheral lighting is intended to integrate with existing applications wher
 
 ## Windows and toolchain strategy
 
-The current official Rust/MSVC target documentation requires Windows 10 or later for client installs. The Rust GNU target page is currently a stub and does not establish an older-Windows support baseline. Accordingly, the planned default is:
+The Rust standard MSVC target now requires Windows 10 or later, but WinLook keeps older Win32 generations on deliberately separate backends:
 
-- **Windows 10 and later:** Rust/MSVC implementation candidate.
-- **Windows 95 through Windows 8.1:** separate C implementation and per-OS compiler/runtime adapters.
-- **Older Rust toolchains on pre-Windows-10:** research-only until the exact compiler, standard library, linker/runtime and target OS are verified.
+- **Windows 11:** Rust/MSVC + native WinUI 3, built with Visual Studio 2026 and Windows SDK 10.0.26100.
+- **Windows 10:** Rust/MSVC + lightweight native Win32/User32, built with Visual Studio 2022 and Windows SDK 10.0.19041. It does not link Windows App SDK, Windows Reactor, WebView2 or the Tauri adapter.
+- **Windows 7/8/8.1:** experimental classic Win32 backend. Rust 1.77 is the last stable toolchain with built-in Windows 7 support; newer Rust can use the Tier 3 `*-win7-windows-msvc` custom target, which is not distributed as a prebuilt rustup component.
+- **Windows 95 through Vista:** separate C89 `wl_Lui` Win32 library and OS-specific compiler/runtime adapters.
+- **macOS/Linux and cross-platform UI:** optional Tauri 2 adapter, using each platform's system WebView. Tauri 2.12 raised its MSRV to 1.90 and dropped official Windows 7 support.
 
-These are toolchain planning boundaries, not WinLook OS support claims. Every WinLook adapter still needs exact build/runtime tests.
+These are code/toolchain routes, not OS-support claims. Every adapter still requires real runtime testing on its oldest declared Windows build.
 
-Sources: [Rust MSVC target support](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) · [Rust GNU target support](https://doc.rust-lang.org/rustc/platform-support/windows-gnu.html).
+Sources: [Rust MSVC targets](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html) · [Rust Windows 7 MSVC target](https://doc.rust-lang.org/rustc/platform-support/win7-windows-msvc.html) · [Tauri 2.12 release](https://v2.tauri.app/blog/tauri-2.12/).
 
 ## Runtime architecture
 
@@ -79,7 +81,7 @@ Detailed specifications live in [`plan/architecture/`](plan/architecture/overvie
 
 ## Manager UI prototype
 
-The Win10/Win11 Manager shell is being prototyped with native WinUI 3 through Windows Reactor in [wl_ui](rust/library/wl_ui/README.md). The current shell has navigation/search/theme controls and explicit preview states; it does not apply system settings until BGW and IPC are implemented. See [UI Architecture](plan/architecture/ui-architecture.md).
+The public [wl_ui crate](rust/library/wl_ui/README.md) exposes backend modules from one import path: `wl_ui::windows10`, `wl_ui::windows11`, `wl_ui::windows7` and `wl_ui::tauri2`. Shared application/page types stay at the crate root; the OS renderer crates remain private optional dependencies. The Windows 10 executable uses Win32/User32, while Windows 11 uses native WinUI 3. `wl_Lui` is the separate C89 baseline for legacy Win32 applications. The Manager pages are still preview scaffolds and do not apply system settings until BGW and IPC are implemented. See [UI Architecture](plan/architecture/ui-architecture.md).
 
 ## Building WinLook
 
