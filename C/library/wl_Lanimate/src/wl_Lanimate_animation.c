@@ -1,6 +1,7 @@
 #include "wl_Lanimate.h"
 
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 
 #define WL_LANIMATE_MAX_TIME_MS 3600000.0
@@ -155,7 +156,12 @@ wl_Lanimate_result wl_Lanimate_animation_sample(
             fraction = modf(cycle, &whole_iteration);
             if (animation->direction == WL_LANIMATE_DIRECTION_ALTERNATE
                 || animation->direction == WL_LANIMATE_DIRECTION_ALTERNATE_REVERSE) {
-                iteration = fmod(whole_iteration, 2.0) >= 1.0 ? 1U : 0U;
+                if (whole_iteration < (double)ULONG_MAX) {
+                    iteration = (((unsigned long)whole_iteration) & 1UL) != 0UL
+                        ? 1U : 0U;
+                } else {
+                    iteration = fmod(whole_iteration, 2.0) >= 1.0 ? 1U : 0U;
+                }
             } else {
                 iteration = 0U;
             }
