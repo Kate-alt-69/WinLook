@@ -257,7 +257,8 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
     HBRUSH surface;
     wl_lui_color next_background;
     wl_lui_color next_foreground;
-    int update_colors;
+    int update_background;
+    int update_foreground;
     wl_lui_result result;
 
     if (native_handle == NULL || style == NULL) {
@@ -271,20 +272,20 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
         return WL_LUI_OK;
     }
 
-    update_colors = (style->flags
-        & (WL_LUI_STYLE_BACKGROUND | WL_LUI_STYLE_FOREGROUND)) != 0UL;
+    update_background = (style->flags & WL_LUI_STYLE_BACKGROUND) != 0UL;
+    update_foreground = (style->flags & WL_LUI_STYLE_FOREGROUND) != 0UL;
     next_background = native_window->background;
     next_foreground = native_window->foreground;
-    if ((style->flags & WL_LUI_STYLE_BACKGROUND) != 0UL) {
+    if (update_background) {
         next_background = style->background;
     }
-    if ((style->flags & WL_LUI_STYLE_FOREGROUND) != 0UL) {
+    if (update_foreground) {
         next_foreground = style->foreground;
     }
 
     background = NULL;
     surface = NULL;
-    if (update_colors) {
+    if (update_background) {
         background = CreateSolidBrush(wl_lui_colorref(next_background));
         surface = CreateSolidBrush(wl_lui_colorref(next_background));
         if (background == NULL || surface == NULL) {
@@ -308,7 +309,7 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
         }
     }
 
-    if (update_colors) {
+    if (update_background) {
         if (native_window->background_brush != NULL) {
             DeleteObject(native_window->background_brush);
         }
@@ -318,10 +319,14 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
         native_window->background_brush = background;
         native_window->surface_brush = surface;
         native_window->background = next_background;
+    }
+    if (update_foreground) {
         native_window->foreground = next_foreground;
-        InvalidateRect(native_window->hwnd, NULL, TRUE);
     }
 
+    if (update_background || update_foreground) {
+        InvalidateRect(native_window->hwnd, NULL, TRUE);
+    }
     return WL_LUI_OK;
 }
 

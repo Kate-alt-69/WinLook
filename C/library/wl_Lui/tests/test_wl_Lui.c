@@ -44,6 +44,13 @@ int main(void) {
     wl_lui_theme_init(&theme, WL_LUI_THEME_DARK);
     assert(wl_lui_window_set_theme(window, &theme) == WL_LUI_OK);
     wl_lui_style_init(&style);
+    style.flags = WL_LUI_STYLE_FOREGROUND;
+    style.foreground.red = 220U;
+    style.foreground.green = 224U;
+    style.foreground.blue = 232U;
+    style.foreground.alpha = 255U;
+    assert(wl_lui_window_set_style(window, &style) == WL_LUI_OK);
+    wl_lui_style_init(&style);
     style.flags = WL_LUI_STYLE_FONT;
     strcpy(style.font_family, "Segoe UI");
     style.font_size = 16U;
