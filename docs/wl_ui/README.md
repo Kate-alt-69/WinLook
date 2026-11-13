@@ -77,6 +77,7 @@ fn main() -> Result<(), wl_ui::UiError> {
 ## Documentation
 
 - [Styling and design-system API](styling.md)
+- [Shared animation runtime and frame clock](animation.md)
 - [Renderer and compatibility map](backends.md)
 - [Legacy C API overview](C/README.md)
 - [Legacy C theme and style API](C/styling.md)
