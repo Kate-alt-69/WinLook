@@ -263,6 +263,9 @@ wl_lui_result wl_lui_platform_set_style(void *native_handle, const wl_lui_style 
         return WL_LUI_UNSUPPORTED;
     }
     native_window = (wl_lui_native_window *)native_handle;
+    if (style->flags == 0UL) {
+        return WL_LUI_OK;
+    }
     next_background = native_window->background;
     next_foreground = native_window->foreground;
     if ((style->flags & WL_LUI_STYLE_BACKGROUND) != 0UL) {

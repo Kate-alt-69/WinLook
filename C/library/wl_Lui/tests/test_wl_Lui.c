@@ -24,6 +24,13 @@ int main(void) {
     assert(wl_lui_style_init(&style) == WL_LUI_OK);
     assert(style.version == WL_LUI_STYLE_VERSION);
     assert(style.opacity_milli == 1000U);
+    style.flags = WL_LUI_STYLE_BACKGROUND;
+    style.font_family[0] = '\0';
+    style.font_size = 0U;
+    style.font_weight = 0U;
+    style.opacity_milli = 2000U;
+    assert(style.version == WL_LUI_STYLE_VERSION);
+    assert(wl_lui_style_init(&style) == WL_LUI_OK);
     assert(wl_lui_window_create(0, &window) == WL_LUI_INVALID_ARGUMENT);
     assert(wl_lui_window_create(0, 0) == WL_LUI_INVALID_ARGUMENT);
 
@@ -36,7 +43,8 @@ int main(void) {
 #ifdef _WIN32
     assert(result == WL_LUI_OK);
     assert(window != 0);
-    assert((wl_lui_style_capabilities() & WL_LUI_STYLE_BACKGROUND) != 0UL);
+    assert(wl_lui_style_capabilities()
+        == (WL_LUI_STYLE_BACKGROUND | WL_LUI_STYLE_FOREGROUND | WL_LUI_STYLE_FONT));
     wl_lui_theme_init(&theme, WL_LUI_THEME_DARK);
     assert(wl_lui_window_set_theme(window, &theme) == WL_LUI_OK);
     wl_lui_style_init(&style);
@@ -53,6 +61,19 @@ int main(void) {
     wl_lui_style_init(&style);
     style.flags = WL_LUI_STYLE_CORNER_RADIUS;
     assert(wl_lui_window_set_style(window, &style) == WL_LUI_UNSUPPORTED);
+    wl_lui_style_init(&style);
+    style.flags = WL_LUI_STYLE_BORDER | WL_LUI_STYLE_PADDING;
+    assert(wl_lui_window_set_style(window, &style) == WL_LUI_UNSUPPORTED);
+    wl_lui_style_init(&style);
+    style.flags = WL_LUI_STYLE_OPACITY;
+    assert(wl_lui_window_set_style(window, &style) == WL_LUI_UNSUPPORTED);
+    wl_lui_style_init(&style);
+    style.flags = WL_LUI_STYLE_BACKGROUND;
+    style.font_family[0] = '\0';
+    style.font_size = 0U;
+    style.font_weight = 0U;
+    style.opacity_milli = 2000U;
+    assert(wl_lui_window_set_style(window, &style) == WL_LUI_OK);
     wl_lui_window_destroy(window);
 #else
     assert(result == WL_LUI_UNSUPPORTED);

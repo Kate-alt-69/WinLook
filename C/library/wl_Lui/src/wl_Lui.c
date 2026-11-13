@@ -217,6 +217,14 @@ wl_lui_result wl_lui_window_set_theme(
         || theme->scheme > WL_LUI_THEME_HIGH_CONTRAST
         || theme->font_size == 0U || theme->font_size > 256U
         || theme->font_weight == 0U || theme->font_weight > 1000U
+        || theme->spacing_unit == 0U || theme->spacing_unit > 128U
+        || theme->corner_radius > 512U
+        || theme->control_height == 0U || theme->control_height > 1024U
+        || theme->focus_ring_width > 64U
+        || theme->motion_fast_ms > 60000U
+        || theme->motion_normal_ms > 60000U
+        || theme->motion_slow_ms > 60000U
+        || theme->reduced_motion > 1U
         || theme->font_family[0] == '\0'
         || memchr(theme->font_family, '\0', WL_LUI_FONT_FAMILY_CAPACITY) == NULL) {
         return WL_LUI_INVALID_ARGUMENT;
@@ -239,12 +247,31 @@ wl_lui_result wl_lui_window_set_style(
         || (style->flags & ~(WL_LUI_STYLE_BACKGROUND
             | WL_LUI_STYLE_FOREGROUND | WL_LUI_STYLE_BORDER
             | WL_LUI_STYLE_PADDING | WL_LUI_STYLE_FONT
-            | WL_LUI_STYLE_OPACITY | WL_LUI_STYLE_CORNER_RADIUS)) != 0UL
-        || style->opacity_milli > 1000U
-        || style->font_size > 256U
-        || style->font_weight > 1000U
-        || style->font_family[0] == '\0'
-        || memchr(style->font_family, '\0', WL_LUI_FONT_FAMILY_CAPACITY) == NULL) {
+            | WL_LUI_STYLE_OPACITY | WL_LUI_STYLE_CORNER_RADIUS)) != 0UL) {
+        return WL_LUI_INVALID_ARGUMENT;
+    }
+    if ((style->flags & WL_LUI_STYLE_OPACITY) != 0UL
+        && style->opacity_milli > 1000U) {
+        return WL_LUI_INVALID_ARGUMENT;
+    }
+    if ((style->flags & WL_LUI_STYLE_FONT) != 0UL
+        && (style->font_size == 0U || style->font_size > 256U
+            || style->font_weight == 0U || style->font_weight > 1000U
+            || style->font_family[0] == '\0'
+            || memchr(style->font_family, '\0', WL_LUI_FONT_FAMILY_CAPACITY) == NULL)) {
+        return WL_LUI_INVALID_ARGUMENT;
+    }
+    if ((style->flags & WL_LUI_STYLE_BORDER) != 0UL
+        && style->border_width > 512U) {
+        return WL_LUI_INVALID_ARGUMENT;
+    }
+    if ((style->flags & WL_LUI_STYLE_PADDING) != 0UL
+        && (style->padding_top > 16384U || style->padding_right > 16384U
+            || style->padding_bottom > 16384U || style->padding_left > 16384U)) {
+        return WL_LUI_INVALID_ARGUMENT;
+    }
+    if ((style->flags & WL_LUI_STYLE_CORNER_RADIUS) != 0UL
+        && style->corner_radius > 8192U) {
         return WL_LUI_INVALID_ARGUMENT;
     }
     result = wl_lui_platform_set_style(window->native_handle, style);

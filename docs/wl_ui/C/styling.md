@@ -64,7 +64,9 @@ high-contrast explicitly when deterministic colors matter.
 
 `wl_lui_style` contains a version/size pair, a bitmask, background/foreground/
 border colors, border width, four padding values, font family/size/weight,
-opacity and corner radius. Set only the properties named by `flags`.
+opacity and corner radius. Set only the properties named by `flags`. Values
+for unselected fields are ignored; for example, a background-only override does
+not require a valid font or opacity value.
 
 ```c
 wl_lui_style style;
@@ -110,7 +112,8 @@ capability flags without changing the meaning of the existing ones.
   or reuse its local variable after the call returns.
 - Strings must be null-terminated within `WL_LUI_FONT_FAMILY_CAPACITY`.
 - Theme version and struct-size values must match the API contract.
-- Invalid sizes/weights/opacity are rejected before native resource creation.
+- Invalid theme tokens and selected style-field sizes/weights/opacity are
+  rejected before native resource creation. Unselected style fields are ignored.
 - Window, theme and style calls are synchronous. Do not call them concurrently
   from arbitrary threads unless the host application serializes UI access.
 - The current native backend uses GDI brushes/fonts and releases its owned
