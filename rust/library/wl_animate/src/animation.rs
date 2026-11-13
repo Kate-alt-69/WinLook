@@ -295,7 +295,7 @@ mod tests {
         assert_eq!(animation.sample(), Some(0.3));
         animation.restart();
         assert_eq!(animation.state(), PlaybackState::Pending);
-        assert_eq!(animation.sample(), None);
+        assert_eq!(animation.sample(), Some(0.0));
 
         assert_eq!(
             Animation::new(
