@@ -42,11 +42,19 @@ pub enum AnimationError {
 impl fmt::Display for AnimationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidDuration => f.write_str("animation duration must be positive and at most one hour"),
+            Self::InvalidDuration => {
+                f.write_str("animation duration must be positive and at most one hour")
+            }
             Self::InvalidDelay => f.write_str("animation delay must not exceed one hour"),
-            Self::InvalidIterationCount => f.write_str("iteration count must be 1 to 1000 or infinite"),
-            Self::InvalidKeyframeCount => f.write_str("animation must contain 2 to 64 keyframes"),
-            Self::KeyframesNeedPositiveSpan => f.write_str("keyframes must cover a positive time span"),
+            Self::InvalidIterationCount => {
+                f.write_str("iteration count must be 1 to 1000 or infinite")
+            }
+            Self::InvalidKeyframeCount => {
+                f.write_str("animation must contain 2 to 64 keyframes")
+            }
+            Self::KeyframesNeedPositiveSpan => {
+                f.write_str("keyframes must cover a positive time span")
+            }
         }
     }
 }
@@ -108,10 +116,21 @@ impl<T: crate::Interpolate> Animation<T> {
         })
     }
 
-    pub fn state(&self) -> PlaybackState { self.state }
-    pub fn elapsed(&self) -> Duration { self.elapsed }
-    pub fn duration(&self) -> Duration { self.duration }
-    pub fn delay(&self) -> Duration { self.delay }
+    pub fn state(&self) -> PlaybackState {
+        self.state
+    }
+
+    pub fn elapsed(&self) -> Duration {
+        self.elapsed
+    }
+
+    pub fn duration(&self) -> Duration {
+        self.duration
+    }
+
+    pub fn delay(&self) -> Duration {
+        self.delay
+    }
 
     pub fn advance(&mut self, delta: Duration) -> Option<T> {
         if matches!(self.state, PlaybackState::Pending | PlaybackState::Running) {
@@ -122,9 +141,6 @@ impl<T: crate::Interpolate> Animation<T> {
     }
 
     pub fn sample(&self) -> Option<T> {
-        if self.state == PlaybackState::Cancelled {
-            return self.sample_at_elapsed();
-        }
         self.sample_at_elapsed()
     }
 
@@ -156,6 +172,7 @@ impl<T: crate::Interpolate> Animation<T> {
             self.state = PlaybackState::Pending;
             return;
         }
+
         let active = self.elapsed.saturating_sub(self.delay);
         if let IterationCount::Count(count) = self.iterations {
             let total_nanos = self.duration.as_nanos().saturating_mul(u128::from(count));
@@ -164,6 +181,7 @@ impl<T: crate::Interpolate> Animation<T> {
                 return;
             }
         }
+
         self.state = PlaybackState::Running;
     }
 
@@ -180,8 +198,11 @@ impl<T: crate::Interpolate> Animation<T> {
         let duration_nanos = self.duration.as_nanos();
         let active_nanos = active.as_nanos();
         let finished = self.state == PlaybackState::Finished
-            || matches!(self.iterations, IterationCount::Count(count)
-                if active_nanos >= duration_nanos.saturating_mul(u128::from(count)));
+            || matches!(
+                self.iterations,
+                IterationCount::Count(count)
+                    if active_nanos >= duration_nanos.saturating_mul(u128::from(count))
+            );
 
         if finished && !matches!(self.fill_mode, FillMode::Forwards | FillMode::Both) {
             return None;
@@ -215,15 +236,16 @@ impl<T: crate::Interpolate> Animation<T> {
 
         let first = self.track.start_time();
         let span = self.track.end_time().saturating_sub(first);
-        let offset_nanos = (span.as_nanos() as f64 * progress.clamp(0.0, 1.0)).round() as u128;
+        let offset_nanos =
+            (span.as_nanos() as f64 * progress.clamp(0.0, 1.0)).round() as u128;
         let offset = Duration::new(
             (offset_nanos / 1_000_000_000).min(u128::from(u64::MAX)) as u64,
             (offset_nanos % 1_000_000_000) as u32,
         );
+
         Some(self.track.sample(first.saturating_add(offset)))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -234,7 +256,8 @@ mod tests {
         KeyframeTrack::new(vec![
             Keyframe::new(Duration::ZERO, 0.0, Easing::Linear),
             Keyframe::new(Duration::from_millis(100), 1.0, Easing::Linear),
-        ]).unwrap()
+        ])
+        .unwrap()
     }
 
     #[test]
@@ -246,7 +269,8 @@ mod tests {
             IterationCount::Count(2),
             Direction::Alternate,
             FillMode::Both,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.5));
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(1.0));
@@ -265,7 +289,8 @@ mod tests {
             IterationCount::Once,
             Direction::Normal,
             FillMode::None,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(none.sample(), None);
 
         let backwards = Animation::new(
@@ -275,7 +300,8 @@ mod tests {
             IterationCount::Once,
             Direction::Normal,
             FillMode::Backwards,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(backwards.sample(), Some(0.0));
     }
 
@@ -288,7 +314,8 @@ mod tests {
             IterationCount::Once,
             Direction::Normal,
             FillMode::Both,
-        ).unwrap();
+        )
+        .unwrap();
         animation.advance(Duration::from_millis(20));
         animation.pause();
         assert_eq!(animation.advance(Duration::from_millis(50)), Some(0.2));
@@ -309,7 +336,8 @@ mod tests {
                 IterationCount::Once,
                 Direction::Normal,
                 FillMode::Both,
-            ).err(),
+            )
+            .err(),
             Some(AnimationError::InvalidDuration)
         );
     }
