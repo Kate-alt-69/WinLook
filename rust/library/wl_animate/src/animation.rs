@@ -7,11 +7,25 @@ pub const MAX_ANIMATION_TIME: Duration = Duration::from_secs(60 * 60);
 pub const MAX_ANIMATION_KEYFRAMES: usize = 64;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum IterationCount { Once, Count(u16), Infinite }
+pub enum IterationCount {
+    Once,
+    Count(u16),
+    Infinite,
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Direction { Normal, Reverse, Alternate, AlternateReverse }
+pub enum Direction {
+    Normal,
+    Reverse,
+    Alternate,
+    AlternateReverse,
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FillMode { None, Forwards, Backwards, Both }
+pub enum FillMode {
+    None,
+    Forwards,
+    Backwards,
+    Both,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AnimationError {
@@ -25,11 +39,19 @@ pub enum AnimationError {
 impl fmt::Display for AnimationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidDuration => f.write_str("animation duration must be positive and at most one hour"),
+            Self::InvalidDuration => {
+                f.write_str("animation duration must be positive and at most one hour")
+            },
             Self::InvalidDelay => f.write_str("animation delay must not exceed one hour"),
-            Self::InvalidIterationCount => f.write_str("iteration count must be 1 to 1000 or infinite"),
-            Self::InvalidKeyframeCount => f.write_str("animation must contain 2 to 64 keyframes"),
-            Self::KeyframesNeedPositiveSpan => f.write_str("keyframes must cover a positive time span"),
+            Self::InvalidIterationCount => {
+                f.write_str("iteration count must be 1 to 1000 or infinite")
+            },
+            Self::InvalidKeyframeCount => {
+                f.write_str("animation must contain 2 to 64 keyframes")
+            },
+            Self::KeyframesNeedPositiveSpan => {
+                f.write_str("keyframes must cover a positive time span")
+            },
         }
     }
 }
