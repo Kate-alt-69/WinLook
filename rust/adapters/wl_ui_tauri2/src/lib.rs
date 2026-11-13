@@ -57,7 +57,16 @@ pub fn attach<R: Runtime>(
         "window.__WL_UI_BOOTSTRAP__ = {serialized};\n\
          (() => {{\n\
            const css = {css_serialized};\n\
-           document.write('<style id=\"wl-ui-theme\">' + css + '</style>');\n\
+           const install = () => {{\n\
+             if (document.getElementById('wl-ui-theme')) return;\n\
+             const style = document.createElement('style');\n\
+             style.id = 'wl-ui-theme';\n\
+             style.textContent = css;\n\
+             (document.head || document.documentElement).appendChild(style);\n\
+           }};\n\
+           if (document.readyState === 'loading') {{\n\
+             document.addEventListener('DOMContentLoaded', install, {{ once: true }});\n\
+           }} else {{ install(); }}\n\
          }})();"
     );
 
