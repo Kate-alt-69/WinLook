@@ -7,6 +7,6 @@ description = "Tauri 2 adapter for the platform-neutral wl_ui application model"
 license = "MIT"
 
 [dependencies]
-wl_ui_core = { version = "0.1.0-alpha.1", path = "../../library/wl_ui_core" }
+wl_ui_core = { version = "0.1.0-alpha.1", path = "../../library/wl_ui/core" }
 serde_json = "1"
 tauri = { version = "=2.12.5", default-features = true }
