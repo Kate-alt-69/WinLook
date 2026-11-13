@@ -53,4 +53,13 @@ if(BUILD_TESTING)
         target_compile_options(test_wl_Lanimate PRIVATE -UNDEBUG)
     endif()
     add_test(NAME wl_Lanimate.core COMMAND test_wl_Lanimate)
+
+    add_executable(wl_Lanimate_frame_budget examples/frame_budget.c)
+    target_link_libraries(wl_Lanimate_frame_budget PRIVATE wl_Lanimate)
+    set_target_properties(wl_Lanimate_frame_budget PROPERTIES
+        C_STANDARD 90
+        C_STANDARD_REQUIRED YES
+        C_EXTENSIONS NO
+    )
+    add_test(NAME wl_Lanimate.frame_budget COMMAND wl_Lanimate_frame_budget)
 endif()
