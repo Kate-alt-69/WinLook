@@ -130,6 +130,8 @@ typedef struct wl_Lanimate_frame_clock {
     double target_interval_ms;
     double maximum_delta_ms;
     double last_timestamp_ms;
+    double last_frame_timestamp_ms;
+    double phase_elapsed_ms;
     unsigned long frame_index;
     unsigned int has_last_timestamp;
     unsigned int paused;
@@ -141,7 +143,7 @@ typedef struct wl_Lanimate_frame_tick {
     unsigned long frame_index;
 } wl_Lanimate_frame_tick;
 
-#define WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS 16.6666667
+#define WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS 16.6666666
 #define WL_LANIMATE_FRAME_DEFAULT_MAXIMUM_DELTA_MS 100.0
 
 
