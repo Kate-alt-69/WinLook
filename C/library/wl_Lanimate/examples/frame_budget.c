@@ -89,6 +89,7 @@ int main(void)
             fprintf(stderr, "Frame clock failed at frame %u: %d\n", frame_index, (int)result);
             return 5;
         }
+        emitted_frames++;
 
         for (i = 0U; i < WL_LANIMATE_BENCHMARK_ANIMATIONS; ++i) {
             result = wl_Lanimate_animation_advance(
@@ -127,7 +128,7 @@ int main(void)
            * (double)WL_LANIMATE_BENCHMARK_FRAMES);
 
     printf("Animations: %u\n", WL_LANIMATE_BENCHMARK_ANIMATIONS);
-    printf("Frames: %u at 60 FPS\n", WL_LANIMATE_BENCHMARK_FRAMES);
+    printf("Frames: %u at 60 FPS\n", emitted_frames);
     printf("Total CPU time: %.3f ms\n", elapsed_ms);
     printf("Average update time per frame: %.3f us\n",
            elapsed_ms * 1000.0 / (double)WL_LANIMATE_BENCHMARK_FRAMES);
