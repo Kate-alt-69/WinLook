@@ -26,10 +26,18 @@ Primary references:
 These links support only the claims they document. They do not prove WinLook code has been tested on this OS.
 
 ## 3. Toolchain and runtime strategy
-Use the C implementation as the planned default for Windows 7. The current official Rust/MSVC target requires Windows 10 or later for client installs; a pinned older Rust toolchain is experimental until its exact compiler, standard library, linker/runtime and Windows 7 VM behaviour are verified. Detect optional APIs and keep architecture/bitness-specific modules separate.
+
+The Rust crate now has an experimental `wl_ui::windows7` module that uses only baseline Win32/User32 calls. Two toolchain routes are distinct:
+
+- **Rust 1.77:** Tauri's upstream 2.12 release notes identify 1.77 as the last stable Rust release with built-in Windows 7 support. Build the crate with that toolchain and test its standard MSVC target on actual Windows 7.
+- **Current Rust:** the Rust project lists `i686-win7-windows-msvc` and `x86_64-win7-windows-msvc` as Tier 3 targets. Rust does not ship prebuilt rustup components for these triples; they require a custom Rust build or `build-std` toolchain. This is an advanced alternative, not a plug-and-play stable target.
+
+The normal current `*-pc-windows-msvc` target requires Windows 10 or later. Merely enabling the `windows7` Cargo feature while using that standard target does not lower its OS requirement. Keep per-OS API calls isolated and verify the compiler, standard library, linker/runtime and resulting executable in a Windows 7 VM before claiming support.
+
+The modern Tauri 2.12 adapter is not the Windows 7 route: its MSRV is 1.90 and official Windows 7 support was dropped in 2.12. Use classic Win32 or the C `wl_Lui` shell on legacy systems.
 
 ## 4. WLWM compatibility
-Use documented window/event APIs and logical workspaces. DWM visual effects only if composition is enabled. Session 0 remains isolated. The C build is the planned Windows 7 route under the current toolchain policy; do not assume the current official Rust/MSVC target runs here.
+Use documented window/event APIs and logical workspaces. DWM visual effects only if composition is enabled. Session 0 remains isolated. The new Rust `wl_ui::windows7` module is an experimental classic Win32 shell route; the C `wl_Lui` library remains the legacy-native alternative. Neither is a Windows 7 support claim until VM and interactive testing passes.
 
 WLWM's local binary compatibility cache is an analysis cache. Every launch still validates current target identity, architecture, OS/build and relevant mitigation state. Unknown or partially supported targets must retain native Windows behaviour unless an explicitly enabled, reviewed experimental route is used.
 

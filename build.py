@@ -2091,7 +2091,18 @@ def require_manifest(root: Path, relative: str, description: str) -> None:
 
 def check_ui_sources(root: Path) -> bool:
     required = (
+        "rust/library/wl_ui_core/Cargo.toml",
+        "rust/library/wl_ui_win32/Cargo.toml",
+        "rust/library/wl_ui_windows7/Cargo.toml",
+        "rust/library/wl_ui_windows10/Cargo.toml",
+        "rust/library/wl_ui_windows11/Cargo.toml",
         "rust/library/wl_ui/Cargo.toml",
+        "rust/library/wl_ui/src/windows7/mod.rs",
+        "rust/library/wl_ui/src/windows8/mod.rs",
+        "rust/library/wl_ui/src/windows81/mod.rs",
+        "rust/library/wl_ui/src/windows10/mod.rs",
+        "rust/library/wl_ui/src/windows11/mod.rs",
+        "rust/library/wl_ui/src/tauri2/mod.rs",
         "rust/win10/Cargo.toml",
         "rust/win11/Cargo.toml",
     )
@@ -2339,9 +2350,9 @@ def rust_verify(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
     commands = [
         ("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"]),
-        ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features"]),
-        ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features", "--", "-D", "warnings"]),
-        ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--no-deps"]),
+        ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features"]),
+        ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"]),
+        ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--no-deps"]),
     ]
     for label, command in commands:
         runner.run(label, command)
@@ -2349,7 +2360,7 @@ def rust_verify(runner: Runner) -> None:
 
 def rust_tests(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features"])
+    runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features"])
 
 
 def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
@@ -2391,13 +2402,32 @@ def cmake_c_test(runner: Runner, sanitizers: bool = False) -> None:
 
 
 def ui_verify(runner: Runner) -> None:
+    require_windows("Windows 10 native Win32 UI verification")
     if not check_ui_sources(runner.root):
-        raise BuildError(
-            "Manager UI manifests are not present. Merge the WinToys Manager UI implementation first."
-        )
+        raise BuildError("One or more wl_ui facade/backend modules are missing.")
+    ensure_windows_linker(runner, target="win10")
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Platform-neutral Manager UI model tests", ["cargo", "test", "-p", "wl_ui", "--all-targets"])
-    runner.run("Platform-neutral Manager UI model Clippy", ["cargo", "clippy", "-p", "wl_ui", "--all-targets", "--", "-D", "warnings"])
+    runner.run(
+        "Platform-neutral UI model tests",
+        ["cargo", "test", "-p", "wl_ui_core", "--all-targets"],
+    )
+    runner.run(
+        "Windows 10 facade/backend tests",
+        ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--features", "windows10", "--all-targets"],
+    )
+    runner.run(
+        "UI facade and Win32 backend Clippy",
+        [
+            "cargo", "clippy", "-p", "wl_ui_core", "-p", "wl_ui_win32",
+            "-p", "wl_ui_windows10", "-p", "wl_ui",
+            "--no-default-features", "--features", "wl_ui/windows10",
+            "--all-targets", "--", "-D", "warnings",
+        ],
+    )
+    runner.run(
+        "Optional Tauri 2 adapter API check",
+        ["cargo", "check", "-p", "wl_ui", "--no-default-features", "--features", "tauri2"],
+    )
 
 
 def build_windows_app(runner: Runner, target: str) -> None:
@@ -2530,7 +2560,7 @@ def build_windows_generation(runner: Runner, version: str) -> None:
 
 def build_libraries(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
+    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
     cmake_c_test(runner)
 
 
@@ -2539,8 +2569,8 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
         rust_tests(runner)
         if scope in ("libraries", "all"):
             runner.run("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"])
-            runner.run("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--all-targets", "--all-features", "--", "-D", "warnings"])
-            runner.run("Rust shared-library API docs", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "--no-deps"])
+            runner.run("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"])
+            runner.run("Rust shared-library API docs", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--no-deps"])
     if scope in ("c", "libraries", "all"):
         cmake_c_test(runner, sanitizers=sanitizers)
     if scope in ("ui", "all"):
@@ -2550,8 +2580,8 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
             print_skip("Manager UI manifests are not present.")
         elif os.name != "nt":
             if scope == "ui":
-                raise BuildError("The WinUI 3 Manager UI tests require a Windows host.")
-            print_skip("WinUI 3 Manager UI tests require Windows; Rust/C library tests can still run here.")
+                raise BuildError("The native Windows Manager UI tests require a Windows host.")
+            print_skip("Native Windows Manager UI tests require Windows; Rust/C library tests can still run here.")
         else:
             ui_verify(runner)
     if scope == "all":
@@ -2560,7 +2590,7 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
                 build_windows_app(runner, "win10")
                 build_windows_app(runner, "win11")
             else:
-                print_skip("WinUI 3 builds require Windows.")
+                print_skip("Native Windows application builds require their matching Windows toolchain profiles.")
         else:
             print_skip("Manager UI source manifests are not present.")
         if not (runner.root / "C/win95/Makefile").is_file():
@@ -2595,7 +2625,7 @@ def verify_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
                 build_windows_app(runner, "win10")
                 build_windows_app(runner, "win11")
             else:
-                print_skip("WinUI 3 Manager builds require Windows.")
+                print_skip("Native Windows Manager builds require their target-specific Visual Studio/SDK profiles.")
         else:
             print_skip("Manager UI source manifests are not present.")
         if (runner.root / "C/win95/Makefile").is_file() and os.environ.get("WATCOM"):
@@ -2619,13 +2649,22 @@ def package_windows_app(runner: Runner, target: str) -> Path:
         raise BuildError("Missing " + str(executable) + ". Build the target before packaging.")
     output_dir = build_paths(runner.root)["artifacts"]
     archive = output_dir / package_filename(target)
-    note = (
-        "WinLook " + target + " Manager preview\n\n"
-        "This prototype uses framework-dependent Windows App SDK deployment. "
-        "Install the matching Windows App Runtime before launching the EXE:\n"
-        + APP_RUNTIME_URL
-        + "\n\nThis archive does not contain winlook.bg.exe; BGW is not implemented yet.\n"
-    )
+    if target == "win10":
+        note = (
+            "WinLook Windows 10 Manager preview\n\n"
+            "This build uses the lightweight native Win32 backend. It does not require "
+            "Windows App Runtime, Windows App SDK, WebView2, or Tauri.\n"
+            "\nThis archive does not contain winlook.bg.exe; BGW is not implemented yet.\n"
+        )
+    else:
+        note = (
+            "WinLook Windows 11 Manager preview\n\n"
+            "This build uses the native WinUI 3 backend with framework-dependent "
+            "Windows App SDK deployment. Install the matching Windows App Runtime "
+            "before launching the EXE:\n"
+            + APP_RUNTIME_URL
+            + "\n\nThis archive does not contain winlook.bg.exe; BGW is not implemented yet.\n"
+        )
     if runner.dry_run:
         print("Would package " + str(executable) + " -> " + str(archive))
         return archive

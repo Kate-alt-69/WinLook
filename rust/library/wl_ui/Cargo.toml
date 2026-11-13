@@ -1,11 +1,24 @@
 [package]
 name = "wl_ui"
 version = "0.1.0-alpha.1"
-edition = "2024"
-rust-version = "1.95"
-description = "Shared native WinUI 3 Manager shell and page components for WinLook"
+edition = "2021"
+rust-version = "1.77"
+description = "Cross-platform UI model and opt-in native/Tauri rendering backends"
 license = "MIT"
+readme = "README.md"
+
+[features]
+default = []
+windows7 = ["dep:wl_ui_windows7"]
+windows8 = ["dep:wl_ui_windows7"]
+windows81 = ["dep:wl_ui_windows7"]
+windows10 = ["dep:wl_ui_windows10"]
+windows11 = ["dep:wl_ui_windows11"]
+tauri2 = ["dep:wl_ui_tauri2"]
 
 [dependencies]
-[target.'cfg(windows)'.dependencies]
-windows-reactor = { package = "windows-reactor-pre", version = "=0.107.1" }
+wl_ui_core = { version = "0.1.0-alpha.1", path = "../wl_ui_core" }
+wl_ui_windows7 = { version = "0.1.0-alpha.1", path = "../wl_ui_windows7", optional = true }
+wl_ui_windows10 = { version = "0.1.0-alpha.1", path = "../wl_ui_windows10", optional = true }
+wl_ui_windows11 = { version = "0.1.0-alpha.1", path = "../wl_ui_windows11", optional = true }
+wl_ui_tauri2 = { version = "0.1.0-alpha.1", path = "../../adapters/wl_ui_tauri2", optional = true }

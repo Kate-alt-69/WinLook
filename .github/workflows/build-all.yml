@@ -1,4 +1,3 @@
-
 name: Full WinLook build order
 
 on:
@@ -18,38 +17,65 @@ permissions:
   contents: read
 
 jobs:
-  full:
-    name: Libraries, UI, Win10 and Win11
+  portable-libraries:
+    name: Portable Rust and C libraries
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Select or install Rust 1.95.0
+        run: python build.py setup --with-rust --apply
+      - name: Verify Rust and C libraries
+        run: python build.py verify libraries
+
+  windows10:
+    name: Windows 10 / VS 2022 + Windows 10 SDK
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
-      - name: Select or install Rust 1.95.0 without changing the default
+      - name: Select or install Rust 1.95.0
         run: python build.py setup --with-rust --apply
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      - name: Verify UI contracts and Win10 native backend
+        run: python build.py verify ui
+      - name: Build and package Windows 10
+        run: |
+          python build.py build win10
+          python build.py package win10
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          path: |
-            build/.rcache
-            build/rust
-            build/.Ccache
-          key: ${{ runner.os }}-full-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml', 'C/library/**') }}
-          restore-keys: ${{ runner.os }}-full-
-      - name: Run default build-runner preflight
-        run: python build.py
-      - name: Report source availability and toolchain
-        run: python build.py doctor --strict
-      - name: Run full supported build/verification sequence
-        run: python build.py verify all
-      - name: Upload application build outputs
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+          name: winlook-win10-full-build
+          path: build/artifacts/winlook-win10-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  windows11:
+    name: Windows 11 / VS 2026 + Windows 11 SDK
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
-          name: winlook-full-build-outputs
-          path: |
-            build/rust/win10/release/**
-            build/rust/win11/release/**
-            build/c/**
-          if-no-files-found: ignore
+          python-version: "3.12"
+      - name: Select or install Rust 1.95.0
+        run: python build.py setup --with-rust --apply
+      - name: Verify the Windows 11 facade/backend
+        run: |
+          cargo fmt --all -- --check
+          cargo test -p wl_ui_core --all-targets
+          cargo test -p wl_ui --no-default-features --features windows11 --all-targets
+          cargo clippy -p wl_ui_core -p wl_ui_windows11 -p wl_ui --no-default-features --features wl_ui/windows11 --all-targets -- -D warnings
+      - name: Build and package Windows 11
+        run: |
+          python build.py build win11
+          python build.py package win11
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: winlook-win11-full-build
+          path: build/artifacts/winlook-win11-x64-preview.zip
+          if-no-files-found: error
           retention-days: 7

@@ -1,0 +1,13 @@
+[package]
+name = "wl_ui_windows11"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.95"
+description = "Windows 11 native WinUI 3 backend for wl_ui"
+license = "MIT"
+
+[dependencies]
+wl_ui_core = { version = "0.1.0-alpha.1", path = "../wl_ui_core" }
+
+[target.'cfg(windows)'.dependencies]
+windows-reactor = { package = "windows-reactor-pre", version = "=0.107.1" }

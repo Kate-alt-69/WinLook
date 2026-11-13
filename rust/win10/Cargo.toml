@@ -1,8 +1,8 @@
 [package]
 name = "winlook-win10"
 version = "0.1.0-alpha.1"
-edition = "2024"
-rust-version = "1.95"
+edition = "2021"
+rust-version = "1.77"
 publish = false
 
 [[bin]]
@@ -11,4 +11,4 @@ path = "src/main.rs"
 doc = false
 
 [dependencies]
-wl_ui = { path = "../library/wl_ui" }
+wl_ui = { version = "0.1.0-alpha.1", path = "../library/wl_ui", default-features = false, features = ["windows10"] }

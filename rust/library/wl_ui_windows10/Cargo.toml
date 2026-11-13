@@ -1,0 +1,10 @@
+[package]
+name = "wl_ui_windows10"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.77"
+description = "Lightweight native Win32 backend for wl_ui on Windows 10"
+license = "MIT"
+
+[dependencies]
+wl_ui_win32 = { version = "0.1.0-alpha.1", path = "../wl_ui_win32" }

@@ -1,0 +1,9 @@
+[package]
+name = "wl_ui_core"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.77"
+description = "Platform-neutral application and navigation model for wl_ui"
+license = "MIT"
+
+[dependencies]

@@ -273,3 +273,18 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Windows CI reused the global Rust 1.95.0 compiler correctly, but the existing toolchain did not contain `cargo-fmt`; UI verification stopped before Clippy.
 - Rust toolchain selection now audits the selected 1.95.0 installation for `rustfmt` and `clippy`. It adds only missing components through that explicit toolchain and leaves the configured rustup default untouched. Read-only setup reports missing components and the planned action without installing them.
 - Regression coverage exercises the already-installed compiler path with and without the required support components.
+
+
+## wl_ui backend facade and legacy C UI — 2026-11-13
+
+- Public Rust crate API is consolidated under `wl_ui`. Consumers import a backend submodule such as `wl_ui::windows10`, `wl_ui::windows11`, or `wl_ui::tauri2`, while common types (`UiApplication`, `UiPage`, `UiWindowConfig`, `UiError`) remain at the crate root.
+- Backend implementation crates are private optional dependencies. Cargo features only control compilation; backend selection is explicit in source, not inferred from the current OS at runtime.
+- `wl_ui::windows10` uses the shared `wl_ui_win32` User32 renderer and intentionally excludes Windows App SDK / WinUI / Tauri dependencies.
+- `wl_ui::windows11` is the native WinUI 3 / Windows Reactor renderer, isolated from the Win10 dependency graph.
+- `wl_ui::windows7`, `windows8`, and `windows81` expose the same classic Win32 backend. Rust 1.77 is the last stable release with built-in Win7 support; current Rust requires the custom Tier 3 Win7 target for that OS baseline. No legacy OS runtime support is claimed until VM tests pass.
+- `wl_ui::tauri2` attaches the shared model to an existing Tauri 2 builder and remains opt-in. Tauri 2.12 MSRV is 1.90 and its official Win7 support was dropped, so it is not used as the Win7 adapter.
+- Added the independent C89 `C/library/wl_Lui` library as a baseline Win32 window lifecycle API, keeping pre-Vista and legacy compiler work outside the modern Rust UI dependency graph.
+- Win10 app profile: Visual Studio 2022 + Windows SDK 10.0.19041.0. Win11 app profile: Visual Studio 2026 + Windows SDK 10.0.26100.0. CI uses separate hosted runner images for both.
+- The Windows 10 Manager entry point explicitly calls `wl_ui::windows10::run()`; the Windows 11 Manager entry point explicitly calls `wl_ui::windows11::run()`.
+- UI remains a scaffold: navigation and page descriptions are rendered, but BGW IPC and real system-setting operations are not implemented. Runtime smoke tests, accessibility checks, low-end performance measures, installer/runtime validation, and Windows 7 VM tests remain pending.
+- Research Companion evidence is recorded in [references/SOURCES.md](references/SOURCES.md); this workspace entry is a design/implementation checkpoint, not a support declaration.

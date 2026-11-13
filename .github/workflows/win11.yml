@@ -1,4 +1,3 @@
-
 name: Windows 11 application build
 
 on:
@@ -27,7 +26,7 @@ permissions:
 jobs:
   detect:
     name: Detect win11 application
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     outputs:
       available: ${{ steps.target.outputs.available }}
     steps:
@@ -39,10 +38,10 @@ jobs:
         run: python build.py status win11 --github-output
 
   build:
-    name: Build and package win11
+    name: Build and package win11 / VS 2026 + Windows 11 SDK
     needs: detect
     if: needs.detect.outputs.available == 'true'
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0

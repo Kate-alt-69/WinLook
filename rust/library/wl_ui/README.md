@@ -1,31 +1,127 @@
 # wl_ui
 
-Shared native WinUI 3 shell and page composition for the WinLook Manager.
+**wl_ui** is a public Rust UI/application-model crate with optional renderer modules. Consumers use one dependency and import the backend they want, like importing a package subpath in Node.js.
 
-## Prototype scope
+## Public module paths
 
-- Persistent left NavigationView with Home, Appearance, Audio & Media, File Explorer, Icons, Wallpaper, Window Manager, Displays, Notifications, Templates, Extensions, Compatibility, Diagnostics and Settings.
-- Search filters navigation destinations.
-- Back navigation, pane open/close and a live System/Light/Dark window-theme selector.
-- Reusable page headers and information cards.
-- Honest disconnected/preview states: no system settings are applied and BGW is not connected yet.
+| Import path | Cargo feature | Renderer |
+|---|---|---|
+| `wl_ui::windows10` | `windows10` | Lightweight native Win32 / User32 |
+| `wl_ui::windows11` | `windows11` | Native WinUI 3 / Windows Reactor |
+| `wl_ui::tauri2` | `tauri2` | Existing Tauri 2 application |
+| `wl_ui::windows7` | `windows7` | Experimental classic Win32 / custom Rust target |
+| `wl_ui::windows8` | `windows8` | Alias of the classic Win32 backend |
+| `wl_ui::windows81` | `windows81` | Alias of the classic Win32 backend |
 
-The modern UI prototype uses the pinned Windows Reactor preview 0.107.1 package (Rust 1.95+) backed by native WinUI 3. Its API may change; keep it isolated behind wl_ui and do not expose Reactor types to the application or BGW APIs. It uses the framework-dependent Windows App Runtime model; install/runtime packaging is a separate deployment task.
+The shared types are always imported from the crate root:
 
-## Build and run
+- `wl_ui::UiApplication`
+- `wl_ui::UiPage`
+- `wl_ui::UiWindowConfig`
+- `wl_ui::UiError`
 
-From the repository root on Windows 10 version 1809 or later / Windows 11 with the stable MSVC Rust toolchain. Install the matching **Windows App Runtime 2.5.1 (x64)** from the [official Windows App SDK downloads](https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/downloads) first; this is a framework-dependent prototype and does not bundle that runtime.
+The OS renderer crates are private implementation dependencies. Application code does not import their crate names or any Windows Reactor types.
 
-Run the Windows 10 or Windows 11 Manager target with:
+## Windows 10 example
 
-```sh
-cargo run -p winlook-win10
-# or
-cargo run -p winlook-win11
-```
+Cargo.toml:
 
-The root Cargo.lock pins the complete workspace dependency graph. To run the validation suite, use cargo fmt --all -- --check, cargo test -p wl_ui, cargo clippy -p wl_ui --all-targets -- -D warnings, and build each app with a separate target directory so both product outputs can be named winlook.exe. Do not copy only the EXE to a clean machine and assume it is self-contained.
+    [dependencies]
+    wl_ui = { version = "0.1.0-alpha.1", default-features = false, features = ["windows10"] }
 
-## Not implemented yet
+src/main.rs:
 
-BGW IPC, persisted Manager settings, real engine controls, system capability probing, wallpaper previews, resource telemetry and the legacy C/Windows 95 UI are not part of this shell prototype. Pages are navigation/layout scaffolds until their backend capabilities exist.
+    use wl_ui::windows10::{self, UiApplication, UiPage};
+
+    fn main() -> Result<(), wl_ui::UiError> {
+        let app = UiApplication::new("Example")
+            .page(UiPage::new("home", "Home", "Application overview"))
+            .page(UiPage::new("settings", "Settings", "Application preferences"))
+            .initial_page("home");
+
+        windows10::run_with(app)
+    }
+
+Or use `windows10::run()` for the standard WinLook Manager model.
+
+This backend is intentionally small: classic native Win32 controls only. It has no dependency on Windows App SDK, WinUI 3, Windows Reactor, WebView2, or Tauri.
+
+## Windows 11 example
+
+Cargo.toml:
+
+    [dependencies]
+    wl_ui = { version = "0.1.0-alpha.1", default-features = false, features = ["windows11"] }
+
+Then use the same application model:
+
+    use wl_ui::windows11;
+
+    fn main() -> Result<(), wl_ui::UiError> {
+        windows11::run()
+    }
+
+The Windows 11 renderer uses the pinned Windows Reactor preview dependency and requires the compatible Windows App Runtime to be installed or packaged. It has a higher runtime and installer footprint than the Win32 renderer.
+
+## Tauri 2 example
+
+Cargo.toml:
+
+    [dependencies]
+    tauri = { version = "=2.12.5" }
+    wl_ui = { version = "0.1.0-alpha.1", default-features = false, features = ["tauri2"] }
+
+Then attach the shared model to the application's existing Tauri builder:
+
+    use wl_ui::{UiApplication, UiPage};
+    use wl_ui::tauri2;
+
+    fn main() {
+        let app = UiApplication::new("Example")
+            .page(UiPage::new("home", "Home", "Application overview"))
+            .initial_page("home");
+
+        let builder = tauri2::attach(tauri::Builder::default(), app)
+            .expect("valid UI model");
+
+        builder
+            .run(tauri::generate_context!())
+            .expect("Tauri application failed");
+    }
+
+The application remains responsible for its Tauri frontend, `build.frontendDist`, plugins, commands, capabilities, and permissions. The adapter publishes the shared page/window model to `window.__WL_UI_BOOTSTRAP__` before the frontend scripts run. Windows uses the system WebView2 runtime, macOS uses WKWebView, and Linux uses WebKitGTK. Tauri is opt-in; native Win32 consumers do not compile or ship it.
+
+## Selecting a renderer
+
+Features are independent. A program may enable more than one module and choose the renderer in its own code. Enabling a feature does not silently select a different backend at runtime.
+
+    wl_ui = {
+        version = "0.1.0-alpha.1",
+        default-features = false,
+        features = ["windows10", "tauri2"]
+    }
+
+Then call either `wl_ui::windows10` or `wl_ui::tauri2`. Do not enable a renderer just because a library happens to be installed; select it deliberately in the consuming application's manifest.
+
+## Compatibility and toolchains
+
+- **Windows 10:** standard Rust MSVC target + the Windows 10 Win32 backend. Build with the Windows 10 SDK / Visual Studio 2022 toolchain profile.
+- **Windows 11:** WinUI 3 backend + the Windows 11 SDK / Visual Studio 2026 toolchain profile.
+- **Windows 7/8/8.1:** experimental classic Win32 route. Use Rust 1.77's compatible standard library or build a custom Tier 3 `*-win7-windows-msvc` toolchain; the current standard `*-pc-windows-msvc` target still requires Windows 10 or newer.
+- **Windows 95 through Vista:** use the separate C library `wl_Lui`, not the modern Rust standard-library target.
+- **macOS/Linux:** use the optional Tauri 2 module for a webview-based cross-platform application, or use the application model without a renderer.
+
+A feature being available for compilation does not mean that every OS has passed a runtime compatibility test. See the compatibility matrix and per-version notes in `plan/compatibility/`.
+
+## Dependency and size policy
+
+The crate root contains only the platform-neutral model and feature declarations. Every backend is optional:
+- the Win10 binary does not compile or link the WinUI 3 runtime;
+- the Win11 binary does not compile the Tauri adapter;
+- the Tauri adapter is not part of the root workspace and does not become a transitive dependency unless selected.
+
+Use `default-features = false` in applications so future additions cannot silently change your runtime backend.
+
+## Status
+
+The facade and backend split are in alpha. The Win32 backend currently demonstrates the shell/window lifecycle and page navigation model; it is not yet a full production controls/layout toolkit. BGW IPC and actual system-setting actions remain separate work.

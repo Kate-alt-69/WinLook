@@ -207,3 +207,36 @@ Before treating Windows Reactor as the permanent UI stack:
 - Keep a native static/empty fallback if a page cannot load its data or BGW is disconnected.
 
 If the prototype fails the low-resource or compatibility gates, compare a lighter Win32 control implementation before committing to a permanent framework. Do not replace WinUI with a browser-based UI as a fallback.
+
+
+## 7. Public Rust crate and backend module paths
+
+The public crate is `wl_ui`. Application code uses one dependency and imports the backend module it selected, rather than depending directly on OS implementation crates:
+
+    use wl_ui::{UiApplication, UiPage};
+    use wl_ui::windows10;
+
+    let model = UiApplication::new("Example")
+        .page(UiPage::new("home", "Home", "Overview"))
+        .initial_page("home");
+
+    windows10::run_with(model)?;
+
+The supported public module paths are:
+
+- `wl_ui::windows10`: standard Rust MSVC target, lightweight native Win32/User32. No Windows App SDK or WebView runtime.
+- `wl_ui::windows11`: native WinUI 3 / Windows Reactor. Optional and heavier; Windows App Runtime deployment must be managed separately.
+- `wl_ui::tauri2`: optional host adapter for an existing Tauri 2 `Builder`; the application owns its frontend, permissions, commands and capabilities.
+- `wl_ui::windows7`, `windows8`, `windows81`: experimental aliases over the same classic Win32 API surface, using Rust 1.77 or an appropriately built custom Win7 target.
+
+The stable application types (`UiApplication`, `UiPage`, `UiWindowConfig`, `UiError`) live at the crate root. Backend dependencies are optional and feature-gated; selecting a module is explicit, not based on the OS version being guessed at runtime. More than one optional module can be enabled when a host genuinely needs to offer a renderer choice.
+
+The C89 counterpart is a separate package, `C/library/wl_Lui`. It is intentionally independent of Rust, WinUI and Tauri so legacy C applications can keep using baseline Win32 APIs.
+
+## 8. OS and toolchain boundaries
+
+The Windows 10 and Windows 11 products have separate build profiles. Win10 uses Visual Studio 2022 with Windows SDK 10.0.19041.0 and the Win32 backend. Win11 uses Visual Studio 2026 with Windows SDK 10.0.26100.0 and the WinUI 3 backend. Their CI jobs run on matching hosted images. This is important because the same MSVC/SDK environment must not be silently reused for both targets.
+
+The normal current Rust MSVC target requires Windows 10 or newer. Rust 1.77 is the last stable toolchain with built-in Windows 7 compatibility; newer Rust has a separate Tier 3 `*-win7-windows-msvc` target that requires building/providing a custom target toolchain. Those are build routes, not proof of WinLook runtime support. Tauri 2.12 has MSRV 1.90 and dropped official Windows 7 support, so the Tauri adapter is not the Win7 route. Windows 95 through Vista remain on the C/legacy compiler path.
+
+Primary references: [Rust MSVC targets](https://doc.rust-lang.org/rustc/platform-support/windows-msvc.html), [Rust Win7 MSVC target](https://doc.rust-lang.org/rustc/platform-support/win7-windows-msvc.html), [Tauri 2.12 release](https://v2.tauri.app/blog/tauri-2.12/).

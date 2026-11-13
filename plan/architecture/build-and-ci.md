@@ -176,3 +176,19 @@ The focused workflow suite is now the canonical CI configuration. The original s
 - Windows application smoke tests, Windows 95 VM tests, installer/uninstaller rollback, hardware graphics, and runtime memory/CPU benchmarks remain distinct acceptance gates.
 - CodeQL is source analysis, not a substitute for compiler tests, fuzzing, sanitizer runs or VM tests.
 - Rust/C libraries currently build as separate language implementations. No cross-language ABI equivalence is claimed solely from successful compilation.
+
+
+## 7. Per-generation UI toolchain profiles — 2026-11-13
+
+The Win10 and Win11 build graphs are intentionally isolated:
+
+| Product | MSVC profile | Windows SDK | Hosted runner | UI backend |
+|---|---|---|---|---|
+| Win10 | Visual Studio 2022 (17.x) | 10.0.19041.0 | `windows-2022` | `wl_ui::windows10` / Win32 |
+| Win11 | Visual Studio 2026 (18.x) | 10.0.26100.0 | `windows-2025-vs2026` | `wl_ui::windows11` / WinUI 3 |
+
+`build.py` refuses to silently reuse the other product's Visual Studio generation or SDK. The dedicated Windows workflows and repeated-build matrix run on matching hosted images and select the corresponding profile. The general full-build workflow is split into separate Win10 and Win11 jobs so it never attempts to compile both products with one incompatible VS/SDK installation.
+
+The public `wl_ui` crate exposes explicitly enabled renderer modules. The shared model is target-independent; only the selected module brings in its optional backend dependency. The optional Tauri adapter is checked separately from the native Win32 path. The Windows 10 package notes no Windows App Runtime requirement; the Windows 11 package retains the Windows App Runtime requirement.
+
+The CMake library test suite now includes `wl_Lui` and its portable contract test. Passing the Linux C contract does not prove Win9x/NT-family UI runtime support; those still require native VM testing.

@@ -4,7 +4,15 @@ members = [
     "rust/library/wl_animate",
     "rust/library/wl_cpuv",
     "rust/library/wl_gpuv",
+    "rust/library/wl_ui_core",
+    "rust/library/wl_ui_win32",
+    "rust/library/wl_ui_windows7",
+    "rust/library/wl_ui_windows10",
+    "rust/library/wl_ui_windows11",
     "rust/library/wl_ui",
     "rust/win10",
     "rust/win11",
+]
+exclude = [
+    "rust/adapters/wl_ui_tauri2",
 ]

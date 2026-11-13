@@ -5,6 +5,7 @@ import sys
 import tempfile
 import time
 import unittest
+import zipfile
 from unittest import mock
 from pathlib import Path
 
@@ -1008,6 +1009,85 @@ class BuildHelpersTests(unittest.TestCase):
                 notes = build._visual_studio_setup_log_diagnostics(time.time() - 1)
         self.assertEqual(notes, [])
 
+
+
+    def test_ui_backend_module_tree_is_explicit_and_feature_namespaced(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            required = (
+                "rust/library/wl_ui/src/windows7/mod.rs",
+                "rust/library/wl_ui/src/windows8/mod.rs",
+                "rust/library/wl_ui/src/windows81/mod.rs",
+                "rust/library/wl_ui/src/windows10/mod.rs",
+                "rust/library/wl_ui/src/windows11/mod.rs",
+                "rust/library/wl_ui/src/tauri2/mod.rs",
+            )
+            for relative in required:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("// module fixture\n", encoding="utf-8")
+            self.assertTrue(all(build.project_has_manifest(root, item) for item in required))
+
+    def test_windows_toolchain_profiles_are_generation_specific(self):
+        self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win10"]["visual_studio_major"], 17)
+        self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win10"]["sdk_version"], "10.0.19041.0")
+        self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win10"]["runner_image"], "windows-2022")
+        self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win11"]["visual_studio_major"], 18)
+        self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win11"]["sdk_version"], "10.0.26100.0")
+        self.assertEqual(build.WINDOWS_TOOLCHAIN_PROFILES["win11"]["runner_image"], "windows-2025-vs2026")
+
+    def test_ui_source_detection_requires_facade_core_and_platform_backends(self):
+        required = (
+            "rust/library/wl_ui_core/Cargo.toml",
+            "rust/library/wl_ui_win32/Cargo.toml",
+            "rust/library/wl_ui_windows7/Cargo.toml",
+            "rust/library/wl_ui_windows10/Cargo.toml",
+            "rust/library/wl_ui_windows11/Cargo.toml",
+            "rust/library/wl_ui/Cargo.toml",
+            "rust/library/wl_ui/src/windows7/mod.rs",
+            "rust/library/wl_ui/src/windows8/mod.rs",
+            "rust/library/wl_ui/src/windows81/mod.rs",
+            "rust/library/wl_ui/src/windows10/mod.rs",
+            "rust/library/wl_ui/src/windows11/mod.rs",
+            "rust/library/wl_ui/src/tauri2/mod.rs",
+            "rust/win10/Cargo.toml",
+            "rust/win11/Cargo.toml",
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertFalse(build.check_ui_sources(root))
+            for relative in required:
+                manifest = root / relative
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                manifest.write_text("[package]\nname = \"fixture\"\n", encoding="utf-8")
+            self.assertTrue(build.check_ui_sources(root))
+
+    def test_win10_runtime_requirements_do_not_include_windows_app_runtime(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            executable = root / "build" / "rust" / "win10" / "release" / "winlook.exe"
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"native-win32-test")
+            runner = build.Runner(root=root)
+            archive = build.package_windows_app(runner, "win10")
+            with zipfile.ZipFile(archive) as package:
+                note = package.read("RUNTIME-REQUIREMENTS.txt").decode("utf-8")
+            self.assertIn("native Win32 backend", note)
+            self.assertIn("does not require Windows App Runtime", note)
+            self.assertNotIn(build.APP_RUNTIME_URL, note)
+
+    def test_win11_runtime_requirements_retain_windows_app_runtime(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            executable = root / "build" / "rust" / "win11" / "release" / "winlook.exe"
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"winui3-test")
+            runner = build.Runner(root=root)
+            archive = build.package_windows_app(runner, "win11")
+            with zipfile.ZipFile(archive) as package:
+                note = package.read("RUNTIME-REQUIREMENTS.txt").decode("utf-8")
+            self.assertIn(build.APP_RUNTIME_URL, note)
+            self.assertIn("Windows App Runtime", note)
 
 
 if __name__ == "__main__":

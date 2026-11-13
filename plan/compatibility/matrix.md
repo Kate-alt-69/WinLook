@@ -11,11 +11,11 @@ Planning matrix only; not a release-support promise.
 | Windows 2000 | NT 5.0 | USER/GDI; no DWM | SetWinEventHook and AnimateWindow documented | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
 | Windows XP | NT 5.1/5.2 | USER/GDI; no DWM | MSAA 2.0 built in | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Research only |
 | Windows Vista | NT 6.0 | DWM introduced; composition conditional | Session 0 isolation begins | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
-| Windows 7 | NT 6.1 | DWM/Aero; composition conditional | MSAA 3.0 built in | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
-| Windows 8 | NT 6.2 | DWM always on | Modern Store app/window separation | WLWM logical | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
-| Windows 8.1 | NT 6.3 | DWM always on; DirectComposition DesktopDevice documented | Dynamic code policy documented | WLWM logical/native query where useful | Not in initial library baseline; future C/OS adapter validation | Future compatibility work |
-| Windows 10 | NT 10.0 | DWM always on | IVirtualDesktopManager documented | Native window/desktop queries+moves; remaining ops researched | wl_animate (Rust) + wl_Lanimate (C); renderer-independent core | Initial library baseline; runtime testing pending |
-| Windows 11 | NT 10.0 build family | DWM always on; modern Shell | Mitigation/build variability | Public IVirtualDesktopManager scope; per-build testing | Rust/C animation cores; per-build adapters pending | Future verification |
+| Windows 7 | NT 6.1 | DWM/Aero; composition conditional | MSAA 3.0 built in | WLWM logical | Experimental `wl_ui::windows7` classic Win32 renderer; Rust 1.77 or custom Tier 3 target | Research/VM testing pending |
+| Windows 8 | NT 6.2 | DWM always on | Modern Store app/window separation | WLWM logical | `wl_ui::windows8` aliases the same baseline Win32 renderer | Research/VM testing pending |
+| Windows 8.1 | NT 6.3 | DWM always on; DirectComposition DesktopDevice documented | Dynamic code policy documented | WLWM logical/native query where useful | `wl_ui::windows81` aliases the same baseline Win32 renderer | Research/VM testing pending |
+| Windows 10 | NT 10.0 | DWM always on | IVirtualDesktopManager documented | Native window/desktop queries+moves; remaining ops researched | `wl_ui::windows10`: Win32/User32; no Windows App SDK dependency | Build profile implemented; runtime testing pending |
+| Windows 11 | NT 10.0 build family | DWM always on; modern Shell | Mitigation/build variability | Public IVirtualDesktopManager scope; per-build testing | `wl_ui::windows11`: WinUI 3 / Windows Reactor | Build profile implemented; runtime testing pending |
 
 ## Important interpretation
 - APIs with Windows 2000 minimum are not assumed on 95/98/ME.
@@ -42,10 +42,10 @@ The existing matrix gives the broad platform baseline. This table clarifies the 
 
 | OS group | Core implementation route | Desktop/graphics baseline | Window/workspace model | High-risk areas |
 |---|---|---|---|---|
-| Windows 95 / 98 / Me | Separate legacy C builds; test each release independently | USER/GDI; no DWM | Logical WLWM workspaces; OS-specific observation adapter | Process observation/injection, desktop icon presentation, display, optional accessibility RDK |
+| Windows 95 / 98 / Me | Separate legacy C builds plus the C89 `wl_Lui` window-shell foundation; test each release independently | USER/GDI; no DWM | Logical WLWM workspaces; OS-specific observation adapter | Process observation/injection, desktop icon presentation, display, optional accessibility RDK |
 | NT 4.0 | Separate legacy C target; do not reuse Win9x assumptions | USER/GDI; no DWM | Logical workspaces; NT-specific process/session adapter | Service/runtime compatibility, event source, injection and Shell |
 | Windows 2000 / XP | Legacy C target unless another runtime is separately verified | USER/GDI; no DWM | Logical workspaces; documented APIs only where minimums match | Runtime/CRT, process bitness, Shell and display variation |
-| Vista / 7 | C implementation is the planned default; Rust/MSVC is not the current supported target baseline | DWM exists; composition/driver/session state matters | Logical workspaces unless native operation is proven | Session 0 split, DWM availability, driver and power |
+| Vista | C implementation and `wl_Lui`; Rust modern toolchain route is not the baseline | DWM exists; composition/driver/session state matters | Logical workspaces unless native operation is proven | Session 0 split, DWM availability, driver and power |
 | Windows 8 / 8.1 | C implementation is the planned default; Rust/MSVC is not the current supported target baseline | DWM always on; DirectComposition interface is version-sensitive | Logical workspace baseline; native interface use is feature-scoped | Composition minimums, app model, mitigations |
 | Windows 10 / 11 | Rust/MSVC target candidate (documented Windows 10+ client floor); WinLook still requires exact-build tests | DWM always on; modern Shell/display capabilities | Native public operations only for documented scope; research remaining gaps | Build changes, process mitigations, protected targets, graphics and display |
 
