@@ -30,6 +30,9 @@ fn main() {
     let frame_delta = Duration::from_nanos(16_666_667);
     let mut frame_clock = FrameClock::sixty_fps();
     let mut host_timestamp = Duration::ZERO;
+    let _initial_tick = frame_clock
+        .tick(host_timestamp)
+        .expect("the initial clock tick establishes the baseline");
     let started = Instant::now();
     let mut checksum = 0.0_f64;
     for _ in 0..FRAME_COUNT {
