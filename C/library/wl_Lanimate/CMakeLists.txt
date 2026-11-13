@@ -8,6 +8,7 @@ add_library(wl_Lanimate STATIC
     src/wl_Lanimate_tween.c
     src/wl_Lanimate_track.c
     src/wl_Lanimate_animation.c
+    src/wl_Lanimate_clock.c
 )
 add_library(WinLook::Lanimate ALIAS wl_Lanimate)
 
