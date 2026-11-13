@@ -1362,57 +1362,153 @@ impl UiStyle {
                 }
             }
         }
-        if let Some(value) = self.foreground { push!("color", value.to_css()); }
-        if let Some(value) = self.border_color { push!("border-color", value.to_css()); }
-        if let Some(value) = &self.font_family { push!("font-family", css_font_family(value)); }
-        if let Some(value) = self.font_size { push!("font-size", format!("{}px", number(value))); }
-        if let Some(value) = self.font_weight { push!("font-weight", value.to_string()); }
-        if let Some(value) = self.line_height { push!("line-height", number(value)); }
-        if let Some(value) = self.letter_spacing { push!("letter-spacing", format!("{}px", number(value))); }
-        if let Some(value) = self.padding { push!("padding", value.css()); }
-        if let Some(value) = self.margin { push!("margin", value.css()); }
-        if let Some(value) = self.gap { push!("gap", format!("{}px", number(value))); }
-        if let Some(value) = self.width { push!("width", value.css()); }
-        if let Some(value) = self.height { push!("height", value.css()); }
-        if let Some(value) = self.min_width { push!("min-width", value.css()); }
-        if let Some(value) = self.min_height { push!("min-height", value.css()); }
-        if let Some(value) = self.max_width { push!("max-width", value.css()); }
-        if let Some(value) = self.max_height { push!("max-height", value.css()); }
-        if let Some(value) = self.border_width { push!("border-width", format!("{}px", number(value))); }
-        if let Some(value) = self.border_style { push!("border-style", value.css().to_string()); }
-        if let Some(value) = self.border_radius { push!("border-radius", format!("{}px", number(value))); }
-        if let Some(value) = self.opacity { push!("opacity", number(value)); }
-        if let Some(value) = self.shadow { push!("box-shadow", shadow_css(value)); }
-        if let Some(value) = self.cursor { push!("cursor", value.css().to_string()); }
-        if let Some(value) = self.text_align { push!("text-align", value.css().to_string()); }
-        if let Some(value) = self.text_decoration { push!("text-decoration", value.css().to_string()); }
+        if let Some(value) = self.foreground {
+            push!("color", value.to_css());
+        }
+        if let Some(value) = self.border_color {
+            push!("border-color", value.to_css());
+        }
+        if let Some(value) = &self.font_family {
+            push!("font-family", css_font_family(value));
+        }
+        if let Some(value) = self.font_size {
+            push!("font-size", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.font_weight {
+            push!("font-weight", value.to_string());
+        }
+        if let Some(value) = self.line_height {
+            push!("line-height", number(value));
+        }
+        if let Some(value) = self.letter_spacing {
+            push!("letter-spacing", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.padding {
+            push!("padding", value.css());
+        }
+        if let Some(value) = self.margin {
+            push!("margin", value.css());
+        }
+        if let Some(value) = self.gap {
+            push!("gap", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.width {
+            push!("width", value.css());
+        }
+        if let Some(value) = self.height {
+            push!("height", value.css());
+        }
+        if let Some(value) = self.min_width {
+            push!("min-width", value.css());
+        }
+        if let Some(value) = self.min_height {
+            push!("min-height", value.css());
+        }
+        if let Some(value) = self.max_width {
+            push!("max-width", value.css());
+        }
+        if let Some(value) = self.max_height {
+            push!("max-height", value.css());
+        }
+        if let Some(value) = self.border_width {
+            push!("border-width", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.border_style {
+            push!("border-style", value.css().to_string());
+        }
+        if let Some(value) = self.border_radius {
+            push!("border-radius", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.opacity {
+            push!("opacity", number(value));
+        }
+        if let Some(value) = self.shadow {
+            push!("box-shadow", shadow_css(value));
+        }
+        if let Some(value) = self.cursor {
+            push!("cursor", value.css().to_string());
+        }
+        if let Some(value) = self.text_align {
+            push!("text-align", value.css().to_string());
+        }
+        if let Some(value) = self.text_decoration {
+            push!("text-decoration", value.css().to_string());
+        }
         if self.outline_width.is_some() || self.outline_color.is_some() {
             let width = self.outline_width.unwrap_or(1.0);
             let color = self.outline_color.unwrap_or(UiColor::rgb(0, 103, 192));
             push!("outline", format!("{}px solid {}", number(width), color.to_css()));
         }
-        if let Some(value) = self.outline_offset { push!("outline-offset", format!("{}px", number(value))); }
-        if let Some(value) = self.display { push!("display", value.css().to_string()); }
-        if let Some(value) = self.position { push!("position", value.css().to_string()); }
-        if let Some(value) = self.overflow { push!("overflow", value.css().to_string()); }
-        if let Some(value) = self.flex_direction { push!("flex-direction", value.css().to_string()); }
-        if let Some(value) = self.flex_wrap { push!("flex-wrap", value.css().to_string()); }
-        if let Some(value) = self.justify_content { push!("justify-content", value.css().to_string()); }
-        if let Some(value) = self.align_items { push!("align-items", value.css().to_string()); }
-        if let Some(value) = self.box_sizing { push!("box-sizing", value.css().to_string()); }
-        if let Some(value) = self.text_transform { push!("text-transform", value.css().to_string()); }
-        if let Some(value) = self.white_space { push!("white-space", value.css().to_string()); }
-        if let Some(value) = self.object_fit { push!("object-fit", value.css().to_string()); }
-        if let Some(value) = self.flex_grow { push!("flex-grow", number(value)); }
-        if let Some(value) = self.flex_shrink { push!("flex-shrink", number(value)); }
-        if let Some(value) = self.z_index { push!("z-index", value.to_string()); }
-        if let Some(value) = self.top { push!("top", value.css()); }
-        if let Some(value) = self.right { push!("right", value.css()); }
-        if let Some(value) = self.bottom { push!("bottom", value.css()); }
-        if let Some(value) = self.left { push!("left", value.css()); }
-        if let Some(value) = self.transform { push!("transform", value.css()); }
+        if let Some(value) = self.outline_offset {
+            push!("outline-offset", format!("{}px", number(value)));
+        }
+        if let Some(value) = self.display {
+            push!("display", value.css().to_string());
+        }
+        if let Some(value) = self.position {
+            push!("position", value.css().to_string());
+        }
+        if let Some(value) = self.overflow {
+            push!("overflow", value.css().to_string());
+        }
+        if let Some(value) = self.flex_direction {
+            push!("flex-direction", value.css().to_string());
+        }
+        if let Some(value) = self.flex_wrap {
+            push!("flex-wrap", value.css().to_string());
+        }
+        if let Some(value) = self.justify_content {
+            push!("justify-content", value.css().to_string());
+        }
+        if let Some(value) = self.align_items {
+            push!("align-items", value.css().to_string());
+        }
+        if let Some(value) = self.box_sizing {
+            push!("box-sizing", value.css().to_string());
+        }
+        if let Some(value) = self.text_transform {
+            push!("text-transform", value.css().to_string());
+        }
+        if let Some(value) = self.white_space {
+            push!("white-space", value.css().to_string());
+        }
+        if let Some(value) = self.object_fit {
+            push!("object-fit", value.css().to_string());
+        }
+        if let Some(value) = self.flex_grow {
+            push!("flex-grow", number(value));
+        }
+        if let Some(value) = self.flex_shrink {
+            push!("flex-shrink", number(value));
+        }
+        if let Some(value) = self.z_index {
+            push!("z-index", value.to_string());
+        }
+        if let Some(value) = self.top {
+            push!("top", value.css());
+        }
+        if let Some(value) = self.right {
+            push!("right", value.css());
+        }
+        if let Some(value) = self.bottom {
+            push!("bottom", value.css());
+        }
+        if let Some(value) = self.left {
+            push!("left", value.css());
+        }
+        if let Some(value) = self.transform {
+            push!("transform", value.css());
+        }
         if !self.transitions.is_empty() {
-            push!("transition", self.transitions.iter().copied().map(UiTransition::css).collect::<Vec<_>>().join(","));
+            push!(
+                "transition",
+                self.transitions
+                    .iter()
+                    .copied()
+                    .map(UiTransition::css)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
         }
         Ok(css)
     }
@@ -1521,7 +1617,12 @@ pub struct UiSelector {
 
 impl UiSelector {
     pub fn new(component: UiComponent) -> Self {
-        Self { component, class: None, id: None, state: None }
+        Self {
+            component,
+            class: None,
+            id: None,
+            state: None,
+        }
     }
 
     pub fn class(mut self, class: impl Into<String>) -> Self {
@@ -1546,19 +1647,25 @@ impl UiSelector {
     fn css(&self) -> Result<String, UiError> {
         let component = self.component.as_str();
         if !valid_identifier(component) {
-            return Err(UiError::InvalidStyle("component selector must be a valid identifier".to_string()));
+            return Err(UiError::InvalidStyle(
+                "component selector must be a valid identifier".to_string(),
+            ));
         }
         let mut selector = format!("[data-wl-component=\"{}\"]", component);
         if let Some(class) = &self.class {
             if !valid_identifier(class) {
-                return Err(UiError::InvalidStyle("style class must be a valid CSS identifier".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "style class must be a valid CSS identifier".to_string(),
+                ));
             }
             selector.push('.');
             selector.push_str(class);
         }
         if let Some(id) = &self.id {
             if !valid_identifier(id) {
-                return Err(UiError::InvalidStyle("style ID must be a valid CSS identifier".to_string()));
+                return Err(UiError::InvalidStyle(
+                    "style ID must be a valid CSS identifier".to_string(),
+                ));
             }
             selector.push('#');
             selector.push_str(id);
@@ -1580,7 +1687,11 @@ pub struct UiStyleRule {
 
 impl UiStyleRule {
     pub fn new(selector: UiSelector, style: UiStyle) -> Self {
-        Self { selector, style, media: None }
+        Self {
+            selector,
+            style,
+            media: None,
+        }
     }
 
     pub fn when(mut self, condition: UiMediaCondition) -> Self {
@@ -1588,7 +1699,9 @@ impl UiStyleRule {
         self
     }
 
-    pub fn media(&self) -> Option<UiMediaCondition> { self.media }
+    pub fn media(&self) -> Option<UiMediaCondition> {
+        self.media
+    }
 
     pub fn selector(&self) -> &UiSelector {
         &self.selector
@@ -1625,7 +1738,8 @@ impl UiStyleSheet {
         style: UiStyle,
         condition: UiMediaCondition,
     ) -> Self {
-        self.rules.push(UiStyleRule::new(selector, style).when(condition));
+        self.rules
+            .push(UiStyleRule::new(selector, style).when(condition));
         self
     }
 
@@ -1637,7 +1751,9 @@ impl UiStyleSheet {
         for rule in &self.rules {
             rule.selector.css()?;
             rule.style.validate()?;
-            if let Some(media) = rule.media { media.validate()?; }
+            if let Some(media) = rule.media {
+                media.validate()?;
+            }
         }
         Ok(())
     }
@@ -1707,14 +1823,9 @@ fn append_palette_variables(css: &mut String, palette: &UiPalette) {
 }
 
 fn valid_shadow(shadow: UiShadow) -> bool {
-    [
-        shadow.offset_x,
-        shadow.offset_y,
-        shadow.blur,
-        shadow.spread,
-    ]
-    .iter()
-    .all(|value| finite_non_negative(*value))
+    [shadow.offset_x, shadow.offset_y, shadow.blur, shadow.spread]
+        .iter()
+        .all(|value| finite_non_negative(*value))
 }
 
 fn shadow_css(shadow: UiShadow) -> String {
