@@ -73,7 +73,7 @@ make -C C/library/wl_Lanimate benchmark
 ```
 
 This creates `build/libwl_Lanimate.a`, runs the test executable, and reports
-the C89 1,024-animation / 600-frame CPU benchmark. When
+the C89 1,024-animation / 600-frame process-CPU-time benchmark. When
 linking the static library into a non-MSVC application, also link the platform
 math library (for example, `-lm` on GCC/Clang Unix-like toolchains).
 
