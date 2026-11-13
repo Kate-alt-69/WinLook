@@ -27,6 +27,19 @@
 
 C89 compatibility is an implementation constraint, not an OS compatibility claim. The core can be compiled on any host with a conforming C compiler and the platform math library; integrating it with a UI still requires a renderer and host-owned frame scheduler.
 
+## Shared frame-clock contract
+
+The C library provides `wl_Lanimate_frame_clock` for the single host-owned
+frame loop. Pass monotonic milliseconds to `wl_Lanimate_frame_clock_tick`;
+only emitted ticks should advance the active animations. The default 60 FPS
+interval is `WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS`, and the default maximum
+delta is 100 ms. Pause/resume discards time spent hidden or suspended.
+
+One clock is shared by the entire application/scene (wl_ui or WLDE). The host
+decides whether to request another frame based on visibility and active
+animations. The library does not create a timer, thread, message pump or GPU
+resource. This avoids waking the machine once per widget/property.
+
 ## Efficient host scheduling
 
 Keep one frame clock per application or scene (for example wl_ui or wlDE),
