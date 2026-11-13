@@ -1,7 +1,5 @@
 use std::time::{Duration, Instant};
-use wl_animate::{
-    Animation, Direction, Easing, FillMode, IterationCount, Keyframe, KeyframeTrack,
-};
+use wl_animate::{Animation, Direction, Easing, FillMode, IterationCount, Keyframe, KeyframeTrack};
 
 fn main() {
     const ANIMATION_COUNT: usize = 1024;
@@ -39,16 +37,20 @@ fn main() {
     }
 
     let elapsed = started.elapsed();
-    let microseconds_per_frame =
-        elapsed.as_secs_f64() * 1_000_000.0 / FRAME_COUNT as f64;
-    let nanoseconds_per_sample =
-        elapsed.as_nanos() as f64 / (ANIMATION_COUNT * FRAME_COUNT) as f64;
+    let microseconds_per_frame = elapsed.as_secs_f64() * 1_000_000.0 / FRAME_COUNT as f64;
+    let nanoseconds_per_sample = elapsed.as_nanos() as f64 / (ANIMATION_COUNT * FRAME_COUNT) as f64;
 
     println!("Animations: {ANIMATION_COUNT}");
     println!("Frames: {FRAME_COUNT} at 60 FPS");
     println!("Total CPU time: {:.3} ms", elapsed.as_secs_f64() * 1000.0);
-    println!("Average update time per frame: {:.3} us", microseconds_per_frame);
-    println!("Average time per animation sample: {:.1} ns", nanoseconds_per_sample);
+    println!(
+        "Average update time per frame: {:.3} us",
+        microseconds_per_frame
+    );
+    println!(
+        "Average time per animation sample: {:.1} ns",
+        nanoseconds_per_sample
+    );
     println!("Checksum: {:.6}", checksum);
     println!("No timers, threads, renderer or GPU calls are created by this benchmark.");
 }
