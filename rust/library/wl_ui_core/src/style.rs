@@ -1401,26 +1401,86 @@ impl UiStyle {
         self
     }
 
-    pub fn display(mut self, value: UiDisplay) -> Self { self.display = Some(value); self }
-    pub fn position(mut self, value: UiPosition) -> Self { self.position = Some(value); self }
-    pub fn overflow(mut self, value: UiOverflow) -> Self { self.overflow = Some(value); self }
-    pub fn flex_direction(mut self, value: UiFlexDirection) -> Self { self.flex_direction = Some(value); self }
-    pub fn flex_wrap(mut self, value: UiFlexWrap) -> Self { self.flex_wrap = Some(value); self }
-    pub fn justify_content(mut self, value: UiJustifyContent) -> Self { self.justify_content = Some(value); self }
-    pub fn align_items(mut self, value: UiAlignItems) -> Self { self.align_items = Some(value); self }
-    pub fn box_sizing(mut self, value: UiBoxSizing) -> Self { self.box_sizing = Some(value); self }
-    pub fn text_transform(mut self, value: UiTextTransform) -> Self { self.text_transform = Some(value); self }
-    pub fn white_space(mut self, value: UiWhiteSpace) -> Self { self.white_space = Some(value); self }
-    pub fn object_fit(mut self, value: UiObjectFit) -> Self { self.object_fit = Some(value); self }
-    pub fn flex_grow(mut self, value: f32) -> Self { self.flex_grow = Some(value); self }
-    pub fn flex_shrink(mut self, value: f32) -> Self { self.flex_shrink = Some(value); self }
-    pub fn z_index(mut self, value: i32) -> Self { self.z_index = Some(value); self }
-    pub fn top(mut self, value: UiLength) -> Self { self.top = Some(value); self }
-    pub fn right(mut self, value: UiLength) -> Self { self.right = Some(value); self }
-    pub fn bottom(mut self, value: UiLength) -> Self { self.bottom = Some(value); self }
-    pub fn left(mut self, value: UiLength) -> Self { self.left = Some(value); self }
-    pub fn transform(mut self, value: UiTransform) -> Self { self.transform = Some(value); self }
-    pub fn transition(mut self, value: UiTransition) -> Self { self.transitions.push(value); self }
+    pub fn display(mut self, value: UiDisplay) -> Self {
+        self.display = Some(value);
+        self
+    }
+    pub fn position(mut self, value: UiPosition) -> Self {
+        self.position = Some(value);
+        self
+    }
+    pub fn overflow(mut self, value: UiOverflow) -> Self {
+        self.overflow = Some(value);
+        self
+    }
+    pub fn flex_direction(mut self, value: UiFlexDirection) -> Self {
+        self.flex_direction = Some(value);
+        self
+    }
+    pub fn flex_wrap(mut self, value: UiFlexWrap) -> Self {
+        self.flex_wrap = Some(value);
+        self
+    }
+    pub fn justify_content(mut self, value: UiJustifyContent) -> Self {
+        self.justify_content = Some(value);
+        self
+    }
+    pub fn align_items(mut self, value: UiAlignItems) -> Self {
+        self.align_items = Some(value);
+        self
+    }
+    pub fn box_sizing(mut self, value: UiBoxSizing) -> Self {
+        self.box_sizing = Some(value);
+        self
+    }
+    pub fn text_transform(mut self, value: UiTextTransform) -> Self {
+        self.text_transform = Some(value);
+        self
+    }
+    pub fn white_space(mut self, value: UiWhiteSpace) -> Self {
+        self.white_space = Some(value);
+        self
+    }
+    pub fn object_fit(mut self, value: UiObjectFit) -> Self {
+        self.object_fit = Some(value);
+        self
+    }
+    pub fn flex_grow(mut self, value: f32) -> Self {
+        self.flex_grow = Some(value);
+        self
+    }
+    pub fn flex_shrink(mut self, value: f32) -> Self {
+        self.flex_shrink = Some(value);
+        self
+    }
+    pub fn z_index(mut self, value: i32) -> Self {
+        self.z_index = Some(value);
+        self
+    }
+    pub fn top(mut self, value: UiLength) -> Self {
+        self.top = Some(value);
+        self
+    }
+    pub fn right(mut self, value: UiLength) -> Self {
+        self.right = Some(value);
+        self
+    }
+    pub fn bottom(mut self, value: UiLength) -> Self {
+        self.bottom = Some(value);
+        self
+    }
+    pub fn left(mut self, value: UiLength) -> Self {
+        self.left = Some(value);
+        self
+    }
+    pub fn transform(mut self, value: UiTransform) -> Self {
+        self.transform = Some(value);
+        self
+    }
+    pub fn transition(mut self, value: UiTransition) -> Self {
+        self.transitions.push(value);
+        self
+    }
     pub fn grid_template(
         mut self,
         columns: impl IntoIterator<Item = UiGridTrack>,
@@ -1431,10 +1491,7 @@ impl UiStyle {
         self
     }
 
-    pub fn grid_columns(
-        mut self,
-        columns: impl IntoIterator<Item = UiGridTrack>,
-    ) -> Self {
+    pub fn grid_columns(mut self, columns: impl IntoIterator<Item = UiGridTrack>) -> Self {
         self.grid_columns = Some(columns.into_iter().collect());
         self
     }
