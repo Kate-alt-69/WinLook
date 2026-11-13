@@ -39,7 +39,7 @@ pub fn attach<R: Runtime>(
             })
         }).collect::<Vec<_>>(),
         "theme": {
-            "scheme": application.theme().color_scheme().as_str(),
+            "scheme": application.theme_ref().color_scheme().as_str(),
             "css": style_css,
         },
     });
@@ -49,9 +49,7 @@ pub fn attach<R: Runtime>(
         ))
     })?;
     let css_serialized = serde_json::to_string(&style_css).map_err(|error| {
-        UiError::Backend(format!(
-            "could not serialize the wl_ui stylesheet: {error}"
-        ))
+        UiError::Backend(format!("could not serialize the wl_ui stylesheet: {error}"))
     })?;
     let initialization_script = format!(
         "window.__WL_UI_BOOTSTRAP__ = {serialized};\n\
