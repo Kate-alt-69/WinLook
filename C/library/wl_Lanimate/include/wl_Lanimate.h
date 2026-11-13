@@ -121,8 +121,29 @@ typedef enum wl_Lanimate_result {
     WL_LANIMATE_INVALID_ARGUMENT = 1,
     WL_LANIMATE_INVALID_KEYFRAME_ORDER = 2,
     WL_LANIMATE_INVALID_KEYFRAME_TIME = 3,
-    WL_LANIMATE_NO_VALUE = 4
+    WL_LANIMATE_NO_VALUE = 4,
+    WL_LANIMATE_NO_FRAME = 5
 } wl_Lanimate_result;
+
+/* One host-owned frame clock shared by every animation in a scene. */
+typedef struct wl_Lanimate_frame_clock {
+    double target_interval_ms;
+    double maximum_delta_ms;
+    double last_timestamp_ms;
+    unsigned long frame_index;
+    unsigned int has_last_timestamp;
+    unsigned int paused;
+} wl_Lanimate_frame_clock;
+
+typedef struct wl_Lanimate_frame_tick {
+    double timestamp_ms;
+    double delta_ms;
+    unsigned long frame_index;
+} wl_Lanimate_frame_tick;
+
+#define WL_LANIMATE_FRAME_60_FPS_INTERVAL_MS 16.6666667
+#define WL_LANIMATE_FRAME_DEFAULT_MAXIMUM_DELTA_MS 100.0
+
 
 /* Vector/geometry helpers. Matrix composition applies rhs, then self. */
 wl_Lanimate_vector3 wl_Lanimate_vector3_lerp(wl_Lanimate_vector3 from_value, wl_Lanimate_vector3 to_value, double progress);
@@ -204,5 +225,27 @@ void wl_Lanimate_animation_pause(wl_Lanimate_animation *animation);
 void wl_Lanimate_animation_resume(wl_Lanimate_animation *animation);
 void wl_Lanimate_animation_cancel(wl_Lanimate_animation *animation);
 void wl_Lanimate_animation_restart(wl_Lanimate_animation *animation);
+
+/*
+ * Host-driven frame clock. It creates no timer or worker. The host passes
+ * monotonic milliseconds from one application clock and shares each emitted
+ * delta across every active animation. First tick emits a zero delta.
+ */
+wl_Lanimate_result wl_Lanimate_frame_clock_init(
+    wl_Lanimate_frame_clock *clock,
+    double target_interval_ms,
+    double maximum_delta_ms
+);
+wl_Lanimate_result wl_Lanimate_frame_clock_tick(
+    wl_Lanimate_frame_clock *clock,
+    double now_ms,
+    wl_Lanimate_frame_tick *tick_out
+);
+void wl_Lanimate_frame_clock_pause(wl_Lanimate_frame_clock *clock);
+wl_Lanimate_result wl_Lanimate_frame_clock_resume(
+    wl_Lanimate_frame_clock *clock,
+    double now_ms
+);
+void wl_Lanimate_frame_clock_reset(wl_Lanimate_frame_clock *clock);
 
 #endif /* WL_LANIMATE_H */
