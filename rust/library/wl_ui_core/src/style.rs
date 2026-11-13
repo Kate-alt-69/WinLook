@@ -2801,7 +2801,10 @@ mod tests {
             style.grid_columns_value(),
             Some(&[UiGridTrack::Fraction(1.0), UiGridTrack::Px(240.0)][..])
         );
-        assert_eq!(style.corner_radii_value(), Some(UiCornerRadii::uniform(8.0)));
+        assert_eq!(
+            style.corner_radii_value(),
+            Some(UiCornerRadii::uniform(8.0))
+        );
         assert_eq!(style.opacity_value(), Some(0.9));
         assert_eq!(style.transitions_value().len(), 1);
 
