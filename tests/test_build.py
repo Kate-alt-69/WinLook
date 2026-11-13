@@ -631,11 +631,11 @@ class BuildHelpersTests(unittest.TestCase):
             root = Path(temp)
             self.assertFalse(build.check_ui_sources(root))
             required = (
-                "rust/library/wl_ui_core/Cargo.toml",
-                "rust/library/wl_ui_win32/Cargo.toml",
-                "rust/library/wl_ui_windows7/Cargo.toml",
-                "rust/library/wl_ui_windows10/Cargo.toml",
-                "rust/library/wl_ui_windows11/Cargo.toml",
+                "rust/library/wl_ui/core/Cargo.toml",
+                "rust/library/wl_ui/backends/win32/Cargo.toml",
+                "rust/library/wl_ui/backends/windows7/Cargo.toml",
+                "rust/library/wl_ui/backends/windows10/Cargo.toml",
+                "rust/library/wl_ui/backends/windows11/Cargo.toml",
                 "rust/library/wl_ui/Cargo.toml",
                 "rust/library/wl_ui/src/windows7/mod.rs",
                 "rust/library/wl_ui/src/windows8/mod.rs",
@@ -1119,11 +1119,11 @@ class BuildHelpersTests(unittest.TestCase):
 
     def test_ui_source_detection_requires_facade_core_and_platform_backends(self):
         required = (
-            "rust/library/wl_ui_core/Cargo.toml",
-            "rust/library/wl_ui_win32/Cargo.toml",
-            "rust/library/wl_ui_windows7/Cargo.toml",
-            "rust/library/wl_ui_windows10/Cargo.toml",
-            "rust/library/wl_ui_windows11/Cargo.toml",
+            "rust/library/wl_ui/core/Cargo.toml",
+            "rust/library/wl_ui/backends/win32/Cargo.toml",
+            "rust/library/wl_ui/backends/windows7/Cargo.toml",
+            "rust/library/wl_ui/backends/windows10/Cargo.toml",
+            "rust/library/wl_ui/backends/windows11/Cargo.toml",
             "rust/library/wl_ui/Cargo.toml",
             "rust/library/wl_ui/src/windows7/mod.rs",
             "rust/library/wl_ui/src/windows8/mod.rs",
