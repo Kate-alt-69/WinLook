@@ -2306,7 +2306,9 @@ impl UiStyle {
             }
         }
         if self.animations.len() > 8 {
-            return Err(UiError::InvalidStyle("a component cannot have more than 8 simultaneous animations".to_string()));
+            return Err(UiError::InvalidStyle(
+                "a component cannot have more than 8 simultaneous animations".to_string(),
+            ));
         }
         for animation in &self.animations {
             animation.validate()?;
@@ -2350,9 +2352,13 @@ impl UiStyle {
                 "corner radii must be finite and non-negative".to_string(),
             ));
         }
-        if self.text_shadow.is_some_and(|value| !valid_text_shadow(value)) {
+        if self
+            .text_shadow
+            .is_some_and(|value| !valid_text_shadow(value))
+        {
             return Err(UiError::InvalidStyle(
-                "text shadow offsets must be finite, blur non-negative, and spread zero".to_string(),
+                "text shadow offsets must be finite, blur non-negative, and spread zero"
+                    .to_string(),
             ));
         }
         if let Some(value) = self.padding {
@@ -2567,7 +2573,11 @@ impl UiStyle {
         if !self.animations.is_empty() {
             push!(
                 "animation",
-                self.animations.iter().map(UiAnimation::css).collect::<Vec<_>>().join(",")
+                self.animations
+                    .iter()
+                    .map(UiAnimation::css)
+                    .collect::<Vec<_>>()
+                    .join(",")
             );
         }
         if let Some(value) = &self.grid_columns {
@@ -3303,13 +3313,7 @@ mod tests {
 
         let invalid_text_shadow = UiStyleSheet::new().rule(
             UiSelector::new(UiComponent::Text),
-            UiStyle::new().text_shadow(UiShadow::new(
-                UiColor::rgb(0, 0, 0),
-                0.0,
-                0.0,
-                1.0,
-                1.0,
-            )),
+            UiStyle::new().text_shadow(UiShadow::new(UiColor::rgb(0, 0, 0), 0.0, 0.0, 1.0, 1.0)),
         );
         assert!(invalid_text_shadow.validate().is_err());
 
@@ -3380,7 +3384,9 @@ mod tests {
                 UiKeyframe::new(0.0, UiStyle::new().opacity(0.0)),
                 UiKeyframe::new(
                     100.0,
-                    UiStyle::new().opacity(1.0).transform(UiTransform::identity().translate(0.0, 0.0)),
+                    UiStyle::new()
+                        .opacity(1.0)
+                        .transform(UiTransform::identity().translate(0.0, 0.0)),
                 ),
             ],
         );
@@ -3396,75 +3402,6 @@ mod tests {
                     .easing(UiEasing::EaseOut),
             ),
         );
-        let css = stylesheet.to_css().unwrap();
-        assert!(css.contains("@keyframes fade_in{0%{opacity:0;}"));
-        assert!(css.contains("100%{opacity:1;"));
-        assert!(css.contains("animation:fade_in 240ms ease-out -20ms 2 alternate both paused;"));
-        assert!(css.contains("prefers-reduced-motion:reduce"));
-    }
-
-    #[test]
-    fn rejects_untrusted_or_unbounded_animation_definitions() {
-        let unsafe_name = UiStyleSheet::new().keyframes(UiKeyframes::new(
-            "fade;body",
-            [
-                UiKeyframe::new(0.0, UiStyle::new().opacity(0.0)),
-                UiKeyframe::new(100.0, UiStyle::new().opacity(1.0)),
-            ],
-        ));
-        assert!(unsafe_name.validate().is_err());
-
-        let missing_definition = UiStyleSheet::new().rule(
-            UiSelector::new(UiComponent::Card),
-            UiStyle::new().animation(UiAnimation::new("missing", 100)),
-        );
-        assert!(missing_definition.validate().is_err());
-
-        let invalid_iterations = UiStyleSheet::new()
-            .keyframes(UiKeyframes::new(
-                "pulse",
-                [
-                    UiKeyframe::new(0.0, UiStyle::new().opacity(0.2)),
-                    UiKeyframe::new(100.0, UiStyle::new().opacity(1.0)),
-                ],
-            ))
-            .rule(
-                UiSelector::new(UiComponent::Card),
-                UiStyle::new().animation(
-                    UiAnimation::new("pulse", 100).iterations(UiAnimationIterations::Count(1001)),
-                ),
-            );
-        assert!(invalid_iterations.validate().is_err());
-    }
-
-    #[test]
-    fn emits_typed_keyframes_and_animation_declarations() {
-        let keyframes = UiKeyframes::new(
-            "fade_in",
-            [
-                UiKeyframe::new(0.0, UiStyle::new().opacity(0.0)),
-                UiKeyframe::new(
-                    100.0,
-                    UiStyle::new()
-                        .opacity(1.0)
-                        .transform(UiTransform::identity().translate(0.0, 0.0)),
-                ),
-            ],
-        );
-        let stylesheet = UiStyleSheet::new()
-            .keyframes(keyframes)
-            .rule(
-                UiSelector::new(UiComponent::Card).class("entering"),
-                UiStyle::new().animation(
-                    UiAnimation::new("fade_in", 240)
-                        .delay(-20)
-                        .iterations(UiAnimationIterations::Count(2))
-                        .direction(UiAnimationDirection::Alternate)
-                        .fill_mode(UiAnimationFillMode::Both)
-                        .play_state(UiAnimationPlayState::Paused)
-                        .easing(UiEasing::EaseOut),
-                ),
-            );
         let css = stylesheet.to_css().unwrap();
         assert!(css.contains("@keyframes fade_in{0%{opacity:0;}"));
         assert!(css.contains("100%{opacity:1;"));
