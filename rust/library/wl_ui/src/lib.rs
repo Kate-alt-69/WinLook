@@ -302,8 +302,13 @@ mod tests {
             page("wallpaper-rainmeter").navigation_label(),
             "  Rainmeter"
         );
-        assert!(page("icons").description().contains("adaptive application tiles"));
-        assert!(application.pages().iter().any(|item| item.id() == "game-mode"));
+        assert!(page("icons")
+            .description()
+            .contains("adaptive application tiles"));
+        assert!(application
+            .pages()
+            .iter()
+            .any(|item| item.id() == "game-mode"));
         assert_eq!(page("settings").title(), "Settings");
         assert_eq!(application.theme_ref().color_scheme(), UiColorScheme::Dark);
         assert_eq!(application.styles_ref().rules().len(), 5);

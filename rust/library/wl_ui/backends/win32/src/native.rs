@@ -1,8 +1,8 @@
+use crate::{enumerate_monitors, should_refresh_topology};
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
-use crate::{enumerate_monitors, should_refresh_topology};
 use wl_ui_core::{UiApplication, UiColor, UiComponent, UiError, UiPage, UiPalette};
 use wl_wlde::{store_provider, StoreProviderId, WallpaperEngineInstall, WallpaperTarget};
 

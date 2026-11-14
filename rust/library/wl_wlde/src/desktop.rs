@@ -464,10 +464,18 @@ impl std::fmt::Display for DesktopModelError {
             Self::TooManyGroups => f.write_str("desktop group count exceeds the 64-group limit"),
             Self::DuplicateIdentifier => f.write_str("desktop group identifiers must be unique"),
             Self::DuplicateMember => f.write_str("a desktop group cannot list the same item twice"),
-            Self::UnknownMember => f.write_str("desktop group references an item outside the current inventory"),
-            Self::EmptyAssetReference => f.write_str("adaptive icon asset references cannot be empty"),
-            Self::AssetReferenceTooLong => f.write_str("adaptive icon asset reference exceeds the portable limit"),
-            Self::InvalidSafeZone => f.write_str("adaptive icon safe zone must be between 48 and 72 percent"),
+            Self::UnknownMember => {
+                f.write_str("desktop group references an item outside the current inventory")
+            }
+            Self::EmptyAssetReference => {
+                f.write_str("adaptive icon asset references cannot be empty")
+            }
+            Self::AssetReferenceTooLong => {
+                f.write_str("adaptive icon asset reference exceeds the portable limit")
+            }
+            Self::InvalidSafeZone => {
+                f.write_str("adaptive icon safe zone must be between 48 and 72 percent")
+            },
         }
     }
 }
@@ -547,10 +555,7 @@ mod tests {
                 DesktopItemId::new("app:editor").unwrap(),
             ],
         );
-        assert_eq!(
-            duplicate_members,
-            Err(DesktopModelError::DuplicateMember)
-        );
+        assert_eq!(duplicate_members, Err(DesktopModelError::DuplicateMember));
 
         let first = DesktopGroup::new(
             "group:shared",
@@ -572,7 +577,12 @@ mod tests {
 
     #[test]
     fn adaptive_app_icons_keep_separate_layers_and_validate_safe_zone() {
-        let layers = AppIconLayers::new("asset:editor-foreground", "asset:editor-background", Some("asset:editor-mono".to_string())).unwrap();
+        let layers = AppIconLayers::new(
+            "asset:editor-foreground",
+            "asset:editor-background",
+            Some("asset:editor-mono".to_string()),
+        )
+        .unwrap();
         let icon = AdaptiveAppIcon::new(
             "app:editor",
             "Editor",

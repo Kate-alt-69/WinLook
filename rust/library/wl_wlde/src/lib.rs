@@ -26,8 +26,8 @@ mod wallpaper_engine;
 pub use desktop::{
     desktop_context_actions, AdaptiveAppIcon, AppIconLayers, AppIconMask, DesktopContextAction,
     DesktopContextTarget, DesktopGroup, DesktopGroups, DesktopItemId, DesktopItemKind,
-    DesktopItemRef, DesktopModelError, DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT,
-    MAX_DESKTOP_GROUP_MEMBERS, MAX_DESKTOP_GROUPS,
+    DesktopItemRef, DesktopModelError, DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT, MAX_DESKTOP_GROUPS,
+    MAX_DESKTOP_GROUP_MEMBERS,
 };
 pub use game_mode::{
     resolve_game_mode, GameModeError, GameModePolicy, GameModeProfile, GameModeSignals,

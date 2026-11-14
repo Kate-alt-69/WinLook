@@ -497,7 +497,7 @@ static int wl_Lwlde_text_valid(const char *value, unsigned int capacity)
     unsigned int index;
     if (value == 0 || capacity == 0U) return 0;
     for (index = 0U; index < capacity; ++index) {
-        if (value[index] == '\\0') return index > 0U;
+        if (value[index] == '\0') return index > 0U;
     }
     return 0;
 }
