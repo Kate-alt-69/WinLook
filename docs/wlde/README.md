@@ -22,14 +22,25 @@ already-initialized CPUv/GPUv governors. The Rust core validates topology
 replacement before applying it and owns its CPUv/GPUv governor instances.
 Neither API creates timers or worker threads.
 
+The modern Rust side now also has a separate
+[Win32 monitor adapter](../../rust/library/wl_wlde_win32/README.md). It builds
+bounded snapshots from attached GDI display devices and exposes a transactional
+refresh API plus a predicate for display/device-change messages. Windows 10
+and Windows 11 backend modules re-export the same functions. The adapter does
+not install a message hook or poll: the host must call it from its own event
+loop. C89 remains the portable policy/scene core and receives monitor snapshots
+from its platform host.
+
 ## Renderer boundary
 
 **This is not yet a usable desktop wallpaper renderer.** The current branch
-does not enumerate real Windows monitors, create desktop-owned surfaces, draw
-pixels, decode image/video assets, host widgets, parse wallpaper packages,
-provide in-app catalogue search/downloads, run Rainmeter skins or manage
-desktop icons. The first Store provider directory and existing Wallpaper
-Engine hand-off are implemented separately from the renderer.
+can enumerate attached Windows monitors through the separate Win32 adapter,
+but the Manager/runtime event loops do not yet own a complete monitor
+lifecycle. It does not create desktop-owned surfaces, draw pixels, decode
+image/video assets, host widgets, parse wallpaper packages, provide in-app
+catalogue search/downloads, run Rainmeter skins or manage desktop icons. The
+Store provider directory and Wallpaper Engine hand-off remain separate from
+the native WLDE renderer.
 
 On Windows 8 and later, the documented IDesktopWallpaper interface sets and
 queries static wallpaper paths by monitor. It does not expose an animated
@@ -110,7 +121,8 @@ existing renderer/media and desktop-surface acceptance gates remain open.
 
 ## Next implementation gates
 
-1. Implement modern Windows monitor enumeration and topology-change handling.
+1. Wire Win10/11 host event loops to the new monitor snapshot adapter and test
+   display/device notifications, DPI changes, docking and remote sessions.
 2. Implement a documented static-wallpaper fallback and record/restore the
    user's original wallpaper state.
 3. Resolve and test an animated desktop surface that preserves Explorer/DWM

@@ -7,6 +7,10 @@
 use crate::manager_app;
 
 pub use crate::{UiApplication, UiError, UiPage, UiWindowConfig};
+pub use wl_ui_windows10::{
+    enumerate_monitors, refresh_topology, should_refresh_topology, MonitorError,
+    DBT_DEVNODES_CHANGED, WM_DEVICECHANGE, WM_DISPLAYCHANGE,
+};
 
 /// Human-readable backend identity.
 pub const BACKEND: &str = "Native Win32 / User32";

@@ -2117,6 +2117,7 @@ def require_manifest(root: Path, relative: str, description: str) -> None:
 
 def check_ui_sources(root: Path) -> bool:
     required = (
+        "rust/library/wl_wlde_win32/Cargo.toml",
         "rust/library/wl_ui/core/Cargo.toml",
         "rust/library/wl_ui/backends/win32/Cargo.toml",
         "rust/library/wl_ui/backends/windows7/Cargo.toml",
@@ -2376,11 +2377,11 @@ def rust_verify(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
     commands = [
         ("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"]),
-        ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_ui_core", "--all-targets", "--all-features"]),
+        ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features"]),
         ("Portable wl_ui facade tests", ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--all-targets"]),
-        ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"]),
+        ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"]),
         ("Portable wl_ui facade Clippy", ["cargo", "clippy", "-p", "wl_ui", "--no-default-features", "--all-targets", "--", "-D", "warnings"]),
-        ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_ui_core", "--no-deps"]),
+        ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--no-deps"]),
         ("Portable wl_ui public API documentation", ["cargo", "doc", "-p", "wl_ui", "--no-deps"]),
         ("Animation 60 FPS CPU workload benchmark", ["cargo", "run", "--release", "-p", "wl_animate", "--example", "frame_budget"]),
     ]
@@ -2390,7 +2391,7 @@ def rust_verify(runner: Runner) -> None:
 
 def rust_tests(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_ui_core", "--all-targets", "--all-features"])
+    runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features"])
     runner.run("Portable wl_ui facade tests", ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--all-targets"])
 
 
@@ -2466,7 +2467,7 @@ def ui_verify(runner: Runner) -> None:
         "UI facade and Win32 backend Clippy",
         [
             "cargo", "clippy", "-p", "wl_ui_core", "-p", "wl_ui_win32",
-            "-p", "wl_ui_windows10", "-p", "wl_ui",
+            "-p", "wl_wlde_win32", "-p", "wl_ui_windows10", "-p", "wl_ui",
             "--no-default-features", "--features", "wl_ui/windows10",
             "--all-targets", "--", "-D", "warnings",
         ],
@@ -2497,6 +2498,10 @@ def verify_windows_ui_dependencies(runner: Runner, target: str) -> None:
         raise BuildError(
             target + " resolved UI dependencies reserved for another backend: "
             + ", ".join(found)
+        )
+    if target in ("win10", "win11") and "wl_wlde_win32" not in dependency_tree:
+        raise BuildError(
+            target + " did not resolve the documented WLDE Win32 monitor adapter."
         )
     if target == "win11" and "windows-reactor-pre" not in dependency_tree:
         raise BuildError(
@@ -2635,7 +2640,7 @@ def build_windows_generation(runner: Runner, version: str) -> None:
 
 def build_libraries(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_ui_core", "-p", "wl_ui", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
+    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "-p", "wl_ui", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
     cmake_c_test(runner)
 
 
@@ -2644,8 +2649,8 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
         rust_tests(runner)
         if scope in ("libraries", "all"):
             runner.run("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"])
-            runner.run("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"])
-            runner.run("Rust shared-library API docs", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_ui_core", "--no-deps"])
+            runner.run("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"])
+            runner.run("Rust shared-library API docs", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--no-deps"])
     if scope in ("c", "libraries", "all"):
         cmake_c_test(runner, sanitizers=sanitizers)
     if scope in ("ui", "all"):

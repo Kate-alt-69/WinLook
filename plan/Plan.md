@@ -230,6 +230,19 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 - [ ] Define GPU device-loss recovery and renderer restart behaviour.
 - [ ] Define low-memory and software-rendering fallbacks.
 
+### Modern Win32 monitor snapshot adapter
+
+- [x] Add a bounded Win32 monitor snapshot adapter for attached desktop
+  displays, excluding mirroring-driver pseudo-devices. It returns the shared
+  16-monitor WLDE topology with GDI bounds, work area and primary state.
+- [x] Add transactional topology refresh and a narrow event predicate for
+  WM_DISPLAYCHANGE / WM_DEVICECHANGE + DBT_DEVNODES_CHANGED. The adapter owns
+  no polling loop, hook, timer or window.
+- [ ] Wire both modern Manager/runtime event loops to refresh on those events.
+- [ ] Add per-monitor DPI, orientation and session/docking reconciliation.
+- [ ] Define stable monitor profile identity separately from transient GDI
+  device names.
+
 ## Wallpaper formats and rendering capabilities
 
 - [ ] Specify .wl.wp as the normal wallpaper asset/package format with source-quality preservation.

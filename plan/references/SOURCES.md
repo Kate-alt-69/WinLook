@@ -194,3 +194,14 @@ Implementation consequence: keep static wallpaper path management and animated d
 | WSTORE-005 | [NASA Images and Media Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/) | NASA media is generally reusable under stated conditions, but third-party copyrighted media may be included and NASA identifiers/endorsement are restricted | Check the credit/rights notice on every item; do not imply NASA endorses WinLook |
 
 Implementation consequence: keep provider browsing separate from asset installation. A provider-level Free marker is discovery metadata, not a blanket right to copy/redistribute the media. Preserve creator/source/license/attribution in any later library importer and never mirror Steam Workshop data into the WinLook catalogue without rights to do so.
+
+
+## Win32 monitor snapshot adapter — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-004 | [EnumDisplayMonitors](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumdisplaymonitors) | Enumerates monitor handles and calls a host-supplied callback; the null HDC/null clipping-rectangle form covers the virtual desktop | The API can include invisible mirroring pseudo-monitors; filter them separately |
+| WLDE-005 | [EnumDisplayDevicesW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumdisplaydevicesw), [DISPLAY_DEVICEW](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-display_devicew) | Enumerates display devices; desktop-attached state can be selected and the mirroring-driver flag identifies pseudo devices | Device-name strings identify the current GDI display device, not a permanent hardware identity |
+| WLDE-006 | [MONITORINFO](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfo), [MONITORINFOEXW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfoexw) | Provides monitor/work-area rectangles in virtual-screen coordinates, primary-display flag and the GDI monitor device name | Secondary monitor coordinates may be negative; set cbSize to the full structure size before GetMonitorInfo |
+
+Implementation consequence: keep enumeration synchronous and bounded, then let the host event loop refresh snapshots on display/device topology notifications. Do not persist GDI names as durable monitor identities and do not introduce a polling thread.

@@ -164,6 +164,30 @@ The supported subset is open. Parsing an RMSKIN archive is not equivalent to exe
 - Treat unknown occlusion as visible/contributing unless conservative rendering is known safe.
 - Measure decode, CPU copy, GPU upload, composition and presentation separately; clipping final drawing does not guarantee lower decode cost.
 
+## Modern Win32 monitor snapshot adapter
+
+The modern Rust adapter lives in `rust/library/wl_wlde_win32`; the portable
+`wl_wlde` core and C89 `wl_Lwlde` remain platform-neutral. The adapter uses
+`EnumDisplayDevicesW` to select desktop-attached, non-mirroring GDI display
+devices, then `EnumDisplayMonitors` and `GetMonitorInfoW(MONITORINFOEXW)`
+to collect the GDI device name, virtual-screen monitor rectangle, work-area
+rectangle and primary flag. It rejects more than 16 monitor records and
+returns an owned validated snapshot; no HMONITOR is retained.
+
+`refresh_topology` constructs the complete replacement before assigning it,
+so a failed enumeration never destroys the last known-good topology.
+`should_refresh_topology` identifies `WM_DISPLAYCHANGE` and
+`WM_DEVICECHANGE/DBT_DEVNODES_CHANGED`. The host owns message dispatch and
+decides when to coalesce/refresh. No timer, background polling or hook is
+created by the adapter.
+
+GDI device names are only current-session snapshot keys. They are not stable
+physical monitor identifiers and must not be used as durable profile IDs.
+Per-monitor DPI, orientation, display color profile, session/remote-session
+behaviour and real Win10/11 hot-plug verification remain open. The C89 core
+continues to accept adapter-supplied snapshots; a C host-specific enumerator is
+a separate platform task.
+
 ### WLDE acceptance gates
 
 - [ ] Static wallpaper and display-change handling are specified per OS adapter.

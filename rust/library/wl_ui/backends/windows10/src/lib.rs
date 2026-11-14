@@ -6,6 +6,10 @@
 //! Windows Reactor, or Windows 11-only dynamic package dependency APIs.
 
 use wl_ui_win32::{UiApplication, UiError};
+pub use wl_ui_win32::{
+    enumerate_monitors, refresh_topology, should_refresh_topology, MonitorError,
+    DBT_DEVNODES_CHANGED, WM_DEVICECHANGE, WM_DISPLAYCHANGE,
+};
 
 /// Starts an application model using baseline Win32/User32 functionality.
 pub fn run_with(application: UiApplication) -> Result<(), UiError> {

@@ -6,6 +6,10 @@
 //! and API imports newer than the classic Win32 desktop window/control surface.
 
 pub use wl_ui_core::{UiApplication, UiError, UiPage, UiWindowConfig};
+pub use wl_wlde_win32::{
+    enumerate_monitors, refresh_topology, should_refresh_topology, MonitorError,
+    DBT_DEVNODES_CHANGED, WM_DEVICECHANGE, WM_DISPLAYCHANGE,
+};
 
 #[cfg(windows)]
 mod native;

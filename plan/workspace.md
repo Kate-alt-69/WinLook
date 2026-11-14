@@ -347,3 +347,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - The free provider hub links to official Openverse, Commons and NASA catalogue pages. Each asset still requires exact license/credit verification; the app does not scrape or mirror these catalogues.
 - Scope remains intentionally bounded: there is no hosted catalogue API, in-app search/cards/previews, direct download manager, attribution sidecar, signing/moderation, or complete offline wallpaper library.
 - Local Rust/Cargo is not available in the authoring environment. Run Rust formatting/tests/Clippy/docs, Win10/Win11 package builds and strict C89+sanitizers in hosted CI. The C89 additions are included in the existing WLDE test target.
+
+
+## WLDE modern Win32 monitor snapshot adapter — 2026-11-14
+
+- Added a separate `wl_wlde_win32` package. The portable `wl_wlde` core retains `#![forbid(unsafe_code)]`; Win32 FFI is isolated in the platform adapter.
+- The adapter enumerates attached desktop GDI display devices, filters mirroring-driver pseudo-devices, then reads monitor bounds, work area, device name and primary state via EnumDisplayMonitors / GetMonitorInfoW(MONITORINFOEXW).
+- Snapshots are capped at WLDE's 16-monitor limit. `refresh_topology` replaces the current topology only after a full successful enumeration/validation; a failure preserves the old snapshot.
+- Exposes a narrow host message predicate for WM_DISPLAYCHANGE and WM_DEVICECHANGE + DBT_DEVNODES_CHANGED. No timer, hook, polling worker or window is created. Win10/Win11 backend modules re-export the API.
+- GDI device names are transient snapshot identifiers, not durable monitor profile IDs. DPI, orientation, remote-session reconciliation and actual message-loop wiring remain open.
+- C89 `wl_Lwlde` remains platform-neutral; a C Win32 enumeration adapter is a separate task.
+- Hosted CI is required for the MSVC target and Windows-specific FFI compile. Do not infer runtime hot-plug correctness from portable Linux tests alone.

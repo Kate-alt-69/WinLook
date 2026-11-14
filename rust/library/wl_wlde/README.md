@@ -6,9 +6,9 @@ monitor topology, wallpaper placement math and the shared frame schedule.
 
 ## Implemented in this core
 
-- A bounded 16-monitor topology with stable adapter-supplied IDs, primary
+- A bounded 16-monitor topology with current-snapshot adapter IDs, primary
   monitor validation, separate monitor bounds/work areas and transactional
-  topology replacement.
+  topology replacement. GDI device names are not durable hardware/profile IDs.
 - Fill, Fit, Stretch and Center placement calculations. Fill returns a
   normalized source crop; Fit returns a centered destination rectangle.
 - Conservative visibility handling: Unknown and partially contributing
@@ -33,6 +33,22 @@ directory and a safe hand-off adapter for an already-installed Wallpaper
 Engine. Interactive content is unavailable unless a future restricted host
 reports that capability. Groups remain disabled until the OS adapter proves
 crash/disable/uninstall restoration.
+
+## Win32 monitor adapter
+
+The separate `wl_wlde_win32` package implements modern Win32 monitor snapshot
+collection without adding unsafe code or OS calls to this portable crate.
+It filters to desktop-attached, non-mirroring display devices, then reads GDI
+monitor/work-area rectangles and primary flags. The shared Win32 backend
+re-exports the API for both `wl_ui::windows10` and `wl_ui::windows11`.
+
+Call `enumerate_monitors()` for a new snapshot, or
+`refresh_topology(&mut current)` to replace one transactionally. The adapter
+does not poll or own a message loop; hosts use
+`should_refresh_topology(message, w_param)` to decide when to refresh after
+display/device notifications. DPI, orientation and persistent monitor identity
+remain separate follow-up work. See
+[wl_wlde_win32](../wl_wlde_win32/README.md).
 
 ## Wallpaper Store provider bridge
 
@@ -80,10 +96,12 @@ not a charge on every interpolated property.
 
 ## Next platform gates
 
-1. Implement and test a documented static-wallpaper adapter and monitor
-   topology watcher for each modern Windows generation.
-2. Decide and test a supported animated desktop-surface integration that keeps
+1. Wire Win10/11 host event loops to the shared monitor adapter and test
+   display/device notifications, DPI changes, docking and remote sessions.
+2. Implement and test a documented static-wallpaper adapter with original
+   wallpaper capture and restoration.
+3. Decide and test a supported animated desktop-surface integration that keeps
    Explorer and DWM intact; do not assume an undocumented desktop parent.
-3. Add bounded media decode and GPU presentation with device-loss recovery.
-4. Add isolated interactive/widget hosting and catalogue/package verification.
-5. Keep Groups disabled until crash-safe native icon restoration is proven.
+4. Add bounded media decode and GPU presentation with device-loss recovery.
+5. Add isolated interactive/widget hosting and catalogue/package verification.
+6. Keep Groups disabled until crash-safe native icon restoration is proven.
