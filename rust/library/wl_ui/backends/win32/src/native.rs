@@ -245,6 +245,14 @@ fn wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
+fn browse_file(
+    title: &str,
+    filter_description: &str,
+    filter_pattern: &str,
+) -> Result<Option<PathBuf>, UiError> {
+    browse_file_from(title, filter_description, filter_pattern, None)
+}
+
 pub(super) fn browse_file_from(
     title: &str,
     filter_description: &str,
