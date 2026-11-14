@@ -9,9 +9,6 @@ use std::fmt;
 
 use wl_wlde::{MonitorTopology, TopologyError};
 
-#[cfg(not(windows))]
-use wl_wlde::{Monitor, Rect};
-
 /// Win32 message sent after the display resolution or configuration changes.
 pub const WM_DISPLAYCHANGE: u32 = 0x007E;
 /// Win32 device-change broadcast message.
@@ -366,6 +363,9 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(windows))]
+    use wl_wlde::{Monitor, Rect};
 
     #[test]
     fn refresh_filter_accepts_only_topology_related_notifications() {
