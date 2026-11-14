@@ -305,7 +305,9 @@ pub(super) fn browse_file_from(
     if length == 0 {
         return Ok(None);
     }
-    Ok(Some(PathBuf::from(std::ffi::OsString::from_wide(&file[..length]))))
+    Ok(Some(PathBuf::from(std::ffi::OsString::from_wide(
+        &file[..length],
+    ))))
 }
 
 pub fn open_url(url: &str) -> Result<(), UiError> {
@@ -315,11 +317,20 @@ pub fn open_url(url: &str) -> Result<(), UiError> {
     let operation = wide("open");
     let target = wide(url);
     let result = unsafe {
-        ShellExecuteW(std::ptr::null_mut(), operation.as_ptr(), target.as_ptr(),
-            std::ptr::null(), std::ptr::null(), SW_SHOW)
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            operation.as_ptr(),
+            target.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            SW_SHOW,
+        )
     };
     if (result as isize) <= 32 {
-        return Err(UiError::Backend(format!("Windows could not open the browser link: {}", result as isize)));
+        return Err(UiError::Backend(format!(
+            "Windows could not open the browser link: {}",
+            result as isize
+        )));
     }
     Ok(())
 }
@@ -424,14 +435,13 @@ fn handle_store_command(state_pointer: *mut WindowState, control_id: usize) {
         BROWSE_WALLPAPER_BUTTON_ID => {
             let Some(install) = state.wallpaper_engine.as_ref() else {
                 show_action_error(&UiError::Backend(
-                    "Wallpaper Engine was not found. Use Locate Wallpaper Engine first.".to_string(),
+                    "Wallpaper Engine was not found. Use Locate Wallpaper Engine first."
+                        .to_string(),
                 ));
                 refresh_current_page(state);
                 return;
             };
-            let workshop_directory = install
-                .workshop_directory()
-                .filter(|path| path.is_dir());
+            let workshop_directory = install.workshop_directory().filter(|path| path.is_dir());
             match browse_file_from(
                 "Browse Wallpaper Engine wallpapers",
                 "Wallpaper Engine project or media",
@@ -452,7 +462,9 @@ fn handle_store_command(state_pointer: *mut WindowState, control_id: usize) {
             }
         }
         WORKSHOP_BUTTON_ID => {
-            if let Err(error) = open_url(store_provider(StoreProviderId::WallpaperEngine).browse_url) {
+            if let Err(error) =
+                open_url(store_provider(StoreProviderId::WallpaperEngine).browse_url)
+            {
                 show_action_error(&error);
             }
         }
@@ -462,7 +474,9 @@ fn handle_store_command(state_pointer: *mut WindowState, control_id: usize) {
             }
         }
         COMMONS_BUTTON_ID => {
-            if let Err(error) = open_url(store_provider(StoreProviderId::WikimediaCommons).browse_url) {
+            if let Err(error) =
+                open_url(store_provider(StoreProviderId::WikimediaCommons).browse_url)
+            {
                 show_action_error(&error);
             }
         }
@@ -664,8 +678,18 @@ unsafe extern "system" fn window_proc(
             }
 
             let action_buttons = [
-                create_action_button(hwnd, instance, LOCATE_ENGINE_BUTTON_ID, "Locate Wallpaper Engine"),
-                create_action_button(hwnd, instance, BROWSE_WALLPAPER_BUTTON_ID, "Browse Wallpaper"),
+                create_action_button(
+                    hwnd,
+                    instance,
+                    LOCATE_ENGINE_BUTTON_ID,
+                    "Locate Wallpaper Engine",
+                ),
+                create_action_button(
+                    hwnd,
+                    instance,
+                    BROWSE_WALLPAPER_BUTTON_ID,
+                    "Browse Wallpaper",
+                ),
                 create_action_button(hwnd, instance, WORKSHOP_BUTTON_ID, "Open Steam Workshop"),
                 create_action_button(hwnd, instance, OPENVERSE_BUTTON_ID, "Open Openverse"),
                 create_action_button(hwnd, instance, COMMONS_BUTTON_ID, "Open Wikimedia Commons"),
@@ -804,11 +828,7 @@ unsafe extern "system" fn window_proc(
     }
 }
 
-unsafe fn set_page_content(
-    hwnd: Handle,
-    page: &UiPage,
-    engine: Option<&WallpaperEngineInstall>,
-) {
+unsafe fn set_page_content(hwnd: Handle, page: &UiPage, engine: Option<&WallpaperEngineInstall>) {
     let mut body = format!("{}\r\n\r\n{}", page.title(), page.description());
     match page.id() {
         "wallpaper-store" => body.push_str(
