@@ -540,7 +540,6 @@ pub fn is_same_desktop_host(identity: &DesktopHostIdentity) -> Result<bool, Desk
     Ok(current == *identity)
 }
 
-
 /// A waitable reference to the current desktop-owning Explorer process.
 ///
 /// The process handle is opened for query/synchronization only and is closed
@@ -695,7 +694,7 @@ mod desktop_host_platform {
 
     impl ProcessMonitor {
         pub(super) fn wait_for_exit(&self, timeout_ms: u32) -> Result<bool, DesktopHostError> {
-            match unsafe { WaitForSingleObject(self.0.0, timeout_ms) } {
+            match unsafe { WaitForSingleObject(self.0 .0, timeout_ms) } {
                 WAIT_OBJECT_0 => Ok(true),
                 WAIT_TIMEOUT => Ok(false),
                 WAIT_FAILED => Err(DesktopHostError::WaitForProcess {
@@ -751,7 +750,14 @@ mod desktop_host_platform {
 
         let mut image_buffer = vec![0u16; IMAGE_PATH_CAPACITY];
         let mut image_length = image_buffer.len() as u32;
-        let image_ok = unsafe { QueryFullProcessImageNameW(process.0, 0, image_buffer.as_mut_ptr(), &mut image_length) };
+        let image_ok = unsafe {
+            QueryFullProcessImageNameW(
+                process.0,
+                0,
+                image_buffer.as_mut_ptr(),
+                &mut image_length,
+            )
+        };
         if image_ok == 0 {
             return Err(DesktopHostError::QueryImagePath {
                 code: unsafe { GetLastError() },

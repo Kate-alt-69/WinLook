@@ -606,25 +606,61 @@ class BuildHelpersTests(unittest.TestCase):
         metadata = {
             "packages": [
                 {
-                    "name": "winlook-win10",
+                    "name": "winlook-bgw",
                     "targets": [
-                        {"name": "winlook", "kind": ["bin"]},
-                        {"name": "winlook.bg", "kind": ["bin"]},
-                        {"name": "wl_ui", "kind": ["lib"]},
+                        {"name": "winlook-bg", "kind": ["bin"]},
+                        {"name": "wl_bgw_runtime", "kind": ["lib"]},
                     ],
                 },
                 {
-                    "name": "winlook-win11",
-                    "targets": [
-                        {"name": "winlook-bg", "kind": ["bin"]},
-                    ],
+                    "name": "winlook-win10",
+                    "targets": [{"name": "winlook", "kind": ["bin"]}],
                 },
             ]
         }
         self.assertEqual(
             build.select_bgw_targets(metadata),
-            [("winlook-win10", "winlook.bg"), ("winlook-win11", "winlook-bg")],
+            [("winlook-bgw", "winlook-bg")],
         )
+
+    def test_bgw_build_normalizes_the_windows_executable_filename(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            metadata = {
+                "packages": [
+                    {
+                        "name": "winlook-bgw",
+                        "targets": [{"name": "winlook-bg", "kind": ["bin"]}],
+                    }
+                ]
+            }
+
+            class RecordingRunner:
+                dry_run = False
+
+                def __init__(self, root):
+                    self.root = root
+
+                def run(self, _label, command):
+                    target_dir = Path(command[command.index("--target-dir") + 1])
+                    release = target_dir / "release"
+                    release.mkdir(parents=True, exist_ok=True)
+                    suffix = ".exe" if os.name == "nt" else ""
+                    (release / ("winlook-bg" + suffix)).write_bytes(b"bgw")
+
+            with mock.patch.object(build, "cargo_metadata", return_value=metadata):
+                build.build_bgw(RecordingRunner(root))
+
+            suffix = ".exe" if os.name == "nt" else ""
+            expected = (
+                build.build_paths(root)["rust"]
+                / "bgw"
+                / "winlook-bgw"
+                / "release"
+                / ("winlook.bg" + suffix)
+            )
+            self.assertTrue(expected.is_file())
+            self.assertEqual(expected.read_bytes(), b"bgw")
 
     def test_manager_ui_requires_facade_and_all_public_backend_modules(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -632,7 +668,7 @@ class BuildHelpersTests(unittest.TestCase):
             self.assertFalse(build.check_ui_sources(root))
             required = (
                 "rust/library/wl_wlde_win32/Cargo.toml",
-"rust/library/wl_ui/core/Cargo.toml",
+                "rust/library/wl_ui/core/Cargo.toml",
                 "rust/library/wl_ui/backends/win32/Cargo.toml",
                 "rust/library/wl_ui/backends/windows7/Cargo.toml",
                 "rust/library/wl_ui/backends/windows10/Cargo.toml",
@@ -662,12 +698,18 @@ class BuildHelpersTests(unittest.TestCase):
             )
             self.assertEqual(
                 build.target_available(root, "bgw"),
-                (False, "BGW binary target is not implemented"),
+                (False, "rust/bgw/Cargo.toml is not present"),
             )
-            manifest = root / "rust" / "win10" / "Cargo.toml"
+            manifest = root / "rust" / "bgw" / "Cargo.toml"
             manifest.parent.mkdir(parents=True)
             manifest.write_text(
-                '[[bin]]\nname = "winlook.bg"\npath = "src/bin/bgw.rs"\n',
+                '[package]\nname = "winlook-bgw"\n\n'
+                '[[bin]]\nname = "winlook-bg"\npath = "src/main.rs"\n',
+                encoding="utf-8",
+            )
+            (manifest.parent / "src").mkdir()
+            (manifest.parent / "src" / "main.rs").write_text(
+                "fn main() {}\n",
                 encoding="utf-8",
             )
             self.assertTrue(build.target_available(root, "bgw")[0])
@@ -695,6 +737,15 @@ class BuildHelpersTests(unittest.TestCase):
             executable = root / "build" / "rust" / "win10" / "release" / "winlook.exe"
             executable.parent.mkdir(parents=True)
             executable.write_bytes(b"preview")
+            manifest = root / "rust" / "bgw" / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                '[package]\nname = "winlook-bgw"\n\n'
+                '[[bin]]\nname = "winlook-bg"\npath = "src/main.rs"\n',
+                encoding="utf-8",
+            )
+            (manifest.parent / "src").mkdir()
+            (manifest.parent / "src" / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
             runner = build.Runner(root=root, dry_run=True)
             result = build.package_windows_app(runner, "win10")
             self.assertEqual(result.name, "winlook-win10-x64-preview.zip")

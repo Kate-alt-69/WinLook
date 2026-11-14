@@ -2082,6 +2082,8 @@ def select_bgw_targets(metadata: Dict[str, Any]) -> List[Tuple[str, str]]:
     """Return package/binary pairs for explicitly named BGW executables."""
     matches: List[Tuple[str, str]] = []
     for package in metadata.get("packages", []):
+        if package.get("name") != BGW_PACKAGE_NAME:
+            continue
         for target in package.get("targets", []):
             if is_bgw_target(target.get("name", ""), target.get("kind", [])):
                 matches.append((package["name"], target["name"]))
@@ -2167,17 +2169,21 @@ def target_available(root: Path, target: str) -> Tuple[bool, str]:
         ready = project_has_manifest(root, "C/win95/Makefile")
         return ready, "C/win95/Makefile found" if ready else "C/win95/Makefile is not present"
     if target == "bgw":
-        manifests = (root / "rust/win10/Cargo.toml", root / "rust/win11/Cargo.toml")
-        for manifest in manifests:
-            if manifest.is_file():
-                try:
-                    source = manifest.read_text(encoding="utf-8")
-                except OSError:
-                    continue
-                for target_name in BGW_TARGET_NAMES:
-                    if target_name in source:
-                        return True, "BGW binary declaration found in " + str(manifest.relative_to(root))
-        return False, "BGW binary target is not implemented"
+        manifest = root / "rust/bgw/Cargo.toml"
+        if not manifest.is_file():
+            return False, "rust/bgw/Cargo.toml is not present"
+        try:
+            source = manifest.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise BuildError("Could not read the BGW manifest: " + str(exc)) from exc
+        package_name = 'name = "' + BGW_PACKAGE_NAME + '"'
+        if package_name not in source:
+            return False, "the independent BGW package name is missing from rust/bgw/Cargo.toml"
+        if not any('name = "' + name + '"' in source for name in BGW_TARGET_NAMES):
+            return False, "BGW binary declaration is missing from rust/bgw/Cargo.toml"
+        if not (root / "rust/bgw/src/main.rs").is_file():
+            return False, "rust/bgw/src/main.rs is not present"
+        return True, "independent BGW binary manifest and entry point found"
     raise ValueError("Unknown build target: " + target)
 
 
@@ -2550,6 +2556,19 @@ def build_bgw(runner: Runner) -> None:
             "Build BGW executable " + binary,
             ["cargo", "build", "--release", "-p", package, "--bin", binary, "--target-dir", str(target_dir)],
         )
+        if runner.dry_run:
+            continue
+        release_dir = target_dir / "release"
+        suffix = ".exe" if os.name == "nt" else ""
+        built_executable = release_dir / (binary + suffix)
+        canonical_executable = release_dir / ("winlook.bg.exe" if os.name == "nt" else "winlook.bg")
+        if not built_executable.is_file():
+            raise BuildError(
+                "Cargo reported a successful BGW build but the expected executable is missing: "
+                + str(built_executable)
+            )
+        if built_executable != canonical_executable:
+            shutil.copy2(built_executable, canonical_executable)
 
 
 def build_watcom_application(runner: Runner, version: str) -> None:
