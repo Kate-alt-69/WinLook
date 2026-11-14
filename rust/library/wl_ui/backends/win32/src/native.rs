@@ -630,6 +630,7 @@ unsafe extern "system" fn window_proc(
     if !state.is_null()
         && unsafe { !(*state).navigation.is_null() && !(*state).content.is_null() }
         && should_refresh_topology(message, w_param)
+    {
         unsafe {
             (*state).display_status = monitor_snapshot_status();
             refresh_current_page(&*state);
