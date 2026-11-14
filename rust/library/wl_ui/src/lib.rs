@@ -50,7 +50,7 @@ const MANAGER_PAGES: [(&str, &str, &str); 23] = [
         "File Explorer",
         "File Explorer presentation and supported Shell integrations.",
     ),
-    ("icons", "Icons", "Desktop and system icon presentation."),
+    ("icons", "Icons", "WLDE adaptive application tiles, icon artwork, masks and group-aware context menus."),
     (
         "wallpaper",
         "Wallpaper",
@@ -269,15 +269,40 @@ mod tests {
         assert_eq!(application.pages().len(), 23);
         assert_eq!(application.initial_page_id(), "home");
         assert_eq!(application.pages()[0].title(), "Home");
-        let page = |id: &str| application.pages().iter().find(|item| item.id() == id).unwrap();
+        let page = |id: &str| {
+            application
+                .pages()
+                .iter()
+                .find(|item| item.id() == id)
+                .unwrap()
+        };
         assert_eq!(page("wallpaper").title(), "Wallpaper");
-        assert_eq!(page("wallpaper-store").navigation_label(), "  Wallpaper Store");
-        assert_eq!(page("wallpaper-store-wallpaper-engine").navigation_label(), "    Wallpaper Engine");
-        assert_eq!(page("wallpaper-library").navigation_label(), "  Wallpaper Library");
+        assert_eq!(
+            page("wallpaper-store").navigation_label(),
+            "  Wallpaper Store"
+        );
+        assert_eq!(
+            page("wallpaper-store-wallpaper-engine").navigation_label(),
+            "    Wallpaper Engine"
+        );
+        assert_eq!(
+            page("wallpaper-library").navigation_label(),
+            "  Wallpaper Library"
+        );
         assert_eq!(page("wallpaper-widgets").navigation_label(), "  Widgets");
-        assert_eq!(page("wallpaper-performance").navigation_label(), "  Resource & Performance");
-        assert_eq!(page("wallpaper-groups").navigation_label(), "  Desktop Groups");
-        assert_eq!(page("wallpaper-rainmeter").navigation_label(), "  Rainmeter");
+        assert_eq!(
+            page("wallpaper-performance").navigation_label(),
+            "  Resource & Performance"
+        );
+        assert_eq!(
+            page("wallpaper-groups").navigation_label(),
+            "  Desktop Groups"
+        );
+        assert_eq!(
+            page("wallpaper-rainmeter").navigation_label(),
+            "  Rainmeter"
+        );
+        assert!(page("icons").description().contains("adaptive application tiles"));
         assert!(application.pages().iter().any(|item| item.id() == "game-mode"));
         assert_eq!(page("settings").title(), "Settings");
         assert_eq!(application.theme_ref().color_scheme(), UiColorScheme::Dark);

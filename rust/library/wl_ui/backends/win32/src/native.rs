@@ -940,8 +940,11 @@ unsafe fn set_page_content(
         "wallpaper-widgets" => body.push_str(
             "\r\n\r\nWIDGETS\r\nThe shared scene clock and capability contract are ready. No third-party widget code is executed until a restricted runtime, explicit permissions and crash isolation are implemented.",
         ),
+        "icons" => body.push_str(
+            "\r\n\r\nWLDE ADAPTIVE APPLICATION ICONS\r\nApp tiles use separate foreground/background artwork, optional monochrome artwork, a shape mask and safe-zone scaling. WLDE changes presentation only; it does not rewrite executables, shortcuts or source icon files. Native icon extraction and drawing remain adapter work.\r\n\r\nRIGHT-CLICK\r\nApps expose Customize Icon; files, folders and apps can be added to or removed from virtual Groups. Native Open and Properties actions remain delegated to the Windows Shell.",
+        ),
         "wallpaper-groups" => body.push_str(
-            "\r\n\r\nDESKTOP GROUPS\r\nDisabled until original Shell icon visibility/positions can be restored after a crash, disable and uninstall. Groups will be virtual presentation objects, never filesystem folders.",
+            "\r\n\r\nDESKTOP GROUPS\r\nGroups can collect app shortcuts, files and folders by opaque item reference. They are virtual presentation objects, never filesystem folders; original Shell items and targets stay in place. The portable Rust/C89 model now validates groups and membership.\r\n\r\nPRESENTATION SAFETY\r\nLive Group icons remain disabled until the OS adapter can restore original icon visibility and positions after crash, disable, session exit and uninstall.",
         ),
         "wallpaper-rainmeter" => body.push_str(
             "\r\n\r\nRAINMETER\r\nRMSKIN parsing is not runtime compatibility. Measures, meters, variables, actions, plugins, extraction safety and licensing still need a reviewed compatibility subset.",

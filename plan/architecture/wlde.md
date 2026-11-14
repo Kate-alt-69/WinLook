@@ -182,6 +182,69 @@ The mechanism for suppressing duplicate native icon presentation remains unresol
 
 Local Groups are machine-specific and excluded from WLT. Fancy Groups remain a separate, unapproved portable feature.
 
+## Adaptive application icons and context menus
+
+WLDE application tiles use an adaptive-icon model inspired by Android launchers:
+separate foreground and background artwork, an optional monochrome layer for
+themed surfaces, a selectable shape mask and a configurable safe-zone scale.
+The default safe zone is 61% of the tile. Native icon assets are referenced,
+not rewritten; the Shell adapter is responsible for obtaining the correct app
+identity and artwork.
+
+The portable context-menu contract is type-aware. Applications expose Open,
+Add/Remove from Group, Customize Icon and Properties; files/folders expose
+Open, Add/Remove from Group and Properties; Groups expose Open Group, Add
+Members, Rename, Ungroup and Properties. The platform host must delegate
+native Open/Properties verbs to the Shell and preserve existing Shell menu
+behaviour. This is a model of WLDE additions, not an Explorer replacement.
+
+The first Rust/C89 slice validates virtual Group membership and adaptive icon
+metadata. It does not yet enumerate the live desktop, persist references,
+extract/decode icons, render tiles/popups, intercept right-click or suppress
+native desktop icon representations. Groups stay disabled until the OS
+adapter proves crash-safe restoration.
+
+## Required Explorer Desktop Bridge
+
+The Explorer Desktop Bridge is a mandatory BGW/WLDE runtime subsystem for
+Windows sessions where Explorer owns the desktop. It applies across supported
+Windows generations, not only Windows 10 and 11. BGW discovers which process
+actually owns the current desktop view, records its OS/build/architecture and
+selects the matching native adapter. The same logical contract is shared
+across generations; APIs, event paths and hook mechanics are version-specific.
+
+The bridge supplies desktop item identity/inventory, application icon
+presentation, virtual Group proxy coordination and context-menu event routing.
+WLDE owns the visuals and Group configuration. Windows Shell keeps ownership
+of filesystem operations, native activation, file associations, permissions,
+drag/drop and item semantics. DWM continues to compose the desktop; WinLook
+does not replace DWM.
+
+Use documented Shell COM extension points where they satisfy a required
+operation. Where the desktop view needs interception or presentation beyond
+those public interfaces, the generation-specific adapter may install a
+controlled runtime hook inside the actual Explorer desktop process. This is
+part of BGW/WLDE's required integration, not a per-feature user opt-in.
+Hooks must be narrowly scoped to the desktop host, version/architecture
+validated, short-running, observed by BGW and recoverable. Do not patch,
+replace or redistribute Explorer.exe on disk, and do not attach to unrelated
+Explorer folder-window processes.
+
+Heavy rendering, media decode, file enumeration, network requests, Group
+persistence and policy decisions remain in BGW/WLDE outside Explorer's UI
+callbacks. The in-process side passes bounded events and immutable item
+references across authenticated per-user IPC. If an adapter is unknown or
+fails verification, BGW keeps native desktop icons visible and disables only
+the unsupported WLDE presentation capability. This fail-safe is a recovery
+state, not an optional user configuration.
+
+Crash/restart handling is required: the bridge detects Explorer process
+replacement, reconciles desktop inventory and reattaches without duplicating,
+deleting or recreating original Shell items. Before any native icon
+representation is suppressed, WLDE must persist enough restoration state to
+show the original items after BGW/Explorer crash, session exit, disable,
+upgrade and uninstall.
+
 ## Widgets, interactive content and Rainmeter
 
 Widgets and interactive wallpapers are untrusted content. They need explicit resource, input, filesystem, network and process capabilities. Installation does not grant broad access automatically.
@@ -234,6 +297,10 @@ a separate platform task.
 - [ ] Interactive content is isolated with declared capabilities and resource limits.
 - [ ] Crash/device loss returns to a usable desktop.
 - [ ] Groups remain disabled unless original icon presentation is restored after crash/disable/uninstall.
+- [ ] Explorer Desktop Bridge is hosted by BGW/WLDE for every verified Explorer-owned desktop session across supported Windows generations.
+- [ ] Per-version adapters detect the actual desktop owner, monitor Explorer restart and preserve native fallback on unknown builds.
+- [ ] Adaptive app-icon extraction, safe-zone rendering and icon-theme fallback work without rewriting source assets.
+- [ ] WLDE right-click additions preserve native Shell verbs, accessibility, keyboard navigation and OS-version-specific menu behaviour.
 - [ ] Rainmeter compatibility is an explicit subset and licensing is reviewed.
 
 

@@ -30,13 +30,24 @@ monitor topology, wallpaper placement math and the shared frame schedule.
   does not enumerate processes, inspect files or hash executables itself.
 - Explicit presentation capability checks. Virtual Groups require both a
   presenter capability and a crash-safe restoration capability.
+- A bounded desktop model for file, folder and application references;
+  virtual Groups validate membership and can be replaced transactionally.
+- Adaptive application-icon metadata with separate foreground/background
+  asset references, optional monochrome artwork, a selectable mask and a
+  configurable safe-zone scale (61% by default). Source files are never edited.
+- Type-aware, non-destructive context-menu action contracts for applications,
+  files, folders and Groups, including app-only icon customization.
 
 ## Deliberately not claimed
 
 This crate does not draw pixels or create a desktop surface. It does not
-decode images/video, parse .wl.wp/.wl.i.wp packages, execute widgets,
-host Rainmeter plugins, run an in-app catalogue search/download client, or
-manipulate desktop icons. It does now expose the integrated Store provider
+enumerate live Shell items, persist the desktop inventory, hide native icon
+representations, decode adaptive icon assets or render Group popups. The new
+group/icon/menu APIs are portable data and validation contracts only; Groups
+remain unavailable until a platform adapter proves crash-safe restoration.
+The crate also does not decode wallpaper images/video, parse .wl.wp/.wl.i.wp
+packages, execute widgets, host Rainmeter plugins or run an in-app catalogue
+search/download client. It does expose the integrated Store provider
 directory and a safe hand-off adapter for an already-installed Wallpaper
 Engine. Interactive content is unavailable unless a future restricted host
 reports that capability. Groups remain disabled until the OS adapter proves
@@ -77,6 +88,37 @@ admission tickets.
 
 The matching C89 API exposes wl_Lwlde_resource_controller with the same
 threshold/window semantics and an explicit scene pressure setter.
+
+
+## Desktop groups, adaptive app icons and menus
+
+`DesktopGroups` stores virtual groups over opaque Shell item IDs. A group
+can contain application shortcuts, files and folders; it never creates a
+filesystem directory or moves/copies/renames the source item. Replacements
+validate all group IDs and item references before changing the active model.
+
+`AdaptiveAppIcon` describes app-tile artwork as foreground and background
+asset references, an optional monochrome layer, a Circle/RoundedSquare/Squircle
+mask and a 48–72% safe-zone percentage (61% default). This is a presentation
+contract inspired by adaptive launcher icons; WinLook does not rewrite the
+application executable, shortcut or original icon resource.
+
+`desktop_context_actions()` returns type-aware actions for Apps, Files,
+Folders and Groups. Apps include Customize Icon; grouped members include
+Remove from Group; Group tiles include Rename and Ungroup. Native Open and
+Properties execution remains the Shell adapter's responsibility.
+
+These are portable metadata/validation APIs, not a live desktop presenter.
+The Explorer integration is a required BGW/WLDE runtime subsystem on Windows
+sessions where Explorer owns the desktop. The platform adapter must identify
+the correct desktop host, bridge Shell events to BGW, and restore original icon
+presentation after failure. Documented Shell interfaces are used where
+sufficient; a version-specific runtime hook adapter is used where desktop
+behaviour is not exposed through supported interfaces. This is not a
+per-feature user opt-in. Unsupported builds must fail safely and preserve
+native desktop behaviour. See the
+[WLDE architecture](../../../plan/architecture/wlde.md) and
+[Explorer customization](../../../plan/architecture/explorer-customization.md).
 
 ## Win32 monitor adapter
 

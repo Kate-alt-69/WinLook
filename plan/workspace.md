@@ -387,3 +387,20 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Precedence is exact user profile (including explicit Normal override), optional OS Game Mode fallback, optional fullscreen fallback, then Normal. Non-foreground applications always resolve to Normal.
 - The resulting mode can be applied to the existing scene mode setter. Rust exposes `Scene::set_game_mode`; C exposes `wl_Lwlde_scene_set_game_mode`.
 - The portable core does not enumerate processes, inspect or hash executable files, install hooks or poll Windows. Win10/Win11 signal collection, profile persistence and Manager editing remain open.
+
+
+## WLDE virtual Groups, adaptive app icons and mandatory Explorer Desktop Bridge — 2026-11-14
+
+- Added portable Rust wl_wlde desktop models for opaque desktop item IDs and typed File/Folder/Application references, local virtual Groups and transactional replacement validation.
+- Group membership is bounded (64 Groups, 128 items per Group), rejects unknown/duplicate members and never creates physical directories or changes source paths.
+- Added adaptive application-icon metadata with foreground/background layers, optional monochrome layer, Circle/RoundedSquare/Squircle masks and a 48–72% safe-zone range (61% default). Source icon artwork, shortcuts and executables are not rewritten.
+- Added matching Rust/C89 type-aware context action contracts for Apps, Files, Folders and Groups. App-only Customize Icon and grouped-item Remove From Group are explicit; native Open/Properties verbs remain Shell-owned.
+- Added matching C89 wl_Lwlde_desktop_groups_* and wl_Lwlde_adaptive_app_icon_validate() APIs using caller-owned bounded storage and non-owning asset/member references.
+- Added Manager Icons and Desktop Groups cards describing the portable models, Shell integration and current implementation boundaries.
+- Explorer Desktop Bridge is required BGW/WLDE runtime infrastructure wherever Explorer owns the desktop, across supported Windows generations; it is not a per-feature user opt-in and is not Windows 10/11-only.
+- BGW identifies the actual desktop-owning Explorer process and chooses a generation-specific adapter. Supported Shell COM integration is preferred; controlled in-process runtime hooks are permitted where public interfaces do not expose the required desktop view behaviour.
+- Explorer.exe on disk is never modified/replaced. DWM remains the compositor. Shell retains filesystem operations, activation, permissions and native item semantics.
+- Expensive rendering, decoding and persistence stay out of Explorer callbacks. BGW monitors bridge/Explorer restarts, validates adapters and drives idempotent restore after failure/update/uninstall.
+- Live desktop inventory, durable local persistence, icon extraction/rendering, native Group proxies, custom popup windows and full context-menu interception are not implemented in this slice. Groups remain disabled until restoration is proven.
+- Official design references: Android adaptive icon layout, Microsoft Shell extensions, namespace extensions and separate Explorer desktop-process testing. See plan/references/SOURCES.md WLDE-007–010.
+- Hosted CI must run Rust formatting/tests/Clippy, C89 GCC sanitizer and MSVC jobs, plus Win10/Win11 Manager builds. Legacy Shell adapters still need their own OS VMs and tests; modern CI cannot prove Windows 95–8.1 behaviour.

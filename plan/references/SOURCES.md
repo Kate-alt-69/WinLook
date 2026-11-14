@@ -205,3 +205,15 @@ Implementation consequence: keep provider browsing separate from asset installat
 | WLDE-006 | [MONITORINFO](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfo), [MONITORINFOEXW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfoexw) | Provides monitor/work-area rectangles in virtual-screen coordinates, primary-display flag and the GDI monitor device name | Secondary monitor coordinates may be negative; set cbSize to the full structure size before GetMonitorInfo |
 
 Implementation consequence: keep enumeration synchronous and bounded, then let the host event loop refresh snapshots on display/device topology notifications. Do not persist GDI names as durable monitor identities and do not introduce a polling thread.
+
+
+## WLDE adaptive icons and Explorer Desktop Bridge — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-007 | [Android adaptive icon design](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive) | Adaptive icons use separate foreground/background layers, may provide a monochrome layer for themed icons, and reserve an inner safe region within a larger masked tile | WinLook borrows the presentation model; this is not an Android runtime dependency or an exact Android resource format |
+| WLDE-008 | [Working with Shell Extensions](https://learn.microsoft.com/en-us/windows/win32/shell/shell-exts) | Shell extension handlers include shortcut-menu, icon/thumbnail/preview and other Shell integration types; handlers are in-process COM DLLs loaded into Explorer or another Shell host | A crash/hang in an extension can crash/hang the hosting Shell process; threading model and per-monitor DPI require care |
+| WLDE-009 | [Windows Shell Namespace Extensions](https://learn.microsoft.com/en-us/windows/win32/shell/nse-works), [IShellFolder::CreateViewObject](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-createviewobject) | Namespace extensions can supply custom folder views and Shell objects for their own virtual namespace | This does not make a namespace extension a universal replacement for the existing desktop or arbitrary filesystem folder views |
+| WLDE-010 | [Debugging with the Shell](https://learn.microsoft.com/en-us/windows/win32/shell/debugging-with-the-shell) | Windows supports a separate Explorer desktop-process mode to isolate Shell extension testing from the active desktop/taskbar process | Development/testing aid only; verify exact target-version behaviour |
+
+Implementation consequence: BGW always owns and initializes the Explorer Desktop Bridge when Explorer owns the desktop. The implementation uses version-specific Shell interfaces and controlled runtime hooks only where required. The Explorer executable on disk is never patched or replaced; DWM remains intact. A failure must restore native icon presentation and fall back without modifying user items.

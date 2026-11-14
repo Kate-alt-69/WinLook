@@ -21,6 +21,15 @@ C89 companion to the portable WinLook Desktop Engine scene core.
 - Non-owning references to existing wl_Lcpuv and wl_Lgpuv governors.
 - Capability checks that keep interactive content and Groups unavailable until
   a platform adapter explicitly proves support and crash-safe restoration.
+- Bounded virtual desktop Group records over caller-supplied IDs for apps,
+  files and folders; replacement validates all references before updating the
+  caller-owned record array.
+- Adaptive app-icon metadata with separate foreground/background and optional
+  monochrome asset references, a selectable mask and a validated safe zone.
+  The API never edits source artwork, shortcuts or executables.
+- A type-aware C89 context-action query for files, folders, applications and
+  Group tiles. Its output buffer is caller-owned; native Shell verbs remain
+  the host's responsibility.
 - Immutable provider metadata for Wallpaper Engine Workshop plus free/open
   catalogues (Openverse, Wikimedia Commons and NASA). The C89 API exposes
   provider descriptions, URLs, access/pricing class and item-level rights notes;
@@ -45,6 +54,26 @@ core does not enumerate processes, inspect files, hash binaries or poll.
 scene clock policy. Windows-specific foreground/fullscreen detection and
 persistent profile editing remain adapter/Manager work.
 
+
+## Desktop groups, adaptive app icons and menus
+
+The C89 desktop model uses caller-owned bounded Group storage and references
+to host-provided desktop item IDs. Each Group can contain applications, files
+and folders. Replacement validates IDs, membership and duplicates before
+committing the new collection. Member ID strings remain owned by the caller
+and must outlive the Group records.
+
+Adaptive app icons reference separate foreground/background assets and an
+optional monochrome asset, plus a Circle/RoundedSquare/Squircle mask and a
+48–72% safe-zone value. `wl_Lwlde_desktop_context_actions()` returns the
+same type-aware action set as the Rust core without allocating.
+
+The portable APIs do not themselves enumerate Explorer or draw/hide desktop
+icons. Explorer integration is mandatory BGW/WLDE runtime infrastructure
+where Explorer owns the desktop; per-OS adapters use supported Shell APIs and
+version-specific hooks only where needed. Original desktop icons must be
+restored after BGW failure, Explorer restart, feature recovery and uninstall.
+
 ## Not implemented here
 
 The Store metadata API is intentionally a provider directory, not a catalogue
@@ -53,8 +82,10 @@ The Store metadata API is intentionally a provider directory, not a catalogue
  overrides an individual asset's license.
 
 This library does not create a desktop window, draw pixels, decode media,
-inspect Explorer, enumerate real monitors, hide native desktop icons or run
-untrusted widget code. It is a C89 source API; that alone does not prove a
+inspect Explorer, enumerate live desktop items, hide native desktop icons,
+draw adaptive tiles or open Group popups. Its Group, icon and context-menu APIs
+validate portable data only; a native Shell bridge, presenter and crash-safe
+restoration are still required. It also does not run untrusted widget code. It is a C89 source API; that alone does not prove a
 binary can run on Windows 95 or any other legacy target.
 
 Run the paired C tests from the repository root with

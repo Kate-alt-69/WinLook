@@ -563,6 +563,35 @@ impl Component for CustomShell {
                     ),
                 ))
                 .into(),
+            "icons" => StackPanel::new()
+                .spacing(f64::from(metrics.spacing_unit * 2.0))
+                .children((
+                    info_card(
+                        "WLDE adaptive application tiles",
+                        "Application shortcuts can use a consistent tile with separate foreground and background artwork, an optional monochrome layer, a selectable mask and a safe-zone scale. The original executable, shortcut and source artwork are not rewritten.",
+                        "PORTABLE ICON CONTRACT READY",
+                        palette.accent,
+                        palette,
+                        metrics,
+                    ),
+                    info_card(
+                        "Source-preserving icon cleanup",
+                        "WLDE normalizes how application artwork is presented; it does not silently replace vendor artwork, download lookalike icons or edit installed application files. Native icon extraction and the visual renderer remain adapter work.",
+                        "SOURCE ASSETS PRESERVED",
+                        palette.info,
+                        palette,
+                        metrics,
+                    ),
+                    info_card(
+                        "Right-click actions",
+                        "The portable menu contract distinguishes apps, files, folders and Groups. Apps can expose Customize Icon; all item types can join a Group; grouped items can be removed from that Group without deleting their originals.",
+                        "CONTEXT MENU MODEL READY",
+                        palette.success,
+                        palette,
+                        metrics,
+                    ),
+                ))
+                .into(),
             "wallpaper-widgets" => StackPanel::new()
                 .spacing(f64::from(metrics.spacing_unit * 2.0))
                 .children((
@@ -588,18 +617,26 @@ impl Component for CustomShell {
                 .spacing(f64::from(metrics.spacing_unit * 2.0))
                 .children((
                     info_card(
-                        "Desktop Groups",
-                        "Groups are virtual presentation objects, not filesystem folders. Original Shell items must remain intact and recoverable.",
-                        "DISABLED BY SAFETY",
-                        palette.warning,
+                        "Virtual desktop Groups",
+                        "A Group can collect application shortcuts, files and folders by opaque item reference. It is a presentation container, not a physical directory: the original Shell items, targets and filesystem locations stay untouched.",
+                        "PORTABLE GROUP MODEL READY",
+                        palette.accent,
                         palette,
                         metrics,
                     ),
                     info_card(
-                        "Why this is locked",
-                        "The current branch does not yet prove crash-safe restoration of original desktop icon visibility/positions. The feature stays unavailable until that recovery contract is implemented and tested.",
-                        "RESTORE CONTRACT REQUIRED",
+                        "Group-friendly right-click",
+                        "The context-menu contract offers Open, Add to Group, Remove from Group, Properties and app-only Customize Icon actions. The host must still delegate native open/properties verbs to the Shell.",
+                        "NATIVE MENU INTEGRATION PENDING",
                         palette.info,
+                        palette,
+                        metrics,
+                    ),
+                    info_card(
+                        "Crash restoration guard",
+                        "Desktop Groups remain unavailable for live presentation until the OS adapter can restore original icon visibility and placement after a crash, disable, session exit and uninstall.",
+                        "PRESENTATION DISABLED BY SAFETY",
+                        palette.warning,
                         palette,
                         metrics,
                     ),

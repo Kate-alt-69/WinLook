@@ -77,7 +77,10 @@ impl std::fmt::Display for GameModeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::TooManyProfiles => {
-                write!(f, "Game Mode profile count exceeds the {MAX_GAME_MODE_PROFILES}-profile limit")
+                write!(
+                    f,
+                    "Game Mode profile count exceeds the {MAX_GAME_MODE_PROFILES}-profile limit"
+                )
             }
             Self::DuplicateExecutableFingerprint => {
                 f.write_str("Game Mode profiles must have unique executable SHA-256 fingerprints")
@@ -108,9 +111,10 @@ pub fn resolve_game_mode(
     }
 
     for (index, profile) in profiles.iter().enumerate() {
-        if profiles[..index].iter().any(|previous| {
-            previous.executable_sha256 == profile.executable_sha256
-        }) {
+        if profiles[..index]
+            .iter()
+            .any(|previous| previous.executable_sha256 == profile.executable_sha256)
+        {
             return Err(GameModeError::DuplicateExecutableFingerprint);
         }
     }
@@ -240,7 +244,10 @@ mod tests {
             Err(GameModeError::DuplicateExecutableFingerprint)
         );
 
-        let many = vec![GameModeProfile::new(fingerprint(0xF6), GameMode::Normal); MAX_GAME_MODE_PROFILES + 1];
+        let many = vec![
+            GameModeProfile::new(fingerprint(0xF6), GameMode::Normal);
+            MAX_GAME_MODE_PROFILES + 1
+        ];
         assert_eq!(
             resolve_game_mode(signals, GameModePolicy::default(), &many),
             Err(GameModeError::TooManyProfiles)

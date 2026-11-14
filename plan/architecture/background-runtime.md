@@ -33,7 +33,7 @@ BGW is the actual background application runtime, not merely a WLWM process dete
 Its responsibilities include:
 
 - Background lifecycle and startup/shutdown.
-- Wallpaper and desktop runtime through WLDE.
+- Wallpaper and desktop runtime through WLDE, including the required Explorer Desktop Bridge on sessions where Explorer owns the desktop.
 - Window management policy and integrations through WLWM.
 - Display monitoring and supported display operations through WLDM.
 - WinLook notifications, popups and OSD through WLOSDE.
@@ -42,6 +42,43 @@ Its responsibilities include:
 - CPUv/GPUv resource policy coordination for WinLook-managed work.
 - Configuration validation/application and recovery after Manager disconnects or crashes.
 - Structured diagnostics and controlled subsystem restart/quarantine.
+
+## 6. WLDE Explorer Desktop Bridge
+
+The Explorer Desktop Bridge is a required module inside BGW's WLDE subsystem,
+not a third executable and not an end-user opt-in. It is initialized for each
+interactive session where Explorer owns the desktop. BGW must identify the
+desktop-owning process rather than assuming that every Explorer.exe instance
+is the desktop host.
+
+The bridge is generation-specific. Modern Windows targets can use documented
+Shell COM extension interfaces for icon extraction, command/context-menu
+integration and Shell item identity. Where those interfaces do not expose
+desktop-view interception required for virtual Group proxies or adaptive icon
+presentation, the selected adapter may use a controlled in-process runtime
+hook inside the desktop-owning Explorer process. Legacy targets use their
+verified classic Shell adapter; they must not import modern interfaces merely
+because they exist in shared code.
+
+Explorer callbacks are short and bounded. BGW owns persistence, rendering,
+media decoding, network access, reconciliation, policy and expensive work.
+The in-process bridge sends typed item references and events to BGW over
+authenticated per-user IPC. DWM remains the compositor. Windows Shell remains
+the authority for activation, filesystem operations, permissions, drag/drop,
+file associations and native item semantics.
+
+BGW monitors bridge health and Explorer process identity. On Explorer restart
+it re-detects the desktop host, validates the OS/build/architecture adapter
+and re-establishes the connection. Before the bridge suppresses an original
+icon representation, WLDE must persist the corresponding restore state. On
+bridge failure, BGW restores native icons or keeps them visible, quarantines
+the failing adapter, and records a degraded capability state. The uninstaller
+and crash-recovery path use the same idempotent restoration journal.
+
+The bridge is mandatory as a product/runtime responsibility, but the exact
+available operation set is capability-based per OS build. This distinction
+prevents an unsupported Shell build from being treated as permission to
+destabilize or replace the native desktop.
 
 BGW runs with ordinary user privileges by default. Any future privileged Windows operation must be narrowly scoped and separately justified; an optional service is not a replacement for the interactive BGW runtime.
 

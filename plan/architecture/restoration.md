@@ -35,7 +35,8 @@ If the current value differs from the value last applied by WinLook, assume the 
 
 ## Crash recovery
 - Persist restoration metadata before changing desktop state.
-- WLDE crash: release visual suppression and show original native desktop items.
+- WLDE/BGW bridge crash: release visual suppression and show original native desktop items; if an in-process bridge is still loaded, it must detect controller loss and enter the native-visible safe state.
+- Explorer restart: BGW rediscovers the desktop-owning process, revalidates the per-version adapter and reattaches only after the prior restore transaction is reconciled.
 - WLWM crash: stop new injection and return to native behaviour where safely possible.
 - BGW crash: injected modules detect controller loss and enter a defined safe state.
 - If unload isn't safe, prevent future targeting and provide a reboot-assisted cleanup path.

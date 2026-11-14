@@ -61,6 +61,29 @@ WLT import must validate the archive, reject unsafe paths/collisions, cap file c
 - `IShellView` is documented from Windows XP for a custom namespace folder view; it does not reskin all standard Explorer folders/panes. `IExplorerCommand` is not the XP command route.
 - Deep chrome styling requires a separate XP-specific research/prototype path. Never modify or replace `explorer.exe`.
 
+## Required WLDE Explorer Desktop Bridge
+
+The Explorer Desktop Bridge is mandatory BGW/WLDE runtime infrastructure on
+this OS when Explorer owns the interactive desktop. It is not a Windows 10/11
+only feature and has no per-feature user opt-in. BGW must identify the actual
+desktop-owning Shell process and select this OS/build's adapter; do not assume
+that every Explorer.exe instance hosts the desktop.
+
+The adapter must use this OS's documented Shell interfaces where they satisfy
+the feature contract and may use a controlled, version-specific runtime hook
+inside the desktop-owning Explorer process where those interfaces do not
+expose required desktop icon/Group behaviour. This does not permit modifying
+Explorer.exe on disk, replacing DWM, or attaching indiscriminately to other
+Explorer folder-window processes. Shell activation and filesystem operations
+remain Windows-owned; expensive work remains in BGW/WLDE.
+
+On an unknown or unsupported build, keep native desktop icons visible and
+report the affected WLDE capability as unavailable. Before suppressing any
+native icon representation, persist enough restore state to recover after
+Explorer/BGW crash, Explorer restart, logoff, update and uninstall. This is
+a mandatory integration contract; exact support is established only by
+per-OS runtime tests, not by API-name or source-compatibility assumptions.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

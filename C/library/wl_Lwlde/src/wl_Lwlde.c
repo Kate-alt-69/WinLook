@@ -490,3 +490,220 @@ wl_Lwlde_result wl_Lwlde_resource_controller_update(
     *pressure_out = controller->pressure;
     return WL_LWDE_OK;
 }
+
+
+static int wl_Lwlde_text_valid(const char *value, unsigned int capacity)
+{
+    unsigned int index;
+    if (value == 0 || capacity == 0U) return 0;
+    for (index = 0U; index < capacity; ++index) {
+        if (value[index] == '\\0') return index > 0U;
+    }
+    return 0;
+}
+
+static int wl_Lwlde_desktop_item_exists(
+    const char *id,
+    const wl_Lwlde_desktop_item_ref *items,
+    unsigned int item_count
+)
+{
+    unsigned int index;
+    for (index = 0U; index < item_count; ++index) {
+        if (strcmp(id, items[index].id) == 0) return 1;
+    }
+    return 0;
+}
+
+wl_Lwlde_result wl_Lwlde_desktop_groups_init(
+    wl_Lwlde_desktop_groups *groups,
+    wl_Lwlde_desktop_group *storage,
+    unsigned int capacity
+)
+{
+    if (groups == 0 || capacity > WL_LWDE_MAX_DESKTOP_GROUPS ||
+        (capacity > 0U && storage == 0)) {
+        return WL_LWDE_INVALID_ARGUMENT;
+    }
+    groups->groups = storage;
+    groups->count = 0U;
+    groups->capacity = capacity;
+    return WL_LWDE_OK;
+}
+
+wl_Lwlde_result wl_Lwlde_desktop_groups_replace(
+    wl_Lwlde_desktop_groups *groups,
+    const wl_Lwlde_desktop_group *replacement,
+    unsigned int replacement_count,
+    const wl_Lwlde_desktop_item_ref *available_items,
+    unsigned int available_item_count
+)
+{
+    unsigned int group_index;
+    unsigned int previous_group;
+    unsigned int member_index;
+    unsigned int previous_member;
+    const wl_Lwlde_desktop_group *group;
+    const char *member_id;
+    if (groups == 0 || (replacement_count > 0U && replacement == 0) ||
+        (available_item_count > 0U && available_items == 0)) {
+        return WL_LWDE_INVALID_ARGUMENT;
+    }
+    if (replacement_count > WL_LWDE_MAX_DESKTOP_GROUPS) {
+        return WL_LWDE_TOO_MANY_DESKTOP_GROUPS;
+    }
+    if (replacement_count > groups->capacity ||
+        (replacement_count > 0U && groups->groups == 0)) {
+        return WL_LWDE_TOO_MANY_DESKTOP_GROUPS;
+    }
+
+    for (group_index = 0U; group_index < available_item_count; ++group_index) {
+        if (!wl_Lwlde_text_valid(available_items[group_index].id,
+                WL_LWDE_DESKTOP_ID_CAPACITY) ||
+            !wl_Lwlde_text_valid(available_items[group_index].label,
+                WL_LWDE_DESKTOP_LABEL_CAPACITY) ||
+            available_items[group_index].kind < WL_LWDE_DESKTOP_FILE ||
+            available_items[group_index].kind > WL_LWDE_DESKTOP_APPLICATION) {
+            return WL_LWDE_INVALID_DESKTOP_GROUP;
+        }
+        for (previous_group = 0U; previous_group < group_index; ++previous_group) {
+            if (strcmp(available_items[group_index].id,
+                    available_items[previous_group].id) == 0) {
+                return WL_LWDE_INVALID_DESKTOP_GROUP;
+            }
+        }
+    }
+
+    for (group_index = 0U; group_index < replacement_count; ++group_index) {
+        group = &replacement[group_index];
+        if (!wl_Lwlde_text_valid(group->id, WL_LWDE_DESKTOP_ID_CAPACITY) ||
+            !wl_Lwlde_text_valid(group->label, WL_LWDE_DESKTOP_LABEL_CAPACITY) ||
+            group->member_count == 0U ||
+            group->member_count > WL_LWDE_MAX_DESKTOP_GROUP_MEMBERS ||
+            group->member_ids == 0) {
+            return WL_LWDE_INVALID_DESKTOP_GROUP;
+        }
+        for (previous_group = 0U; previous_group < group_index; ++previous_group) {
+            if (strcmp(group->id, replacement[previous_group].id) == 0) {
+                return WL_LWDE_INVALID_DESKTOP_GROUP;
+            }
+        }
+        for (member_index = 0U; member_index < group->member_count; ++member_index) {
+            member_id = group->member_ids[member_index];
+            if (!wl_Lwlde_text_valid(member_id, WL_LWDE_DESKTOP_ID_CAPACITY) ||
+                !wl_Lwlde_desktop_item_exists(member_id, available_items,
+                    available_item_count)) {
+                return WL_LWDE_INVALID_DESKTOP_GROUP;
+            }
+            for (previous_member = 0U; previous_member < member_index; ++previous_member) {
+                if (strcmp(member_id, group->member_ids[previous_member]) == 0) {
+                    return WL_LWDE_INVALID_DESKTOP_GROUP;
+                }
+            }
+        }
+    }
+
+    if (replacement_count > 0U) {
+        memcpy(groups->groups, replacement,
+            replacement_count * sizeof(wl_Lwlde_desktop_group));
+    }
+    groups->count = replacement_count;
+    return WL_LWDE_OK;
+}
+
+wl_Lwlde_result wl_Lwlde_adaptive_app_icon_validate(
+    const wl_Lwlde_adaptive_app_icon *icon
+)
+{
+    if (icon == 0 ||
+        !wl_Lwlde_text_valid(icon->application_id, WL_LWDE_DESKTOP_ID_CAPACITY) ||
+        !wl_Lwlde_text_valid(icon->label, WL_LWDE_DESKTOP_LABEL_CAPACITY) ||
+        !wl_Lwlde_text_valid(icon->foreground_asset, WL_LWDE_ICON_ASSET_CAPACITY) ||
+        !wl_Lwlde_text_valid(icon->background_asset, WL_LWDE_ICON_ASSET_CAPACITY) ||
+        (icon->monochrome_asset != 0 &&
+            !wl_Lwlde_text_valid(icon->monochrome_asset, WL_LWDE_ICON_ASSET_CAPACITY)) ||
+        icon->mask < WL_LWDE_APP_ICON_CIRCLE ||
+        icon->mask > WL_LWDE_APP_ICON_SQUIRCLE ||
+        icon->safe_zone_percent < 48U || icon->safe_zone_percent > 72U) {
+        return WL_LWDE_INVALID_APP_ICON;
+    }
+    return WL_LWDE_OK;
+}
+
+
+unsigned int wl_Lwlde_desktop_context_actions(
+    wl_Lwlde_desktop_context_target target,
+    unsigned int is_group_member,
+    wl_Lwlde_desktop_context_action *actions_out,
+    unsigned int action_capacity
+)
+{
+    static const wl_Lwlde_desktop_context_action file_actions[3] = {
+        WL_LWDE_CONTEXT_OPEN,
+        WL_LWDE_CONTEXT_ADD_TO_GROUP,
+        WL_LWDE_CONTEXT_PROPERTIES
+    };
+    static const wl_Lwlde_desktop_context_action grouped_file_actions[4] = {
+        WL_LWDE_CONTEXT_OPEN,
+        WL_LWDE_CONTEXT_ADD_TO_GROUP,
+        WL_LWDE_CONTEXT_REMOVE_FROM_GROUP,
+        WL_LWDE_CONTEXT_PROPERTIES
+    };
+    static const wl_Lwlde_desktop_context_action application_actions[4] = {
+        WL_LWDE_CONTEXT_OPEN,
+        WL_LWDE_CONTEXT_ADD_TO_GROUP,
+        WL_LWDE_CONTEXT_CUSTOMIZE_APPLICATION_ICON,
+        WL_LWDE_CONTEXT_PROPERTIES
+    };
+    static const wl_Lwlde_desktop_context_action grouped_application_actions[5] = {
+        WL_LWDE_CONTEXT_OPEN,
+        WL_LWDE_CONTEXT_ADD_TO_GROUP,
+        WL_LWDE_CONTEXT_REMOVE_FROM_GROUP,
+        WL_LWDE_CONTEXT_CUSTOMIZE_APPLICATION_ICON,
+        WL_LWDE_CONTEXT_PROPERTIES
+    };
+    static const wl_Lwlde_desktop_context_action group_actions[5] = {
+        WL_LWDE_CONTEXT_OPEN_GROUP,
+        WL_LWDE_CONTEXT_ADD_GROUP_MEMBERS,
+        WL_LWDE_CONTEXT_RENAME_GROUP,
+        WL_LWDE_CONTEXT_UNGROUP,
+        WL_LWDE_CONTEXT_PROPERTIES
+    };
+    const wl_Lwlde_desktop_context_action *selected;
+    unsigned int count;
+
+    selected = 0;
+    count = 0U;
+    switch (target) {
+        case WL_LWDE_CONTEXT_FILE:
+        case WL_LWDE_CONTEXT_FOLDER:
+            if (is_group_member != 0U) {
+                selected = grouped_file_actions;
+                count = 4U;
+            } else {
+                selected = file_actions;
+                count = 3U;
+            }
+            break;
+        case WL_LWDE_CONTEXT_APPLICATION:
+            if (is_group_member != 0U) {
+                selected = grouped_application_actions;
+                count = 5U;
+            } else {
+                selected = application_actions;
+                count = 4U;
+            }
+            break;
+        case WL_LWDE_CONTEXT_GROUP:
+            selected = group_actions;
+            count = 5U;
+            break;
+        default:
+            return 0U;
+    }
+
+    if (actions_out == 0) return count;
+    if (action_capacity < count) return 0U;
+    memcpy(actions_out, selected, count * sizeof(wl_Lwlde_desktop_context_action));
+    return count;
+}

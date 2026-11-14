@@ -33,7 +33,10 @@ typedef enum wl_Lwlde_result {
     WL_LWDE_DUPLICATE_GAME_MODE_PROFILE = 11,
     WL_LWDE_INVALID_GAME_MODE_POLICY = 12,
     WL_LWDE_INVALID_GAME_MODE_PROFILE = 13,
-    WL_LWDE_INVALID_GAME_MODE_SIGNALS = 14
+    WL_LWDE_INVALID_GAME_MODE_SIGNALS = 14,
+    WL_LWDE_INVALID_DESKTOP_GROUP = 15,
+    WL_LWDE_TOO_MANY_DESKTOP_GROUPS = 16,
+    WL_LWDE_INVALID_APP_ICON = 17
 } wl_Lwlde_result;
 
 typedef struct wl_Lwlde_rect {
@@ -300,6 +303,113 @@ wl_Lwlde_result wl_Lwlde_resource_controller_update(
     wl_Lwlde_resource_controller *controller,
     const wl_Lwlde_resource_sample *sample,
     wl_Lwlde_resource_pressure *pressure_out
+);
+
+
+/*
+ * Desktop groups are virtual references. Item IDs are supplied by the host;
+ * these APIs never move, rename, hide or delete filesystem/Shell items.
+ */
+#define WL_LWDE_MAX_DESKTOP_GROUPS 64U
+#define WL_LWDE_MAX_DESKTOP_GROUP_MEMBERS 128U
+#define WL_LWDE_DESKTOP_ID_CAPACITY 128U
+#define WL_LWDE_DESKTOP_LABEL_CAPACITY 256U
+#define WL_LWDE_ICON_ASSET_CAPACITY 256U
+#define WL_LWDE_DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT 61U
+
+typedef enum wl_Lwlde_desktop_item_kind {
+    WL_LWDE_DESKTOP_FILE = 0,
+    WL_LWDE_DESKTOP_FOLDER = 1,
+    WL_LWDE_DESKTOP_APPLICATION = 2
+} wl_Lwlde_desktop_item_kind;
+
+typedef struct wl_Lwlde_desktop_item_ref {
+    char id[WL_LWDE_DESKTOP_ID_CAPACITY];
+    char label[WL_LWDE_DESKTOP_LABEL_CAPACITY];
+    wl_Lwlde_desktop_item_kind kind;
+} wl_Lwlde_desktop_item_ref;
+
+/* member_ids is caller-owned and must outlive the group record in the set. */
+typedef struct wl_Lwlde_desktop_group {
+    char id[WL_LWDE_DESKTOP_ID_CAPACITY];
+    char label[WL_LWDE_DESKTOP_LABEL_CAPACITY];
+    const char *const *member_ids;
+    unsigned int member_count;
+} wl_Lwlde_desktop_group;
+
+/* Caller supplies bounded storage; replacement validates fully before commit. */
+typedef struct wl_Lwlde_desktop_groups {
+    wl_Lwlde_desktop_group *groups;
+    unsigned int count;
+    unsigned int capacity;
+} wl_Lwlde_desktop_groups;
+
+wl_Lwlde_result wl_Lwlde_desktop_groups_init(
+    wl_Lwlde_desktop_groups *groups,
+    wl_Lwlde_desktop_group *storage,
+    unsigned int capacity
+);
+wl_Lwlde_result wl_Lwlde_desktop_groups_replace(
+    wl_Lwlde_desktop_groups *groups,
+    const wl_Lwlde_desktop_group *replacement,
+    unsigned int replacement_count,
+    const wl_Lwlde_desktop_item_ref *available_items,
+    unsigned int available_item_count
+);
+
+typedef enum wl_Lwlde_app_icon_mask {
+    WL_LWDE_APP_ICON_CIRCLE = 0,
+    WL_LWDE_APP_ICON_ROUNDED_SQUARE = 1,
+    WL_LWDE_APP_ICON_SQUIRCLE = 2
+} wl_Lwlde_app_icon_mask;
+
+/*
+ * Foreground/background/optional monochrome are opaque asset references.
+ * Rendering applies the mask and safe zone without rewriting source assets.
+ */
+typedef struct wl_Lwlde_adaptive_app_icon {
+    const char *application_id;
+    const char *label;
+    const char *foreground_asset;
+    const char *background_asset;
+    const char *monochrome_asset;
+    wl_Lwlde_app_icon_mask mask;
+    unsigned int safe_zone_percent;
+} wl_Lwlde_adaptive_app_icon;
+
+wl_Lwlde_result wl_Lwlde_adaptive_app_icon_validate(
+    const wl_Lwlde_adaptive_app_icon *icon
+);
+
+typedef enum wl_Lwlde_desktop_context_target {
+    WL_LWDE_CONTEXT_FILE = 0,
+    WL_LWDE_CONTEXT_FOLDER = 1,
+    WL_LWDE_CONTEXT_APPLICATION = 2,
+    WL_LWDE_CONTEXT_GROUP = 3
+} wl_Lwlde_desktop_context_target;
+
+typedef enum wl_Lwlde_desktop_context_action {
+    WL_LWDE_CONTEXT_OPEN = 0,
+    WL_LWDE_CONTEXT_ADD_TO_GROUP = 1,
+    WL_LWDE_CONTEXT_REMOVE_FROM_GROUP = 2,
+    WL_LWDE_CONTEXT_CUSTOMIZE_APPLICATION_ICON = 3,
+    WL_LWDE_CONTEXT_OPEN_GROUP = 4,
+    WL_LWDE_CONTEXT_ADD_GROUP_MEMBERS = 5,
+    WL_LWDE_CONTEXT_RENAME_GROUP = 6,
+    WL_LWDE_CONTEXT_UNGROUP = 7,
+    WL_LWDE_CONTEXT_PROPERTIES = 8
+} wl_Lwlde_desktop_context_action;
+
+/*
+ * Returns the required action count when actions_out is NULL. If a buffer is
+ * supplied, it must have action_capacity slots; insufficient capacity returns
+ * zero without writing any actions. Native Open/Properties remain Shell-owned.
+ */
+unsigned int wl_Lwlde_desktop_context_actions(
+    wl_Lwlde_desktop_context_target target,
+    unsigned int is_group_member,
+    wl_Lwlde_desktop_context_action *actions_out,
+    unsigned int action_capacity
 );
 
 #endif /* WL_LWLDE_H */

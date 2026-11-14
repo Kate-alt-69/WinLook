@@ -17,11 +17,18 @@ pub use wl_animate::{FrameClock, FrameClockError, FrameTick};
 pub use wl_cpuv as cpu;
 pub use wl_gpuv as gpu;
 
+mod desktop;
 mod game_mode;
 mod resource;
 mod store;
 mod wallpaper_engine;
 
+pub use desktop::{
+    desktop_context_actions, AdaptiveAppIcon, AppIconLayers, AppIconMask, DesktopContextAction,
+    DesktopContextTarget, DesktopGroup, DesktopGroups, DesktopItemId, DesktopItemKind,
+    DesktopItemRef, DesktopModelError, DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT,
+    MAX_DESKTOP_GROUP_MEMBERS, MAX_DESKTOP_GROUPS,
+};
 pub use game_mode::{
     resolve_game_mode, GameModeError, GameModePolicy, GameModeProfile, GameModeSignals,
     MAX_GAME_MODE_PROFILES,

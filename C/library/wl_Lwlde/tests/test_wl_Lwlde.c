@@ -219,6 +219,80 @@ int main(void)
     assert(provider->price_model == WL_LWDE_STORE_PRICE_FREE);
     assert(wl_Lwlde_store_provider_get(WL_LWDE_STORE_PROVIDER_COUNT) == 0);
 
+
+    {
+        wl_Lwlde_desktop_item_ref desktop_items[3];
+        wl_Lwlde_desktop_group group_storage[2];
+        wl_Lwlde_desktop_groups desktop_groups;
+        wl_Lwlde_desktop_group group_input[1];
+        const char *group_members[2];
+        wl_Lwlde_adaptive_app_icon app_icon;
+        wl_Lwlde_desktop_context_action context_actions[5];
+        unsigned int context_count;
+
+        memset(desktop_items, 0, sizeof(desktop_items));
+        strcpy(desktop_items[0].id, "app:editor");
+        strcpy(desktop_items[0].label, "Editor");
+        desktop_items[0].kind = WL_LWDE_DESKTOP_APPLICATION;
+        strcpy(desktop_items[1].id, "file:notes");
+        strcpy(desktop_items[1].label, "Notes.txt");
+        desktop_items[1].kind = WL_LWDE_DESKTOP_FILE;
+        strcpy(desktop_items[2].id, "folder:assets");
+        strcpy(desktop_items[2].label, "Assets");
+        desktop_items[2].kind = WL_LWDE_DESKTOP_FOLDER;
+
+        group_members[0] = "app:editor";
+        group_members[1] = "folder:assets";
+        memset(group_input, 0, sizeof(group_input));
+        strcpy(group_input[0].id, "group:work");
+        strcpy(group_input[0].label, "Work");
+        group_input[0].member_ids = group_members;
+        group_input[0].member_count = 2U;
+
+        assert(wl_Lwlde_desktop_groups_init(&desktop_groups, group_storage, 2U) ==
+            WL_LWDE_OK);
+        assert(wl_Lwlde_desktop_groups_replace(&desktop_groups, group_input, 1U,
+            desktop_items, 3U) == WL_LWDE_OK);
+        assert(desktop_groups.count == 1U);
+        assert(strcmp(desktop_groups.groups[0].id, "group:work") == 0);
+
+        group_members[1] = "file:missing";
+        assert(wl_Lwlde_desktop_groups_replace(&desktop_groups, group_input, 1U,
+            desktop_items, 3U) == WL_LWDE_INVALID_DESKTOP_GROUP);
+        assert(desktop_groups.count == 1U);
+        assert(strcmp(desktop_groups.groups[0].id, "group:work") == 0);
+        group_members[1] = "folder:assets";
+
+        memset(&app_icon, 0, sizeof(app_icon));
+        app_icon.application_id = "app:editor";
+        app_icon.label = "Editor";
+        app_icon.foreground_asset = "asset:editor-foreground";
+        app_icon.background_asset = "asset:editor-background";
+        app_icon.monochrome_asset = "asset:editor-mono";
+        app_icon.mask = WL_LWDE_APP_ICON_SQUIRCLE;
+        app_icon.safe_zone_percent = WL_LWDE_DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT;
+        assert(wl_Lwlde_adaptive_app_icon_validate(&app_icon) == WL_LWDE_OK);
+        app_icon.safe_zone_percent = 90U;
+        assert(wl_Lwlde_adaptive_app_icon_validate(&app_icon) == WL_LWDE_INVALID_APP_ICON);
+
+        context_count = wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_APPLICATION, 0U, 0, 0U);
+        assert(context_count == 4U);
+        assert(wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_APPLICATION, 0U, context_actions, 3U) == 0U);
+        assert(wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_APPLICATION, 0U, context_actions, 5U) == 4U);
+        assert(context_actions[2] == WL_LWDE_CONTEXT_CUSTOMIZE_APPLICATION_ICON);
+        assert(wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_APPLICATION, 1U, context_actions, 5U) == 5U);
+        assert(context_actions[2] == WL_LWDE_CONTEXT_REMOVE_FROM_GROUP);
+        assert(wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_FILE, 0U, context_actions, 5U) == 3U);
+        assert(wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_GROUP, 0U, context_actions, 5U) == 5U);
+        assert(context_actions[3] == WL_LWDE_CONTEXT_UNGROUP);
+    }
+
     puts("wl_Lwlde C89 core tests passed");
     return 0;
 }

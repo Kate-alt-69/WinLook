@@ -37,6 +37,14 @@ fallbacks. Non-foreground applications resolve to Normal. The resolver does
 not enumerate processes, hash executable files or collect Windows signals;
 platform detection and profile persistence remain open.
 
+The Rust and C89 cores now also have a bounded desktop presentation model:
+Groups hold references to application shortcuts, files and folders without
+creating filesystem directories or moving original Shell items. The Rust API
+adds a type-aware right-click action contract and adaptive app-icon metadata
+with separate foreground/background asset references, optional monochrome
+artwork, shape masks and safe-zone scaling. The C89 API validates the same
+Group and adaptive-icon data and exposes the matching context-action query.
+
 The modern Rust side now also has a separate
 [Win32 monitor adapter](../../rust/library/wl_wlde_win32/README.md). It builds
 bounded snapshots from attached GDI display devices and exposes a transactional
@@ -64,10 +72,12 @@ open. Neither shell claims DPI/orientation/session reconciliation yet.
 
 The UI reports the current boundary honestly: the Store provider actions and
 Wallpaper Engine hand-off are available; the monitor snapshot, resource
-policy and per-application Game Mode resolver APIs exist; Windows telemetry,
-foreground/fullscreen detection, profile persistence, local library import,
-native wallpaper rendering, widget execution and Rainmeter runtime are not connected. Desktop
-Groups remain visibly disabled until crash-safe Shell restoration is proven.
+policy, Game Mode resolver and portable Group/adaptive-icon models exist.
+Windows telemetry, foreground/fullscreen detection, profile persistence, local
+library import, native wallpaper rendering, icon extraction/drawing, live
+desktop inventory, custom right-click presentation, widget execution and
+Rainmeter runtime are not connected. Desktop Groups remain visibly disabled
+until crash-safe Shell restoration is proven.
 
 ## Renderer boundary
 
@@ -94,6 +104,40 @@ Do not substitute undocumented WorkerW/Progman parent-window assumptions,
 modify Explorer.exe, disable DWM or move real desktop shortcuts. Any future
 presentation adapter must report its actual capabilities and restore the
 native desktop after failure, shutdown and uninstall.
+
+
+## Required Explorer Desktop Bridge
+
+The Explorer Desktop Bridge is a required BGW/WLDE runtime component on every
+supported Windows session where Explorer owns the desktop. It is not a
+per-feature opt-in and is not limited to Windows 10/11. BGW identifies the
+actual desktop-owning Shell process for the current session and selects a
+generation-specific adapter. Windows 95/98/Me/NT/2000/XP, Vista, 7, 8, 8.1,
+10 and 11 need separate capability evidence; API presence on one generation
+does not prove equivalent desktop behaviour on another.
+
+The bridge connects Explorer desktop item discovery, identity, icon
+presentation and context-menu events to the out-of-process WLDE host. Short,
+bounded Shell callbacks stay in-process; wallpaper rendering, media decoding,
+Group persistence, network work and other expensive operations stay in BGW.
+WLDE owns the custom desktop presentation while Windows Shell retains
+filesystem operations, item activation, permissions and native file semantics.
+DWM remains the compositor; WinLook is not replacing DWM.
+
+Use supported Shell COM/extension interfaces first where they provide the
+required event/command/icon contract. For desktop-specific interception or
+presentation that those interfaces do not expose, the platform adapter may
+use a narrowly scoped in-process runtime hook in the actual Explorer desktop
+process. This hook is part of the mandatory adapter, not a user-facing opt-in.
+It must be isolated by OS build/architecture, monitored by BGW, and backed by
+a rollback/recovery path. Do not patch Explorer.exe on disk or attach to
+unrelated Explorer folder-window processes.
+
+If the adapter cannot prove compatibility or restoration, it must fail closed:
+leave native desktop items visible, disable only the unavailable WLDE desktop
+presentation capability, and report the exact limitation. BGW must detect
+Explorer restart/crash, re-establish the bridge safely and reconcile the
+last-known desktop inventory without deleting or recreating user items.
 
 ## Integrated Wallpaper Store provider hub
 
