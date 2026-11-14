@@ -472,3 +472,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Raised the portable display-label limit to 1023 UTF-8 bytes (C89 buffer to 1024 bytes) so long Unicode Windows filenames can be represented without truncation.
 - sha2 0.10.9 was already in the lockfile; it is now a direct dependency of the Win32 adapter for stable path identity generation.
 - Official references WLDE-021–022 are recorded in plan/references/SOURCES.md. Windows runtime enumeration and cross-user/Public Desktop behaviour remain CI/device verification tasks.
+
+
+## WLDE themed monochrome adaptive app icons — 2026-11-15
+
+- Added matching Rust and C89 monochrome render paths. The optional monochrome layer's alpha channel is treated as the glyph mask; its RGB values are ignored and replaced with the caller's theme tint.
+- Background cover crop, foreground/glyph safe-zone contain, premultiplied-alpha sampling, source-over blending and the Circle/RoundedSquare/Squircle 2×2 coverage mask match the color renderer.
+- Added allocating and caller-buffer Rust APIs plus an allocation-free C89 API. Caller-buffer paths retain the same bounded 16–512 px output contract and do not modify source assets.
+- Added Rust/C89 tests for tint application, source immutability, safe-zone and output parity.
+- This is a bitmap operation only. Shell icon extraction, app-profile color selection, DPI cache management, icon registration/presentation and crash-safe restore remain separate native integration gates.

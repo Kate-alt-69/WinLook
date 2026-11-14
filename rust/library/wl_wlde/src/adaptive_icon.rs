@@ -126,6 +126,77 @@ pub fn render_adaptive_app_icon_into(
     output_size: u32,
     output_rgba: &mut [u8],
 ) -> Result<(), AdaptiveIconRenderError> {
+    render_adaptive_app_icon_into_with_tint(
+        icon,
+        background,
+        foreground,
+        None,
+        output_size,
+        output_rgba,
+    )
+}
+
+/// Renders a themed monochrome adaptive icon into a newly allocated RGBA tile.
+///
+/// The source image's alpha channel is used as the glyph mask; its RGB channels
+/// are ignored and replaced with the caller's tint. The background still uses
+/// the normal centered cover crop, and the glyph is contained inside the
+/// configured safe zone and clipped by the selected mask.
+pub fn render_adaptive_app_icon_monochrome(
+    icon: &AdaptiveAppIcon,
+    background: AdaptiveIconImageView<'_>,
+    monochrome: AdaptiveIconImageView<'_>,
+    tint_rgb: [u8; 3],
+    output_size: u32,
+) -> Result<Vec<u8>, AdaptiveIconRenderError> {
+    let output_bytes = output_buffer_length(output_size)?;
+    let mut output = Vec::new();
+    output
+        .try_reserve_exact(output_bytes)
+        .map_err(|_| AdaptiveIconRenderError::AllocationFailed)?;
+    output.resize(output_bytes, 0);
+    render_adaptive_app_icon_monochrome_into(
+        icon,
+        background,
+        monochrome,
+        tint_rgb,
+        output_size,
+        &mut output,
+    )?;
+    Ok(output)
+}
+
+/// Allocation-free themed monochrome adaptive-icon renderer.
+///
+/// The monochrome source alpha is the glyph mask. Its source RGB values are
+/// ignored so the caller can apply the active user/theme tint without
+/// modifying the source asset.
+pub fn render_adaptive_app_icon_monochrome_into(
+    icon: &AdaptiveAppIcon,
+    background: AdaptiveIconImageView<'_>,
+    monochrome: AdaptiveIconImageView<'_>,
+    tint_rgb: [u8; 3],
+    output_size: u32,
+    output_rgba: &mut [u8],
+) -> Result<(), AdaptiveIconRenderError> {
+    render_adaptive_app_icon_into_with_tint(
+        icon,
+        background,
+        monochrome,
+        Some(tint_rgb),
+        output_size,
+        output_rgba,
+    )
+}
+
+fn render_adaptive_app_icon_into_with_tint(
+    icon: &AdaptiveAppIcon,
+    background: AdaptiveIconImageView<'_>,
+    foreground: AdaptiveIconImageView<'_>,
+    tint_rgb: Option<[u8; 3]>,
+    output_size: u32,
+    output_rgba: &mut [u8],
+) -> Result<(), AdaptiveIconRenderError> {
     let output_bytes = output_buffer_length(output_size)?;
     if output_rgba.len() < output_bytes {
         return Err(AdaptiveIconRenderError::OutputBufferTooSmall);
@@ -154,7 +225,12 @@ pub fn render_adaptive_app_icon_into(
             {
                 let foreground_x = (destination_x - foreground_left) / foreground_scale - 0.5;
                 let foreground_y = (destination_y - foreground_top) / foreground_scale - 0.5;
-                let foreground_pixel = sample_bilinear(foreground, foreground_x, foreground_y);
+                let mut foreground_pixel = sample_bilinear(foreground, foreground_x, foreground_y);
+                if let Some(tint) = tint_rgb {
+                    foreground_pixel[0] = tint[0];
+                    foreground_pixel[1] = tint[1];
+                    foreground_pixel[2] = tint[2];
+                }
                 pixel = alpha_over(pixel, foreground_pixel);
             }
 
@@ -396,6 +472,47 @@ mod tests {
             Err(AdaptiveIconRenderError::OutputBufferTooSmall)
         );
         assert!(output.iter().all(|byte| *byte == 0xA5));
+    }
+
+    #[test]
+    fn monochrome_mode_uses_alpha_as_mask_and_applies_theme_tint() {
+        let background = AdaptiveIconImageView::new(1, 1, &[12, 24, 36, 255]).unwrap();
+        let monochrome = AdaptiveIconImageView::new(1, 1, &[240, 10, 20, 255]).unwrap();
+        let rendered = render_adaptive_app_icon_monochrome(
+            &icon(AppIconMask::Squircle),
+            background,
+            monochrome,
+            [32, 160, 224],
+            32,
+        ).unwrap();
+
+        let center = (16 * 32 + 16) * 4;
+        let outside_glyph = (8 * 32 + 16) * 4;
+        assert_eq!(&rendered[center..center + 4], &[32, 160, 224, 255]);
+        assert_eq!(&rendered[outside_glyph..outside_glyph + 3], &[12, 24, 36]);
+        assert_eq!(monochrome.pixels(), &[240, 10, 20, 255]);
+    }
+
+    #[test]
+    fn monochrome_caller_buffer_matches_allocating_renderer_and_preserves_tail() {
+        let background = AdaptiveIconImageView::new(1, 1, &[0, 0, 0, 255]).unwrap();
+        let monochrome = AdaptiveIconImageView::new(1, 1, &[10, 20, 30, 128]).unwrap();
+        let model = icon(AppIconMask::Circle);
+        let tint = [180, 120, 60];
+        let expected =
+            render_adaptive_app_icon_monochrome(&model, background, monochrome, tint, 32)
+                .unwrap();
+        let mut output = vec![0xD7; expected.len() + 8];
+        render_adaptive_app_icon_monochrome_into(
+            &model,
+            background,
+            monochrome,
+            tint,
+            32,
+            &mut output,
+        ).unwrap();
+        assert_eq!(&output[..expected.len()], expected.as_slice());
+        assert!(output[expected.len()..].iter().all(|byte| *byte == 0xD7));
     }
 
     #[test]

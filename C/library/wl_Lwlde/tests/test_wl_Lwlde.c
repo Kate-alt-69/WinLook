@@ -285,9 +285,12 @@ int main(void)
         {
             unsigned char background_pixels[4] = { 255U, 0U, 0U, 255U };
             unsigned char foreground_pixels[4] = { 0U, 0U, 255U, 255U };
+            unsigned char monochrome_pixels[4] = { 255U, 10U, 20U, 255U };
+            unsigned char tint_rgb[3] = { 32U, 160U, 224U };
             unsigned char rendered_pixels[32U * 32U * 4U];
             wl_Lwlde_rgba_image_view background_view;
             wl_Lwlde_rgba_image_view foreground_view;
+            wl_Lwlde_rgba_image_view monochrome_view;
             unsigned int center_offset;
 
             background_view.pixels = background_pixels;
@@ -298,6 +301,10 @@ int main(void)
             foreground_view.width = 1U;
             foreground_view.height = 1U;
             foreground_view.pixel_length = 4U;
+            monochrome_view.pixels = monochrome_pixels;
+            monochrome_view.width = 1U;
+            monochrome_view.height = 1U;
+            monochrome_view.pixel_length = 4U;
             memset(rendered_pixels, 0xAA, sizeof(rendered_pixels));
             assert(wl_Lwlde_adaptive_app_icon_render_rgba(&app_icon,
                 &background_view, &foreground_view, 32U, rendered_pixels,
@@ -309,6 +316,15 @@ int main(void)
             assert(rendered_pixels[center_offset + 3U] == 255U);
             assert(rendered_pixels[3U] == 0U);
             assert(background_pixels[0] == 255U && foreground_pixels[2] == 255U);
+
+            assert(wl_Lwlde_adaptive_app_icon_render_monochrome_rgba(&app_icon,
+                &background_view, &monochrome_view, tint_rgb, 32U, rendered_pixels,
+                (unsigned int)sizeof(rendered_pixels)) == WL_LWDE_OK);
+            assert(rendered_pixels[center_offset] == tint_rgb[0]);
+            assert(rendered_pixels[center_offset + 1U] == tint_rgb[1]);
+            assert(rendered_pixels[center_offset + 2U] == tint_rgb[2]);
+            assert(rendered_pixels[center_offset + 3U] == 255U);
+            assert(monochrome_pixels[0] == 255U && monochrome_pixels[1] == 10U);
 
             background_view.pixel_length = 3U;
             assert(wl_Lwlde_adaptive_app_icon_render_rgba(&app_icon,

@@ -216,3 +216,14 @@ square bitmap, and leaves any bytes after that bitmap unchanged. The existing
 and delegates to the same implementation. The matching C89 function always
 uses caller-owned output storage. Neither renderer performs image decoding,
 file I/O, Shell calls or source-asset modification.
+
+
+### Themed monochrome mode
+
+The optional monochrome source can now be rendered with
+`render_adaptive_app_icon_monochrome()` or the allocation-free
+`render_adaptive_app_icon_monochrome_into()`. The monochrome source alpha is
+the glyph mask; its RGB values are ignored and replaced by a caller-supplied
+theme tint. Background cover, safe-zone contain and the selected Circle,
+RoundedSquare or Squircle mask are identical to color mode. The source asset
+is never rewritten, and the caller supplies the theme tint at render time.

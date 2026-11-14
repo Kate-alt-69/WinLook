@@ -965,6 +965,95 @@ wl_Lwlde_result wl_Lwlde_adaptive_app_icon_render_rgba(
     return WL_LWDE_OK;
 }
 
+wl_Lwlde_result wl_Lwlde_adaptive_app_icon_render_monochrome_rgba(
+    const wl_Lwlde_adaptive_app_icon *icon,
+    const wl_Lwlde_rgba_image_view *background,
+    const wl_Lwlde_rgba_image_view *monochrome,
+    const unsigned char tint_rgb[3],
+    unsigned int output_size,
+    unsigned char *output_rgba,
+    unsigned int output_capacity
+)
+{
+    unsigned int required_capacity;
+    unsigned int x;
+    unsigned int y;
+    unsigned int channel;
+    unsigned int coverage;
+    unsigned int output_offset;
+    double safe_zone;
+    double glyph_scale;
+    double glyph_width;
+    double glyph_height;
+    double glyph_left;
+    double glyph_top;
+    double destination_x;
+    double destination_y;
+    double source_x;
+    double source_y;
+    double background_x;
+    double background_y;
+    unsigned char pixel[4];
+    unsigned char glyph_pixel[4];
+
+    if (wl_Lwlde_adaptive_app_icon_validate(icon) != WL_LWDE_OK) {
+        return WL_LWDE_INVALID_APP_ICON;
+    }
+    if (output_rgba == 0 || tint_rgb == 0) return WL_LWDE_INVALID_ARGUMENT;
+    if (output_size < WL_LWDE_MIN_ADAPTIVE_ICON_OUTPUT_SIZE ||
+        output_size > WL_LWDE_MAX_ADAPTIVE_ICON_OUTPUT_SIZE) {
+        return WL_LWDE_INVALID_ICON_OUTPUT;
+    }
+    if (!wl_Lwlde_icon_image_valid(background) ||
+        !wl_Lwlde_icon_image_valid(monochrome)) {
+        return WL_LWDE_INVALID_ICON_PIXELS;
+    }
+
+    required_capacity = output_size * output_size * 4U;
+    if (output_capacity < required_capacity) return WL_LWDE_INVALID_ICON_OUTPUT;
+
+    safe_zone = (double)output_size * (double)icon->safe_zone_percent / 100.0;
+    glyph_scale = safe_zone / (double)monochrome->width;
+    if (safe_zone / (double)monochrome->height < glyph_scale) {
+        glyph_scale = safe_zone / (double)monochrome->height;
+    }
+    glyph_width = (double)monochrome->width * glyph_scale;
+    glyph_height = (double)monochrome->height * glyph_scale;
+    glyph_left = ((double)output_size - glyph_width) * 0.5;
+    glyph_top = ((double)output_size - glyph_height) * 0.5;
+
+    for (y = 0U; y < output_size; ++y) {
+        for (x = 0U; x < output_size; ++x) {
+            wl_Lwlde_icon_cover_coordinates(background, x, y, output_size,
+                &background_x, &background_y);
+            wl_Lwlde_icon_sample(background, background_x, background_y, pixel);
+
+            destination_x = (double)x + 0.5;
+            destination_y = (double)y + 0.5;
+            if (destination_x >= glyph_left &&
+                destination_x < glyph_left + glyph_width &&
+                destination_y >= glyph_top &&
+                destination_y < glyph_top + glyph_height) {
+                source_x = (destination_x - glyph_left) / glyph_scale - 0.5;
+                source_y = (destination_y - glyph_top) / glyph_scale - 0.5;
+                wl_Lwlde_icon_sample(monochrome, source_x, source_y, glyph_pixel);
+                glyph_pixel[0] = tint_rgb[0];
+                glyph_pixel[1] = tint_rgb[1];
+                glyph_pixel[2] = tint_rgb[2];
+                wl_Lwlde_icon_alpha_over(pixel, glyph_pixel);
+            }
+
+            coverage = wl_Lwlde_icon_mask_coverage(icon->mask, x, y, output_size);
+            pixel[3] = (unsigned char)(((unsigned int)pixel[3] * coverage + 2U) / 4U);
+            output_offset = (y * output_size + x) * 4U;
+            for (channel = 0U; channel < 4U; ++channel) {
+                output_rgba[output_offset + channel] = pixel[channel];
+            }
+        }
+    }
+    return WL_LWDE_OK;
+}
+
 unsigned int wl_Lwlde_desktop_context_actions(
     wl_Lwlde_desktop_context_target target,
     unsigned int is_group_member,

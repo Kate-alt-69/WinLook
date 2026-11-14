@@ -119,3 +119,11 @@ The context target `WL_LWDE_CONTEXT_DESKTOP_BACKGROUND` exposes the WLDE
 `Create Group` and `Open Desktop Settings` actions. Native Shell entries
 such as View, Sort, Refresh, New, wallpaper, Display Settings, Open and
 Properties remain owned by Windows.
+
+
+### Themed monochrome mode
+
+`wl_Lwlde_adaptive_app_icon_render_monochrome_rgba()` renders the optional
+monochrome layer using the source alpha as a glyph mask and a caller-supplied
+RGB tint. It writes directly into caller-owned RGBA storage and performs no
+allocation or source mutation.

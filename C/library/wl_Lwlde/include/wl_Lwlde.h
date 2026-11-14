@@ -419,6 +419,20 @@ wl_Lwlde_result wl_Lwlde_adaptive_app_icon_render_rgba(
     unsigned int output_capacity
 );
 
+/*
+ * The monochrome layer's alpha channel is used as the glyph mask; its RGB
+ * channels are ignored and replaced by tint_rgb. No allocation occurs.
+ */
+wl_Lwlde_result wl_Lwlde_adaptive_app_icon_render_monochrome_rgba(
+    const wl_Lwlde_adaptive_app_icon *icon,
+    const wl_Lwlde_rgba_image_view *background,
+    const wl_Lwlde_rgba_image_view *monochrome,
+    const unsigned char tint_rgb[3],
+    unsigned int output_size,
+    unsigned char *output_rgba,
+    unsigned int output_capacity
+);
+
 
 typedef enum wl_Lwlde_desktop_context_target {
     WL_LWDE_CONTEXT_FILE = 0,
