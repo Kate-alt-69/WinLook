@@ -13,6 +13,10 @@ C89 companion to the portable WinLook Desktop Engine scene core.
 - Non-owning references to existing wl_Lcpuv and wl_Lgpuv governors.
 - Capability checks that keep interactive content and Groups unavailable until
   a platform adapter explicitly proves support and crash-safe restoration.
+- Immutable provider metadata for Wallpaper Engine Workshop plus free/open
+  catalogues (Openverse, Wikimedia Commons and NASA). The C89 API exposes
+  provider descriptions, URLs, access/pricing class and item-level rights notes;
+  platform UI handles browser launching and file picking.
 
 No allocation occurs in the topology storage, placement, condition update or
 scene tick paths. The caller supplies monitor storage and serializes governor
@@ -20,6 +24,11 @@ access as required by CPUv/GPUv. The archive links against wl_Lanimate,
 wl_Lcpuv and wl_Lgpuv; the root CMake aggregator wires those targets.
 
 ## Not implemented here
+
+The Store metadata API is intentionally a provider directory, not a catalogue
+ search/download client. It never bypasses Steam subscriptions or redistributes
+ creator packages, and it does not assume that provider-level `Free` status
+ overrides an individual asset's license.
 
 This library does not create a desktop window, draw pixels, decode media,
 inspect Explorer, enumerate real monitors, hide native desktop icons or run

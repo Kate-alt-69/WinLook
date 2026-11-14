@@ -39,6 +39,16 @@ The application model and style vocabulary are exported from the crate root:
 `UiTypography`, `UiMetrics`, `UiEffects`, `UiStyle`, `UiSelector`,
 `UiStyleSheet`, and related typed values.
 
+Each UiPage keeps its full page heading and description separate from its
+navigation label. Use navigation_title() when a Manager needs a compact,
+visually nested sidebar entry without changing the page heading:
+
+```rust
+UiPage::new("wallpaper-store", "Wallpaper Store", "Discover wallpaper providers")
+    .navigation_title("  Wallpaper Store")
+```
+
+
 ## Example
 
 ```rust

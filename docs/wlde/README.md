@@ -27,7 +27,9 @@ Neither API creates timers or worker threads.
 **This is not yet a usable desktop wallpaper renderer.** The current branch
 does not enumerate real Windows monitors, create desktop-owned surfaces, draw
 pixels, decode image/video assets, host widgets, parse wallpaper packages,
-access a Store/catalogue, run Rainmeter skins or manage desktop icons.
+provide in-app catalogue search/downloads, run Rainmeter skins or manage
+desktop icons. The first Store provider directory and existing Wallpaper
+Engine hand-off are implemented separately from the renderer.
 
 On Windows 8 and later, the documented IDesktopWallpaper interface sets and
 queries static wallpaper paths by monitor. It does not expose an animated
@@ -42,6 +44,50 @@ Do not substitute undocumented WorkerW/Progman parent-window assumptions,
 modify Explorer.exe, disable DWM or move real desktop shortcuts. Any future
 presentation adapter must report its actual capabilities and restore the
 native desktop after failure, shutdown and uninstall.
+
+## Integrated Wallpaper Store provider hub
+
+The Store lives inside the WinLook Manager navigation:
+
+Wallpaper → Wallpaper Store → Wallpaper Engine / Free Catalogues
+
+The shared Manager model exposes nested navigation labels, and both the
+Windows 10 Win32 shell and Windows 11 WinUI shell provide the provider actions.
+
+### Wallpaper Engine
+
+- **Browse for Wallpaper Engine** opens the native file picker filtered to
+  wallpaper64.exe / wallpaper32.exe. Startup discovery first checks common
+  Steam locations and the Steam libraryfolders.vdf entries.
+- **Browse Wallpaper** opens the detected Steam Workshop content directory
+  (steamapps/workshop/content/431960) as its initial folder, while still
+  allowing another local path to be chosen.
+- A selected project.json, index.html, .pkg, or supported media file is
+  validated as a local file, then handed to the selected Wallpaper Engine
+  executable using its documented -control openWallpaper -file arguments.
+  Wallpaper Engine must already be running.
+- Steam remains responsible for user authentication, subscriptions,
+  purchases, downloads and updates. WinLook does not change Steam's files,
+  unpack proprietary packages or redistribute Workshop content.
+
+### Free/open providers
+
+The initial directory lists Openverse, Wikimedia Commons and NASA Image and
+Video Library. The Manager opens their official catalogue pages in the default
+browser. Provider-level Free status is not a license grant for every item:
+Openverse metadata/license information must be checked against the source;
+Commons terms are attached to each file page; NASA media can contain credited
+third-party works that remain copyrighted.
+
+### Boundary of this implementation
+
+The Rust wl_wlde and C89 wl_Lwlde cores expose matching immutable
+provider metadata. The Rust provider bridge also discovers a local Wallpaper
+Engine install, validates local targets and sends the official command line.
+This does not yet implement a WinLook-hosted Store search API, embedded
+provider browser, item previews/details, direct download, resumable transfers,
+attribution sidecars, package signing/moderation or creator publishing. The
+existing renderer/media and desktop-surface acceptance gates remain open.
 
 ## Runtime policy
 

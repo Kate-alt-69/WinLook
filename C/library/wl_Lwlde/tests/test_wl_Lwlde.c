@@ -32,6 +32,7 @@ int main(void)
     wl_Lwlde_scene scene;
     wl_Lanimate_frame_tick tick;
     wl_Lwlde_presentation_capabilities caps;
+    const wl_Lwlde_store_provider *provider;
 
     assert(wl_Lwlde_topology_init(&topology, storage, 4U) == WL_LWDE_OK);
     inputs[0] = monitor_make("DISPLAY-A", 0.0, 1);
@@ -90,6 +91,27 @@ int main(void)
     assert(!wl_Lwlde_groups_available(&caps));
     caps.crash_safe_group_restore = 1U;
     assert(wl_Lwlde_groups_available(&caps));
+
+    provider = wl_Lwlde_store_provider_get(WL_LWDE_STORE_WALLPAPER_ENGINE);
+    assert(provider != 0);
+    assert(strcmp(provider->name, "Wallpaper Engine") == 0);
+    assert(provider->access == WL_LWDE_STORE_ACCESS_INSTALLED_APPLICATION);
+    assert(provider->price_model == WL_LWDE_STORE_PRICE_MIXED);
+    assert(strstr(provider->browse_url, "appid=431960") != 0);
+
+    provider = wl_Lwlde_store_provider_get(WL_LWDE_STORE_OPENVERSE);
+    assert(provider != 0);
+    assert(provider->price_model == WL_LWDE_STORE_PRICE_FREE);
+    assert(strstr(provider->rights_note, "license") != 0);
+
+    provider = wl_Lwlde_store_provider_get(WL_LWDE_STORE_WIKIMEDIA_COMMONS);
+    assert(provider != 0);
+    assert(provider->price_model == WL_LWDE_STORE_PRICE_FREE);
+
+    provider = wl_Lwlde_store_provider_get(WL_LWDE_STORE_NASA_IMAGES);
+    assert(provider != 0);
+    assert(provider->price_model == WL_LWDE_STORE_PRICE_FREE);
+    assert(wl_Lwlde_store_provider_get(WL_LWDE_STORE_PROVIDER_COUNT) == 0);
 
     puts("wl_Lwlde C89 core tests passed");
     return 0;

@@ -181,3 +181,16 @@ Implementation consequence: C and Rust share the build/ root but keep outputs an
 | WLDE-003 | [Windows.UI.Composition visual layer](https://learn.microsoft.com/en-us/windows/apps/develop/ui/visual-layer/) | Provides visual composition primitives for application UI | App visual composition alone does not establish a desktop wallpaper-layer attachment or Explorer icon ordering contract |
 
 Implementation consequence: keep static wallpaper path management and animated desktop presentation as separate adapter capabilities. Do not treat a composition API as proof of desktop-layer placement, and do not depend on undocumented WorkerW/Progman parenting without an independently reviewed/recoverable OS contract.
+
+
+## Wallpaper Store and Wallpaper Engine integration — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WSTORE-001 | [Wallpaper Engine command-line controls](https://help.wallpaperengine.io/en/functionality/cli.html) | An already-running Wallpaper Engine instance can receive -control openWallpaper -file to open a project.json or supported media path; an optional zero-based -monitor selects a monitor | The executable is wallpaper32.exe or wallpaper64.exe; this is an external-app bridge, not a native WLDE renderer |
+| WSTORE-002 | [Wallpaper Engine Steam Workshop backup guide](https://help.wallpaperengine.io/en/steam/backup.html) | Steam Workshop files for Wallpaper Engine use app ID 431960 in steamapps/workshop/content/431960 | The bridge reads this directory only; Steam retains subscription/download ownership, and the directory must not be manually deleted |
+| WSTORE-003 | [Openverse documentation](https://docs.openverse.org/) and [Terms of Service](https://docs.openverse.org/terms_of_service) | Openverse is a search engine/API for openly licensed media; clients must respect API limits and content-level license/attribution conditions | Openverse says it does not verify license claims; clients must check the source work and must not scrape the catalogue |
+| WSTORE-004 | [Wikimedia Commons reuse licenses](https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia/licenses/en) | Reuse terms are listed on each file's description page; CC-BY and CC-BY-SA require attribution, with share-alike conditions for CC-BY-SA derivatives | Licensing is item-specific; follow the full file-page license |
+| WSTORE-005 | [NASA Images and Media Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/) | NASA media is generally reusable under stated conditions, but third-party copyrighted media may be included and NASA identifiers/endorsement are restricted | Check the credit/rights notice on every item; do not imply NASA endorses WinLook |
+
+Implementation consequence: keep provider browsing separate from asset installation. A provider-level Free marker is discovery metadata, not a blanket right to copy/redistribute the media. Preserve creator/source/license/attribution in any later library importer and never mirror Steam Workshop data into the WinLook catalogue without rights to do so.

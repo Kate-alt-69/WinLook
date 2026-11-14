@@ -167,6 +167,43 @@ int wl_Lwlde_groups_available(
     const wl_Lwlde_presentation_capabilities *capabilities
 );
 
+/*
+ * Provider metadata for the integrated Wallpaper Store.
+ * These records contain links and licensing guidance only; they do not download
+ * content or override Steam/provider subscriptions or item-level terms.
+ */
+#define WL_LWDE_STORE_PROVIDER_COUNT 4U
+
+typedef enum wl_Lwlde_store_provider_id {
+    WL_LWDE_STORE_WALLPAPER_ENGINE = 0,
+    WL_LWDE_STORE_OPENVERSE = 1,
+    WL_LWDE_STORE_WIKIMEDIA_COMMONS = 2,
+    WL_LWDE_STORE_NASA_IMAGES = 3
+} wl_Lwlde_store_provider_id;
+
+typedef enum wl_Lwlde_store_access {
+    WL_LWDE_STORE_ACCESS_BROWSER = 0,
+    WL_LWDE_STORE_ACCESS_INSTALLED_APPLICATION = 1
+} wl_Lwlde_store_access;
+
+typedef enum wl_Lwlde_store_price_model {
+    WL_LWDE_STORE_PRICE_FREE = 0,
+    WL_LWDE_STORE_PRICE_MIXED = 1
+} wl_Lwlde_store_price_model;
+
+typedef struct wl_Lwlde_store_provider {
+    wl_Lwlde_store_provider_id id;
+    const char *name;
+    const char *description;
+    const char *browse_url;
+    wl_Lwlde_store_access access;
+    wl_Lwlde_store_price_model price_model;
+    const char *rights_note;
+} wl_Lwlde_store_provider;
+
+/* Returns one immutable built-in provider record, or NULL for an invalid index. */
+const wl_Lwlde_store_provider *wl_Lwlde_store_provider_get(unsigned int index);
+
 /* Non-owning references to the existing CPUv/GPUv governors. Caller serializes access. */
 typedef struct wl_Lwlde_resource_context {
     wl_Lcpuv_governor *cpu;

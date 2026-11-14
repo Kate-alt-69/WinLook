@@ -243,6 +243,51 @@ int wl_Lwlde_groups_available(const wl_Lwlde_presentation_capabilities *caps)
         caps->crash_safe_group_restore != 0U;
 }
 
+static const wl_Lwlde_store_provider wl_Lwlde_store_providers[WL_LWDE_STORE_PROVIDER_COUNT] = {
+    {
+        WL_LWDE_STORE_WALLPAPER_ENGINE,
+        "Wallpaper Engine",
+        "Browse Steam Workshop and use wallpapers already downloaded by Steam.",
+        "https://steamcommunity.com/workshop/browse/?appid=431960",
+        WL_LWDE_STORE_ACCESS_INSTALLED_APPLICATION,
+        WL_LWDE_STORE_PRICE_MIXED,
+        "Steam manages subscriptions and purchases. Follow each creator's license; do not unpack or redistribute protected packages."
+    },
+    {
+        WL_LWDE_STORE_OPENVERSE,
+        "Openverse",
+        "Search openly licensed images from multiple sources.",
+        "https://openverse.org/search/image?q=wallpaper",
+        WL_LWDE_STORE_ACCESS_BROWSER,
+        WL_LWDE_STORE_PRICE_FREE,
+        "Check the individual result's license, creator, source and attribution requirements before importing or sharing."
+    },
+    {
+        WL_LWDE_STORE_WIKIMEDIA_COMMONS,
+        "Wikimedia Commons",
+        "Browse freely licensed and public-domain media.",
+        "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=wallpaper",
+        WL_LWDE_STORE_ACCESS_BROWSER,
+        WL_LWDE_STORE_PRICE_FREE,
+        "Licenses vary by file. Preserve attribution and follow the exact file page's license terms."
+    },
+    {
+        WL_LWDE_STORE_NASA_IMAGES,
+        "NASA Image and Video Library",
+        "Explore NASA imagery and public science media.",
+        "https://images.nasa.gov/search?q=wallpaper",
+        WL_LWDE_STORE_ACCESS_BROWSER,
+        WL_LWDE_STORE_PRICE_FREE,
+        "NASA media is generally reusable, but check each item's credit and third-party rights notices; NASA endorsement is not implied."
+    }
+};
+
+const wl_Lwlde_store_provider *wl_Lwlde_store_provider_get(unsigned int index)
+{
+    if (index >= WL_LWDE_STORE_PROVIDER_COUNT) return 0;
+    return &wl_Lwlde_store_providers[index];
+}
+
 wl_Lwlde_result wl_Lwlde_resource_context_init(wl_Lwlde_resource_context *context,
     wl_Lcpuv_governor *cpu, wl_Lgpuv_governor *gpu)
 {

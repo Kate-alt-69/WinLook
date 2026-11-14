@@ -190,3 +190,43 @@ The first Rust/C implementation layer now exists as paired libraries:
 This is a portable scene/policy core, not a functioning desktop renderer. The branch does not yet implement OS monitor enumeration, static/animated desktop surfaces, image/video decoding, package parsing, widget execution, Store/catalogue, Rainmeter, Groups, or device-loss recovery. Do not mark the WLDE acceptance gates below complete from these portable tests.
 
 For Windows 8 and later, Microsoft's IDesktopWallpaper API documents setting/querying static wallpaper paths per monitor. It is not an animated frame-surface API. Windows.UI.Composition provides application visual composition, but that capability alone does not define a supported desktop-wallpaper layer behind Explorer icons. A future adapter must establish that surface/ownership contract with documented behaviour and restoration; do not assume WorkerW/Progman parenting. References: [IDesktopWallpaper::SetWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-idesktopwallpaper-setwallpaper), [IDesktopWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-idesktopwallpaper), [Windows.UI.Composition](https://learn.microsoft.com/en-us/windows/apps/develop/ui/visual-layer/).
+
+
+## Wallpaper Store — integrated provider hub (2026-11-14)
+
+The Manager owns the Store UI; the portable WLDE cores own stable provider
+metadata, not provider-specific networking or OS process launch.
+
+Built-in provider contracts currently include:
+
+| Provider | Access | Price class | Manager action |
+|---|---|---|---|
+| Wallpaper Engine | Existing installed application + browser | Mixed | Browse to its executable, open Steam Workshop, choose a downloaded/local wallpaper and send the documented control command |
+| Openverse | Browser | Free/open media | Open the official image catalogue; verify the original source and exact license |
+| Wikimedia Commons | Browser | Free/open media | Open media search; follow the file-page license and attribution |
+| NASA Image and Video Library | Browser | Free access subject to media rights | Open NASA search; check credits and third-party copyright notices |
+
+The Rust provider list lives in rust/library/wl_wlde/src/store.rs; the
+matching C89 table is returned by wl_Lwlde_store_provider_get(). The Rust-only
+Wallpaper Engine bridge lives in rust/library/wl_wlde/src/wallpaper_engine.rs,
+with OS file-picking and Manager UI in the Win32/WinUI adapters.
+
+For Wallpaper Engine, Steam's official documentation identifies app ID
+431960 for Workshop files. The bridge checks common Steam roots and
+libraryfolders.vdf, starts the file picker at
+steamapps/workshop/content/431960 when present and sends the documented
+-control openWallpaper -file command to the existing Wallpaper Engine
+executable. The application must already be running. It does not edit the
+Workshop directory, initiate subscriptions, unpack packages or redistribute
+content.
+
+The free catalogues are linked as providers, not scraped or mirrored. Openverse
+explicitly warns that license information can be inaccurate and must be
+verified; Wikimedia terms vary per file; NASA media can contain credited
+third-party works. The UI's Free label therefore never replaces the item's
+rights record.
+
+Still open: in-app catalogue API integration, categories/search/filtering,
+previews/details, downloads/resume/hash verification, attribution sidecars,
+package import, local library management, independent community catalogues,
+moderation and publisher identity.

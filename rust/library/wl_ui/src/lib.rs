@@ -29,7 +29,7 @@ pub fn run_with_backend<B: UiBackend>(
     backend.run(application)
 }
 
-const MANAGER_PAGES: [(&str, &str, &str); 14] = [
+const MANAGER_PAGES: [(&str, &str, &str); 18] = [
     (
         "home",
         "Home",
@@ -55,6 +55,26 @@ const MANAGER_PAGES: [(&str, &str, &str); 14] = [
         "wallpaper",
         "Wallpaper",
         "Wallpapers, desktop scenes, widgets and playback.",
+    ),
+    (
+        "wallpaper-store",
+        "Wallpaper Store",
+        "Discover Wallpaper Engine and free, openly licensed wallpaper sources.",
+    ),
+    (
+        "wallpaper-store-wallpaper-engine",
+        "Wallpaper Engine",
+        "Browse Steam Workshop or hand a local project or media file to an installed Wallpaper Engine.",
+    ),
+    (
+        "wallpaper-store-free",
+        "Free Catalogues",
+        "Browse free image catalogues with per-item license and attribution checks.",
+    ),
+    (
+        "wallpaper-library",
+        "Wallpaper Library",
+        "Import and organize local wallpapers for offline use.",
     ),
     (
         "window-manager",
@@ -103,7 +123,14 @@ pub fn manager_app() -> UiApplication {
     let mut application =
         UiApplication::new("WinLook").window(UiWindowConfig::new("WinLook").size(1280, 820));
     for (id, title, description) in MANAGER_PAGES {
-        application = application.page(UiPage::new(id, title, description));
+        let navigation_title = match id {
+            "wallpaper-store" | "wallpaper-library" => format!("  {title}"),
+            "wallpaper-store-wallpaper-engine" | "wallpaper-store-free" => format!("    {title}"),
+            _ => title.to_string(),
+        };
+        application = application.page(
+            UiPage::new(id, title, description).navigation_title(navigation_title),
+        );
     }
     application.initial_page("home")
 }
@@ -173,10 +200,16 @@ mod tests {
     fn manager_navigation_ids_are_unique_and_ordered() {
         let application = manager_app();
         assert!(application.validate().is_ok());
-        assert_eq!(application.pages().len(), 14);
+        assert_eq!(application.pages().len(), 18);
         assert_eq!(application.initial_page_id(), "home");
         assert_eq!(application.pages()[0].title(), "Home");
-        assert_eq!(application.pages()[13].id(), "settings");
+        assert_eq!(application.pages()[5].id(), "wallpaper");
+        assert_eq!(application.pages()[6].id(), "wallpaper-store");
+        assert_eq!(application.pages()[7].id(), "wallpaper-store-wallpaper-engine");
+        assert_eq!(application.pages()[8].id(), "wallpaper-store-free");
+        assert_eq!(application.pages()[6].navigation_label(), "  Wallpaper Store");
+        assert_eq!(application.pages()[7].navigation_label(), "    Wallpaper Engine");
+        assert_eq!(application.pages()[17].id(), "settings");
     }
 
     #[test]
