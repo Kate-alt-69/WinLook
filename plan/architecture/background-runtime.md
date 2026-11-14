@@ -105,6 +105,12 @@ and image path. If the process exits, the Shell owner changes or the identity
 cannot be verified, BGW drops the old handle and retries discovery. While no
 compatible Explorer-owned desktop is available, it retries every two seconds.
 
+Once the desktop-owning Explorer identity is verified, BGW obtains a
+read-only one-level snapshot of the user's Desktop and Public Desktop Known
+Folders. The path-to-opaque-ID map is held only for the verified host lifetime;
+BGW emits aggregate counts only and drops the map before rediscovering a new
+host. This is a filesystem inventory seed, not exact Shell-view membership.
+
 Status output is sent to the Windows debug-output channel only; this is not a
 persistent diagnostic log. The current prototype has no Manager IPC, explicit
 stop request, Windows startup registration or background configuration store.

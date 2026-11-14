@@ -42,3 +42,18 @@ Run the target through the repository build runner:
 The initial runtime is intended to run in the user's interactive session, not
 as a Session 0 service. To stop this prototype, end the BGW process from Task
 Manager; authenticated Manager-controlled shutdown is part of the later IPC work.
+
+
+## BGW inventory handoff
+
+After the desktop-host monitor verifies the actual Explorer-owned process,
+BGW obtains one read-only filesystem snapshot from the user's Desktop and
+Public Desktop folders. It retains the path-to-opaque-ID map only in memory
+for that host lifetime and reports aggregate counts through OutputDebugStringW
+(no item names or paths are logged). The snapshot is dropped before BGW
+rediscovers a replacement host.
+
+This handoff is a foundation for local Group reconciliation, not the live
+Explorer Desktop Bridge. It does not persist Groups, hide icons, replace
+native icon registrations, install a Shell extension/hook or create Group
+popups. Inventory failure keeps the native desktop unchanged.

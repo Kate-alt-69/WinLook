@@ -4416,6 +4416,7 @@ version = "0.2.0-beta.1"
 name = "wl_bgw_runtime"
 version = "0.1.0-alpha.1"
 dependencies = [
+ "wl_wlde",
  "wl_wlde_win32",
 ]
 

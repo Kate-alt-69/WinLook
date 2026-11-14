@@ -11,7 +11,11 @@ use std::thread;
 use std::time::Duration;
 
 #[cfg(windows)]
-use wl_wlde_win32::{is_same_desktop_host, monitor_desktop_host};
+use wl_wlde_win32::{
+    enumerate_desktop_items, is_same_desktop_host, monitor_desktop_host, DesktopFolder,
+};
+#[cfg(windows)]
+use wl_wlde::DesktopItemKind;
 
 #[cfg(windows)]
 const DESKTOP_HOST_RECHECK_INTERVAL: Duration = Duration::from_secs(5);
@@ -82,6 +86,49 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             identity.image_path().display()
         ));
 
+        // Keep the read-only path map alive only for this verified Explorer host.
+        // It is discarded when the host changes or exits; Group persistence comes later.
+        let desktop_inventory = match enumerate_desktop_items() {
+            Ok(items) => {
+                let user_count = items
+                    .iter()
+                    .filter(|item| item.source_folder() == DesktopFolder::User)
+                    .count();
+                let public_count = items
+                    .iter()
+                    .filter(|item| item.source_folder() == DesktopFolder::Public)
+                    .count();
+                let application_count = items
+                    .iter()
+                    .filter(|item| item.item().kind() == DesktopItemKind::Application)
+                    .count();
+                let folder_count = items
+                    .iter()
+                    .filter(|item| item.item().kind() == DesktopItemKind::Folder)
+                    .count();
+                let file_count = items
+                    .iter()
+                    .filter(|item| item.item().kind() == DesktopItemKind::File)
+                    .count();
+                report_status(&format!(
+                    "WLDE filesystem Desktop snapshot ready: {} entries (user={} public={} apps={} folders={} files={})",
+                    items.len(),
+                    user_count,
+                    public_count,
+                    application_count,
+                    folder_count,
+                    file_count
+                ));
+                items
+            }
+            Err(error) => {
+                report_status(&format!(
+                    "WLDE filesystem Desktop snapshot unavailable; native desktop remains unchanged: {error}"
+                ));
+                Vec::new()
+            }
+        };
+
         loop {
             match monitor.wait_for_exit(DESKTOP_HOST_RECHECK_INTERVAL) {
                 Ok(true) => {
@@ -114,7 +161,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 }
             }
         }
-        // Dropping the monitor closes its process handle before the next probe.
+        // Dropping the inventory releases its ephemeral path map; dropping the
+        // monitor closes the process handle before the next host probe.
+        drop(desktop_inventory);
     }
 }
 

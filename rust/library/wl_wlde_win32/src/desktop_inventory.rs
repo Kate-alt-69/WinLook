@@ -376,9 +376,9 @@ mod tests {
     #[cfg(not(windows))]
     #[test]
     fn non_windows_inventory_is_explicitly_unsupported() {
-        assert_eq!(
+        assert!(matches!(
             enumerate_desktop_items(),
             Err(DesktopInventoryError::UnsupportedPlatform)
-        );
+        ));
     }
 }
