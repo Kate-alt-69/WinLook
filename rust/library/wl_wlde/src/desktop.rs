@@ -475,7 +475,7 @@ impl std::fmt::Display for DesktopModelError {
             }
             Self::InvalidSafeZone => {
                 f.write_str("adaptive icon safe zone must be between 48 and 72 percent")
-            },
+            }
         }
     }
 }
