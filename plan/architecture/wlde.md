@@ -191,6 +191,14 @@ The default safe zone is 61% of the tile. Native icon assets are referenced,
 not rewritten; the Shell adapter is responsible for obtaining the correct app
 identity and artwork.
 
+The portable app-icon renderer accepts decoded RGBA layers from the platform
+adapter, center-crops the background, contains the foreground inside the
+configured safe zone, composites in premultiplied-alpha space and applies a
+2x2 antialiased mask. Output sizes are bounded to 16–512 pixels and the
+caller caches the result; source artwork and shortcut resources remain
+unchanged. The C89 equivalent writes into caller-owned storage and allocates
+nothing.
+
 The portable context-menu contract is type-aware. Applications expose Open,
 Add/Remove from Group, Customize Icon and Properties; files/folders expose
 Open, Add/Remove from Group and Properties; Groups expose Open Group, Add
@@ -199,10 +207,13 @@ native Open/Properties verbs to the Shell and preserve existing Shell menu
 behaviour. This is a model of WLDE additions, not an Explorer replacement.
 
 The first Rust/C89 slice validates virtual Group membership and adaptive icon
-metadata. It does not yet enumerate the live desktop, persist references,
-extract/decode icons, render tiles/popups, intercept right-click or suppress
-native desktop icon representations. Groups stay disabled until the OS
-adapter proves crash-safe restoration.
+metadata. The next slice now composes decoded RGBA foreground/background layers
+into cached app-icon bitmaps with safe-zone scaling and Circle/RoundedSquare/
+Squircle masks in both portable cores. It still does not enumerate the live
+desktop, extract/decode Shell icon assets, persist references, render desktop
+tiles or Group popups, intercept right-click or suppress native desktop icon
+representations. Groups stay disabled until the OS adapter proves crash-safe
+restoration.
 
 ## Required Explorer Desktop Bridge
 

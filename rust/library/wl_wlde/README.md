@@ -32,19 +32,21 @@ monitor topology, wallpaper placement math and the shared frame schedule.
   presenter capability and a crash-safe restoration capability.
 - A bounded desktop model for file, folder and application references;
   virtual Groups validate membership and can be replaced transactionally.
-- Adaptive application-icon metadata with separate foreground/background
-  asset references, optional monochrome artwork, a selectable mask and a
-  configurable safe-zone scale (61% by default). Source files are never edited.
+- Adaptive application-icon metadata plus a bounded RGBA compositor. It combines
+  caller-decoded foreground/background artwork, scales the foreground into its
+  safe zone, applies Circle/RoundedSquare/Squircle masks and returns a cacheable
+  16–512 px RGBA bitmap. Source files are never edited.
 - Type-aware, non-destructive context-menu action contracts for applications,
   files, folders and Groups, including app-only icon customization.
 
 ## Deliberately not claimed
 
-This crate does not draw pixels or create a desktop surface. It does not
-enumerate live Shell items, persist the desktop inventory, hide native icon
-representations, decode adaptive icon assets or render Group popups. The new
-group/icon/menu APIs are portable data and validation contracts only; Groups
-remain unavailable until a platform adapter proves crash-safe restoration.
+The adaptive-icon compositor can render an icon bitmap from RGBA layers supplied
+by a platform decoder, but it does not extract/decode Shell icon assets or create
+a desktop surface. This crate does not enumerate live Shell items, persist the
+desktop inventory, hide native icon representations or render Group popups.
+The Group and context-menu APIs remain portable data/validation contracts;
+Groups remain unavailable until a platform adapter proves crash-safe restoration.
 The crate also does not decode wallpaper images/video, parse .wl.wp/.wl.i.wp
 packages, execute widgets, host Rainmeter plugins or run an in-app catalogue
 search/download client. It does expose the integrated Store provider
@@ -99,16 +101,20 @@ validate all group IDs and item references before changing the active model.
 
 `AdaptiveAppIcon` describes app-tile artwork as foreground and background
 asset references, an optional monochrome layer, a Circle/RoundedSquare/Squircle
-mask and a 48–72% safe-zone percentage (61% default). This is a presentation
-contract inspired by adaptive launcher icons; WinLook does not rewrite the
-application executable, shortcut or original icon resource.
+mask and a 48–72% safe-zone percentage (61% default). `render_adaptive_app_icon()`
+combines caller-decoded RGBA layers, center-crops the background, contains the
+foreground inside the safe zone, composites in premultiplied-alpha space and
+applies a 2x2 antialiased shape mask. Output is bounded to 16–512 px and should
+be cached by the adapter rather than rendered on every desktop frame. Native
+assets are referenced, not rewritten; WinLook does not change executable,
+shortcut or original icon resources.
 
 `desktop_context_actions()` returns type-aware actions for Apps, Files,
 Folders and Groups. Apps include Customize Icon; grouped members include
 Remove from Group; Group tiles include Rename and Ungroup. Native Open and
 Properties execution remains the Shell adapter's responsibility.
 
-These are portable metadata/validation APIs, not a live desktop presenter.
+The compositor is a portable bitmap operation, not a live desktop presenter.
 The Explorer integration is a required BGW/WLDE runtime subsystem on Windows
 sessions where Explorer owns the desktop. The platform adapter must identify
 the correct desktop host, bridge Shell events to BGW, and restore original icon

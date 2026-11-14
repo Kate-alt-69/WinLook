@@ -631,6 +631,296 @@ wl_Lwlde_result wl_Lwlde_adaptive_app_icon_validate(
 }
 
 
+
+static int wl_Lwlde_icon_image_valid(const wl_Lwlde_rgba_image_view *image)
+{
+    unsigned int expected_length;
+    if (image == 0 || image->pixels == 0 ||
+        image->width == 0U || image->height == 0U ||
+        image->width > WL_LWDE_MAX_ADAPTIVE_ICON_SOURCE_DIMENSION ||
+        image->height > WL_LWDE_MAX_ADAPTIVE_ICON_SOURCE_DIMENSION) {
+        return 0;
+    }
+    expected_length = image->width * image->height * 4U;
+    return image->pixel_length == expected_length;
+}
+
+static double wl_Lwlde_icon_clamp(double value, double minimum, double maximum)
+{
+    if (value < minimum) return minimum;
+    if (value > maximum) return maximum;
+    return value;
+}
+
+static unsigned char wl_Lwlde_icon_to_u8(double value)
+{
+    value = wl_Lwlde_icon_clamp(value, 0.0, 255.0);
+    return (unsigned char)(value + 0.5);
+}
+
+static void wl_Lwlde_icon_sample(
+    const wl_Lwlde_rgba_image_view *image,
+    double x,
+    double y,
+    unsigned char output[4]
+)
+{
+    unsigned int x0;
+    unsigned int x1;
+    unsigned int y0;
+    unsigned int y1;
+    unsigned int offsets[4];
+    unsigned int index;
+    unsigned int channel;
+    double fraction_x;
+    double fraction_y;
+    double weights[4];
+    double alpha;
+    double premultiplied[3];
+    double weighted_alpha;
+
+    x = wl_Lwlde_icon_clamp(x, 0.0, (double)(image->width - 1U));
+    y = wl_Lwlde_icon_clamp(y, 0.0, (double)(image->height - 1U));
+    x0 = (unsigned int)x;
+    y0 = (unsigned int)y;
+    x1 = x0 + 1U < image->width ? x0 + 1U : x0;
+    y1 = y0 + 1U < image->height ? y0 + 1U : y0;
+    fraction_x = x - (double)x0;
+    fraction_y = y - (double)y0;
+
+    offsets[0] = (y0 * image->width + x0) * 4U;
+    offsets[1] = (y0 * image->width + x1) * 4U;
+    offsets[2] = (y1 * image->width + x0) * 4U;
+    offsets[3] = (y1 * image->width + x1) * 4U;
+    weights[0] = (1.0 - fraction_x) * (1.0 - fraction_y);
+    weights[1] = fraction_x * (1.0 - fraction_y);
+    weights[2] = (1.0 - fraction_x) * fraction_y;
+    weights[3] = fraction_x * fraction_y;
+
+    alpha = 0.0;
+    premultiplied[0] = 0.0;
+    premultiplied[1] = 0.0;
+    premultiplied[2] = 0.0;
+    for (index = 0U; index < 4U; ++index) {
+        weighted_alpha = (double)image->pixels[offsets[index] + 3U] * weights[index];
+        alpha += weighted_alpha;
+        for (channel = 0U; channel < 3U; ++channel) {
+            premultiplied[channel] +=
+                (double)image->pixels[offsets[index] + channel] * weighted_alpha;
+        }
+    }
+
+    if (alpha <= 0.000001) {
+        output[0] = 0U;
+        output[1] = 0U;
+        output[2] = 0U;
+        output[3] = 0U;
+        return;
+    }
+    for (channel = 0U; channel < 3U; ++channel) {
+        output[channel] = wl_Lwlde_icon_to_u8(premultiplied[channel] / alpha);
+    }
+    output[3] = wl_Lwlde_icon_to_u8(alpha);
+}
+
+static void wl_Lwlde_icon_alpha_over(
+    unsigned char destination[4],
+    const unsigned char source[4]
+)
+{
+    double source_alpha;
+    double destination_alpha;
+    double output_alpha;
+    unsigned int channel;
+
+    source_alpha = (double)source[3] / 255.0;
+    if (source_alpha <= 0.0) return;
+    if (source_alpha >= 1.0) {
+        for (channel = 0U; channel < 4U; ++channel) destination[channel] = source[channel];
+        return;
+    }
+
+    destination_alpha = (double)destination[3] / 255.0;
+    output_alpha = source_alpha + destination_alpha * (1.0 - source_alpha);
+    if (output_alpha <= 0.000001) {
+        for (channel = 0U; channel < 4U; ++channel) destination[channel] = 0U;
+        return;
+    }
+
+    for (channel = 0U; channel < 3U; ++channel) {
+        destination[channel] = wl_Lwlde_icon_to_u8(
+            ((double)source[channel] * source_alpha +
+                (double)destination[channel] * destination_alpha * (1.0 - source_alpha)) /
+            output_alpha);
+    }
+    destination[3] = wl_Lwlde_icon_to_u8(output_alpha * 255.0);
+}
+
+static int wl_Lwlde_icon_inside_mask(
+    wl_Lwlde_app_icon_mask mask,
+    double x,
+    double y
+)
+{
+    double radius;
+    double qx;
+    double qy;
+    double outside_x;
+    double outside_y;
+    double x2;
+    double y2;
+
+    if (mask == WL_LWDE_APP_ICON_CIRCLE) return x * x + y * y <= 1.0;
+    if (mask == WL_LWDE_APP_ICON_ROUNDED_SQUARE) {
+        radius = 0.24;
+        qx = (x < 0.0 ? -x : x) - (1.0 - radius);
+        qy = (y < 0.0 ? -y : y) - (1.0 - radius);
+        outside_x = qx > 0.0 ? qx : 0.0;
+        outside_y = qy > 0.0 ? qy : 0.0;
+        if (qx > 0.0 || qy > 0.0) {
+            return outside_x * outside_x + outside_y * outside_y <= radius * radius;
+        }
+        return 1;
+    }
+    x2 = x * x;
+    y2 = y * y;
+    return x2 * x2 + y2 * y2 <= 1.0;
+}
+
+static unsigned int wl_Lwlde_icon_mask_coverage(
+    wl_Lwlde_app_icon_mask mask,
+    unsigned int x,
+    unsigned int y,
+    unsigned int size
+)
+{
+    static const double samples[2] = { 0.25, 0.75 };
+    unsigned int sample_x;
+    unsigned int sample_y;
+    unsigned int covered;
+    double normalized_x;
+    double normalized_y;
+
+    covered = 0U;
+    for (sample_y = 0U; sample_y < 2U; ++sample_y) {
+        for (sample_x = 0U; sample_x < 2U; ++sample_x) {
+            normalized_x = (((double)x + samples[sample_x]) / (double)size) * 2.0 - 1.0;
+            normalized_y = (((double)y + samples[sample_y]) / (double)size) * 2.0 - 1.0;
+            if (wl_Lwlde_icon_inside_mask(mask, normalized_x, normalized_y)) ++covered;
+        }
+    }
+    return covered;
+}
+
+static void wl_Lwlde_icon_cover_coordinates(
+    const wl_Lwlde_rgba_image_view *image,
+    unsigned int x,
+    unsigned int y,
+    unsigned int size,
+    double *source_x,
+    double *source_y
+)
+{
+    double side;
+    double crop;
+    if (image->width >= image->height) {
+        side = (double)image->height;
+        crop = ((double)image->width - side) * 0.5;
+        *source_x = crop + ((double)x + 0.5) * side / (double)size - 0.5;
+        *source_y = ((double)y + 0.5) * side / (double)size - 0.5;
+    } else {
+        side = (double)image->width;
+        crop = ((double)image->height - side) * 0.5;
+        *source_x = ((double)x + 0.5) * side / (double)size - 0.5;
+        *source_y = crop + ((double)y + 0.5) * side / (double)size - 0.5;
+    }
+}
+
+wl_Lwlde_result wl_Lwlde_adaptive_app_icon_render_rgba(
+    const wl_Lwlde_adaptive_app_icon *icon,
+    const wl_Lwlde_rgba_image_view *background,
+    const wl_Lwlde_rgba_image_view *foreground,
+    unsigned int output_size,
+    unsigned char *output_rgba,
+    unsigned int output_capacity
+)
+{
+    unsigned int required_capacity;
+    unsigned int x;
+    unsigned int y;
+    unsigned int channel;
+    unsigned int coverage;
+    unsigned int output_offset;
+    double safe_zone;
+    double foreground_scale;
+    double foreground_width;
+    double foreground_height;
+    double foreground_left;
+    double foreground_top;
+    double destination_x;
+    double destination_y;
+    double source_x;
+    double source_y;
+    double background_x;
+    double background_y;
+    unsigned char pixel[4];
+    unsigned char foreground_pixel[4];
+
+    if (wl_Lwlde_adaptive_app_icon_validate(icon) != WL_LWDE_OK) {
+        return WL_LWDE_INVALID_APP_ICON;
+    }
+    if (output_rgba == 0) return WL_LWDE_INVALID_ARGUMENT;
+    if (output_size < WL_LWDE_MIN_ADAPTIVE_ICON_OUTPUT_SIZE ||
+        output_size > WL_LWDE_MAX_ADAPTIVE_ICON_OUTPUT_SIZE) {
+        return WL_LWDE_INVALID_ICON_OUTPUT;
+    }
+    if (!wl_Lwlde_icon_image_valid(background) ||
+        !wl_Lwlde_icon_image_valid(foreground)) {
+        return WL_LWDE_INVALID_ICON_PIXELS;
+    }
+
+    required_capacity = output_size * output_size * 4U;
+    if (output_capacity < required_capacity) return WL_LWDE_INVALID_ICON_OUTPUT;
+
+    safe_zone = (double)output_size * (double)icon->safe_zone_percent / 100.0;
+    foreground_scale = safe_zone / (double)foreground->width;
+    if (safe_zone / (double)foreground->height < foreground_scale) {
+        foreground_scale = safe_zone / (double)foreground->height;
+    }
+    foreground_width = (double)foreground->width * foreground_scale;
+    foreground_height = (double)foreground->height * foreground_scale;
+    foreground_left = ((double)output_size - foreground_width) * 0.5;
+    foreground_top = ((double)output_size - foreground_height) * 0.5;
+
+    for (y = 0U; y < output_size; ++y) {
+        for (x = 0U; x < output_size; ++x) {
+            wl_Lwlde_icon_cover_coordinates(background, x, y, output_size,
+                &background_x, &background_y);
+            wl_Lwlde_icon_sample(background, background_x, background_y, pixel);
+
+            destination_x = (double)x + 0.5;
+            destination_y = (double)y + 0.5;
+            if (destination_x >= foreground_left &&
+                destination_x < foreground_left + foreground_width &&
+                destination_y >= foreground_top &&
+                destination_y < foreground_top + foreground_height) {
+                source_x = (destination_x - foreground_left) / foreground_scale - 0.5;
+                source_y = (destination_y - foreground_top) / foreground_scale - 0.5;
+                wl_Lwlde_icon_sample(foreground, source_x, source_y, foreground_pixel);
+                wl_Lwlde_icon_alpha_over(pixel, foreground_pixel);
+            }
+
+            coverage = wl_Lwlde_icon_mask_coverage(icon->mask, x, y, output_size);
+            pixel[3] = (unsigned char)(((unsigned int)pixel[3] * coverage + 2U) / 4U);
+            output_offset = (y * output_size + x) * 4U;
+            for (channel = 0U; channel < 4U; ++channel) {
+                output_rgba[output_offset + channel] = pixel[channel];
+            }
+        }
+    }
+    return WL_LWDE_OK;
+}
+
 unsigned int wl_Lwlde_desktop_context_actions(
     wl_Lwlde_desktop_context_target target,
     unsigned int is_group_member,

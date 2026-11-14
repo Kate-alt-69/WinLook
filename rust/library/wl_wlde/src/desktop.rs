@@ -228,8 +228,8 @@ pub enum AppIconMask {
 }
 
 /// Separate asset references mirror the foreground/background structure of
-/// adaptive launcher icons. They are references only; decoding and rendering
-/// belong to a future presentation adapter.
+/// adaptive launcher icons. The platform adapter resolves and decodes these
+/// references; WLDE composes the supplied RGBA layers in adaptive_icon.rs.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AppIconLayers {
     foreground: String,

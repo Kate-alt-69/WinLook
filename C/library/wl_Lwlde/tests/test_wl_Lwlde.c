@@ -274,6 +274,44 @@ int main(void)
         assert(wl_Lwlde_adaptive_app_icon_validate(&app_icon) == WL_LWDE_OK);
         app_icon.safe_zone_percent = 90U;
         assert(wl_Lwlde_adaptive_app_icon_validate(&app_icon) == WL_LWDE_INVALID_APP_ICON);
+        app_icon.safe_zone_percent = WL_LWDE_DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT;
+        {
+            unsigned char background_pixels[4] = { 255U, 0U, 0U, 255U };
+            unsigned char foreground_pixels[4] = { 0U, 0U, 255U, 255U };
+            unsigned char rendered_pixels[32U * 32U * 4U];
+            wl_Lwlde_rgba_image_view background_view;
+            wl_Lwlde_rgba_image_view foreground_view;
+            unsigned int center_offset;
+
+            background_view.pixels = background_pixels;
+            background_view.width = 1U;
+            background_view.height = 1U;
+            background_view.pixel_length = 4U;
+            foreground_view.pixels = foreground_pixels;
+            foreground_view.width = 1U;
+            foreground_view.height = 1U;
+            foreground_view.pixel_length = 4U;
+            memset(rendered_pixels, 0xAA, sizeof(rendered_pixels));
+            assert(wl_Lwlde_adaptive_app_icon_render_rgba(&app_icon,
+                &background_view, &foreground_view, 32U, rendered_pixels,
+                (unsigned int)sizeof(rendered_pixels)) == WL_LWDE_OK);
+            center_offset = (16U * 32U + 16U) * 4U;
+            assert(rendered_pixels[center_offset] == 0U);
+            assert(rendered_pixels[center_offset + 1U] == 0U);
+            assert(rendered_pixels[center_offset + 2U] == 255U);
+            assert(rendered_pixels[center_offset + 3U] == 255U);
+            assert(rendered_pixels[3U] == 0U);
+            assert(background_pixels[0] == 255U && foreground_pixels[2] == 255U);
+
+            background_view.pixel_length = 3U;
+            assert(wl_Lwlde_adaptive_app_icon_render_rgba(&app_icon,
+                &background_view, &foreground_view, 32U, rendered_pixels,
+                (unsigned int)sizeof(rendered_pixels)) == WL_LWDE_INVALID_ICON_PIXELS);
+            background_view.pixel_length = 4U;
+            assert(wl_Lwlde_adaptive_app_icon_render_rgba(&app_icon,
+                &background_view, &foreground_view, 32U, rendered_pixels, 8U) ==
+                WL_LWDE_INVALID_ICON_OUTPUT);
+        }
 
         context_count = wl_Lwlde_desktop_context_actions(
             WL_LWDE_CONTEXT_APPLICATION, 0U, 0, 0U);

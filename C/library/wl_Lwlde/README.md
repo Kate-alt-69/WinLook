@@ -24,9 +24,10 @@ C89 companion to the portable WinLook Desktop Engine scene core.
 - Bounded virtual desktop Group records over caller-supplied IDs for apps,
   files and folders; replacement validates all references before updating the
   caller-owned record array.
-- Adaptive app-icon metadata with separate foreground/background and optional
-  monochrome asset references, a selectable mask and a validated safe zone.
-  The API never edits source artwork, shortcuts or executables.
+- Adaptive app-icon metadata plus a bounded RGBA compositor. It combines
+  caller-decoded foreground/background layers, applies the safe zone and
+  Circle/RoundedSquare/Squircle mask into a caller-owned output buffer.
+  Source artwork, shortcuts and executables are never edited.
 - A type-aware C89 context-action query for files, folders, applications and
   Group tiles. Its output buffer is caller-owned; native Shell verbs remain
   the host's responsibility.
@@ -65,8 +66,13 @@ and must outlive the Group records.
 
 Adaptive app icons reference separate foreground/background assets and an
 optional monochrome asset, plus a Circle/RoundedSquare/Squircle mask and a
-48–72% safe-zone value. `wl_Lwlde_desktop_context_actions()` returns the
-same type-aware action set as the Rust core without allocating.
+48–72% safe-zone value. `wl_Lwlde_adaptive_app_icon_render_rgba()` composites
+caller-decoded RGBA layers into a caller-owned 16–512 px output buffer. It
+uses centered background cover, foreground safe-zone contain, premultiplied-
+alpha bilinear sampling and a 2x2 antialiased mask. It performs no allocation;
+the caller can cache the result until its source/settings change.
+`wl_Lwlde_desktop_context_actions()` returns the same type-aware action set
+as the Rust core without allocating.
 
 The portable APIs do not themselves enumerate Explorer or draw/hide desktop
 icons. Explorer integration is mandatory BGW/WLDE runtime infrastructure
@@ -81,11 +87,12 @@ The Store metadata API is intentionally a provider directory, not a catalogue
  creator packages, and it does not assume that provider-level `Free` status
  overrides an individual asset's license.
 
-This library does not create a desktop window, draw pixels, decode media,
+This library does not create a desktop window, decode source icon/media files,
 inspect Explorer, enumerate live desktop items, hide native desktop icons,
-draw adaptive tiles or open Group popups. Its Group, icon and context-menu APIs
-validate portable data only; a native Shell bridge, presenter and crash-safe
-restoration are still required. It also does not run untrusted widget code. It is a C89 source API; that alone does not prove a
+draw desktop/Group tiles or open Group popups. It can compose app-icon RGBA
+bitmaps from caller-supplied decoded layers, but native Shell icon integration,
+the desktop presenter and crash-safe restoration are still required. It also
+does not run untrusted widget code. It is a C89 source API; that alone does not prove a
 binary can run on Windows 95 or any other legacy target.
 
 Run the paired C tests from the repository root with

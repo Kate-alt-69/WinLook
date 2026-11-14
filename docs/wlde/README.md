@@ -40,7 +40,7 @@ platform detection and profile persistence remain open.
 The Rust and C89 cores now also have a bounded desktop presentation model:
 Groups hold references to application shortcuts, files and folders without
 creating filesystem directories or moving original Shell items. The Rust API
-adds a type-aware right-click action contract and adaptive app-icon metadata
+adds a type-aware right-click action contract and Android-style adaptive app-icon metadata/composition
 with separate foreground/background asset references, optional monochrome
 artwork, shape masks and safe-zone scaling. The C89 API validates the same
 Group and adaptive-icon data and exposes the matching context-action query.
@@ -92,7 +92,7 @@ open. Neither shell claims DPI/orientation/session reconciliation yet.
 
 The UI reports the current boundary honestly: the Store provider actions and
 Wallpaper Engine hand-off are available; the monitor snapshot, resource
-policy, Game Mode resolver and portable Group/adaptive-icon models exist.
+policy, Game Mode resolver, virtual Group model and adaptive app-icon bitmap compositor exist.
 Windows telemetry, foreground/fullscreen detection, profile persistence, local
 library import, native wallpaper rendering, icon extraction/drawing, live
 desktop inventory, custom right-click presentation, widget execution and
@@ -223,6 +223,9 @@ existing renderer/media and desktop-surface acceptance gates remain open.
   The current cores do not execute scripts.
 - Desktop Groups remain unavailable unless the adapter proves both virtual
   presentation and crash-safe restoration of original Shell items.
+- Adaptive app icons can be composed from caller-decoded RGBA layers by the
+  Rust and C89 cores; live Shell extraction, icon registration and desktop-tile
+  presentation remain adapter work.
 
 ## Next implementation gates
 

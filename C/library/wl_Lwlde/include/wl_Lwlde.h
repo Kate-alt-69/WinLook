@@ -36,7 +36,9 @@ typedef enum wl_Lwlde_result {
     WL_LWDE_INVALID_GAME_MODE_SIGNALS = 14,
     WL_LWDE_INVALID_DESKTOP_GROUP = 15,
     WL_LWDE_TOO_MANY_DESKTOP_GROUPS = 16,
-    WL_LWDE_INVALID_APP_ICON = 17
+    WL_LWDE_INVALID_APP_ICON = 17,
+    WL_LWDE_INVALID_ICON_PIXELS = 18,
+    WL_LWDE_INVALID_ICON_OUTPUT = 19
 } wl_Lwlde_result;
 
 typedef struct wl_Lwlde_rect {
@@ -380,6 +382,33 @@ typedef struct wl_Lwlde_adaptive_app_icon {
 wl_Lwlde_result wl_Lwlde_adaptive_app_icon_validate(
     const wl_Lwlde_adaptive_app_icon *icon
 );
+
+#define WL_LWDE_MAX_ADAPTIVE_ICON_SOURCE_DIMENSION 4096U
+#define WL_LWDE_MIN_ADAPTIVE_ICON_OUTPUT_SIZE 16U
+#define WL_LWDE_MAX_ADAPTIVE_ICON_OUTPUT_SIZE 512U
+
+/* Tightly packed, row-major, straight-alpha RGBA8 pixels. */
+typedef struct wl_Lwlde_rgba_image_view {
+    const unsigned char *pixels;
+    unsigned int width;
+    unsigned int height;
+    unsigned int pixel_length;
+} wl_Lwlde_rgba_image_view;
+
+/*
+ * Decoded pixel views are supplied by the platform adapter. The caller owns
+ * output_rgba and must provide at least output_size * output_size * 4 bytes.
+ * No allocation or source-file mutation occurs in this function.
+ */
+wl_Lwlde_result wl_Lwlde_adaptive_app_icon_render_rgba(
+    const wl_Lwlde_adaptive_app_icon *icon,
+    const wl_Lwlde_rgba_image_view *background,
+    const wl_Lwlde_rgba_image_view *foreground,
+    unsigned int output_size,
+    unsigned char *output_rgba,
+    unsigned int output_capacity
+);
+
 
 typedef enum wl_Lwlde_desktop_context_target {
     WL_LWDE_CONTEXT_FILE = 0,

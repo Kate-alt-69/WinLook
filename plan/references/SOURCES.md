@@ -250,3 +250,17 @@ and SYNCHRONIZE for process waiting. It does not request memory-read/write,
 thread-creation, termination or process-modification access. While no
 compatible Explorer-owned desktop is available, BGW retries discovery every
 two seconds. It drops the old process handle before rediscovery.
+
+
+## WLDE adaptive application-icon composition — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-018 | [Creating Shell Extension Handlers](https://learn.microsoft.com/en-us/windows/win32/shell/handlers), [How to Create Icon Handlers](https://learn.microsoft.com/en-us/windows/win32/shell/how-to-create-icon-handlers) | The Shell supports per-file icon handlers using IExtractIconA/W. The handler is asked for icon location and can return an icon handle when extraction is needed | This describes supported Shell integration points; it does not provide a universal custom desktop-view hook or prove every shortcut can be customized independently |
+| WLDE-019 | [Working with Shell Extensions](https://learn.microsoft.com/en-us/windows/win32/shell/shell-exts), [Registering Shell Extension Handlers](https://learn.microsoft.com/en-us/windows/win32/shell/reg-shell-exts) | Shell extension handlers execute in-process in Explorer/other Shell hosts; a crashing or hanging extension can crash/hang the host. Shell view extensions must use Apartment threading and handle per-monitor DPI | Future native adapters must remain short/bounded, use the correct COM apartment and fail closed; the portable compositor itself does not execute inside Explorer |
+| WLDE-020 | [About Icons](https://learn.microsoft.com/en-us/windows/win32/menurc/about-icons) | Shell icon lists expose different logical sizes and DPI-aware icon sizes; the extra-large desktop list scales with DPI while the 256 px jumbo list is fixed | The adapter chooses output dimensions for the target Shell list/monitor DPI and caches by DPI/output size; renderer output is bounded to 512 px |
+
+The Rust renderer accepts caller-decoded RGBA image views and returns a bounded,
+cacheable app-icon bitmap. The C89 renderer writes to a caller-owned buffer and
+does not allocate. Neither implementation opens icon files, registers Shell
+handlers, mutates shortcut/executable resources or changes Explorer state.

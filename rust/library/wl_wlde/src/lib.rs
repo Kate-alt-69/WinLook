@@ -17,12 +17,18 @@ pub use wl_animate::{FrameClock, FrameClockError, FrameTick};
 pub use wl_cpuv as cpu;
 pub use wl_gpuv as gpu;
 
+mod adaptive_icon;
 mod desktop;
 mod game_mode;
 mod resource;
 mod store;
 mod wallpaper_engine;
 
+pub use adaptive_icon::{
+    render_adaptive_app_icon, AdaptiveIconImageView, AdaptiveIconRenderError,
+    MAX_ADAPTIVE_ICON_OUTPUT_SIZE, MAX_ADAPTIVE_ICON_SOURCE_DIMENSION,
+    MIN_ADAPTIVE_ICON_OUTPUT_SIZE,
+};
 pub use desktop::{
     desktop_context_actions, AdaptiveAppIcon, AppIconLayers, AppIconMask, DesktopContextAction,
     DesktopContextTarget, DesktopGroup, DesktopGroups, DesktopItemId, DesktopItemKind,
