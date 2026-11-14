@@ -431,3 +431,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - It is the modern Rust implementation used by current Win10/Win11 targets. Windows 95–XP and legacy C targets still need generation-specific host-process discovery and BGW/runtime equivalents; the Explorer-owned desktop contract remains mandatory wherever the Shell supports it.
 - Build target: `python build.py build bgw`; expected output: `build/rust/bgw/winlook-bgw/release/winlook.bg.exe`.
 - Windows runtime validation remains pending in CI. Portable host-discovery tests and build-runner tests cover the non-Windows stubs, package selection and executable rename.
+
+
+## WLDE adaptive icon reusable output buffer — 2026-11-15
+
+- Added Rust `render_adaptive_app_icon_into()` as a non-allocating companion to the existing `render_adaptive_app_icon()` helper. Both use the same compositor; the convenience helper allocates one vector and delegates to the caller-buffer path.
+- The caller-buffer path validates the output size/capacity before writing, fills only the requested packed RGBA8 tile, and leaves extra trailing capacity untouched. It performs no allocation in the render function.
+- Rust and C89 retain matching background cover-crop, foreground safe-zone contain, premultiplied-alpha bilinear sampling, source-over blend and 2×2 mask coverage for Circle/RoundedSquare/Squircle.
+- BGW's rendering worker should reuse a tile buffer/cache and call the `*_into` function; the compositor must remain outside the Explorer in-process callback.
+- The optional monochrome asset remains metadata only; no theme tinting, image decoding/extraction, icon registration or live Explorer tile display is implemented by this change.

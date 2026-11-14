@@ -398,7 +398,8 @@ typedef struct wl_Lwlde_rgba_image_view {
 /*
  * Decoded pixel views are supplied by the platform adapter. The caller owns
  * output_rgba and must provide at least output_size * output_size * 4 bytes.
- * No allocation or source-file mutation occurs in this function.
+ * The output must not overlap either source pixel buffer. No allocation or
+ * source-file mutation occurs in this function.
  */
 wl_Lwlde_result wl_Lwlde_adaptive_app_icon_render_rgba(
     const wl_Lwlde_adaptive_app_icon *icon,

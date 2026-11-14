@@ -1,8 +1,9 @@
 //! Portable scene and policy core for the WinLook Desktop Engine (WLDE).
 //!
 //! This crate owns monitor geometry, wallpaper placement calculations,
-//! visibility/Game Mode policy and the scene frame clock. It deliberately
-//! does not create windows, timers, worker threads, decoders or a renderer.
+//! visibility/Game Mode policy, the scene frame clock and a bounded adaptive
+//! app-icon bitmap compositor. It does not create windows, timers, worker
+//! threads, image decoders or platform Shell integration.
 //! Platform adapters report the presentation capabilities they really have.
 //!
 //! The host should use CPUv/GPUv for WLDE-owned work and resource leases. Their

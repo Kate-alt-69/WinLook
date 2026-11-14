@@ -69,8 +69,9 @@ optional monochrome asset, plus a Circle/RoundedSquare/Squircle mask and a
 48–72% safe-zone value. `wl_Lwlde_adaptive_app_icon_render_rgba()` composites
 caller-decoded RGBA layers into a caller-owned 16–512 px output buffer. It
 uses centered background cover, foreground safe-zone contain, premultiplied-
-alpha bilinear sampling and a 2x2 antialiased mask. It performs no allocation;
-the caller can cache the result until its source/settings change.
+alpha bilinear sampling and a 2×2 antialiased mask. It performs no allocation;
+the caller can reuse the output buffer and cache the tile until its
+source/settings change. The source and output pixel buffers must not overlap.
 `wl_Lwlde_desktop_context_actions()` returns the same type-aware action set
 as the Rust core without allocating.
 
@@ -98,3 +99,8 @@ binary can run on Windows 95 or any other legacy target.
 Run the paired C tests from the repository root with
 python build.py verify c --sanitizers, or use CMake through
 C/library/CMakeLists.txt.
+
+
+The Rust mirror exposes both `render_adaptive_app_icon()` (allocating
+convenience) and `render_adaptive_app_icon_into()` (caller-buffer,
+allocation-free). Both produce the same packed RGBA8 tile as this C API.

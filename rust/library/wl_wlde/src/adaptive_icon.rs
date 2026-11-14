@@ -64,6 +64,7 @@ pub enum AdaptiveIconRenderError {
     InvalidImageDimensions,
     PixelBufferLengthMismatch,
     OutputSizeOutOfRange,
+    OutputBufferTooSmall,
     SizeOverflow,
     AllocationFailed,
 }
@@ -79,6 +80,9 @@ impl fmt::Display for AdaptiveIconRenderError {
             }
             Self::OutputSizeOutOfRange => {
                 f.write_str("adaptive icon output size must be between 16 and 512 pixels")
+            }
+            Self::OutputBufferTooSmall => {
+                f.write_str("adaptive icon output buffer is smaller than the requested bitmap")
             }
             Self::SizeOverflow => f.write_str("adaptive icon bitmap size overflowed"),
             Self::AllocationFailed => f.write_str("adaptive icon output allocation failed"),
@@ -104,19 +108,32 @@ pub fn render_adaptive_app_icon(
     foreground: AdaptiveIconImageView<'_>,
     output_size: u32,
 ) -> Result<Vec<u8>, AdaptiveIconRenderError> {
-    if !(MIN_ADAPTIVE_ICON_OUTPUT_SIZE..=MAX_ADAPTIVE_ICON_OUTPUT_SIZE).contains(&output_size) {
-        return Err(AdaptiveIconRenderError::OutputSizeOutOfRange);
-    }
-
-    let output_bytes = (output_size as usize)
-        .checked_mul(output_size as usize)
-        .and_then(|value| value.checked_mul(4))
-        .ok_or(AdaptiveIconRenderError::SizeOverflow)?;
+    let output_bytes = output_buffer_length(output_size)?;
     let mut output = Vec::new();
     output
         .try_reserve_exact(output_bytes)
         .map_err(|_| AdaptiveIconRenderError::AllocationFailed)?;
     output.resize(output_bytes, 0);
+    render_adaptive_app_icon_into(icon, background, foreground, output_size, &mut output)?;
+    Ok(output)
+}
+
+/// Composes an adaptive app icon into storage supplied by the caller.
+///
+/// This is the allocation-free path intended for BGW's reusable render buffers.
+/// The output slice may be larger than the required tile size; bytes after the
+/// square RGBA bitmap are left untouched.
+pub fn render_adaptive_app_icon_into(
+    icon: &AdaptiveAppIcon,
+    background: AdaptiveIconImageView<'_>,
+    foreground: AdaptiveIconImageView<'_>,
+    output_size: u32,
+    output_rgba: &mut [u8],
+) -> Result<(), AdaptiveIconRenderError> {
+    let output_bytes = output_buffer_length(output_size)?;
+    if output_rgba.len() < output_bytes {
+        return Err(AdaptiveIconRenderError::OutputBufferTooSmall);
+    }
 
     let safe_zone = output_size as f64 * f64::from(icon.safe_zone_percent()) / 100.0;
     let foreground_scale = (safe_zone / f64::from(foreground.width))
@@ -152,11 +169,21 @@ pub fn render_adaptive_app_icon(
             pixel[3] = ((u16::from(pixel[3]) * u16::from(coverage) + 2) / 4) as u8;
 
             let offset = ((y as usize * output_size as usize) + x as usize) * 4;
-            output[offset..offset + 4].copy_from_slice(&pixel);
+            output_rgba[offset..offset + 4].copy_from_slice(&pixel);
         }
     }
 
-    Ok(output)
+    Ok(())
+}
+
+fn output_buffer_length(output_size: u32) -> Result<usize, AdaptiveIconRenderError> {
+    if !(MIN_ADAPTIVE_ICON_OUTPUT_SIZE..=MAX_ADAPTIVE_ICON_OUTPUT_SIZE).contains(&output_size) {
+        return Err(AdaptiveIconRenderError::OutputSizeOutOfRange);
+    }
+    (output_size as usize)
+        .checked_mul(output_size as usize)
+        .and_then(|value| value.checked_mul(4))
+        .ok_or(AdaptiveIconRenderError::SizeOverflow)
 }
 
 fn cover_source_coordinates(
@@ -342,6 +369,49 @@ mod tests {
         let outside_safe_zone = (8 * 64 + 32) * 4;
         assert_eq!(&rendered[center..center + 3], &[240, 200, 160]);
         assert_eq!(&rendered[outside_safe_zone..outside_safe_zone + 3], &[12, 24, 36]);
+    }
+
+    #[test]
+    fn caller_buffer_renderer_matches_allocating_helper_and_preserves_tail() {
+        let background = AdaptiveIconImageView::new(1, 1, &[20, 40, 60, 255]).unwrap();
+        let foreground = AdaptiveIconImageView::new(1, 1, &[200, 160, 120, 128]).unwrap();
+        let model = icon(AppIconMask::Circle);
+        let expected = render_adaptive_app_icon(
+            &model,
+            background,
+            foreground,
+            32,
+        )
+        .unwrap();
+        let mut caller_buffer = vec![0xCC; expected.len() + 12];
+        render_adaptive_app_icon_into(
+            &model,
+            background,
+            foreground,
+            32,
+            &mut caller_buffer,
+        )
+        .unwrap();
+        assert_eq!(&caller_buffer[..expected.len()], expected.as_slice());
+        assert!(caller_buffer[expected.len()..].iter().all(|byte| *byte == 0xCC));
+    }
+
+    #[test]
+    fn caller_buffer_renderer_rejects_small_storage_without_writing() {
+        let background = AdaptiveIconImageView::new(1, 1, &[0, 0, 0, 255]).unwrap();
+        let foreground = AdaptiveIconImageView::new(1, 1, &[255, 255, 255, 255]).unwrap();
+        let mut output = vec![0xA5; 16 * 16 * 4 - 1];
+        assert_eq!(
+            render_adaptive_app_icon_into(
+                &icon(AppIconMask::Circle),
+                background,
+                foreground,
+                16,
+                &mut output,
+            ),
+            Err(AdaptiveIconRenderError::OutputBufferTooSmall)
+        );
+        assert!(output.iter().all(|byte| *byte == 0xA5));
     }
 
     #[test]

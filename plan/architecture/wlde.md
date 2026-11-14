@@ -206,14 +206,15 @@ Members, Rename, Ungroup and Properties. The platform host must delegate
 native Open/Properties verbs to the Shell and preserve existing Shell menu
 behaviour. This is a model of WLDE additions, not an Explorer replacement.
 
-The first Rust/C89 slice validates virtual Group membership and adaptive icon
-metadata. The next slice now composes decoded RGBA foreground/background layers
-into cached app-icon bitmaps with safe-zone scaling and Circle/RoundedSquare/
-Squircle masks in both portable cores. It still does not enumerate the live
-desktop, extract/decode Shell icon assets, persist references, render desktop
-tiles or Group popups, intercept right-click or suppress native desktop icon
-representations. Groups stay disabled until the OS adapter proves crash-safe
-restoration.
+The Rust/C89 portable cores now compose decoded RGBA foreground/background
+layers into app-icon bitmaps with safe-zone scaling, premultiplied-alpha
+bilinear sampling and Circle/RoundedSquare/Squircle masks. Rust provides both
+an allocating convenience helper and a caller-buffer variant; BGW should use
+the latter for reusable storage. Neither implementation enumerates the live
+desktop, extracts/decodes Shell icons, persists icon references, registers a
+tile with Explorer, renders Group popups, intercepts right-click or suppresses
+native desktop icon representations. Groups stay disabled until the OS
+adapter proves crash-safe restoration.
 
 ## Required Explorer Desktop Bridge
 

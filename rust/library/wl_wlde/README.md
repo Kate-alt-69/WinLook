@@ -104,10 +104,13 @@ asset references, an optional monochrome layer, a Circle/RoundedSquare/Squircle
 mask and a 48–72% safe-zone percentage (61% default). `render_adaptive_app_icon()`
 combines caller-decoded RGBA layers, center-crops the background, contains the
 foreground inside the safe zone, composites in premultiplied-alpha space and
-applies a 2x2 antialiased shape mask. Output is bounded to 16–512 px and should
-be cached by the adapter rather than rendered on every desktop frame. Native
-assets are referenced, not rewritten; WinLook does not change executable,
-shortcut or original icon resources.
+applies a 2×2 antialiased shape mask. Output is bounded to 16–512 px and should
+be cached by the adapter rather than rendered on every desktop frame.
+`render_adaptive_app_icon_into()` writes the same bitmap into caller-owned
+reusable storage without allocating, leaving any extra trailing capacity
+untouched. BGW should use this version for repeated rendering/cache refreshes.
+Native assets are referenced, not rewritten; WinLook does not change
+executable, shortcut or original icon resources.
 
 `desktop_context_actions()` returns type-aware actions for Apps, Files,
 Folders and Groups. Apps include Customize Icon; grouped members include
@@ -197,3 +200,14 @@ not a charge on every interpolated property.
 4. Add bounded media decode and GPU presentation with device-loss recovery.
 5. Add isolated interactive/widget hosting and catalogue/package verification.
 6. Keep Groups disabled until crash-safe native icon restoration is proven.
+
+
+### Low-allocation rendering
+
+`render_adaptive_app_icon_into()` is the allocation-free Rust entry point.
+It checks the output capacity before writing, renders only the requested
+square bitmap, and leaves any bytes after that bitmap unchanged. The existing
+`render_adaptive_app_icon()` convenience helper allocates one output vector
+and delegates to the same implementation. The matching C89 function always
+uses caller-owned output storage. Neither renderer performs image decoding,
+file I/O, Shell calls or source-asset modification.

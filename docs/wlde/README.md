@@ -253,3 +253,12 @@ Run the shared Rust/C gate with:
 
 A green portable library gate verifies only these shared contracts; it does not
 prove Windows desktop presentation or overall WLDE acceptance.
+
+
+### Reusable app-icon output buffers
+
+BGW should use Rust's `render_adaptive_app_icon_into()` with a reusable
+caller-owned RGBA buffer. The allocating `render_adaptive_app_icon()` helper
+is retained for convenience and delegates to the same compositor. The C89 API
+already accepts caller-owned output storage. Both compositors leave source
+buffers unchanged and must run outside time-sensitive Explorer callbacks.
