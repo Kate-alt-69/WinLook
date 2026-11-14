@@ -20,6 +20,10 @@ monitor topology, wallpaper placement math and the shared frame schedule.
 - Direct ownership of the existing CPUv and GPUv admission governors through
   ResourceGovernors. They account only for caller-estimated WinLook work;
   they do not poll system use, schedule threads or control other processes.
+- An allocation-free ResourceGovernor that consumes caller-provided CPU, GPU,
+  RAM and VRAM utilization samples independently, applies configurable
+  consecutive-window hysteresis, and feeds Normal/Optimize/Suspend pressure
+  into the Scene frame policy. It does not collect OS telemetry.
 - Explicit presentation capability checks. Virtual Groups require both a
   presenter capability and a crash-safe restoration capability.
 
@@ -33,6 +37,25 @@ directory and a safe hand-off adapter for an already-installed Wallpaper
 Engine. Interactive content is unavailable unless a future restricted host
 reports that capability. Groups remain disabled until the OS adapter proves
 crash/disable/uninstall restoration.
+
+## Resource pressure policy
+
+ResourceGovernor accepts a ResourceSample with separate CPU, GPU, RAM and VRAM
+percentages. It uses the maximum domain pressure rather than an average, so a
+saturated GPU or memory domain cannot be hidden by idle CPU. ResourcePolicy
+requires explicit, ordered thresholds and non-zero sample window counts. One
+noisy sample cannot change playback state.
+
+Feed the resulting ResourcePressure to Scene::set_resource_pressure:
+Optimize caps the scene at 30 FPS and Suspend stops animation requests while
+retaining the last presented frame. The controller allocates no memory and
+creates no sampler or thread. A platform adapter still needs to provide
+trustworthy system telemetry, define sampling cadence, and separately account
+for WLDE-owned resource use. Percentages are not inferred from CPUv/GPUv
+admission tickets.
+
+The matching C89 API exposes wl_Lwlde_resource_controller with the same
+threshold/window semantics and an explicit scene pressure setter.
 
 ## Win32 monitor adapter
 

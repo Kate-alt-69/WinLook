@@ -22,6 +22,14 @@ already-initialized CPUv/GPUv governors. The Rust core validates topology
 replacement before applying it and owns its CPUv/GPUv governor instances.
 Neither API creates timers or worker threads.
 
+Both cores now also expose a matching caller-fed resource-pressure controller.
+The host supplies independent CPU, GPU, RAM and VRAM percentage samples; a
+configurable maximum-domain policy with consecutive enter/recovery windows
+produces Normal, Optimize or Suspend. This policy is separate from CPUv/GPUv's
+per-work admission tickets and does not collect operating system telemetry.
+Optimize lowers playback to 30 FPS; Suspend stops animation frame requests.
+The sampling backend and cadence remain host work.
+
 The modern Rust side now also has a separate
 [Win32 monitor adapter](../../rust/library/wl_wlde_win32/README.md). It builds
 bounded snapshots from attached GDI display devices and exposes a transactional
@@ -113,7 +121,8 @@ existing renderer/media and desktop-surface acceptance gates remain open.
   silently downsample or re-encode user assets.
 - CPUv/GPUv estimates and tickets are caller-provided accounting/admission
   values. They are not system CPU/GPU telemetry and do not schedule unrelated
-  processes.
+  processes. The separate resource-pressure policy accepts host-supplied
+  system-domain percentages but does not sample them itself.
 - Interactive content requires an isolated runtime and explicit capabilities.
   The current cores do not execute scripts.
 - Desktop Groups remain unavailable unless the adapter proves both virtual
@@ -123,17 +132,20 @@ existing renderer/media and desktop-surface acceptance gates remain open.
 
 1. Wire Win10/11 host event loops to the new monitor snapshot adapter and test
    display/device notifications, DPI changes, docking and remote sessions.
-2. Implement a documented static-wallpaper fallback and record/restore the
+2. Add trusted Win10/11 telemetry providers and sampling cadence for the
+   resource controller; test transitions under independent CPU/GPU/RAM/VRAM
+   pressure.
+3. Implement a documented static-wallpaper fallback and record/restore the
    user's original wallpaper state.
-3. Resolve and test an animated desktop surface that preserves Explorer/DWM
+4. Resolve and test an animated desktop surface that preserves Explorer/DWM
    ownership; do not ship undocumented parenting as a supported contract.
-4. Add bounded image/video decoding, GPU allocation/submission, device-loss
+5. Add bounded image/video decoding, GPU allocation/submission, device-loss
    recovery and visibility/power/session integration.
-5. Add signed/hash-verified .wl.wp/.wl.i.wp import, local library and offline
+6. Add signed/hash-verified .wl.wp/.wl.i.wp import, local library and offline
    catalogue metadata.
-6. Add restricted widget/interactive hosting and a reviewed Rainmeter subset.
-7. Keep Groups disabled until crash-safe restore is demonstrated on each OS.
-8. Add real Windows 10/11 visual, multi-monitor, lock/unlock, remote-session,
+7. Add restricted widget/interactive hosting and a reviewed Rainmeter subset.
+8. Keep Groups disabled until crash-safe restore is demonstrated on each OS.
+9. Add real Windows 10/11 visual, multi-monitor, lock/unlock, remote-session,
    fullscreen/game, low-end hardware and uninstall restoration testing.
 
 Run the shared Rust/C gate with:

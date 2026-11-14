@@ -17,9 +17,13 @@ pub use wl_animate::{FrameClock, FrameClockError, FrameTick};
 pub use wl_cpuv as cpu;
 pub use wl_gpuv as gpu;
 
+mod resource;
 mod store;
 mod wallpaper_engine;
 
+pub use resource::{
+    ResourceGovernor, ResourcePolicy, ResourcePolicyError, ResourcePressure, ResourceSample,
+};
 pub use store::{
     store_provider, store_providers, StorePriceModel, StoreProvider, StoreProviderAccess,
     StoreProviderId, STORE_PROVIDERS,
@@ -414,6 +418,7 @@ impl Default for SceneConditions {
 #[derive(Clone, Debug)]
 pub struct Scene {
     conditions: SceneConditions,
+    resource_pressure: ResourcePressure,
     clock: FrameClock,
     clock_paused: bool,
 }
@@ -428,6 +433,7 @@ impl Scene {
     pub fn new() -> Self {
         Self {
             conditions: SceneConditions::default(),
+            resource_pressure: ResourcePressure::Normal,
             clock: FrameClock::sixty_fps(),
             clock_paused: false,
         }
@@ -441,8 +447,18 @@ impl Scene {
         self.conditions = conditions;
     }
 
+    /// Applies the latest caller-fed system resource pressure state.
+    pub fn set_resource_pressure(&mut self, pressure: ResourcePressure) {
+        self.resource_pressure = pressure;
+    }
+
+    pub fn resource_pressure(&self) -> ResourcePressure {
+        self.resource_pressure
+    }
+
     pub fn frame_action(&self) -> FrameAction {
-        if self.conditions.game_mode == GameMode::Suspend
+        if self.resource_pressure == ResourcePressure::Suspend
+            || self.conditions.game_mode == GameMode::Suspend
             || self.conditions.power_state == PowerState::Suspended
         {
             return FrameAction::Suspended;
@@ -460,7 +476,8 @@ impl Scene {
         if self.frame_action() != FrameAction::Animate {
             return 0;
         }
-        if self.conditions.game_mode == GameMode::Optimize
+        if self.resource_pressure == ResourcePressure::Optimize
+            || self.conditions.game_mode == GameMode::Optimize
             || self.conditions.power_state == PowerState::PowerSaver
         {
             30

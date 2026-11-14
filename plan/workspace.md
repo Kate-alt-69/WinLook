@@ -358,3 +358,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - GDI device names are transient snapshot identifiers, not durable monitor profile IDs. DPI, orientation, remote-session reconciliation and actual message-loop wiring remain open.
 - C89 `wl_Lwlde` remains platform-neutral; a C Win32 enumeration adapter is a separate task.
 - Hosted CI is required for the MSVC target and Windows-specific FFI compile. Do not infer runtime hot-plug correctness from portable Linux tests alone.
+
+
+## WLDE resource-pressure controller — 2026-11-14
+
+- Added matching Rust and C89 allocation-free controller APIs for caller-supplied CPU, GPU, RAM and VRAM percentages.
+- Evaluates the maximum of all four domains (no averaging that could hide a saturated GPU or memory domain).
+- Requires explicit recovery < Optimize < Suspend thresholds and non-zero consecutive enter/recovery windows; rejects out-of-range samples and invalid policies.
+- Resulting Normal/Optimize/Suspend pressure can be applied to the shared scene: Optimize selects 30 FPS, Suspend suppresses animation requests while preserving the last presented frame.
+- CPUv/GPUv admission tickets remain distinct from system telemetry. No OS sampling provider, polling thread, sampling cadence or resource attribution has been added yet.
+- The plan's 90% severe-pressure threshold remains a host policy/configuration choice, not a hardcoded default.

@@ -286,6 +286,18 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 
 ## Resource-aware rendering
 
+### Portable resource-pressure controller
+
+- [x] Add Rust and C89 caller-fed CPU/GPU/RAM/VRAM percentage samples.
+- [x] Evaluate each domain independently using the maximum pressure, rather
+  than averaging a saturated resource away.
+- [x] Add configurable Optimize/Suspend thresholds plus consecutive enter and
+  recovery windows; invalid samples/policies are rejected.
+- [x] Feed Normal/Optimize/Suspend pressure into the shared scene cadence:
+  Optimize requests 30 FPS; Suspend requests no animated frames.
+- [ ] Add trustworthy Win10/Win11 telemetry providers and explicit sampling
+  cadence, including attribution of WLDE-owned work.
+
 WLDE should be a good desktop citizen. Foreground applications and games take priority. WLDE should reduce its own CPU, GPU, memory, VRAM, decoding, and rendering work when the system is busy.
 
 - [ ] Design a resource monitor for CPU, GPU, RAM, VRAM, power state, and WLDE's own consumption.
@@ -296,9 +308,14 @@ WLDE should be a good desktop citizen. Foreground applications and games take pr
 - [ ] Design pause, freeze-frame, and static-wallpaper fallback.
 - [ ] Design reduced work for fully or mostly occluded wallpaper regions.
 - [ ] Design resource recovery and gradual quality restoration.
-- [ ] Define sampling windows, sustained-pressure rules, and hysteresis to prevent rapid pause/resume oscillation.
-- [ ] Define behaviour when other system resource usage exceeds the user's requested 90% threshold: WLDE should stop animated playback/rendering and minimize its resource use, while preserving a lightweight static fallback only where safe and useful.
-- [ ] Define separate policies for CPU, GPU, RAM, and VRAM pressure rather than relying only on one blended percentage.
+- [x] Define configurable consecutive sample windows and recovery hysteresis
+  in the portable resource controller; platform sampling duration/cadence
+  remains an adapter decision.
+- [ ] Integrate host telemetry policy with the user's requested 90% severe
+  pressure threshold so sustained pressure stops animated playback/rendering
+  while preserving a safe static fallback where available.
+- [x] Evaluate CPU, GPU, RAM and VRAM independently; any saturated domain
+  constrains WLDE rather than being averaged with idle domains.
 - [ ] Design battery-aware and power-plan-aware behaviour.
 - [ ] Design user-configurable quality caps, FPS limits, and resource budgets.
 - [ ] Ensure adaptive controls cannot make the desktop unresponsive.

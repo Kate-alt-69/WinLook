@@ -10,6 +10,11 @@ C89 companion to the portable WinLook Desktop Engine scene core.
 - Visibility-aware frame requests; Unknown stays eligible, fully occluded scenes
   hold their last frame, static scenes do not poll a frame clock.
 - Normal 60 FPS, Optimize/Power Saver 30 FPS and Suspend policies.
+- An allocation-free caller-fed resource controller for CPU/GPU/RAM/VRAM
+  percentages, configurable consecutive enter/recovery windows and separate
+  Optimize/Suspend states. A peak domain is used instead of an average.
+- A scene pressure setter that turns Optimize into 30 FPS and Suspend into
+  no animation frame requests.
 - Non-owning references to existing wl_Lcpuv and wl_Lgpuv governors.
 - Capability checks that keep interactive content and Groups unavailable until
   a platform adapter explicitly proves support and crash-safe restoration.
@@ -18,8 +23,9 @@ C89 companion to the portable WinLook Desktop Engine scene core.
   provider descriptions, URLs, access/pricing class and item-level rights notes;
   platform UI handles browser launching and file picking.
 
-No allocation occurs in the topology storage, placement, condition update or
-scene tick paths. The caller supplies monitor storage and serializes governor
+No allocation occurs in the topology storage, placement, condition update,
+resource controller update or scene tick paths. Resource telemetry is supplied
+by the platform host; this library does not poll Windows or create threads. The caller supplies monitor storage and serializes governor
 access as required by CPUv/GPUv. The archive links against wl_Lanimate,
 wl_Lcpuv and wl_Lgpuv; the root CMake aggregator wires those targets.
 

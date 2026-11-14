@@ -48,6 +48,27 @@ Monitor CPU, GPU engine usage, RAM, VRAM, WLDE's own cost, power state, full-scr
 
 Quality policy: preserve the user's selected source image/video fidelity. Under sustained pressure, reduce the amount and frequency of WinLook-owned work: defer nonessential updates, stop optional interactive/effect work, pause background or occluded animation and media decoding, hold the last-known-good frame, release recoverable decoder/GPU caches, and suspend WLDE when needed. Never silently downsample or re-encode the user's source assets. Foreground apps/games take priority.
 
+## Portable resource-pressure controller
+
+Rust wl_wlde::ResourceGovernor and C89
+wl_Lwlde_resource_controller accept host-supplied CPU, GPU, RAM and VRAM
+utilization percentages. Values outside 0..=100 are rejected. The controller
+uses the maximum of the four domains rather than an average, so a single
+saturated resource cannot disappear into a blended score.
+
+The policy is explicit: recovery threshold < Optimize threshold < Suspend
+threshold <= 100, with non-zero consecutive windows for entering and recovering.
+The controller is allocation-free, creates no sampler/thread and never claims
+that CPUv/GPUv admission tickets are OS telemetry. The returned pressure maps
+to the common scene policy: Normal keeps configured cadence, Optimize requests
+30 FPS, Suspend stops animated frame requests. A caller feeds each telemetry
+sample and applies the returned pressure to the scene.
+
+The 90% severe-pressure figure remains a design trigger from the plan, not a
+hardcoded default; platform sampling cadence, sensor quality, WLDE-owned cost
+attribution and Win10/Win11 providers remain open. Tests prove only the
+portable state machine, not the quality of OS telemetry.
+
 ## Game Mode
 Per-app profiles: Normal, Optimize, Suspend. Optimize reduces target frame cadence and nonessential background work, suspends optional interactive work, and preserves configured source-media fidelity. Suspend stops animation and unnecessary renderer/decoder work where feasible. Detect through several signals, not executable name alone. Examples include MW4, Roblox and Minecraft but are not hardcoded special cases. Resume smoothly after game exit/focus loss.
 

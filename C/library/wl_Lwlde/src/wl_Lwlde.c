@@ -144,6 +144,7 @@ wl_Lwlde_result wl_Lwlde_scene_init(wl_Lwlde_scene *scene)
     scene->game_mode = WL_LWDE_GAME_NORMAL;
     scene->power_state = WL_LWDE_POWER_NORMAL;
     scene->active_animations = 0U;
+    scene->resource_pressure = WL_LWDE_RESOURCE_NORMAL;
     scene->clock_paused = 0U;
     scene->initialized = 0U;
     result = wl_Lanimate_frame_clock_init(&scene->frame_clock,
@@ -171,10 +172,21 @@ wl_Lwlde_result wl_Lwlde_scene_set_conditions(wl_Lwlde_scene *scene,
     return WL_LWDE_OK;
 }
 
+wl_Lwlde_result wl_Lwlde_scene_set_resource_pressure(wl_Lwlde_scene *scene,
+    wl_Lwlde_resource_pressure pressure)
+{
+    if (scene == 0 || !scene->initialized ||
+        (int)pressure < (int)WL_LWDE_RESOURCE_NORMAL ||
+        (int)pressure > (int)WL_LWDE_RESOURCE_SUSPEND) return WL_LWDE_INVALID_ARGUMENT;
+    scene->resource_pressure = pressure;
+    return WL_LWDE_OK;
+}
+
 wl_Lwlde_frame_action wl_Lwlde_scene_frame_action(const wl_Lwlde_scene *scene)
 {
     if (scene == 0 || !scene->initialized) return WL_LWDE_FRAME_SUSPENDED;
-    if (scene->game_mode == WL_LWDE_GAME_SUSPEND ||
+    if (scene->resource_pressure == WL_LWDE_RESOURCE_SUSPEND ||
+        scene->game_mode == WL_LWDE_GAME_SUSPEND ||
         scene->power_state == WL_LWDE_POWER_SUSPENDED) return WL_LWDE_FRAME_SUSPENDED;
     if (scene->visibility == WL_LWDE_VISIBILITY_OCCLUDED) return WL_LWDE_FRAME_HOLD_LAST;
     if (scene->active_animations == 0U) return WL_LWDE_FRAME_STATIC_ONLY;
@@ -187,7 +199,8 @@ unsigned int wl_Lwlde_scene_recommended_fps(const wl_Lwlde_scene *scene)
     if (scene == 0 || !scene->initialized) return 0U;
     action = wl_Lwlde_scene_frame_action(scene);
     if (action != WL_LWDE_FRAME_ANIMATE) return 0U;
-    if (scene->game_mode == WL_LWDE_GAME_OPTIMIZE ||
+    if (scene->resource_pressure == WL_LWDE_RESOURCE_OPTIMIZE ||
+        scene->game_mode == WL_LWDE_GAME_OPTIMIZE ||
         scene->power_state == WL_LWDE_POWER_SAVER) return 30U;
     return 60U;
 }
@@ -294,5 +307,116 @@ wl_Lwlde_result wl_Lwlde_resource_context_init(wl_Lwlde_resource_context *contex
     if (context == 0 || cpu == 0 || gpu == 0) return WL_LWDE_INVALID_ARGUMENT;
     context->cpu = cpu;
     context->gpu = gpu;
+    return WL_LWDE_OK;
+}
+
+static unsigned int wl_Lwlde_resource_advance(unsigned int current, unsigned int required)
+{
+    return current < required ? current + 1U : required;
+}
+
+static unsigned int wl_Lwlde_resource_peak(const wl_Lwlde_resource_sample *sample)
+{
+    unsigned int peak;
+    peak = sample->cpu_percent;
+    if (sample->gpu_percent > peak) peak = sample->gpu_percent;
+    if (sample->ram_percent > peak) peak = sample->ram_percent;
+    if (sample->vram_percent > peak) peak = sample->vram_percent;
+    return peak;
+}
+
+wl_Lwlde_result wl_Lwlde_resource_controller_init(
+    wl_Lwlde_resource_controller *controller,
+    const wl_Lwlde_resource_policy *policy)
+{
+    if (controller == 0 || policy == 0) return WL_LWDE_INVALID_ARGUMENT;
+    if (policy->recovery_below_percent >= policy->optimize_at_percent ||
+        policy->optimize_at_percent >= policy->suspend_at_percent ||
+        policy->suspend_at_percent > 100U ||
+        policy->enter_windows == 0U || policy->recovery_windows == 0U)
+        return WL_LWDE_INVALID_RESOURCE_POLICY;
+
+    controller->policy = *policy;
+    controller->pressure = WL_LWDE_RESOURCE_NORMAL;
+    controller->optimize_streak = 0U;
+    controller->suspend_streak = 0U;
+    controller->recovery_streak = 0U;
+    controller->initialized = 1U;
+    return WL_LWDE_OK;
+}
+
+wl_Lwlde_result wl_Lwlde_resource_controller_update(
+    wl_Lwlde_resource_controller *controller,
+    const wl_Lwlde_resource_sample *sample,
+    wl_Lwlde_resource_pressure *pressure_out)
+{
+    unsigned int peak;
+    if (controller == 0 || sample == 0 || pressure_out == 0 ||
+        controller->initialized == 0U) return WL_LWDE_INVALID_ARGUMENT;
+    if (sample->cpu_percent > 100U || sample->gpu_percent > 100U ||
+        sample->ram_percent > 100U || sample->vram_percent > 100U)
+        return WL_LWDE_INVALID_RESOURCE_SAMPLE;
+
+    peak = wl_Lwlde_resource_peak(sample);
+    if (controller->pressure == WL_LWDE_RESOURCE_SUSPEND) {
+        if (peak < controller->policy.recovery_below_percent) {
+            controller->recovery_streak = wl_Lwlde_resource_advance(
+                controller->recovery_streak, controller->policy.recovery_windows);
+            if (controller->recovery_streak >= controller->policy.recovery_windows) {
+                controller->pressure = WL_LWDE_RESOURCE_NORMAL;
+                controller->optimize_streak = 0U;
+                controller->suspend_streak = 0U;
+                controller->recovery_streak = 0U;
+            }
+        } else {
+            controller->recovery_streak = 0U;
+        }
+        *pressure_out = controller->pressure;
+        return WL_LWDE_OK;
+    }
+
+    if (controller->pressure == WL_LWDE_RESOURCE_OPTIMIZE) {
+        if (peak < controller->policy.recovery_below_percent) {
+            controller->recovery_streak = wl_Lwlde_resource_advance(
+                controller->recovery_streak, controller->policy.recovery_windows);
+            if (controller->recovery_streak >= controller->policy.recovery_windows) {
+                controller->pressure = WL_LWDE_RESOURCE_NORMAL;
+                controller->optimize_streak = 0U;
+                controller->suspend_streak = 0U;
+                controller->recovery_streak = 0U;
+                *pressure_out = controller->pressure;
+                return WL_LWDE_OK;
+            }
+        } else {
+            controller->recovery_streak = 0U;
+        }
+    } else {
+        controller->recovery_streak = 0U;
+    }
+
+    if (peak >= controller->policy.suspend_at_percent) {
+        controller->suspend_streak = wl_Lwlde_resource_advance(
+            controller->suspend_streak, controller->policy.enter_windows);
+        controller->optimize_streak = 0U;
+        if (controller->suspend_streak >= controller->policy.enter_windows) {
+            controller->pressure = WL_LWDE_RESOURCE_SUSPEND;
+            controller->optimize_streak = 0U;
+            controller->suspend_streak = 0U;
+            controller->recovery_streak = 0U;
+        }
+    } else if (peak >= controller->policy.optimize_at_percent) {
+        controller->optimize_streak = wl_Lwlde_resource_advance(
+            controller->optimize_streak, controller->policy.enter_windows);
+        controller->suspend_streak = 0U;
+        if (controller->optimize_streak >= controller->policy.enter_windows) {
+            controller->pressure = WL_LWDE_RESOURCE_OPTIMIZE;
+            controller->optimize_streak = 0U;
+        }
+    } else {
+        controller->optimize_streak = 0U;
+        controller->suspend_streak = 0U;
+    }
+
+    *pressure_out = controller->pressure;
     return WL_LWDE_OK;
 }

@@ -33,6 +33,10 @@ int main(void)
     wl_Lanimate_frame_tick tick;
     wl_Lwlde_presentation_capabilities caps;
     const wl_Lwlde_store_provider *provider;
+    wl_Lwlde_resource_policy resource_policy;
+    wl_Lwlde_resource_controller resource_controller;
+    wl_Lwlde_resource_sample resource_sample;
+    wl_Lwlde_resource_pressure resource_pressure;
 
     assert(wl_Lwlde_topology_init(&topology, storage, 4U) == WL_LWDE_OK);
     inputs[0] = monitor_make("DISPLAY-A", 0.0, 1);
@@ -82,6 +86,52 @@ int main(void)
     assert(wl_Lwlde_scene_set_conditions(&scene, WL_LWDE_VISIBILITY_VISIBLE,
         WL_LWDE_GAME_SUSPEND, WL_LWDE_POWER_NORMAL, 1U) == WL_LWDE_OK);
     assert(wl_Lwlde_scene_frame_action(&scene) == WL_LWDE_FRAME_SUSPENDED);
+    assert(wl_Lwlde_scene_set_conditions(&scene, WL_LWDE_VISIBILITY_VISIBLE,
+        WL_LWDE_GAME_NORMAL, WL_LWDE_POWER_NORMAL, 1U) == WL_LWDE_OK);
+    assert(wl_Lwlde_scene_set_resource_pressure(&scene, WL_LWDE_RESOURCE_OPTIMIZE) == WL_LWDE_OK);
+    assert(wl_Lwlde_scene_recommended_fps(&scene) == 30U);
+    assert(wl_Lwlde_scene_set_resource_pressure(&scene, WL_LWDE_RESOURCE_SUSPEND) == WL_LWDE_OK);
+    assert(wl_Lwlde_scene_frame_action(&scene) == WL_LWDE_FRAME_SUSPENDED);
+
+    resource_policy.optimize_at_percent = 75U;
+    resource_policy.suspend_at_percent = 90U;
+    resource_policy.recovery_below_percent = 65U;
+    resource_policy.enter_windows = 3U;
+    resource_policy.recovery_windows = 4U;
+    assert(wl_Lwlde_resource_controller_init(&resource_controller, &resource_policy) == WL_LWDE_OK);
+    resource_sample.cpu_percent = 12U;
+    resource_sample.gpu_percent = 20U;
+    resource_sample.ram_percent = 91U;
+    resource_sample.vram_percent = 10U;
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_OK);
+    assert(resource_pressure == WL_LWDE_RESOURCE_NORMAL);
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_OK);
+    assert(resource_pressure == WL_LWDE_RESOURCE_NORMAL);
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_OK);
+    assert(resource_pressure == WL_LWDE_RESOURCE_SUSPEND);
+    resource_sample.cpu_percent = 40U;
+    resource_sample.gpu_percent = 50U;
+    resource_sample.ram_percent = 60U;
+    resource_sample.vram_percent = 64U;
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_OK);
+    assert(resource_pressure == WL_LWDE_RESOURCE_SUSPEND);
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_OK);
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_OK);
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_OK);
+    assert(resource_pressure == WL_LWDE_RESOURCE_NORMAL);
+    resource_sample.gpu_percent = 101U;
+    assert(wl_Lwlde_resource_controller_update(&resource_controller, &resource_sample,
+        &resource_pressure) == WL_LWDE_INVALID_RESOURCE_SAMPLE);
+    resource_policy.suspend_at_percent = 70U;
+    assert(wl_Lwlde_resource_controller_init(&resource_controller, &resource_policy) ==
+        WL_LWDE_INVALID_RESOURCE_POLICY);
 
     memset(&caps, 0, sizeof(caps));
     caps.static_wallpaper = 1U;

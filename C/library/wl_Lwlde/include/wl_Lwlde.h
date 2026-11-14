@@ -24,7 +24,9 @@ typedef enum wl_Lwlde_result {
     WL_LWDE_INVALID_MONITOR = 4,
     WL_LWDE_DUPLICATE_MONITOR = 5,
     WL_LWDE_TOO_MANY_MONITORS = 6,
-    WL_LWDE_INTERNAL_ERROR = 7
+    WL_LWDE_INTERNAL_ERROR = 7,
+    WL_LWDE_INVALID_RESOURCE_POLICY = 8,
+    WL_LWDE_INVALID_RESOURCE_SAMPLE = 9
 } wl_Lwlde_result;
 
 typedef struct wl_Lwlde_rect {
@@ -115,12 +117,43 @@ typedef enum wl_Lwlde_frame_action {
     WL_LWDE_FRAME_SUSPENDED = 3
 } wl_Lwlde_frame_action;
 
+typedef enum wl_Lwlde_resource_pressure {
+    WL_LWDE_RESOURCE_NORMAL = 0,
+    WL_LWDE_RESOURCE_OPTIMIZE = 1,
+    WL_LWDE_RESOURCE_SUSPEND = 2
+} wl_Lwlde_resource_pressure;
+
+typedef struct wl_Lwlde_resource_sample {
+    unsigned int cpu_percent;
+    unsigned int gpu_percent;
+    unsigned int ram_percent;
+    unsigned int vram_percent;
+} wl_Lwlde_resource_sample;
+
+typedef struct wl_Lwlde_resource_policy {
+    unsigned int optimize_at_percent;
+    unsigned int suspend_at_percent;
+    unsigned int recovery_below_percent;
+    unsigned int enter_windows;
+    unsigned int recovery_windows;
+} wl_Lwlde_resource_policy;
+
+typedef struct wl_Lwlde_resource_controller {
+    wl_Lwlde_resource_policy policy;
+    wl_Lwlde_resource_pressure pressure;
+    unsigned int optimize_streak;
+    unsigned int suspend_streak;
+    unsigned int recovery_streak;
+    unsigned int initialized;
+} wl_Lwlde_resource_controller;
+
 /* One scene owns one wl_Lanimate clock shared by all of its animation tracks. */
 typedef struct wl_Lwlde_scene {
     wl_Lwlde_visibility visibility;
     wl_Lwlde_game_mode game_mode;
     wl_Lwlde_power_state power_state;
     unsigned int active_animations;
+    wl_Lwlde_resource_pressure resource_pressure;
     wl_Lanimate_frame_clock frame_clock;
     unsigned int clock_paused;
     unsigned int initialized;
@@ -133,6 +166,10 @@ wl_Lwlde_result wl_Lwlde_scene_set_conditions(
     wl_Lwlde_game_mode game_mode,
     wl_Lwlde_power_state power_state,
     unsigned int active_animations
+);
+wl_Lwlde_result wl_Lwlde_scene_set_resource_pressure(
+    wl_Lwlde_scene *scene,
+    wl_Lwlde_resource_pressure pressure
 );
 wl_Lwlde_frame_action wl_Lwlde_scene_frame_action(const wl_Lwlde_scene *scene);
 unsigned int wl_Lwlde_scene_recommended_fps(const wl_Lwlde_scene *scene);
@@ -214,6 +251,15 @@ wl_Lwlde_result wl_Lwlde_resource_context_init(
     wl_Lwlde_resource_context *context,
     wl_Lcpuv_governor *cpu,
     wl_Lgpuv_governor *gpu
+);
+wl_Lwlde_result wl_Lwlde_resource_controller_init(
+    wl_Lwlde_resource_controller *controller,
+    const wl_Lwlde_resource_policy *policy
+);
+wl_Lwlde_result wl_Lwlde_resource_controller_update(
+    wl_Lwlde_resource_controller *controller,
+    const wl_Lwlde_resource_sample *sample,
+    wl_Lwlde_resource_pressure *pressure_out
 );
 
 #endif /* WL_LWLDE_H */
