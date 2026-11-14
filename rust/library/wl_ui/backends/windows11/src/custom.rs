@@ -568,15 +568,15 @@ impl Component for CustomShell {
                 .children((
                     info_card(
                         "WLDE adaptive application tiles",
-                        "Application shortcuts can use a consistent tile with separate foreground and background artwork, an optional monochrome layer, a selectable mask and a safe-zone scale. The original executable, shortcut and source artwork are not rewritten.",
-                        "PORTABLE ICON CONTRACT READY",
+                        "The shared Rust/C89 cores now compose bounded RGBA tiles from foreground/background artwork, with Circle, RoundedSquare or Squircle masks and safe-zone scaling. A themed monochrome mode uses source alpha as the glyph mask and applies the current tint at render time.",
+                        "COLOR + MONOCHROME RENDERERS READY",
                         palette.accent,
                         palette,
                         metrics,
                     ),
                     info_card(
                         "Source-preserving icon cleanup",
-                        "WLDE normalizes how application artwork is presented; it does not silently replace vendor artwork, download lookalike icons or edit installed application files. Native icon extraction and the visual renderer remain adapter work.",
+                        "WLDE never edits executables, shortcuts or vendor icon resources. The bitmap compositor is ready, but Shell icon extraction, per-DPI caching, app-profile/tint selection and icon registration are still native-adapter work.",
                         "SOURCE ASSETS PRESERVED",
                         palette.info,
                         palette,
@@ -584,8 +584,8 @@ impl Component for CustomShell {
                     ),
                     info_card(
                         "Right-click actions",
-                        "The portable menu contract distinguishes apps, files, folders and Groups. Apps can expose Customize Icon; all item types can join a Group; grouped items can be removed from that Group without deleting their originals.",
-                        "CONTEXT MENU MODEL READY",
+                        "The portable menu model includes app-only Customize Icon, item Add/Remove from Group, Group open/add-members/rename/ungroup, and Create Group on the desktop background. Native Open, Properties, Refresh, Sort, View and file operations remain Shell-owned; actual Explorer menu registration is still pending.",
+                        "PORTABLE ACTION MODEL READY",
                         palette.success,
                         palette,
                         metrics,
@@ -618,15 +618,23 @@ impl Component for CustomShell {
                 .children((
                     info_card(
                         "Virtual desktop Groups",
-                        "A Group can collect application shortcuts, files and folders by opaque item reference. It is a presentation container, not a physical directory: the original Shell items, targets and filesystem locations stay untouched.",
-                        "PORTABLE GROUP MODEL READY",
+                        "Groups are virtual collections, never physical folders. Rust supports transactional create, rename, add/remove members and ungroup; C89 supports bounded caller-owned records, validation, replacement and lookup. Original Shell items and targets stay untouched.",
+                        "GROUP COMMAND MODEL READY",
                         palette.accent,
                         palette,
                         metrics,
                     ),
                     info_card(
+                        "Read-only Desktop inventory",
+                        "BGW now snapshots the current User Desktop and Public Desktop Known Folders one level deep and assigns opaque item IDs. Manager-to-BGW status IPC and durable Group persistence are not connected yet; virtual namespace items and exact Explorer view membership need a Shell-view adapter.",
+                        "FILESYSTEM SNAPSHOT READY",
+                        palette.info,
+                        palette,
+                        metrics,
+                    ),
+                    info_card(
                         "Group-friendly right-click",
-                        "The context-menu contract offers Open, Add to Group, Remove from Group, Properties and app-only Customize Icon actions. The host must still delegate native open/properties verbs to the Shell.",
+                        "The portable menu contract includes item grouping, Group management and desktop-background Create Group actions. Windows still owns native Open, Properties and ordinary Shell commands; Explorer menu registration is not wired yet.",
                         "NATIVE MENU INTEGRATION PENDING",
                         palette.info,
                         palette,
@@ -634,7 +642,7 @@ impl Component for CustomShell {
                     ),
                     info_card(
                         "Crash restoration guard",
-                        "Desktop Groups remain unavailable for live presentation until the OS adapter can restore original icon visibility and placement after a crash, disable, session exit and uninstall.",
+                        "Desktop Groups remain unavailable for live presentation until the OS adapter can restore original icon visibility and placement after a crash, disable, session exit and uninstall. No native icons are hidden or substituted by the current filesystem inventory.",
                         "PRESENTATION DISABLED BY SAFETY",
                         palette.warning,
                         palette,

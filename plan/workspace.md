@@ -481,3 +481,11 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Added allocating and caller-buffer Rust APIs plus an allocation-free C89 API. Caller-buffer paths retain the same bounded 16–512 px output contract and do not modify source assets.
 - Added Rust/C89 tests for tint application, source immutability, safe-zone and output parity.
 - This is a bitmap operation only. Shell icon extraction, app-profile color selection, DPI cache management, icon registration/presentation and crash-safe restore remain separate native integration gates.
+
+
+## WLDE Manager Icons and Desktop Groups status pages — 2026-11-15
+
+- Updated the existing Win10 and Win11 Icons pages to state that the shared color and themed-monochrome bitmap composers are ready. The monochrome alpha-mask/theme-tint behaviour is now reflected accurately; Shell extraction, DPI cache policy and icon registration remain adapter work.
+- Updated both Desktop Groups pages to describe transactional Group commands and the BGW read-only User/Public Desktop filesystem inventory.
+- Added explicit boundaries for work not yet wired: Manager/BGW status and configuration IPC, durable Group storage, exact Shell-view membership, virtual namespace entries, Explorer context-menu registration, native icon presentation, live Group tiles and crash restoration.
+- Kept Groups disabled for live presentation until native icon restoration can be demonstrated across BGW crash, Explorer restart, disable, session exit and uninstall.
