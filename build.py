@@ -70,6 +70,7 @@ GITLEAKS_SHA256 = (
 APP_RUNTIME_URL = (
     "https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/downloads"
 )
+BGW_PACKAGE_NAME = "winlook-bgw"
 BGW_TARGET_NAMES = {"winlook.bg", "winlook-bg", "winlook_bg"}
 WINDOWS_APPS = {
     "win10": ("winlook-win10", "build/rust/win10"),
