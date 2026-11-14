@@ -61,6 +61,30 @@ WLT import must validate the archive, reject unsafe paths/collisions, cap file c
 - Use only classic Shell extension routes verified on Windows Me. XP `IShellView`, Vista+ `IExplorerCommand` and Windows 11 menu registration are not assumed.
 - Deeper Explorer styling requires an isolated OS-specific prototype, safe fallback and no modification/replacement of `explorer.exe`.
 
+## Required WLDE Explorer Desktop Bridge
+
+The Explorer Desktop Bridge is mandatory BGW/WLDE runtime infrastructure on
+Windows Me when Explorer owns the interactive desktop. It is not a Windows 10/11
+only feature and has no per-feature user opt-in. BGW must identify the actual
+desktop-owning Shell process and select an adapter verified for this exact OS,
+service pack and architecture.
+
+The adapter must use this generation's documented/classic Shell interfaces
+where they satisfy the feature contract and may use a controlled, tested
+runtime hook inside the desktop-owning Explorer process where those interfaces
+do not expose the required desktop icon/Group behaviour. Do not assume XP,
+Vista or modern COM interfaces exist on this OS. This does not permit modifying
+Explorer.exe on disk, replacing DWM or attaching to unrelated Explorer windows.
+Windows retains native Shell activation and filesystem semantics; heavy WLDE
+work remains in BGW.
+
+On an unknown or unsupported build, keep native desktop icons visible and
+report the affected WLDE capability as unavailable. Before suppressing any
+native icon representation, persist enough restore state to recover after
+Explorer/BGW crash, Explorer restart, logoff, update and uninstall. This is
+a mandatory integration contract; exact support is established only by
+per-OS runtime tests, not by API-name or source-compatibility assumptions.
+
 ## 9. Required verification
 - [ ] Exact OS build/service pack/edition recorded.
 - [ ] Compiler/linker/runtime and imported DLLs recorded.

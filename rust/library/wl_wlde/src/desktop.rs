@@ -189,8 +189,12 @@ fn validate_groups(
         return Err(DesktopModelError::TooManyGroups);
     }
 
-    let available: HashSet<&DesktopItemId> =
-        available_items.iter().map(DesktopItemRef::id).collect();
+    let mut available = HashSet::with_capacity(available_items.len());
+    for item in available_items {
+        if !available.insert(item.id()) {
+            return Err(DesktopModelError::DuplicateItemIdentifier);
+        }
+    }
     let mut group_ids = HashSet::with_capacity(groups.len());
 
     for group in groups {
@@ -445,6 +449,7 @@ pub enum DesktopModelError {
     TooManyMembers,
     TooManyGroups,
     DuplicateIdentifier,
+    DuplicateItemIdentifier,
     DuplicateMember,
     UnknownMember,
     EmptyAssetReference,
@@ -463,6 +468,9 @@ impl std::fmt::Display for DesktopModelError {
             Self::TooManyMembers => f.write_str("desktop group exceeds the 128-member limit"),
             Self::TooManyGroups => f.write_str("desktop group count exceeds the 64-group limit"),
             Self::DuplicateIdentifier => f.write_str("desktop group identifiers must be unique"),
+            Self::DuplicateItemIdentifier => {
+                f.write_str("desktop inventory item identifiers must be unique")
+            }
             Self::DuplicateMember => f.write_str("a desktop group cannot list the same item twice"),
             Self::UnknownMember => {
                 f.write_str("desktop group references an item outside the current inventory")
@@ -542,6 +550,22 @@ mod tests {
             Err(DesktopModelError::UnknownMember)
         );
         assert_eq!(groups.groups()[0].id(), "group:work");
+    }
+
+    #[test]
+    fn desktop_inventory_ids_must_be_unique() {
+        let items = desktop_items();
+        let duplicate_inventory = vec![items[0].clone(), items[0].clone()];
+        let group = DesktopGroup::new(
+            "group:work",
+            "Work",
+            vec![DesktopItemId::new("app:editor").unwrap()],
+        )
+        .unwrap();
+        assert_eq!(
+            DesktopGroups::new(vec![group], &duplicate_inventory),
+            Err(DesktopModelError::DuplicateItemIdentifier)
+        );
     }
 
     #[test]
