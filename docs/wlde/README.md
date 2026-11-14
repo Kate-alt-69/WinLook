@@ -54,6 +54,17 @@ not install a message hook or poll: the host must call it from its own event
 loop. C89 remains the portable policy/scene core and receives monitor snapshots
 from its platform host.
 
+
+The modern `wl_wlde_win32` adapter now exposes `discover_desktop_host()`.
+It resolves `GetShellWindow()` to its owning PID, verifies the process image
+is `explorer.exe`, checks the process is in the same interactive session
+as BGW, and records its creation time so PID reuse after Explorer restart is
+detectable. `is_same_desktop_host()` re-probes before a bridge reattachment.
+This is host discovery only; it does not inject a DLL or install a Shell hook.
+Because the probe uses `ProcessIdToSessionId` and
+`QueryFullProcessImageNameW`, that modern Rust implementation is Vista+;
+pre-Vista systems need a separate classic adapter.
+
 ## Manager UI coverage
 
 The shared Manager navigation now includes a dedicated destination for each

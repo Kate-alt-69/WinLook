@@ -404,3 +404,16 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Live desktop inventory, durable local persistence, icon extraction/rendering, native Group proxies, custom popup windows and full context-menu interception are not implemented in this slice. Groups remain disabled until restoration is proven.
 - Official design references: Android adaptive icon layout, Microsoft Shell extensions, namespace extensions and separate Explorer desktop-process testing. See plan/references/SOURCES.md WLDE-007–010.
 - Hosted CI must run Rust formatting/tests/Clippy, C89 GCC sanitizer and MSVC jobs, plus Win10/Win11 Manager builds. Legacy Shell adapters still need their own OS VMs and tests; modern CI cannot prove Windows 95–8.1 behaviour.
+
+
+## WLDE Explorer desktop-host discovery — 2026-11-14
+
+- Added DesktopHostIdentity, DesktopHostError, discover_desktop_host() and is_same_desktop_host() to rust/library/wl_wlde_win32.
+- The adapter resolves the Shell desktop window with GetShellWindow, obtains the owning PID with GetWindowThreadProcessId, verifies the executable basename is explorer.exe, checks the process belongs to BGW's interactive session and records the process creation FILETIME alongside the PID.
+- Rechecks the Shell desktop window and its owning PID before returning so an Explorer restart during discovery is rejected; BGW can re-probe before reconnecting and compare the full identity rather than PID alone.
+- Opens the target process with PROCESS_QUERY_INFORMATION only, as required by ProcessIdToSessionId; this also supplies limited-query access for QueryFullProcessImageNameW and GetProcessTimes. It does not request process memory, thread creation, termination or modification rights.
+- Exported the discovery API from the shared Win32 backend and the Windows 10/11 facades. The Windows 11 public module already re-exports its backend's public symbols.
+- API constraint: GetShellWindow is documented from Windows 2000, GetProcessTimes from XP, while ProcessIdToSessionId and QueryFullProcessImageNameW are Vista+. The composed modern Rust probe is therefore Vista+ (the Rust Win10/Win11 targets are newer still); legacy OS targets need their own classic C adapter.
+- This is discovery only. The BGW executable target is not present in this branch yet, and the probe does not inject a DLL, register a Shell extension, enumerate desktop PIDLs, suppress native icons or draw Groups. Those remain separate implementation gates with restoration requirements.
+- Focused checks: portable path-basename matching and non-Windows unsupported-platform behaviour are unit-tested. Windows runtime discovery still needs Win10/11 interactive-session testing and Explorer restart validation.
+- Official references WLDE-011–015: plan/references/SOURCES.md.

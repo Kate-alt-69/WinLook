@@ -7,7 +7,8 @@
 
 pub use wl_ui_core::{UiApplication, UiError, UiPage, UiWindowConfig};
 pub use wl_wlde_win32::{
-    enumerate_monitors, refresh_topology, should_refresh_topology, MonitorError,
+    discover_desktop_host, enumerate_monitors, is_same_desktop_host, refresh_topology,
+    should_refresh_topology, DesktopHostError, DesktopHostIdentity, MonitorError,
     DBT_DEVNODES_CHANGED, WM_DEVICECHANGE, WM_DISPLAYCHANGE,
 };
 

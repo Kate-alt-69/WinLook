@@ -44,3 +44,26 @@ The adapter uses a narrow, private Win32 FFI boundary and has no additional
 runtime crate dependencies. The portable Rust core remains
 `#![forbid(unsafe_code)]`; this crate contains the platform-specific unsafe
 calls and exposes only owned, validated Rust data.
+
+## Explorer desktop-host discovery
+
+`discover_desktop_host()` identifies the process that owns the current
+Shell desktop window. It verifies the image basename is `explorer.exe`,
+checks that the process belongs to the same interactive session as BGW, and
+records PID, session ID, executable path and process creation time. The
+creation timestamp prevents a restarted Explorer process from being mistaken
+for the previous process if Windows recycles its PID. The probe opens the
+process with query-information access only; it does not request memory-read,
+thread-control or process-modification rights.
+
+Call `is_same_desktop_host(&identity)` after a Shell restart notification
+or before reattaching a native adapter. A mismatch means BGW must reconcile
+the old bridge and discover the new desktop host. The probe retains no process
+handle and changes no Explorer state.
+
+This is host discovery, not the in-process integration itself. It does not
+inject a DLL, install a context-menu handler, hide icons or create a Group
+presenter. Those operations belong to the next generation-specific Shell
+adapter and must be backed by a proven restoration path. The API uses
+`QueryFullProcessImageNameW` and is for Vista and newer. Earlier Windows
+generations need their own classic process/image lookup adapter.

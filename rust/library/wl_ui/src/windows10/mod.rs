@@ -8,7 +8,8 @@ use crate::manager_app;
 
 pub use crate::{UiApplication, UiError, UiPage, UiWindowConfig};
 pub use wl_ui_windows10::{
-    enumerate_monitors, refresh_topology, should_refresh_topology, MonitorError,
+    discover_desktop_host, enumerate_monitors, is_same_desktop_host, refresh_topology,
+    should_refresh_topology, DesktopHostError, DesktopHostIdentity, MonitorError,
     DBT_DEVNODES_CHANGED, WM_DEVICECHANGE, WM_DISPLAYCHANGE,
 };
 

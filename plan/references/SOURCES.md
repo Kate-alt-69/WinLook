@@ -217,3 +217,22 @@ Implementation consequence: keep enumeration synchronous and bounded, then let t
 | WLDE-010 | [Debugging with the Shell](https://learn.microsoft.com/en-us/windows/win32/shell/debugging-with-the-shell) | Windows supports a separate Explorer desktop-process mode to isolate Shell extension testing from the active desktop/taskbar process | Development/testing aid only; verify exact target-version behaviour |
 
 Implementation consequence: BGW always owns and initializes the Explorer Desktop Bridge when Explorer owns the desktop. The implementation uses version-specific Shell interfaces and controlled runtime hooks only where required. The Explorer executable on disk is never patched or replaced; DWM remains intact. A failure must restore native icon presentation and fall back without modifying user items.
+
+
+## WLDE Explorer desktop-host discovery — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-011 | [GetShellWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getshellwindow), [GetWindowThreadProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowthreadprocessid) | The Shell desktop window can be resolved and mapped to its creating process/thread | Both are documented from Windows 2000; this only identifies the Shell desktop window owner, not every Explorer folder window |
+| WLDE-012 | [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew) | Returns the full process executable path for a queried process | Vista+ API; do not import as a baseline for Windows 2000/XP or older |
+| WLDE-013 | [ProcessIdToSessionId](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-processidtosessionid) | Resolves the Remote Desktop Services session associated with a PID | Vista+ API; compare against BGW's own session |
+| WLDE-014 | [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) | Returns process creation time as FILETIME | Available from XP; creation time helps distinguish PID reuse |
+
+Implementation consequence: the modern Rust probe is Vista+ because it depends on QueryFullProcessImageNameW and ProcessIdToSessionId. Older Shell generations require a separate classic adapter. PID alone is not a stable Explorer identity; pair it with session and process creation time.
+
+
+## WLDE desktop-host process discovery — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-015 | [Process Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights), [ProcessIdToSessionId](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-processidtosessionid), [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew), [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) | The adapter must open the target with PROCESS_QUERY_INFORMATION for session lookup; this right also implies the limited-query right needed by image-path lookup, and permits reading process creation time | Query-only access; it does not request VM read/write, thread creation, termination or process modification. The composed probe remains Vista+ because ProcessIdToSessionId and QueryFullProcessImageNameW are Vista+ |

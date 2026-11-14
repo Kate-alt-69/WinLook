@@ -101,7 +101,6 @@ pub fn refresh_topology(current: &mut MonitorTopology) -> Result<(), MonitorErro
 mod platform {
     use std::ffi::c_void;
     use std::mem::{size_of, zeroed};
-    use std::ptr;
 
     use wl_wlde::{Monitor, MonitorTopology, Rect, MAX_MONITORS};
 
@@ -397,5 +396,331 @@ mod tests {
         );
         assert_eq!(topology.len(), 1);
         assert_eq!(topology.primary().unwrap().id(), "DISPLAY1");
+    }
+}
+
+
+/// Stable-enough identity for the Explorer process that owns this session's desktop.
+///
+/// A PID alone is not a durable process identity because Windows can recycle it.
+/// The creation timestamp distinguishes a restarted Explorer process that happens
+/// to receive the same PID. No process handle is retained by this record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DesktopHostIdentity {
+    process_id: u32,
+    session_id: u32,
+    creation_time_100ns: u64,
+    image_path: std::path::PathBuf,
+}
+
+impl DesktopHostIdentity {
+    pub fn process_id(&self) -> u32 {
+        self.process_id
+    }
+
+    pub fn session_id(&self) -> u32 {
+        self.session_id
+    }
+
+    /// FILETIME ticks (100 ns since 1601-01-01 UTC), suitable for identity comparison.
+    pub fn creation_time_100ns(&self) -> u64 {
+        self.creation_time_100ns
+    }
+
+    pub fn image_path(&self) -> &std::path::Path {
+        &self.image_path
+    }
+}
+
+/// Errors reported while discovering the current session's desktop-owning Shell process.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DesktopHostError {
+    UnsupportedPlatform,
+    ShellWindowUnavailable,
+    ShellProcessUnavailable,
+    OpenProcess { code: u32 },
+    QueryImagePath { code: u32 },
+    InvalidImagePath,
+    UnexpectedImageName(std::path::PathBuf),
+    QuerySession { code: u32 },
+    SessionMismatch {
+        desktop_session: u32,
+        host_session: u32,
+    },
+    QueryProcessTimes { code: u32 },
+}
+
+impl fmt::Display for DesktopHostError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnsupportedPlatform => {
+                f.write_str("desktop-host discovery is available only on Windows")
+            }
+            Self::ShellWindowUnavailable => {
+                f.write_str("Windows has not exposed a Shell desktop window in this session")
+            }
+            Self::ShellProcessUnavailable => {
+                f.write_str("Windows did not return a process ID for the Shell desktop window")
+            }
+            Self::OpenProcess { code } => {
+                write!(f, "could not query the Shell desktop process: Win32 error {code:#x}")
+            }
+            Self::QueryImagePath { code } => {
+                write!(f, "could not read the Shell desktop process image path: Win32 error {code:#x}")
+            }
+            Self::InvalidImagePath => {
+                f.write_str("Windows returned an invalid Shell desktop process image path")
+            }
+            Self::UnexpectedImageName(path) => write!(
+                f,
+                "the Shell desktop window is owned by {}, not explorer.exe",
+                path.display()
+            ),
+            Self::QuerySession { code } => {
+                write!(f, "could not verify the interactive desktop session: Win32 error {code:#x}")
+            }
+            Self::SessionMismatch {
+                desktop_session,
+                host_session,
+            } => write!(
+                f,
+                "Shell desktop belongs to session {desktop_session}, but this BGW process belongs to session {host_session}"
+            ),
+            Self::QueryProcessTimes { code } => {
+                write!(f, "could not read the Shell process creation time: Win32 error {code:#x}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for DesktopHostError {}
+
+/// Checks only the executable basename, independent of path separator style.
+pub fn is_explorer_image_path(path: &str) -> bool {
+    path.rsplit(|character| character == '\\' || character == '/')
+        .next()
+        .is_some_and(|name| name.eq_ignore_ascii_case("explorer.exe"))
+}
+
+/// Discovers the Explorer process that owns the current interactive desktop.
+///
+/// The returned identity is scoped to the caller's Windows session. BGW should
+/// re-run discovery after Shell restart notifications and compare all identity
+/// fields before reattaching. This function only observes the host; it does not
+/// inject code, install hooks, change Explorer state or retain process handles.
+#[cfg(windows)]
+pub fn discover_desktop_host() -> Result<DesktopHostIdentity, DesktopHostError> {
+    desktop_host_platform::discover()
+}
+
+/// Non-Windows builds expose the same API but never guess a desktop host.
+#[cfg(not(windows))]
+pub fn discover_desktop_host() -> Result<DesktopHostIdentity, DesktopHostError> {
+    Err(DesktopHostError::UnsupportedPlatform)
+}
+
+/// Returns true only when a fresh discovery resolves to the same process instance.
+pub fn is_same_desktop_host(identity: &DesktopHostIdentity) -> Result<bool, DesktopHostError> {
+    let current = discover_desktop_host()?;
+    Ok(current == *identity)
+}
+
+#[cfg(windows)]
+mod desktop_host_platform {
+    use std::ffi::c_void;
+    use std::mem::MaybeUninit;
+    use std::os::windows::ffi::OsStringExt;
+    use std::path::PathBuf;
+
+    use crate::{is_explorer_image_path, DesktopHostError, DesktopHostIdentity};
+
+    type Handle = *mut c_void;
+
+    // PROCESS_QUERY_INFORMATION is required by ProcessIdToSessionId and GetProcessTimes.
+    const PROCESS_QUERY_INFORMATION: u32 = 0x0400;
+    const IMAGE_PATH_CAPACITY: usize = 32_768;
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    struct FileTime {
+        low: u32,
+        high: u32,
+    }
+
+    impl FileTime {
+        fn as_u64(self) -> u64 {
+            (u64::from(self.high) << 32) | u64::from(self.low)
+        }
+    }
+
+    struct OwnedProcess(Handle);
+
+    impl Drop for OwnedProcess {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    CloseHandle(self.0);
+                }
+            }
+        }
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetShellWindow() -> Handle;
+        fn GetWindowThreadProcessId(hwnd: Handle, process_id: *mut u32) -> u32;
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn OpenProcess(access: u32, inherit_handle: i32, process_id: u32) -> Handle;
+        fn QueryFullProcessImageNameW(
+            process: Handle,
+            flags: u32,
+            image_path: *mut u16,
+            size: *mut u32,
+        ) -> i32;
+        fn ProcessIdToSessionId(process_id: u32, session_id: *mut u32) -> i32;
+        fn GetCurrentProcessId() -> u32;
+        fn GetProcessTimes(
+            process: Handle,
+            creation_time: *mut FileTime,
+            exit_time: *mut FileTime,
+            kernel_time: *mut FileTime,
+            user_time: *mut FileTime,
+        ) -> i32;
+        fn CloseHandle(handle: Handle) -> i32;
+        fn GetLastError() -> u32;
+    }
+
+    pub(super) fn discover() -> Result<DesktopHostIdentity, DesktopHostError> {
+        let shell_window = unsafe { GetShellWindow() };
+        if shell_window.is_null() {
+            return Err(DesktopHostError::ShellWindowUnavailable);
+        }
+
+        let mut process_id = 0u32;
+        let thread_id = unsafe { GetWindowThreadProcessId(shell_window, &mut process_id) };
+        if thread_id == 0 || process_id == 0 {
+            return Err(DesktopHostError::ShellProcessUnavailable);
+        }
+
+        let raw_process = unsafe {
+            OpenProcess(PROCESS_QUERY_INFORMATION, 0, process_id)
+        };
+        if raw_process.is_null() {
+            return Err(DesktopHostError::OpenProcess {
+                code: unsafe { GetLastError() },
+            });
+        }
+        let process = OwnedProcess(raw_process);
+
+        let mut image_buffer = vec![0u16; IMAGE_PATH_CAPACITY];
+        let mut image_length = image_buffer.len() as u32;
+        let image_ok = unsafe {
+            QueryFullProcessImageNameW(
+                process.0,
+                0,
+                image_buffer.as_mut_ptr(),
+                &mut image_length,
+            )
+        };
+        if image_ok == 0 {
+            return Err(DesktopHostError::QueryImagePath {
+                code: unsafe { GetLastError() },
+            });
+        }
+        if image_length == 0 || image_length as usize > image_buffer.len() {
+            return Err(DesktopHostError::InvalidImagePath);
+        }
+        image_buffer.truncate(image_length as usize);
+        let image_path = PathBuf::from(std::ffi::OsString::from_wide(&image_buffer));
+        let image_path_text = image_path.to_string_lossy();
+        if !is_explorer_image_path(&image_path_text) {
+            return Err(DesktopHostError::UnexpectedImageName(image_path));
+        }
+
+        let mut desktop_session = 0u32;
+        if unsafe { ProcessIdToSessionId(process_id, &mut desktop_session) } == 0 {
+            return Err(DesktopHostError::QuerySession {
+                code: unsafe { GetLastError() },
+            });
+        }
+        let current_process_id = unsafe { GetCurrentProcessId() };
+        let mut host_session = 0u32;
+        if unsafe { ProcessIdToSessionId(current_process_id, &mut host_session) } == 0 {
+            return Err(DesktopHostError::QuerySession {
+                code: unsafe { GetLastError() },
+            });
+        }
+        if desktop_session != host_session {
+            return Err(DesktopHostError::SessionMismatch {
+                desktop_session,
+                host_session,
+            });
+        }
+
+        let mut creation_time = MaybeUninit::<FileTime>::uninit();
+        let mut exit_time = FileTime::default();
+        let mut kernel_time = FileTime::default();
+        let mut user_time = FileTime::default();
+        let times_ok = unsafe {
+            GetProcessTimes(
+                process.0,
+                creation_time.as_mut_ptr(),
+                &mut exit_time,
+                &mut kernel_time,
+                &mut user_time,
+            )
+        };
+        if times_ok == 0 {
+            return Err(DesktopHostError::QueryProcessTimes {
+                code: unsafe { GetLastError() },
+            });
+        }
+        let creation_time_100ns = unsafe { creation_time.assume_init() }.as_u64();
+
+        // Avoid returning an identity after the Shell window has already been replaced.
+        let verified_shell_window = unsafe { GetShellWindow() };
+        if verified_shell_window.is_null() || verified_shell_window != shell_window {
+            return Err(DesktopHostError::ShellWindowUnavailable);
+        }
+        let mut verified_process_id = 0u32;
+        let verified_thread_id =
+            unsafe { GetWindowThreadProcessId(verified_shell_window, &mut verified_process_id) };
+        if verified_thread_id == 0 || verified_process_id != process_id {
+            return Err(DesktopHostError::ShellProcessUnavailable);
+        }
+
+        // Keep raw HWND/handles out of the public snapshot; they are transient.
+        Ok(DesktopHostIdentity {
+            process_id,
+            session_id: desktop_session,
+            creation_time_100ns,
+            image_path,
+        })
+    }
+}
+
+#[cfg(test)]
+mod desktop_host_tests {
+    use super::*;
+
+    #[test]
+    fn explorer_image_path_matching_is_case_insensitive_and_separator_agnostic() {
+        assert!(is_explorer_image_path(r"C:\Windows\explorer.exe"));
+        assert!(is_explorer_image_path(r"c:\windows\EXPLORER.EXE"));
+        assert!(is_explorer_image_path("/usr/compat/Explorer.exe"));
+        assert!(!is_explorer_image_path(r"C:\Windows\explorer.exe.bak"));
+        assert!(!is_explorer_image_path(r"C:\Windows\not-explorer.exe"));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn desktop_host_discovery_is_explicitly_unsupported_off_windows() {
+        assert_eq!(
+            discover_desktop_host(),
+            Err(DesktopHostError::UnsupportedPlatform)
+        );
     }
 }

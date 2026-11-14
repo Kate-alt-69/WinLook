@@ -289,6 +289,24 @@ behaviour and real Win10/11 hot-plug verification remain open. The C89 core
 continues to accept adapter-supplied snapshots; a C host-specific enumerator is
 a separate platform task.
 
+
+### Explorer desktop-host identity probe
+
+The modern Win32 adapter resolves the Shell desktop window with
+`GetShellWindow` and uses `GetWindowThreadProcessId` to identify its
+owner. It checks the executable basename, verifies the host and BGW are in the
+same interactive session, and records PID plus process creation time. The
+creation time distinguishes a restarted Explorer instance from a PID-reuse
+case. BGW must re-probe after Explorer restart and before reconnecting.
+
+This Rust probe uses `ProcessIdToSessionId` and
+`QueryFullProcessImageNameW`, so it is a Vista-and-newer adapter, not a
+universal Windows 95–XP implementation. Legacy targets require their own
+classic Shell/process lookup and must not import these APIs unconditionally.
+The probe does not perform injection or attach a hook; it establishes the
+specific desktop process to which the later version-specific integration is
+allowed to attach.
+
 ### WLDE acceptance gates
 
 - [ ] Static wallpaper and display-change handling are specified per OS adapter.
