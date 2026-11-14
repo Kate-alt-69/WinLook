@@ -54,10 +54,11 @@ impl CustomShell {
     }
 
     fn locate_wallpaper_engine(&mut self) {
-        match browse_file(
+        match browse_file_from(
             "Locate Wallpaper Engine",
             "Wallpaper Engine executable",
             "wallpaper64.exe;wallpaper32.exe",
+            None,
         ) {
             Ok(Some(path)) => match WallpaperEngineInstall::from_executable(path) {
                 Ok(install) => {
@@ -305,7 +306,7 @@ impl Component for CustomShell {
                     ),
                 ))
                 .into(),
-            _ => View::empty(),
+            _ => StackPanel::new().into(),
         };
 
         let navigation = NavigationView::new()
