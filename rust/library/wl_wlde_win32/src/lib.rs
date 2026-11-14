@@ -512,7 +512,7 @@ impl std::error::Error for DesktopHostError {}
 
 /// Checks only the executable basename, independent of path separator style.
 pub fn is_explorer_image_path(path: &str) -> bool {
-    path.rsplit(|character| character == '\\' || character == '/')
+    path.rsplit(['\\', '/'])
         .next()
         .is_some_and(|name| name.eq_ignore_ascii_case("explorer.exe"))
 }
