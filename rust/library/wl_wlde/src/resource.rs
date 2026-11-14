@@ -22,12 +22,18 @@ pub struct ResourceSample {
 
 impl ResourceSample {
     fn peak_percent(self) -> Result<u8, ResourcePolicyError> {
-        if self.cpu_percent > 100 || self.gpu_percent > 100
-            || self.ram_percent > 100 || self.vram_percent > 100
+        if self.cpu_percent > 100
+            || self.gpu_percent > 100
+            || self.ram_percent > 100
+            || self.vram_percent > 100
         {
             return Err(ResourcePolicyError::InvalidSample);
         }
-        Ok(self.cpu_percent.max(self.gpu_percent).max(self.ram_percent).max(self.vram_percent))
+        Ok(self
+            .cpu_percent
+            .max(self.gpu_percent)
+            .max(self.ram_percent)
+            .max(self.vram_percent))
     }
 }
 
@@ -68,11 +74,21 @@ impl ResourcePolicy {
         })
     }
 
-    pub const fn optimize_at_percent(self) -> u8 { self.optimize_at_percent }
-    pub const fn suspend_at_percent(self) -> u8 { self.suspend_at_percent }
-    pub const fn recovery_below_percent(self) -> u8 { self.recovery_below_percent }
-    pub const fn enter_windows(self) -> u16 { self.enter_windows }
-    pub const fn recovery_windows(self) -> u16 { self.recovery_windows }
+    pub const fn optimize_at_percent(self) -> u8 {
+        self.optimize_at_percent
+    }
+    pub const fn suspend_at_percent(self) -> u8 {
+        self.suspend_at_percent
+    }
+    pub const fn recovery_below_percent(self) -> u8 {
+        self.recovery_below_percent
+    }
+    pub const fn enter_windows(self) -> u16 {
+        self.enter_windows
+    }
+    pub const fn recovery_windows(self) -> u16 {
+        self.recovery_windows
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,15 +101,15 @@ pub enum ResourcePolicyError {
 impl std::fmt::Display for ResourcePolicyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidThresholds => f.write_str(
-                "resource thresholds must satisfy recovery < optimize < suspend <= 100",
-            ),
-            Self::InvalidWindowCount => f.write_str(
-                "resource enter and recovery windows must be non-zero",
-            ),
-            Self::InvalidSample => f.write_str(
-                "resource utilization percentages must be between 0 and 100",
-            ),
+            Self::InvalidThresholds => {
+                f.write_str("resource thresholds must satisfy recovery < optimize < suspend <= 100")
+            }
+            Self::InvalidWindowCount => {
+                f.write_str("resource enter and recovery windows must be non-zero")
+            }
+            Self::InvalidSample => {
+                f.write_str("resource utilization percentages must be between 0 and 100")
+            }
         }
     }
 }
@@ -121,8 +137,12 @@ impl ResourceGovernor {
         }
     }
 
-    pub const fn pressure(&self) -> ResourcePressure { self.pressure }
-    pub const fn policy(&self) -> ResourcePolicy { self.policy }
+    pub const fn pressure(&self) -> ResourcePressure {
+        self.pressure
+    }
+    pub const fn policy(&self) -> ResourcePolicy {
+        self.policy
+    }
 
     /// Apply one telemetry window and return the resulting pressure state.
     pub fn update(
