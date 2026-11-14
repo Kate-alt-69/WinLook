@@ -104,3 +104,18 @@ C/library/CMakeLists.txt.
 The Rust mirror exposes both `render_adaptive_app_icon()` (allocating
 convenience) and `render_adaptive_app_icon_into()` (caller-buffer,
 allocation-free). Both produce the same packed RGBA8 tile as this C API.
+
+
+## Group lookup and background context menu
+
+The caller-owned Group set has read-only
+`wl_Lwlde_desktop_groups_find()` and
+`wl_Lwlde_desktop_group_contains()` helpers. To edit a collection, construct
+a complete candidate array and call `wl_Lwlde_desktop_groups_replace()`;
+the existing set is retained when validation fails. Member-ID storage remains
+caller-owned and the C API does not allocate.
+
+The context target `WL_LWDE_CONTEXT_DESKTOP_BACKGROUND` exposes the WLDE
+`Create Group` and `Open Desktop Settings` actions. Native Shell entries
+such as View, Sort, Refresh, New, wallpaper, Display Settings, Open and
+Properties remain owned by Windows.

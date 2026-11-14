@@ -98,6 +98,11 @@ threshold/window semantics and an explicit scene pressure setter.
 can contain application shortcuts, files and folders; it never creates a
 filesystem directory or moves/copies/renames the source item. Replacements
 validate all group IDs and item references before changing the active model.
+The Rust model also exposes transactional `add_group`, `rename_group`,
+`add_members`, `remove_members` and `ungroup` operations. Each operation
+validates the candidate set before commit; removing the last member removes the
+empty Group record without touching the Shell item. The context-action contract
+includes Create Group and Desktop Settings on an empty desktop background.
 
 `AdaptiveAppIcon` describes app-tile artwork as foreground and background
 asset references, an optional monochrome layer, a Circle/RoundedSquare/Squircle

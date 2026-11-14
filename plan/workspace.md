@@ -449,3 +449,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Rust/C behavior matches: 16–512 square output, source dimensions bounded to 4096, centered background cover crop, foreground safe-zone contain, premultiplied-alpha bilinear sampling, source-over composition and 2×2 mask coverage for Circle/RoundedSquare/Squircle.
 - The compositor is a bitmap operation only. Hosts still need Shell icon extraction/identity, monochrome tinting, DPI-aware cache policy and native icon registration. BGW must run it outside Explorer callbacks; live Shell presentation and crash-safe restore remain open.
 - Added caller-buffer parity tests, output-capacity/no-partial-write tests and docs clarifying the distinction between bitmap composition and live desktop presentation.
+
+
+## WLDE transactional desktop Group commands — 2026-11-15
+
+- Extended Rust `DesktopGroups` with transactional `add_group`, `rename_group`, `add_members`, `remove_members` and `ungroup` operations. Every changed collection passes the existing full-set validator before commit; invalid actions retain the last known-good model.
+- Removing the final member automatically removes the empty Group record; the referenced file, folder or app shortcut is never moved, copied, renamed or deleted.
+- Added stable group lookup and explicit membership queries. Unknown Groups and attempts to remove a non-member return typed errors.
+- Extended the right-click model with a Desktop Background target and WLDE actions Create Group / Open Desktop Settings. Native Shell entries and file operations remain Shell-owned.
+- Added matching C89 desktop-background action values plus read-only Group lookup/membership helpers. C89 editing continues through caller-owned candidate arrays and transactional `wl_Lwlde_desktop_groups_replace()`.
+- Re-exported `render_adaptive_app_icon_into()` from the Rust crate root so BGW can use the allocation-free compositor API described in the README.
+- Added Rust/C89 tests for the new group actions, transactional failure behaviour, lookup and desktop-background menu actions. CI validation is the next acceptance gate; this still does not implement the native Explorer presenter, popup window, persistent Group store or crash-safe icon restoration.

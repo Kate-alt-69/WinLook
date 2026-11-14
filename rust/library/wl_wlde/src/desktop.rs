@@ -162,6 +162,131 @@ impl DesktopGroups {
         Ok(())
     }
 
+    /// Adds a new virtual group after validating every referenced item.
+    /// Invalid replacements leave the last known-good group set unchanged.
+    pub fn add_group(
+        &mut self,
+        group: DesktopGroup,
+        available_items: &[DesktopItemRef],
+    ) -> Result<(), DesktopModelError> {
+        let mut replacement = self.groups.clone();
+        replacement.push(group);
+        self.replace(replacement, available_items)
+    }
+
+    /// Renames a group without changing its member references.
+    pub fn rename_group(
+        &mut self,
+        group_id: &str,
+        label: impl Into<String>,
+        available_items: &[DesktopItemRef],
+    ) -> Result<(), DesktopModelError> {
+        let index = self.group_index(group_id)?;
+        let current = &self.groups[index];
+        let renamed = DesktopGroup::new(current.id.clone(), label, current.members.clone())?;
+        let mut replacement = self.groups.clone();
+        replacement[index] = renamed;
+        self.replace(replacement, available_items)
+    }
+
+    /// Adds members to a group. Duplicate or stale item IDs are rejected
+    /// before the active collection is replaced.
+    pub fn add_members(
+        &mut self,
+        group_id: &str,
+        members: impl IntoIterator<Item = DesktopItemId>,
+        available_items: &[DesktopItemRef],
+    ) -> Result<(), DesktopModelError> {
+        let index = self.group_index(group_id)?;
+        let current = &self.groups[index];
+        let mut combined = current.members.clone();
+        combined.extend(members);
+        let updated = DesktopGroup::new(
+            current.id.clone(),
+            current.label.clone(),
+            combined,
+        )?;
+        let mut replacement = self.groups.clone();
+        replacement[index] = updated;
+        self.replace(replacement, available_items)
+    }
+
+    /// Removes members from a group. Removing its final member removes the
+    /// now-empty Group record; underlying Shell items remain untouched.
+    pub fn remove_members(
+        &mut self,
+        group_id: &str,
+        members: &[DesktopItemId],
+        available_items: &[DesktopItemRef],
+    ) -> Result<(), DesktopModelError> {
+        let index = self.group_index(group_id)?;
+        if members.is_empty() {
+            return Ok(());
+        }
+
+        let mut requested = HashSet::with_capacity(members.len());
+        if members.iter().any(|member| !requested.insert(member.clone())) {
+            return Err(DesktopModelError::DuplicateMember);
+        }
+
+        let current = &self.groups[index];
+        if members.iter().any(|member| !current.members.contains(member)) {
+            return Err(DesktopModelError::MemberNotInGroup);
+        }
+
+        let remaining = current
+            .members
+            .iter()
+            .filter(|member| !requested.contains(*member))
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut replacement = self.groups.clone();
+        if remaining.is_empty() {
+            replacement.remove(index);
+        } else {
+            replacement[index] = DesktopGroup::new(
+                current.id.clone(),
+                current.label.clone(),
+                remaining,
+            )?;
+        }
+        self.replace(replacement, available_items)
+    }
+
+    /// Removes only the virtual Group record. It never removes its Shell items.
+    pub fn ungroup(
+        &mut self,
+        group_id: &str,
+        available_items: &[DesktopItemRef],
+    ) -> Result<(), DesktopModelError> {
+        let index = self.group_index(group_id)?;
+        let mut replacement = self.groups.clone();
+        replacement.remove(index);
+        self.replace(replacement, available_items)
+    }
+
+    /// Looks up a group by its stable ID.
+    pub fn get(&self, group_id: &str) -> Option<&DesktopGroup> {
+        self.groups.iter().find(|group| group.id() == group_id)
+    }
+
+    /// Checks membership and reports an unknown Group explicitly.
+    pub fn is_member(
+        &self,
+        group_id: &str,
+        item_id: &DesktopItemId,
+    ) -> Result<bool, DesktopModelError> {
+        let group = self.get(group_id).ok_or(DesktopModelError::UnknownGroup)?;
+        Ok(group.members().contains(item_id))
+    }
+
+    fn group_index(&self, group_id: &str) -> Result<usize, DesktopModelError> {
+        self.groups
+            .iter()
+            .position(|group| group.id() == group_id)
+            .ok_or(DesktopModelError::UnknownGroup)
+    }
+
     pub fn groups(&self) -> &[DesktopGroup] {
         &self.groups
     }
@@ -367,6 +492,7 @@ pub enum DesktopContextTarget {
     Folder,
     Application,
     Group,
+    DesktopBackground,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -380,6 +506,8 @@ pub enum DesktopContextAction {
     RenameGroup,
     Ungroup,
     Properties,
+    CreateGroup,
+    OpenDesktopSettings,
 }
 
 const FILE_CONTEXT_ACTIONS: &[DesktopContextAction] = &[
@@ -413,6 +541,10 @@ const GROUP_CONTEXT_ACTIONS: &[DesktopContextAction] = &[
     DesktopContextAction::Ungroup,
     DesktopContextAction::Properties,
 ];
+const DESKTOP_BACKGROUND_CONTEXT_ACTIONS: &[DesktopContextAction] = &[
+    DesktopContextAction::CreateGroup,
+    DesktopContextAction::OpenDesktopSettings,
+];
 
 /// Returns WLDE's type-aware right-click action contract. The Shell adapter
 /// remains responsible for invoking native verbs and preserving OS behaviour.
@@ -436,6 +568,7 @@ pub fn desktop_context_actions(
             }
         }
         DesktopContextTarget::Group => GROUP_CONTEXT_ACTIONS,
+        DesktopContextTarget::DesktopBackground => DESKTOP_BACKGROUND_CONTEXT_ACTIONS,
     }
 }
 
@@ -455,6 +588,8 @@ pub enum DesktopModelError {
     EmptyAssetReference,
     AssetReferenceTooLong,
     InvalidSafeZone,
+    UnknownGroup,
+    MemberNotInGroup,
 }
 
 impl std::fmt::Display for DesktopModelError {
@@ -484,6 +619,8 @@ impl std::fmt::Display for DesktopModelError {
             Self::InvalidSafeZone => {
                 f.write_str("adaptive icon safe zone must be between 48 and 72 percent")
             }
+            Self::UnknownGroup => f.write_str("desktop Group does not exist"),
+            Self::MemberNotInGroup => f.write_str("desktop item is not a member of this Group"),
         }
     }
 }
@@ -600,6 +737,80 @@ mod tests {
     }
 
     #[test]
+    fn group_commands_create_rename_add_remove_and_ungroup_transactionally() {
+        let items = desktop_items();
+        let mut groups = DesktopGroups::default();
+        let group = DesktopGroup::new(
+            "group:work",
+            "Work",
+            vec![DesktopItemId::new("app:editor").unwrap()],
+        )
+        .unwrap();
+
+        groups.add_group(group, &items).unwrap();
+        assert_eq!(groups.get("group:work").unwrap().label(), "Work");
+        groups.rename_group("group:work", "Projects", &items).unwrap();
+        assert_eq!(groups.get("group:work").unwrap().label(), "Projects");
+
+        let file_id = DesktopItemId::new("file:notes").unwrap();
+        groups.add_members("group:work", [file_id.clone()], &items).unwrap();
+        assert!(groups.is_member("group:work", &file_id).unwrap());
+
+        let before_duplicate = groups.clone();
+        assert_eq!(
+            groups.add_members("group:work", [file_id.clone()], &items),
+            Err(DesktopModelError::DuplicateMember)
+        );
+        assert_eq!(groups, before_duplicate);
+
+        groups.remove_members("group:work", &[file_id], &items).unwrap();
+        let app_id = DesktopItemId::new("app:editor").unwrap();
+        groups.remove_members("group:work", &[app_id], &items).unwrap();
+        assert!(groups.is_empty());
+
+        groups.add_group(
+            DesktopGroup::new(
+                "group:temporary",
+                "Temporary",
+                vec![DesktopItemId::new("folder:assets").unwrap()],
+            ).unwrap(),
+            &items,
+        ).unwrap();
+        groups.ungroup("group:temporary", &items).unwrap();
+        assert!(groups.is_empty());
+        assert_eq!(groups.ungroup("group:missing", &items), Err(DesktopModelError::UnknownGroup));
+    }
+
+    #[test]
+    fn group_mutations_reject_missing_members_without_losing_previous_state() {
+        let items = desktop_items();
+        let mut groups = DesktopGroups::new(
+            vec![DesktopGroup::new(
+                "group:work",
+                "Work",
+                vec![DesktopItemId::new("app:editor").unwrap()],
+            ).unwrap()],
+            &items,
+        ).unwrap();
+        let before = groups.clone();
+
+        assert_eq!(
+            groups.remove_members(
+                "group:work",
+                &[DesktopItemId::new("file:notes").unwrap()],
+                &items,
+            ),
+            Err(DesktopModelError::MemberNotInGroup)
+        );
+        assert_eq!(groups, before);
+        assert_eq!(
+            groups.rename_group("group:missing", "New name", &items),
+            Err(DesktopModelError::UnknownGroup)
+        );
+        assert_eq!(groups, before);
+    }
+
+    #[test]
     fn adaptive_app_icons_keep_separate_layers_and_validate_safe_zone() {
         let layers = AppIconLayers::new(
             "asset:editor-foreground",
@@ -646,5 +857,10 @@ mod tests {
         let group_actions = desktop_context_actions(DesktopContextTarget::Group, false);
         assert!(group_actions.contains(&DesktopContextAction::Ungroup));
         assert!(group_actions.contains(&DesktopContextAction::RenameGroup));
+
+        let background_actions =
+            desktop_context_actions(DesktopContextTarget::DesktopBackground, false);
+        assert!(background_actions.contains(&DesktopContextAction::CreateGroup));
+        assert!(background_actions.contains(&DesktopContextAction::OpenDesktopSettings));
     }
 }

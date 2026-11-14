@@ -255,6 +255,13 @@ int main(void)
             desktop_items, 3U) == WL_LWDE_OK);
         assert(desktop_groups.count == 1U);
         assert(strcmp(desktop_groups.groups[0].id, "group:work") == 0);
+        assert(wl_Lwlde_desktop_groups_find(&desktop_groups, "group:work") ==
+            &desktop_groups.groups[0]);
+        assert(wl_Lwlde_desktop_groups_find(&desktop_groups, "group:missing") == 0);
+        assert(wl_Lwlde_desktop_group_contains(&desktop_groups.groups[0],
+            "app:editor") == 1);
+        assert(wl_Lwlde_desktop_group_contains(&desktop_groups.groups[0],
+            "file:notes") == 0);
 
         group_members[1] = "file:missing";
         assert(wl_Lwlde_desktop_groups_replace(&desktop_groups, group_input, 1U,
@@ -329,6 +336,13 @@ int main(void)
         assert(wl_Lwlde_desktop_context_actions(
             WL_LWDE_CONTEXT_GROUP, 0U, context_actions, 5U) == 5U);
         assert(context_actions[3] == WL_LWDE_CONTEXT_UNGROUP);
+        context_count = wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_DESKTOP_BACKGROUND, 0U, 0, 0U);
+        assert(context_count == 2U);
+        assert(wl_Lwlde_desktop_context_actions(
+            WL_LWDE_CONTEXT_DESKTOP_BACKGROUND, 0U, context_actions, 5U) == 2U);
+        assert(context_actions[0] == WL_LWDE_CONTEXT_CREATE_GROUP);
+        assert(context_actions[1] == WL_LWDE_CONTEXT_OPEN_DESKTOP_SETTINGS);
     }
 
     puts("wl_Lwlde C89 core tests passed");

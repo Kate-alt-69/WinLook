@@ -26,9 +26,9 @@ mod store;
 mod wallpaper_engine;
 
 pub use adaptive_icon::{
-    render_adaptive_app_icon, AdaptiveIconImageView, AdaptiveIconRenderError,
-    MAX_ADAPTIVE_ICON_OUTPUT_SIZE, MAX_ADAPTIVE_ICON_SOURCE_DIMENSION,
-    MIN_ADAPTIVE_ICON_OUTPUT_SIZE,
+    render_adaptive_app_icon, render_adaptive_app_icon_into, AdaptiveIconImageView,
+    AdaptiveIconRenderError, MAX_ADAPTIVE_ICON_OUTPUT_SIZE,
+    MAX_ADAPTIVE_ICON_SOURCE_DIMENSION, MIN_ADAPTIVE_ICON_OUTPUT_SIZE,
 };
 pub use desktop::{
     desktop_context_actions, AdaptiveAppIcon, AppIconLayers, AppIconMask, DesktopContextAction,

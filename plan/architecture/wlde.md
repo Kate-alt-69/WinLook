@@ -80,6 +80,9 @@ Per-app profiles: Normal, Optimize, Suspend. Optimize reduces target frame caden
 - Clicking opens a borderless popup expanding around the Group icon in available screen space; popup shows original items, activation delegated to Windows/Shell.
 - Crash/disable/uninstall restores original icon visibility.
 - Local Groups are machine-specific and excluded from WLT.
+- Rust `DesktopGroups` now exposes transactional create/add/rename/member-add/member-remove/ungroup commands over opaque IDs. Removing the last member removes the empty virtual Group record; no underlying Shell item is moved, copied or deleted.
+- The right-click contract includes Create Group and Desktop Settings for an empty desktop background. File, folder, application and Group actions remain type-aware; native Open, Properties, Refresh, Sort, View and file operations remain Windows Shell-owned.
+- The C89 API exposes read-only group lookup/membership helpers and uses caller-built candidate sets with `wl_Lwlde_desktop_groups_replace()` for transactional updates.
 - Fancy Groups are a separate portable concept not yet specified.
 
 ## Wallpaper formats

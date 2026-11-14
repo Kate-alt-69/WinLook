@@ -358,6 +358,14 @@ wl_Lwlde_result wl_Lwlde_desktop_groups_replace(
     const wl_Lwlde_desktop_item_ref *available_items,
     unsigned int available_item_count
 );
+const wl_Lwlde_desktop_group *wl_Lwlde_desktop_groups_find(
+    const wl_Lwlde_desktop_groups *groups,
+    const char *group_id
+);
+int wl_Lwlde_desktop_group_contains(
+    const wl_Lwlde_desktop_group *group,
+    const char *item_id
+);
 
 typedef enum wl_Lwlde_app_icon_mask {
     WL_LWDE_APP_ICON_CIRCLE = 0,
@@ -415,7 +423,8 @@ typedef enum wl_Lwlde_desktop_context_target {
     WL_LWDE_CONTEXT_FILE = 0,
     WL_LWDE_CONTEXT_FOLDER = 1,
     WL_LWDE_CONTEXT_APPLICATION = 2,
-    WL_LWDE_CONTEXT_GROUP = 3
+    WL_LWDE_CONTEXT_GROUP = 3,
+    WL_LWDE_CONTEXT_DESKTOP_BACKGROUND = 4
 } wl_Lwlde_desktop_context_target;
 
 typedef enum wl_Lwlde_desktop_context_action {
@@ -427,13 +436,17 @@ typedef enum wl_Lwlde_desktop_context_action {
     WL_LWDE_CONTEXT_ADD_GROUP_MEMBERS = 5,
     WL_LWDE_CONTEXT_RENAME_GROUP = 6,
     WL_LWDE_CONTEXT_UNGROUP = 7,
-    WL_LWDE_CONTEXT_PROPERTIES = 8
+    WL_LWDE_CONTEXT_PROPERTIES = 8,
+    WL_LWDE_CONTEXT_CREATE_GROUP = 9,
+    WL_LWDE_CONTEXT_OPEN_DESKTOP_SETTINGS = 10
 } wl_Lwlde_desktop_context_action;
 
 /*
  * Returns the required action count when actions_out is NULL. If a buffer is
  * supplied, it must have action_capacity slots; insufficient capacity returns
  * zero without writing any actions. Native Open/Properties remain Shell-owned.
+ * Desktop-background entries provide WLDE Create Group and Desktop Settings;
+ * native View, Sort, Refresh, New, wallpaper and Display Settings remain Shell-owned.
  */
 unsigned int wl_Lwlde_desktop_context_actions(
     wl_Lwlde_desktop_context_target target,

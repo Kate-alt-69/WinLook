@@ -611,6 +611,50 @@ wl_Lwlde_result wl_Lwlde_desktop_groups_replace(
     return WL_LWDE_OK;
 }
 
+
+const wl_Lwlde_desktop_group *wl_Lwlde_desktop_groups_find(
+    const wl_Lwlde_desktop_groups *groups,
+    const char *group_id
+)
+{
+    unsigned int index;
+    if (groups == 0 || groups->groups == 0 ||
+        groups->count > groups->capacity ||
+        groups->count > WL_LWDE_MAX_DESKTOP_GROUPS ||
+        !wl_Lwlde_text_valid(group_id, WL_LWDE_DESKTOP_ID_CAPACITY)) {
+        return 0;
+    }
+    for (index = 0U; index < groups->count; ++index) {
+        if (strcmp(groups->groups[index].id, group_id) == 0) {
+            return &groups->groups[index];
+        }
+    }
+    return 0;
+}
+
+int wl_Lwlde_desktop_group_contains(
+    const wl_Lwlde_desktop_group *group,
+    const char *item_id
+)
+{
+    unsigned int index;
+    if (group == 0 || group->member_ids == 0 ||
+        group->member_count > WL_LWDE_MAX_DESKTOP_GROUP_MEMBERS ||
+        !wl_Lwlde_text_valid(item_id, WL_LWDE_DESKTOP_ID_CAPACITY)) {
+        return 0;
+    }
+    for (index = 0U; index < group->member_count; ++index) {
+        if (!wl_Lwlde_text_valid(group->member_ids[index],
+                WL_LWDE_DESKTOP_ID_CAPACITY)) {
+            return 0;
+        }
+        if (strcmp(group->member_ids[index], item_id) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 wl_Lwlde_result wl_Lwlde_adaptive_app_icon_validate(
     const wl_Lwlde_adaptive_app_icon *icon
 )
@@ -959,6 +1003,10 @@ unsigned int wl_Lwlde_desktop_context_actions(
         WL_LWDE_CONTEXT_UNGROUP,
         WL_LWDE_CONTEXT_PROPERTIES
     };
+    static const wl_Lwlde_desktop_context_action desktop_background_actions[2] = {
+        WL_LWDE_CONTEXT_CREATE_GROUP,
+        WL_LWDE_CONTEXT_OPEN_DESKTOP_SETTINGS
+    };
     const wl_Lwlde_desktop_context_action *selected;
     unsigned int count;
 
@@ -987,6 +1035,10 @@ unsigned int wl_Lwlde_desktop_context_actions(
         case WL_LWDE_CONTEXT_GROUP:
             selected = group_actions;
             count = 5U;
+            break;
+        case WL_LWDE_CONTEXT_DESKTOP_BACKGROUND:
+            selected = desktop_background_actions;
+            count = 2U;
             break;
         default:
             return 0U;
