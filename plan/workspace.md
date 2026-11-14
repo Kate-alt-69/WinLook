@@ -440,3 +440,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Rust and C89 retain matching background cover-crop, foreground safe-zone contain, premultiplied-alpha bilinear sampling, source-over blend and 2×2 mask coverage for Circle/RoundedSquare/Squircle.
 - BGW's rendering worker should reuse a tile buffer/cache and call the `*_into` function; the compositor must remain outside the Explorer in-process callback.
 - The optional monochrome asset remains metadata only; no theme tinting, image decoding/extraction, icon registration or live Explorer tile display is implemented by this change.
+
+
+## WLDE adaptive app-icon reusable output — 2026-11-15
+
+- The shared C89 core already exposes caller-owned RGBA output through `wl_Lwlde_adaptive_app_icon_render_rgba()`.
+- Added Rust `render_adaptive_app_icon_into()` to match that no-allocation contract. It writes into a caller-owned reusable RGBA buffer, validates capacity before writing and leaves any trailing capacity unchanged. The existing `render_adaptive_app_icon()` allocating convenience helper now delegates to the same compositor.
+- Rust/C behavior matches: 16–512 square output, source dimensions bounded to 4096, centered background cover crop, foreground safe-zone contain, premultiplied-alpha bilinear sampling, source-over composition and 2×2 mask coverage for Circle/RoundedSquare/Squircle.
+- The compositor is a bitmap operation only. Hosts still need Shell icon extraction/identity, monochrome tinting, DPI-aware cache policy and native icon registration. BGW must run it outside Explorer callbacks; live Shell presentation and crash-safe restore remain open.
+- Added caller-buffer parity tests, output-capacity/no-partial-write tests and docs clarifying the distinction between bitmap composition and live desktop presentation.

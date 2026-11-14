@@ -20,11 +20,7 @@ pub struct AdaptiveIconImageView<'a> {
 }
 
 impl<'a> AdaptiveIconImageView<'a> {
-    pub fn new(
-        width: u32,
-        height: u32,
-        pixels: &'a [u8],
-    ) -> Result<Self, AdaptiveIconRenderError> {
+    pub fn new(width: u32, height: u32, pixels: &'a [u8]) -> Result<Self, AdaptiveIconRenderError> {
         if width == 0
             || height == 0
             || width > MAX_ADAPTIVE_ICON_SOURCE_DIMENSION
@@ -136,8 +132,8 @@ pub fn render_adaptive_app_icon_into(
     }
 
     let safe_zone = output_size as f64 * f64::from(icon.safe_zone_percent()) / 100.0;
-    let foreground_scale = (safe_zone / f64::from(foreground.width))
-        .min(safe_zone / f64::from(foreground.height));
+    let foreground_scale =
+        (safe_zone / f64::from(foreground.width)).min(safe_zone / f64::from(foreground.height));
     let foreground_width = f64::from(foreground.width) * foreground_scale;
     let foreground_height = f64::from(foreground.height) * foreground_scale;
     let foreground_left = (f64::from(output_size) - foreground_width) * 0.5;
@@ -156,12 +152,9 @@ pub fn render_adaptive_app_icon_into(
                 && destination_y >= foreground_top
                 && destination_y < foreground_top + foreground_height
             {
-                let foreground_x =
-                    (destination_x - foreground_left) / foreground_scale - 0.5;
-                let foreground_y =
-                    (destination_y - foreground_top) / foreground_scale - 0.5;
-                let foreground_pixel =
-                    sample_bilinear(foreground, foreground_x, foreground_y);
+                let foreground_x = (destination_x - foreground_left) / foreground_scale - 0.5;
+                let foreground_y = (destination_y - foreground_top) / foreground_scale - 0.5;
+                let foreground_pixel = sample_bilinear(foreground, foreground_x, foreground_y);
                 pixel = alpha_over(pixel, foreground_pixel);
             }
 
@@ -283,10 +276,8 @@ fn mask_coverage(mask: AppIconMask, x: u32, y: u32, size: u32) -> u8 {
     let mut covered = 0;
     for sample_y in SAMPLES {
         for sample_x in SAMPLES {
-            let normalized_x =
-                ((f64::from(x) + sample_x) / f64::from(size)) * 2.0 - 1.0;
-            let normalized_y =
-                ((f64::from(y) + sample_y) / f64::from(size)) * 2.0 - 1.0;
+            let normalized_x = ((f64::from(x) + sample_x) / f64::from(size)) * 2.0 - 1.0;
+            let normalized_y = ((f64::from(y) + sample_y) / f64::from(size)) * 2.0 - 1.0;
             if inside_mask(mask, normalized_x, normalized_y) {
                 covered += 1;
             }
@@ -368,7 +359,10 @@ mod tests {
         let center = (32 * 64 + 32) * 4;
         let outside_safe_zone = (8 * 64 + 32) * 4;
         assert_eq!(&rendered[center..center + 3], &[240, 200, 160]);
-        assert_eq!(&rendered[outside_safe_zone..outside_safe_zone + 3], &[12, 24, 36]);
+        assert_eq!(
+            &rendered[outside_safe_zone..outside_safe_zone + 3],
+            &[12, 24, 36]
+        );
     }
 
     #[test]
@@ -376,24 +370,14 @@ mod tests {
         let background = AdaptiveIconImageView::new(1, 1, &[20, 40, 60, 255]).unwrap();
         let foreground = AdaptiveIconImageView::new(1, 1, &[200, 160, 120, 128]).unwrap();
         let model = icon(AppIconMask::Circle);
-        let expected = render_adaptive_app_icon(
-            &model,
-            background,
-            foreground,
-            32,
-        )
-        .unwrap();
+        let expected = render_adaptive_app_icon(&model, background, foreground, 32).unwrap();
         let mut caller_buffer = vec![0xCC; expected.len() + 12];
-        render_adaptive_app_icon_into(
-            &model,
-            background,
-            foreground,
-            32,
-            &mut caller_buffer,
-        )
-        .unwrap();
+        render_adaptive_app_icon_into(&model, background, foreground, 32, &mut caller_buffer)
+            .unwrap();
         assert_eq!(&caller_buffer[..expected.len()], expected.as_slice());
-        assert!(caller_buffer[expected.len()..].iter().all(|byte| *byte == 0xCC));
+        assert!(caller_buffer[expected.len()..]
+            .iter()
+            .all(|byte| *byte == 0xCC));
     }
 
     #[test]

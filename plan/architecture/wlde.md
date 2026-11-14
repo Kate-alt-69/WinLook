@@ -347,7 +347,8 @@ allowed to attach.
 - [ ] Groups remain disabled unless original icon presentation is restored after crash/disable/uninstall.
 - [ ] Explorer Desktop Bridge is hosted by BGW/WLDE for every verified Explorer-owned desktop session across supported Windows generations.
 - [ ] Per-version adapters detect the actual desktop owner, monitor Explorer restart and preserve native fallback on unknown builds.
-- [ ] Adaptive app-icon extraction, safe-zone rendering and icon-theme fallback work without rewriting source assets.
+- [x] Portable Rust/C89 adaptive app-icon bitmap composition accepts decoded RGBA layers, safe-zone fitting, alpha-aware bilinear resampling and antialiased Circle/RoundedSquare/Squircle masks without rewriting source assets.
+- [ ] Native app-icon extraction/identity mapping, monochrome theme tinting, DPI-aware cache, per-app Shell icon registration and fallback are verified on each supported OS/build.
 - [ ] WLDE right-click additions preserve native Shell verbs, accessibility, keyboard navigation and OS-version-specific menu behaviour.
 - [ ] Rainmeter compatibility is an explicit subset and licensing is reviewed.
 
@@ -364,7 +365,7 @@ The first Rust/C implementation layer now exists as paired libraries:
 - Rust owns CPUv/GPUv governor instances. C accepts non-owning references to initialized wl_Lcpuv/wl_Lgpuv governors. Estimates and completion signals remain caller-supplied admission/accounting values, not system telemetry.
 - Presentation capabilities are explicit. Interactive content remains unsupported unless an isolated adapter reports it; Groups require both virtual presentation and crash-safe restore capabilities.
 
-This is a portable scene/policy core, not a functioning desktop renderer. The branch does not yet implement OS monitor enumeration, static/animated desktop surfaces, image/video decoding, package parsing, widget execution, Store/catalogue, Rainmeter, Groups, or device-loss recovery. Do not mark the WLDE acceptance gates below complete from these portable tests.
+This is a portable scene/policy core with one bounded pixel-composition operation for app icons; it is not yet a functioning desktop/wallpaper renderer. The branch does not yet implement static/animated desktop surfaces, image/video decoding, package parsing, widget execution, the live Store/catalogue, Rainmeter or device-loss recovery. The adaptive icon compositor consumes decoded RGBA supplied by its host; it does not obtain Shell icons or register them in Explorer. Groups remain unimplemented as visible desktop objects until the native presenter and restoration path are verified. Do not mark the WLDE acceptance gates below complete from these portable tests.
 
 For Windows 8 and later, Microsoft's IDesktopWallpaper API documents setting/querying static wallpaper paths per monitor. It is not an animated frame-surface API. Windows.UI.Composition provides application visual composition, but that capability alone does not define a supported desktop-wallpaper layer behind Explorer icons. A future adapter must establish that surface/ownership contract with documented behaviour and restoration; do not assume WorkerW/Progman parenting. References: [IDesktopWallpaper::SetWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-idesktopwallpaper-setwallpaper), [IDesktopWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-idesktopwallpaper), [Windows.UI.Composition](https://learn.microsoft.com/en-us/windows/apps/develop/ui/visual-layer/).
 
