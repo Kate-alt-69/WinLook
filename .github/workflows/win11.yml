@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, github/workflow]
     paths:
+      - "rust/bgw/**"
       - "rust/win11/**"
       - "rust/library/**"
       - "Cargo.toml"
@@ -13,6 +14,7 @@ on:
   pull_request:
     branches: [main, feature/wintoys-manager-ui]
     paths:
+      - "rust/bgw/**"
       - "rust/win11/**"
       - "rust/library/**"
       - "Cargo.toml"
@@ -54,10 +56,13 @@ jobs:
           path: |
             build/.rcache
             build/rust/win11
+            build/rust/bgw
           key: ${{ runner.os }}-win11-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml') }}
           restore-keys: ${{ runner.os }}-win11-
       - name: Build win11 executable
         run: python build.py build win11
+      - name: Build BGW background runtime
+        run: python build.py build bgw
       - name: Package win11 preview
         run: python build.py package win11
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

@@ -1,0 +1,14 @@
+[package]
+name = "winlook-bgw"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.77"
+publish = false
+
+[[bin]]
+name = "winlook-bg"
+path = "src/main.rs"
+doc = false
+
+[dependencies]
+wl_bgw_runtime = { version = "0.1.0-alpha.1", path = "../library/wl_bgw_runtime" }

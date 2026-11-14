@@ -6,6 +6,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::fmt;
+use std::time::Duration;
 
 use wl_wlde::{MonitorTopology, TopologyError};
 
@@ -101,6 +102,7 @@ pub fn refresh_topology(current: &mut MonitorTopology) -> Result<(), MonitorErro
 mod platform {
     use std::ffi::c_void;
     use std::mem::{size_of, zeroed};
+    use std::ptr;
 
     use wl_wlde::{Monitor, MonitorTopology, Rect, MAX_MONITORS};
 
@@ -399,7 +401,6 @@ mod tests {
     }
 }
 
-
 /// Stable-enough identity for the Explorer process that owns this session's desktop.
 ///
 /// A PID alone is not a durable process identity because Windows can recycle it.
@@ -438,16 +439,27 @@ pub enum DesktopHostError {
     UnsupportedPlatform,
     ShellWindowUnavailable,
     ShellProcessUnavailable,
-    OpenProcess { code: u32 },
-    QueryImagePath { code: u32 },
+    OpenProcess {
+        code: u32,
+    },
+    QueryImagePath {
+        code: u32,
+    },
     InvalidImagePath,
     UnexpectedImageName(std::path::PathBuf),
-    QuerySession { code: u32 },
+    QuerySession {
+        code: u32,
+    },
     SessionMismatch {
         desktop_session: u32,
         host_session: u32,
     },
-    QueryProcessTimes { code: u32 },
+    QueryProcessTimes {
+        code: u32,
+    },
+    WaitForProcess {
+        code: u32,
+    },
 }
 
 impl fmt::Display for DesktopHostError {
@@ -489,6 +501,9 @@ impl fmt::Display for DesktopHostError {
             Self::QueryProcessTimes { code } => {
                 write!(f, "could not read the Shell process creation time: Win32 error {code:#x}")
             }
+            Self::WaitForProcess { code } => {
+                write!(f, "waiting for the Shell process failed: Win32 result {code:#x}")
+            }
         }
     }
 }
@@ -525,6 +540,62 @@ pub fn is_same_desktop_host(identity: &DesktopHostIdentity) -> Result<bool, Desk
     Ok(current == *identity)
 }
 
+
+/// A waitable reference to the current desktop-owning Explorer process.
+///
+/// The process handle is opened for query/synchronization only and is closed
+/// automatically when this monitor is dropped. It does not keep Explorer alive.
+pub struct DesktopHostMonitor {
+    identity: DesktopHostIdentity,
+    #[cfg(windows)]
+    process: desktop_host_platform::ProcessMonitor,
+}
+
+impl DesktopHostMonitor {
+    /// Process identity captured when this monitor was created.
+    pub fn identity(&self) -> &DesktopHostIdentity {
+        &self.identity
+    }
+
+    /// Waits for this Explorer process to exit.
+    ///
+    /// Returns true when the process handle is signaled, false on timeout.
+    /// The caller should also re-check the Shell window owner after a timeout,
+    /// because the Shell desktop window can be replaced without a process exit.
+    pub fn wait_for_exit(&self, timeout: Duration) -> Result<bool, DesktopHostError> {
+        #[cfg(windows)]
+        {
+            let timeout_ms = timeout.as_millis().min(u128::from(u32::MAX - 1)) as u32;
+            self.process.wait_for_exit(timeout_ms)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = timeout;
+            Err(DesktopHostError::UnsupportedPlatform)
+        }
+    }
+}
+
+/// Discovers and opens a waitable handle to the current desktop-owning Explorer process.
+///
+/// The monitor keeps only PROCESS_QUERY_INFORMATION and SYNCHRONIZE rights.
+/// It does not request memory access, thread creation, termination or write access.
+#[cfg(windows)]
+pub fn monitor_desktop_host() -> Result<DesktopHostMonitor, DesktopHostError> {
+    let identity = discover_desktop_host()?;
+    let process = desktop_host_platform::monitor(&identity)?;
+    if !is_same_desktop_host(&identity)? {
+        return Err(DesktopHostError::ShellProcessUnavailable);
+    }
+    Ok(DesktopHostMonitor { identity, process })
+}
+
+/// Non-Windows builds expose the same API but never guess a desktop host.
+#[cfg(not(windows))]
+pub fn monitor_desktop_host() -> Result<DesktopHostMonitor, DesktopHostError> {
+    Err(DesktopHostError::UnsupportedPlatform)
+}
+
 #[cfg(windows)]
 mod desktop_host_platform {
     use std::ffi::c_void;
@@ -538,7 +609,11 @@ mod desktop_host_platform {
 
     // PROCESS_QUERY_INFORMATION is required by ProcessIdToSessionId and GetProcessTimes.
     const PROCESS_QUERY_INFORMATION: u32 = 0x0400;
+    const SYNCHRONIZE: u32 = 0x0010_0000;
     const IMAGE_PATH_CAPACITY: usize = 32_768;
+    const WAIT_OBJECT_0: u32 = 0x0000_0000;
+    const WAIT_TIMEOUT: u32 = 0x0000_0102;
+    const WAIT_FAILED: u32 = 0xFFFF_FFFF;
 
     #[repr(C)]
     #[derive(Clone, Copy, Default)]
@@ -591,6 +666,67 @@ mod desktop_host_platform {
         ) -> i32;
         fn CloseHandle(handle: Handle) -> i32;
         fn GetLastError() -> u32;
+        fn WaitForSingleObject(handle: Handle, milliseconds: u32) -> u32;
+    }
+
+    fn process_creation_time(process: Handle) -> Result<u64, DesktopHostError> {
+        let mut creation_time = MaybeUninit::<FileTime>::uninit();
+        let mut exit_time = FileTime::default();
+        let mut kernel_time = FileTime::default();
+        let mut user_time = FileTime::default();
+        let times_ok = unsafe {
+            GetProcessTimes(
+                process,
+                creation_time.as_mut_ptr(),
+                &mut exit_time,
+                &mut kernel_time,
+                &mut user_time,
+            )
+        };
+        if times_ok == 0 {
+            return Err(DesktopHostError::QueryProcessTimes {
+                code: unsafe { GetLastError() },
+            });
+        }
+        Ok(unsafe { creation_time.assume_init() }.as_u64())
+    }
+
+    pub(super) struct ProcessMonitor(OwnedProcess);
+
+    impl ProcessMonitor {
+        pub(super) fn wait_for_exit(&self, timeout_ms: u32) -> Result<bool, DesktopHostError> {
+            match unsafe { WaitForSingleObject(self.0.0, timeout_ms) } {
+                WAIT_OBJECT_0 => Ok(true),
+                WAIT_TIMEOUT => Ok(false),
+                WAIT_FAILED => Err(DesktopHostError::WaitForProcess {
+                    code: unsafe { GetLastError() },
+                }),
+                code => Err(DesktopHostError::WaitForProcess { code }),
+            }
+        }
+    }
+
+    pub(super) fn monitor(
+        identity: &DesktopHostIdentity,
+    ) -> Result<ProcessMonitor, DesktopHostError> {
+        let raw_process = unsafe {
+            OpenProcess(
+                PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
+                0,
+                identity.process_id,
+            )
+        };
+        if raw_process.is_null() {
+            return Err(DesktopHostError::OpenProcess {
+                code: unsafe { GetLastError() },
+            });
+        }
+        let process = OwnedProcess(raw_process);
+        let creation_time_100ns = process_creation_time(process.0)?;
+        if creation_time_100ns != identity.creation_time_100ns {
+            return Err(DesktopHostError::ShellProcessUnavailable);
+        }
+        Ok(ProcessMonitor(process))
     }
 
     pub(super) fn discover() -> Result<DesktopHostIdentity, DesktopHostError> {
@@ -605,9 +741,7 @@ mod desktop_host_platform {
             return Err(DesktopHostError::ShellProcessUnavailable);
         }
 
-        let raw_process = unsafe {
-            OpenProcess(PROCESS_QUERY_INFORMATION, 0, process_id)
-        };
+        let raw_process = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION, 0, process_id) };
         if raw_process.is_null() {
             return Err(DesktopHostError::OpenProcess {
                 code: unsafe { GetLastError() },
@@ -617,14 +751,7 @@ mod desktop_host_platform {
 
         let mut image_buffer = vec![0u16; IMAGE_PATH_CAPACITY];
         let mut image_length = image_buffer.len() as u32;
-        let image_ok = unsafe {
-            QueryFullProcessImageNameW(
-                process.0,
-                0,
-                image_buffer.as_mut_ptr(),
-                &mut image_length,
-            )
-        };
+        let image_ok = unsafe { QueryFullProcessImageNameW(process.0, 0, image_buffer.as_mut_ptr(), &mut image_length) };
         if image_ok == 0 {
             return Err(DesktopHostError::QueryImagePath {
                 code: unsafe { GetLastError() },
@@ -660,25 +787,7 @@ mod desktop_host_platform {
             });
         }
 
-        let mut creation_time = MaybeUninit::<FileTime>::uninit();
-        let mut exit_time = FileTime::default();
-        let mut kernel_time = FileTime::default();
-        let mut user_time = FileTime::default();
-        let times_ok = unsafe {
-            GetProcessTimes(
-                process.0,
-                creation_time.as_mut_ptr(),
-                &mut exit_time,
-                &mut kernel_time,
-                &mut user_time,
-            )
-        };
-        if times_ok == 0 {
-            return Err(DesktopHostError::QueryProcessTimes {
-                code: unsafe { GetLastError() },
-            });
-        }
-        let creation_time_100ns = unsafe { creation_time.assume_init() }.as_u64();
+        let creation_time_100ns = process_creation_time(process.0)?;
 
         // Avoid returning an identity after the Shell window has already been replaced.
         let verified_shell_window = unsafe { GetShellWindow() };
@@ -717,10 +826,14 @@ mod desktop_host_tests {
 
     #[cfg(not(windows))]
     #[test]
-    fn desktop_host_discovery_is_explicitly_unsupported_off_windows() {
+    fn desktop_host_discovery_and_monitor_are_unsupported_off_windows() {
         assert_eq!(
             discover_desktop_host(),
             Err(DesktopHostError::UnsupportedPlatform)
         );
+        assert!(matches!(
+            monitor_desktop_host(),
+            Err(DesktopHostError::UnsupportedPlatform)
+        ));
     }
 }

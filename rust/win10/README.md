@@ -8,4 +8,14 @@ Build from the repository root on Windows:
 cargo build --release -p winlook-win10
 ```
 
-The current binary is a UI prototype only. BGW startup, IPC, Windows 10 capability adapters and the full application runtime are future implementation stages.
+The `winlook.exe` binary starts the Manager UI. BGW is a separate,
+UI-independent executable shared by Windows 10 and Windows 11:
+
+```sh
+python build.py build bgw
+```
+
+This builds `winlook.bg.exe` under `build/rust/bgw/winlook-bgw/release/`.
+The initial BGW slice monitors the Explorer desktop-host process only.
+Windows startup registration, Manager IPC, persistent configuration, the
+in-process Shell bridge and actual desktop presentation remain future stages.

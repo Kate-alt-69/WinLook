@@ -6,6 +6,7 @@ members = [
     "rust/library/wl_gpuv",
     "rust/library/wl_wlde",
     "rust/library/wl_wlde_win32",
+    "rust/library/wl_bgw_runtime",
     "rust/library/wl_ui",
     "rust/library/wl_ui/core",
     "rust/library/wl_ui/backends/win32",
@@ -14,6 +15,7 @@ members = [
     "rust/library/wl_ui/backends/windows11",
     "rust/win10",
     "rust/win11",
+    "rust/bgw",
 ]
 exclude = [
     "rust/adapters/wl_ui_tauri2",

@@ -65,6 +65,15 @@ Because the probe uses `ProcessIdToSessionId` and
 `QueryFullProcessImageNameW`, that modern Rust implementation is Vista+;
 pre-Vista systems need a separate classic adapter.
 
+The independent `winlook-bgw` package now hosts the first runtime monitor.
+It holds a query/synchronization-only Explorer process handle, waits rather
+than polling continuously, checks the current Shell desktop owner every five
+seconds, and rediscovers after Explorer exit or host replacement. It emits
+status through `OutputDebugStringW`; this is not persistent logging. BGW
+startup registration, authenticated Manager IPC, configuration persistence,
+Shell extension/hook installation, icon suppression/restoration, Group
+presentation and wallpaper rendering remain unimplemented.
+
 ## Manager UI coverage
 
 The shared Manager navigation now includes a dedicated destination for each

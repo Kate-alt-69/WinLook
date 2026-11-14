@@ -1,0 +1,10 @@
+[package]
+name = "wl_bgw_runtime"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.77"
+description = "Initial WinLook BGW runtime host loop"
+license = "MIT"
+
+[dependencies]
+wl_wlde_win32 = { version = "0.1.0-alpha.1", path = "../wl_wlde_win32" }

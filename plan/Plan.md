@@ -892,7 +892,7 @@ This is a staged implementation sequence. The current library branch contains po
 - [ ] Complete all workflow jobs on the final staged PR and correct any findings.
 - [ ] Merge order: library foundation → Manager UI → github/workflow last.
 - [ ] Enable the Win95 self-hosted workflow only after C/win95/Makefile and a configured Open Watcom runner exist.
-- [ ] Enable BGW compilation only after explicit Cargo binary targets exist.
+- [x] Add the independent `winlook-bgw` Cargo binary target, include it in Win10/Win11 preview packages, and make the BGW workflow build/upload `winlook.bg.exe` (hosted validation pending).
 
 Detailed command, output/cache, workflow and merge contracts: [Build System and CI](architecture/build-and-ci.md).
 

@@ -290,6 +290,24 @@ continues to accept adapter-supplied snapshots; a C host-specific enumerator is
 a separate platform task.
 
 
+
+### Initial BGW Explorer host monitor
+
+The independent `winlook-bgw` Cargo target now hosts the first process monitor.
+It opens the actual desktop-owning Explorer process with query/synchronization
+rights only, verifies the process creation time, and waits on the process
+handle instead of polling continuously. BGW revalidates the Shell desktop
+window owner every five seconds and rediscovers after process exit or owner
+replacement; if no compatible Explorer desktop is present, discovery retries
+every two seconds.
+
+This is only the BGW lifecycle foundation. It does not yet load a COM extension
+or in-process hook, enumerate PIDLs, suppress native icons, draw Groups, store
+restore state, render wallpaper, register Windows startup or communicate with
+the Manager. The Explorer Desktop Bridge remains mandatory product
+infrastructure, but user item presentation stays native until the recovery
+journal and platform adapter are implemented and tested.
+
 ### Explorer desktop-host identity probe
 
 The modern Win32 adapter resolves the Shell desktop window with

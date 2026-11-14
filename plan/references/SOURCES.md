@@ -236,3 +236,17 @@ Implementation consequence: the modern Rust probe is Vista+ because it depends o
 | ID | Source | Claim supported | Scope / caveat |
 |---|---|---|---|
 | WLDE-015 | [Process Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights), [ProcessIdToSessionId](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-processidtosessionid), [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew), [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) | The adapter must open the target with PROCESS_QUERY_INFORMATION for session lookup; this right also implies the limited-query right needed by image-path lookup, and permits reading process creation time | Query-only access; it does not request VM read/write, thread creation, termination or process modification. The composed probe remains Vista+ because ProcessIdToSessionId and QueryFullProcessImageNameW are Vista+ |
+
+
+## WLDE BGW host-monitor loop — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-016 | [WaitForSingleObject](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject), [Process Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights) | A process handle can be waited on until it becomes signaled; the handle must include SYNCHRONIZE | The BGW monitor thread does not create windows or own a message loop. The wait is bounded to five seconds so it can revalidate the current Shell desktop owner |
+| WLDE-017 | [OutputDebugStringW](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-outputdebugstringw) | Emits a string to the system debugger when one is active | Used only as initial prototype diagnostics; not a persistent log or guaranteed user-visible status channel |
+
+The monitor requests PROCESS_QUERY_INFORMATION for process/session/time queries
+and SYNCHRONIZE for process waiting. It does not request memory-read/write,
+thread-creation, termination or process-modification access. While no
+compatible Explorer-owned desktop is available, BGW retries discovery every
+two seconds. It drops the old process handle before rediscovery.

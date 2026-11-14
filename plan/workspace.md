@@ -414,6 +414,20 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Opens the target process with PROCESS_QUERY_INFORMATION only, as required by ProcessIdToSessionId; this also supplies limited-query access for QueryFullProcessImageNameW and GetProcessTimes. It does not request process memory, thread creation, termination or modification rights.
 - Exported the discovery API from the shared Win32 backend and the Windows 10/11 facades. The Windows 11 public module already re-exports its backend's public symbols.
 - API constraint: GetShellWindow is documented from Windows 2000, GetProcessTimes from XP, while ProcessIdToSessionId and QueryFullProcessImageNameW are Vista+. The composed modern Rust probe is therefore Vista+ (the Rust Win10/Win11 targets are newer still); legacy OS targets need their own classic C adapter.
-- This is discovery only. The BGW executable target is not present in this branch yet, and the probe does not inject a DLL, register a Shell extension, enumerate desktop PIDLs, suppress native icons or draw Groups. Those remain separate implementation gates with restoration requirements.
+- This is host discovery only. The independent BGW executable now hosts a waitable monitor, but the probe still does not inject a DLL, register a Shell extension, enumerate desktop PIDLs, suppress native icons or draw Groups. Those remain separate implementation gates with restoration requirements.
 - Focused checks: portable path-basename matching and non-Windows unsupported-platform behaviour are unit-tested. Windows runtime discovery still needs Win10/11 interactive-session testing and Explorer restart validation.
 - Official references WLDE-011–015: plan/references/SOURCES.md.
+
+
+## WLDE BGW initial Explorer host monitor — 2026-11-15
+
+- Added independent binary package `rust/bgw` (`winlook-bgw`, binary target `winlook-bg`) and shared `rust/library/wl_bgw_runtime`; neither Manager package depends on BGW, preserving the two-executable process split.
+- The BGW build runner selects only the dedicated `winlook-bgw` package, validates the manifest and entry point, builds the Cargo binary, and copies it to the required Windows filename `winlook.bg.exe`.
+- Updated Cargo workspace membership, Cargo.lock, BGW CI path filters and artifact upload.
+- `wl_wlde_win32::monitor_desktop_host()` opens Explorer with only PROCESS_QUERY_INFORMATION | SYNCHRONIZE, verifies the process creation FILETIME against the discovered identity, and waits with WaitForSingleObject.
+- BGW revalidates the Shell desktop owner every five seconds, detects Explorer termination or owner replacement, drops the old process handle and rediscovers. It retries every two seconds when no compatible Explorer-owned desktop exists.
+- Windows status diagnostics use OutputDebugStringW only; there is no persistent log, Manager status IPC or UI surface yet.
+- This implementation is not the complete Explorer Desktop Bridge. It does not inject/load Shell code, register COM extensions, enumerate PIDLs, hide native desktop icons, install Groups, store restoration state, render wallpaper, register Windows startup or accept Manager commands.
+- It is the modern Rust implementation used by current Win10/Win11 targets. Windows 95–XP and legacy C targets still need generation-specific host-process discovery and BGW/runtime equivalents; the Explorer-owned desktop contract remains mandatory wherever the Shell supports it.
+- Build target: `python build.py build bgw`; expected output: `build/rust/bgw/winlook-bgw/release/winlook.bg.exe`.
+- Windows runtime validation remains pending in CI. Portable host-discovery tests and build-runner tests cover the non-Windows stubs, package selection and executable rename.

@@ -5,6 +5,7 @@ on:
   push:
     branches: [main, github/workflow]
     paths:
+      - "rust/bgw/**"
       - "rust/win10/**"
       - "rust/win11/**"
       - "rust/library/**"
@@ -15,6 +16,7 @@ on:
   pull_request:
     branches: [main, feature/wintoys-manager-ui]
     paths:
+      - "rust/bgw/**"
       - "rust/win10/**"
       - "rust/win11/**"
       - "rust/library/**"
@@ -61,5 +63,12 @@ jobs:
             build/rust/bgw
           key: ${{ runner.os }}-bgw-${{ hashFiles('Cargo.lock', 'rust/**/Cargo.toml') }}
           restore-keys: ${{ runner.os }}-bgw-
-      - name: Build BGW binary target(s)
+      - name: Build BGW binary target
         run: python build.py build bgw
+      - name: Upload BGW executable
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: winlook-bgw-x64-preview
+          path: build/rust/bgw/winlook-bgw/release/winlook.bg.exe
+          if-no-files-found: error
+          retention-days: 7

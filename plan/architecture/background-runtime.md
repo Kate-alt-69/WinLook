@@ -1,6 +1,6 @@
 # WinLook Background Runtime and Two-Executable Architecture
 
-> Status: user-directed architecture baseline, 2026-11-10. This is a design/documentation contract, not an implementation claim. The process split and repository layout below are the current project direction; transport details, per-OS adapters and several subsystem policies remain implementation decisions.
+> Status: user-directed architecture baseline, updated 2026-11-15. The two-executable process split remains the architecture contract. An initial independent BGW executable and Explorer host monitor are implemented for modern Rust targets; startup registration, Manager IPC, persistent configuration, the in-process Shell bridge, desktop presentation and restoration are still unimplemented.
 
 ## 1. The two principal executables
 
@@ -30,10 +30,22 @@ The Manager is not required to remain open for configured background functionali
 
 BGW is the actual background application runtime, not merely a WLWM process detector or a thin policy broker. It is responsible for initializing, hosting, coordinating, monitoring and shutting down WinLook's background subsystems and applying their work to the user's Windows session.
 
+**Initial implementation (2026-11-15):** the independent Cargo package is
+`rust/bgw/` (package `winlook-bgw`, binary target `winlook-bg`), with
+shared runtime logic in `rust/library/wl_bgw_runtime/`. The build runner emits
+`winlook.bg.exe` under `build/rust/bgw/winlook-bgw/release/`. The first
+runtime loop identifies the Explorer-owned desktop process for its own
+interactive session, waits on a query/synchronization-only process handle,
+revalidates the Shell owner every five seconds, and rediscovers after process
+exit or owner replacement. It does not yet install itself into Windows startup,
+communicate with the Manager, load configuration, or initialize the rest of
+the subsystems.
+
 Its responsibilities include:
 
 - Background lifecycle and startup/shutdown.
 - Wallpaper and desktop runtime through WLDE, including the required Explorer Desktop Bridge on sessions where Explorer owns the desktop.
+- Desktop-host identity discovery, process-exit waiting and Shell-owner revalidation through the initial WLDE Win32 adapter.
 - Window management policy and integrations through WLWM.
 - Display monitoring and supported display operations through WLDM.
 - WinLook notifications, popups and OSD through WLOSDE.
@@ -81,6 +93,23 @@ prevents an unsupported Shell build from being treated as permission to
 destabilize or replace the native desktop.
 
 BGW runs with ordinary user privileges by default. Any future privileged Windows operation must be narrowly scoped and separately justified; an optional service is not a replacement for the interactive BGW runtime.
+
+## Initial BGW Explorer host monitor
+
+The current `winlook-bgw` target is deliberately a lifecycle foundation, not
+the completed bridge or an installer-managed background service. In its
+steady state it waits on the Explorer process object using the Win32
+synchronization right, with a five-second timeout. On timeout it re-resolves
+the Shell desktop window and compares PID, session ID, process creation time
+and image path. If the process exits, the Shell owner changes or the identity
+cannot be verified, BGW drops the old handle and retries discovery. While no
+compatible Explorer-owned desktop is available, it retries every two seconds.
+
+Status output is sent to the Windows debug-output channel only; this is not a
+persistent diagnostic log. The current prototype has no Manager IPC, explicit
+stop request, Windows startup registration or background configuration store.
+Those must be implemented before treating BGW as an end-user installable
+background runtime.
 
 ## 2. Runtime topology
 

@@ -1145,32 +1145,70 @@ class BuildHelpersTests(unittest.TestCase):
                 manifest.write_text("[package]\nname = \"fixture\"\n", encoding="utf-8")
             self.assertTrue(build.check_ui_sources(root))
 
-    def test_win10_runtime_requirements_do_not_include_windows_app_runtime(self):
+    def test_win10_package_includes_manager_and_bgw_without_windows_app_runtime(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             executable = root / "build" / "rust" / "win10" / "release" / "winlook.exe"
             executable.parent.mkdir(parents=True)
             executable.write_bytes(b"native-win32-test")
+            manifest = root / "rust" / "bgw" / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                '[package]\nname = "winlook-bgw"\n\n'
+                '[[bin]]\nname = "winlook-bg"\npath = "src/main.rs"\n',
+                encoding="utf-8",
+            )
+            (manifest.parent / "src").mkdir()
+            (manifest.parent / "src" / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+            bgw = root / "build" / "rust" / "bgw" / "winlook-bgw" / "release" / "winlook.bg.exe"
             runner = build.Runner(root=root)
-            archive = build.package_windows_app(runner, "win10")
+
+            def fake_build_bgw(_runner):
+                bgw.parent.mkdir(parents=True, exist_ok=True)
+                bgw.write_bytes(b"bgw-monitor-test")
+
+            with mock.patch.object(build, "build_bgw", side_effect=fake_build_bgw):
+                archive = build.package_windows_app(runner, "win10")
             with zipfile.ZipFile(archive) as package:
                 note = package.read("RUNTIME-REQUIREMENTS.txt").decode("utf-8")
+                self.assertIn("winlook.exe", package.namelist())
+                self.assertIn("winlook.bg.exe", package.namelist())
+                self.assertEqual(package.read("winlook.bg.exe"), b"bgw-monitor-test")
             self.assertIn("native Win32 backend", note)
             self.assertIn("does not require Windows App Runtime", note)
+            self.assertIn("initial BGW runtime monitors the Explorer desktop host", note)
             self.assertNotIn(build.APP_RUNTIME_URL, note)
 
-    def test_win11_runtime_requirements_retain_windows_app_runtime(self):
+    def test_win11_package_includes_bgw_and_retains_windows_app_runtime(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             executable = root / "build" / "rust" / "win11" / "release" / "winlook.exe"
             executable.parent.mkdir(parents=True)
             executable.write_bytes(b"winui3-test")
+            manifest = root / "rust" / "bgw" / "Cargo.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                '[package]\nname = "winlook-bgw"\n\n'
+                '[[bin]]\nname = "winlook-bg"\npath = "src/main.rs"\n',
+                encoding="utf-8",
+            )
+            (manifest.parent / "src").mkdir()
+            (manifest.parent / "src" / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+            bgw = root / "build" / "rust" / "bgw" / "winlook-bgw" / "release" / "winlook.bg.exe"
             runner = build.Runner(root=root)
-            archive = build.package_windows_app(runner, "win11")
+
+            def fake_build_bgw(_runner):
+                bgw.parent.mkdir(parents=True, exist_ok=True)
+                bgw.write_bytes(b"bgw-monitor-test")
+
+            with mock.patch.object(build, "build_bgw", side_effect=fake_build_bgw):
+                archive = build.package_windows_app(runner, "win11")
             with zipfile.ZipFile(archive) as package:
                 note = package.read("RUNTIME-REQUIREMENTS.txt").decode("utf-8")
+                self.assertIn("winlook.bg.exe", package.namelist())
             self.assertIn(build.APP_RUNTIME_URL, note)
             self.assertIn("Windows App Runtime", note)
+            self.assertIn("initial BGW runtime monitors the Explorer desktop host", note)
 
 
 if __name__ == "__main__":

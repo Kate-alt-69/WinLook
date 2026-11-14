@@ -1483,7 +1483,7 @@ def _recent_visual_studio_setup_logs(started_at: float, limit: int = 3) -> str:
         )
     if not sections:
         return "No new dd_setup/dd_client/dd_bootstrapper logs were found in " + str(log_root) + "."
-    return "\\n\\n".join(sections)[-12000:]
+    return "\n\n".join(sections)[-12000:]
 
 
 def _visual_studio_setup_log_diagnostics(started_at: float) -> List[str]:
@@ -2715,7 +2715,7 @@ def verify_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
         if not runner.dry_run and select_bgw_targets(cargo_metadata(runner)):
             build_bgw(runner)
         else:
-            print_skip("BGW Cargo target is not implemented.")
+            print_skip("BGW package target is not present.")
     else:
         raise BuildError("Unknown verification scope: " + scope)
 
@@ -2727,6 +2727,27 @@ def package_windows_app(runner: Runner, target: str) -> Path:
     executable = runner.root / target_dir / "release" / "winlook.exe"
     if not executable.is_file():
         raise BuildError("Missing " + str(executable) + ". Build the target before packaging.")
+
+    bgw_available, bgw_reason = target_available(runner.root, "bgw")
+    if not bgw_available:
+        raise BuildError("The BGW runtime is required in the Manager package: " + bgw_reason)
+    bgw_executable = (
+        build_paths(runner.root)["rust"]
+        / "bgw"
+        / BGW_PACKAGE_NAME
+        / "release"
+        / "winlook.bg.exe"
+    )
+    if not bgw_executable.is_file():
+        if runner.dry_run:
+            print_skip("BGW build is required before packaging; discovery is deferred in dry-run mode.")
+        else:
+            build_bgw(runner)
+    if not runner.dry_run and not bgw_executable.is_file():
+        raise BuildError(
+            "Missing " + str(bgw_executable) + ". Build the BGW target before packaging."
+        )
+
     output_dir = build_paths(runner.root)["artifacts"]
     archive = output_dir / package_filename(target)
     if target == "win10":
@@ -2734,7 +2755,10 @@ def package_windows_app(runner: Runner, target: str) -> Path:
             "WinLook Windows 10 Manager preview\n\n"
             "This build uses the lightweight native Win32 backend. It does not require "
             "Windows App Runtime, Windows App SDK, WebView2, or Tauri.\n"
-            "\nThis archive does not contain winlook.bg.exe; BGW is not implemented yet.\n"
+            "The archive includes winlook.exe (Manager) and winlook.bg.exe (BGW).\n"
+            "The initial BGW runtime monitors the Explorer desktop host. Windows startup "
+            "registration, Manager IPC, persistent configuration, native Shell hooks, "
+            "icon/Group presentation and wallpaper rendering are not implemented yet.\n"
         )
     else:
         note = (
@@ -2743,14 +2767,25 @@ def package_windows_app(runner: Runner, target: str) -> Path:
             "Windows App SDK deployment. Install the matching Windows App Runtime "
             "before launching the EXE:\n"
             + APP_RUNTIME_URL
-            + "\n\nThis archive does not contain winlook.bg.exe; BGW is not implemented yet.\n"
+            + "\n\nThe archive includes winlook.exe (Manager) and winlook.bg.exe (BGW).\n"
+            "The initial BGW runtime monitors the Explorer desktop host. Windows startup "
+            "registration, Manager IPC, persistent configuration, native Shell hooks, "
+            "icon/Group presentation and wallpaper rendering are not implemented yet.\n"
         )
     if runner.dry_run:
-        print("Would package " + str(executable) + " -> " + str(archive))
+        print(
+            "Would package "
+            + str(executable)
+            + " and "
+            + str(bgw_executable)
+            + " -> "
+            + str(archive)
+        )
         return archive
     output_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
         package.write(executable, "winlook.exe")
+        package.write(bgw_executable, "winlook.bg.exe")
         package.writestr("RUNTIME-REQUIREMENTS.txt", note)
     print("Created " + str(archive))
     return archive

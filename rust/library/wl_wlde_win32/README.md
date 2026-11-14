@@ -67,3 +67,25 @@ presenter. Those operations belong to the next generation-specific Shell
 adapter and must be backed by a proven restoration path. The API uses
 `QueryFullProcessImageNameW` and is for Vista and newer. Earlier Windows
 generations need their own classic process/image lookup adapter.
+
+
+## Explorer desktop-host process monitor
+
+`discover_desktop_host()` identifies the process that owns the current Shell
+desktop window. It verifies that the image basename is `explorer.exe`, checks
+that the process belongs to BGW's interactive session, and records the PID,
+session ID, image path and process creation FILETIME.
+
+`monitor_desktop_host()` opens a second process handle with only
+`PROCESS_QUERY_INFORMATION | SYNCHRONIZE` rights, verifies the creation time
+against the discovered identity, and returns a waitable monitor.
+`wait_for_exit()` uses `WaitForSingleObject`; it does not spin. Dropping the
+monitor closes the handle. The BGW host loop rechecks the Shell owner every
+five seconds so it can detect a replacement even when the old Explorer
+process remains alive.
+
+The composed Rust probe is Vista+ because it uses
+`ProcessIdToSessionId` and `QueryFullProcessImageNameW`. The host monitor is
+not a Shell hook: it does not inject code, enumerate desktop PIDLs, suppress
+icons, intercept context menus or draw Group proxies. Windows 95–XP and legacy
+C targets need their own classic host-discovery/runtime implementation.

@@ -192,3 +192,18 @@ The Win10 and Win11 build graphs are intentionally isolated:
 The public `wl_ui` crate exposes explicitly enabled renderer modules. The shared model is target-independent; only the selected module brings in its optional backend dependency. The optional Tauri adapter is checked separately from the native Win32 path. The Windows 10 package notes no Windows App Runtime requirement; the Windows 11 package retains the Windows App Runtime requirement.
 
 The CMake library test suite now includes `wl_Lui` and its portable contract test. Passing the Linux C contract does not prove Win9x/NT-family UI runtime support; those still require native VM testing.
+
+
+## BGW build and packaging
+
+The modern BGW target is an independent Cargo package: `winlook-bgw`
+(`rust/bgw/`) with shared runtime code in `wl_bgw_runtime`. The build runner
+selects only this package, builds the `winlook-bg` binary and normalizes the
+Windows output to `build/rust/bgw/winlook-bgw/release/winlook.bg.exe`.
+
+Use `python build.py build bgw` to build the standalone runtime. The Win10
+and Win11 package commands also build BGW when its executable is missing, then
+include both `winlook.exe` and `winlook.bg.exe` in the preview archive.
+This first BGW binary only monitors the Explorer-owned desktop process;
+startup registration, Manager IPC, persistent configuration and the actual
+in-process Shell bridge remain unfinished.

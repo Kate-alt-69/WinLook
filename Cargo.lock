@@ -4354,6 +4354,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9aec5da331524158c6d1a4ac0ab1541149c0b9505fde06423b02f5ef0106b9f0"
 
 [[package]]
+name = "winlook-bgw"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "wl_bgw_runtime",
+]
+
+[[package]]
 name = "winlook-win10"
 version = "0.1.0-alpha.1"
 dependencies = [
@@ -4404,6 +4411,13 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 [[package]]
 name = "wl_animate"
 version = "0.2.0-beta.1"
+
+[[package]]
+name = "wl_bgw_runtime"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "wl_wlde_win32",
+]
 
 [[package]]
 name = "wl_cpuv"
