@@ -3,9 +3,7 @@ use windows_reactor::*;
 
 use wl_ui_core::{UiApplication, UiColor, UiColorScheme, UiError, UiPage};
 use wl_ui_win32::{browse_file_from, open_url};
-use wl_wlde::{
-    store_provider, StoreProviderId, WallpaperEngineInstall, WallpaperTarget,
-};
+use wl_wlde::{store_provider, StoreProviderId, WallpaperEngineInstall, WallpaperTarget};
 
 #[derive(Clone)]
 enum Message {
@@ -42,7 +40,10 @@ impl CustomShell {
         query.is_empty()
             || page.title().to_ascii_lowercase().contains(&query)
             || page.description().to_ascii_lowercase().contains(&query)
-            || page.navigation_label().to_ascii_lowercase().contains(&query)
+            || page
+                .navigation_label()
+                .to_ascii_lowercase()
+                .contains(&query)
     }
 
     fn engine_status(&self) -> String {
@@ -79,9 +80,7 @@ impl CustomShell {
                 "Locate Wallpaper Engine first, then browse to a local wallpaper file.".to_string();
             return;
         };
-        let initial_directory = install
-            .workshop_directory()
-            .filter(|path| path.is_dir());
+        let initial_directory = install.workshop_directory().filter(|path| path.is_dir());
         match browse_file_from(
             "Browse Wallpaper Engine wallpapers",
             "Wallpaper Engine project or media",
@@ -161,7 +160,12 @@ impl Component for CustomShell {
             }
             Message::TogglePane => self.pane_open = !self.pane_open,
             Message::Navigate(page_id) => {
-                if self.application.pages().iter().any(|page| page.id() == page_id) {
+                if self
+                    .application
+                    .pages()
+                    .iter()
+                    .any(|page| page.id() == page_id)
+                {
                     self.selected_page = page_id;
                 }
             }
@@ -340,7 +344,9 @@ impl Component for CustomShell {
                                         .text(page.description())
                                         .font_family(&typography.font_family)
                                         .font_size(f64::from(typography.size_md))
-                                        .line_height(f64::from(typography.line_height * typography.size_md))
+                                        .line_height(f64::from(
+                                            typography.line_height * typography.size_md,
+                                        ))
                                         .foreground(native_color(palette.text_secondary))
                                         .text_wrapping(TextWrapping::Wrap),
                                     page_actions,

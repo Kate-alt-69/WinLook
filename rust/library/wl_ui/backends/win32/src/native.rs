@@ -239,7 +239,7 @@ fn wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
-pub pub(super) fn browse_file_from(
+pub(super) fn browse_file_from(
     title: &str,
     filter_description: &str,
     filter_pattern: &str,
