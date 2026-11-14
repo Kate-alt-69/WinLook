@@ -201,8 +201,14 @@ extern "system" {
 
 #[link(name = "shell32")]
 extern "system" {
-    fn ShellExecuteW(hwnd: Handle, operation: *const u16, file: *const u16,
-        parameters: *const u16, directory: *const u16, show_command: i32) -> Handle;
+    fn ShellExecuteW(
+        hwnd: Handle,
+        operation: *const u16,
+        file: *const u16,
+        parameters: *const u16,
+        directory: *const u16,
+        show_command: i32,
+    ) -> Handle;
 }
 
 const OFN_FILEMUSTEXIST: u32 = 0x00001000;
@@ -244,8 +250,7 @@ pub(super) fn browse_file_from(
     filter_description: &str,
     filter_pattern: &str,
     initial_directory: Option<&std::path::Path>,
-) -> Result<Option<PathBuf>, UiError>
-{
+) -> Result<Option<PathBuf>, UiError> {
     let mut filter = Vec::new();
     filter.extend(filter_description.encode_utf16());
     filter.push(0);
@@ -299,9 +304,14 @@ pub(super) fn browse_file_from(
         if error == 0 {
             return Ok(None);
         }
-        return Err(UiError::Backend(format!("Windows file picker failed: {error:#x}")));
+        return Err(UiError::Backend(format!(
+            "Windows file picker failed: {error:#x}"
+        )));
     }
-    let length = file.iter().position(|unit| *unit == 0).unwrap_or(file.len());
+    let length = file
+        .iter()
+        .position(|unit| *unit == 0)
+        .unwrap_or(file.len());
     if length == 0 {
         return Ok(None);
     }

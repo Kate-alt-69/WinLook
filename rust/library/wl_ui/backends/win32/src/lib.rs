@@ -24,9 +24,11 @@ pub fn run_with(_application: UiApplication) -> Result<(), UiError> {
 }
 
 /// Opens a native file picker and returns the selected path.
-pub fn browse_file(title: &str, filter_description: &str, filter_pattern: &str)
-    -> Result<Option<std::path::PathBuf>, UiError>
-{
+pub fn browse_file(
+    title: &str,
+    filter_description: &str,
+    filter_pattern: &str,
+) -> Result<Option<std::path::PathBuf>, UiError> {
     browse_file_from(title, filter_description, filter_pattern, None)
 }
 
@@ -44,7 +46,9 @@ pub fn browse_file_from(
     #[cfg(not(windows))]
     {
         let _ = (title, filter_description, filter_pattern, initial_directory);
-        Err(UiError::Backend("the native file picker is only available on Windows".to_string()))
+        Err(UiError::Backend(
+            "the native file picker is only available on Windows".to_string(),
+        ))
     }
 }
 
@@ -60,6 +64,8 @@ pub fn open_url(url: &str) -> Result<(), UiError> {
     #[cfg(not(windows))]
     {
         let _ = url;
-        Err(UiError::Backend("opening external links is only available on Windows".to_string()))
+        Err(UiError::Backend(
+            "opening external links is only available on Windows".to_string(),
+        ))
     }
 }
