@@ -254,8 +254,12 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 - [ ] Support importing local wallpapers without an internet connection.
 - [ ] Design favorites, collections, playlists, history, and per-monitor assignments.
 - [ ] Design wallpaper installation, update, removal, and backup.
-- [ ] Design the **Wallpaper Store as an integrated WLDE feature**, not a separate executable/product.
+- [x] Design the **Wallpaper Store as an integrated WLDE feature**, not a separate executable/product.
 - [ ] Design Store search, categories, tags, featured content, and discovery.
+- [x] Add the initial provider directory for Wallpaper Engine, Openverse, Wikimedia Commons and NASA Image and Video Library.
+- [x] Add the existing Wallpaper Engine file-picker / command-line hand-off for an installation the user already owns.
+- [ ] Build the full in-app catalogue client: search results, previews, details, downloads, attribution records and local-library installation.
+- [ ] Add independent community/self-hosted catalogue sources and their trust/permission UX.
 - [ ] Design wallpaper detail pages, previews, screenshots, metadata, and compatibility information.
 - [ ] Design creator profiles and creator publishing/submission flow.
 - [ ] Design free and paid content support, subject to later business and payment decisions.
@@ -822,3 +826,16 @@ This is a staged implementation sequence. The current library branch contains po
 - [ ] Enable BGW compilation only after explicit Cargo binary targets exist.
 
 Detailed command, output/cache, workflow and merge contracts: [Build System and CI](architecture/build-and-ci.md).
+
+
+### Wallpaper Store implementation slice — 2026-11-14
+
+The first provider-hub slice is implemented in PR #11:
+
+- wl_wlde and wl_Lwlde expose matching immutable provider metadata for Wallpaper Engine, Openverse, Wikimedia Commons and NASA.
+- The Manager navigation is nested under Wallpaper → Wallpaper Store, with Wallpaper Engine, Free Catalogues and Wallpaper Library destinations.
+- Win10 and Win11 offer a Browse action to locate an existing Wallpaper Engine executable. The local wallpaper picker starts in the detected Steam Workshop folder when available.
+- The Rust bridge invokes the documented Wallpaper Engine openWallpaper command for a selected local project or supported media file. Steam retains all subscription/download/purchase management.
+- Free catalogue links open official provider pages in the default browser. Exact item-level licenses, attribution and third-party rights remain authoritative.
+
+This is not yet the full Store experience: there is no embedded catalogue/API search, preview/detail screen, direct catalogue downloader, resumable queue, attribution manifest, package-signing/moderation service or library installer. Do not mark those checklist entries complete from the provider hub.

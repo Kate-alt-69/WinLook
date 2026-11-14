@@ -4443,6 +4443,7 @@ name = "wl_ui_win32"
 version = "0.1.0-alpha.1"
 dependencies = [
  "wl_ui_core",
+ "wl_wlde",
 ]
 
 [[package]]
@@ -4458,6 +4459,8 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "windows-reactor-pre",
  "wl_ui_core",
+ "wl_ui_win32",
+ "wl_wlde",
 ]
 
 [[package]]
@@ -4465,6 +4468,15 @@ name = "wl_ui_windows7"
 version = "0.1.0-alpha.1"
 dependencies = [
  "wl_ui_win32",
+]
+
+[[package]]
+name = "wl_wlde"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "wl_animate",
+ "wl_cpuv",
+ "wl_gpuv",
 ]
 
 [[package]]

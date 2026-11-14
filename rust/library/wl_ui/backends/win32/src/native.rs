@@ -1,5 +1,9 @@
 use std::ffi::c_void;
+use std::mem::size_of;
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
+use std::path::PathBuf;
 use wl_ui_core::{UiApplication, UiColor, UiComponent, UiError, UiPage, UiPalette};
+use wl_wlde::{store_provider, StoreProviderId, WallpaperEngineInstall, WallpaperTarget};
 
 type Handle = *mut c_void;
 type WindowProcedure = unsafe extern "system" fn(Handle, u32, usize, isize) -> isize;
@@ -32,11 +36,19 @@ const LB_GETCURSEL: u32 = 0x0188;
 const LB_SETCURSEL: u32 = 0x0186;
 const LBN_SELCHANGE: usize = 1;
 const SW_SHOW: i32 = 5;
+const SW_HIDE: i32 = 0;
 const OPAQUE: i32 = 2;
 const CW_USEDEFAULT: i32 = 0x80000000u32 as i32;
 const ERROR_CLASS_ALREADY_EXISTS: u32 = 1410;
 const NAVIGATION_CONTROL_ID: usize = 1001;
 const CONTENT_CONTROL_ID: usize = 1002;
+const LOCATE_ENGINE_BUTTON_ID: usize = 1101;
+const BROWSE_WALLPAPER_BUTTON_ID: usize = 1102;
+const WORKSHOP_BUTTON_ID: usize = 1103;
+const OPENVERSE_BUTTON_ID: usize = 1104;
+const COMMONS_BUTTON_ID: usize = 1105;
+const NASA_BUTTON_ID: usize = 1106;
+const BUTTON_COUNT: usize = 6;
 const CLASS_NAME: &str = "WinLook.WlUi.Win32";
 const WINDOW_STATE_PROPERTY: &str = "WinLook.WlUi.State";
 
@@ -106,6 +118,8 @@ struct WindowState {
     navigation_color: UiColor,
     content_color: UiColor,
     text_color: UiColor,
+    action_buttons: [Handle; BUTTON_COUNT],
+    wallpaper_engine: Option<WallpaperEngineInstall>,
 }
 
 #[link(name = "user32")]
@@ -152,6 +166,56 @@ extern "system" {
     fn GetLastError() -> u32;
 }
 
+#[repr(C)]
+struct OpenFileNameW {
+    l_struct_size: u32,
+    hwnd_owner: Handle,
+    h_instance: Handle,
+    filter: *const u16,
+    custom_filter: *mut u16,
+    max_custom_filter: u32,
+    filter_index: u32,
+    file: *mut u16,
+    max_file: u32,
+    file_title: *mut u16,
+    max_file_title: u32,
+    initial_dir: *const u16,
+    title: *const u16,
+    flags: u32,
+    file_offset: u16,
+    file_extension: u16,
+    default_extension: *const u16,
+    custom_data: isize,
+    hook: Option<unsafe extern "system" fn(Handle, u32, usize, isize) -> u32>,
+    template_name: *const u16,
+    reserved: *mut c_void,
+    reserved_word: u32,
+    flags_ex: u32,
+}
+
+#[link(name = "comdlg32")]
+extern "system" {
+    fn GetOpenFileNameW(dialog: *mut OpenFileNameW) -> i32;
+    fn CommDlgExtendedError() -> u32;
+}
+
+#[link(name = "shell32")]
+extern "system" {
+    fn ShellExecuteW(
+        hwnd: Handle,
+        operation: *const u16,
+        file: *const u16,
+        parameters: *const u16,
+        directory: *const u16,
+        show_command: i32,
+    ) -> Handle;
+}
+
+const OFN_FILEMUSTEXIST: u32 = 0x00001000;
+const OFN_PATHMUSTEXIST: u32 = 0x00000800;
+const OFN_NOCHANGEDIR: u32 = 0x00000008;
+const OFN_EXPLORER: u32 = 0x00080000;
+
 #[link(name = "gdi32")]
 extern "system" {
     fn CreateSolidBrush(color: u32) -> Handle;
@@ -181,8 +245,267 @@ fn wide(value: &str) -> Vec<u16> {
     value.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
+fn browse_file(
+    title: &str,
+    filter_description: &str,
+    filter_pattern: &str,
+) -> Result<Option<PathBuf>, UiError> {
+    browse_file_from(title, filter_description, filter_pattern, None)
+}
+
+pub(super) fn browse_file_from(
+    title: &str,
+    filter_description: &str,
+    filter_pattern: &str,
+    initial_directory: Option<&std::path::Path>,
+) -> Result<Option<PathBuf>, UiError> {
+    let mut filter = Vec::new();
+    filter.extend(filter_description.encode_utf16());
+    filter.push(0);
+    filter.extend(filter_pattern.encode_utf16());
+    filter.push(0);
+    filter.extend("All files".encode_utf16());
+    filter.push(0);
+    filter.extend("*.*".encode_utf16());
+    filter.push(0);
+    filter.push(0);
+
+    let title = wide(title);
+    let initial_directory = initial_directory.map(|path| {
+        path.as_os_str()
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect::<Vec<_>>()
+    });
+    let initial_dir_ptr = initial_directory
+        .as_ref()
+        .map_or(std::ptr::null(), |value| value.as_ptr());
+    let mut file = vec![0u16; 32_768];
+    let mut dialog = OpenFileNameW {
+        l_struct_size: size_of::<OpenFileNameW>() as u32,
+        hwnd_owner: std::ptr::null_mut(),
+        h_instance: std::ptr::null_mut(),
+        filter: filter.as_ptr(),
+        custom_filter: std::ptr::null_mut(),
+        max_custom_filter: 0,
+        filter_index: 1,
+        file: file.as_mut_ptr(),
+        max_file: file.len() as u32,
+        file_title: std::ptr::null_mut(),
+        max_file_title: 0,
+        initial_dir: initial_dir_ptr,
+        title: title.as_ptr(),
+        flags: OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_EXPLORER,
+        file_offset: 0,
+        file_extension: 0,
+        default_extension: std::ptr::null(),
+        custom_data: 0,
+        hook: None,
+        template_name: std::ptr::null(),
+        reserved: std::ptr::null_mut(),
+        reserved_word: 0,
+        flags_ex: 0,
+    };
+
+    if unsafe { GetOpenFileNameW(&mut dialog) } == 0 {
+        let error = unsafe { CommDlgExtendedError() };
+        if error == 0 {
+            return Ok(None);
+        }
+        return Err(UiError::Backend(format!(
+            "Windows file picker failed: {error:#x}"
+        )));
+    }
+    let length = file
+        .iter()
+        .position(|unit| *unit == 0)
+        .unwrap_or(file.len());
+    if length == 0 {
+        return Ok(None);
+    }
+    Ok(Some(PathBuf::from(std::ffi::OsString::from_wide(
+        &file[..length],
+    ))))
+}
+
+pub fn open_url(url: &str) -> Result<(), UiError> {
+    if !url.starts_with("https://") || url.contains('\0') {
+        return Err(UiError::Backend("only HTTPS links are allowed".to_string()));
+    }
+    let operation = wide("open");
+    let target = wide(url);
+    let result = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            operation.as_ptr(),
+            target.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            SW_SHOW,
+        )
+    };
+    if (result as isize) <= 32 {
+        return Err(UiError::Backend(format!(
+            "Windows could not open the browser link: {}",
+            result as isize
+        )));
+    }
+    Ok(())
+}
+
 fn colorref(color: UiColor) -> u32 {
     u32::from(color.red) | (u32::from(color.green) << 8) | (u32::from(color.blue) << 16)
+}
+
+fn create_action_button(parent: Handle, instance: Handle, id: usize, label: &str) -> Handle {
+    let class_name = wide("BUTTON");
+    let title = wide(label);
+    unsafe {
+        CreateWindowExW(
+            0,
+            class_name.as_ptr(),
+            title.as_ptr(),
+            WS_CHILD | WS_TABSTOP,
+            0,
+            16,
+            160,
+            32,
+            parent,
+            id as Handle,
+            instance,
+            std::ptr::null_mut(),
+        )
+    }
+}
+
+fn update_action_buttons(state: &WindowState, page: &UiPage) {
+    let visible = match page.id() {
+        "wallpaper-store-wallpaper-engine" => [true, true, true, false, false, false],
+        "wallpaper-store-free" => [false, false, false, true, true, true],
+        _ => [false, false, false, false, false, false],
+    };
+    for (index, button) in state.action_buttons.iter().enumerate() {
+        if !button.is_null() {
+            unsafe {
+                ShowWindow(*button, if visible[index] { SW_SHOW } else { SW_HIDE });
+            }
+        }
+    }
+}
+
+fn refresh_current_page(state: &WindowState) {
+    let selected = unsafe { SendMessageW(state.navigation, LB_GETCURSEL, 0, 0) };
+    if selected >= 0 {
+        if let Some(page) = state.application.pages().get(selected as usize) {
+            unsafe {
+                set_page_content(state.content, page, state.wallpaper_engine.as_ref());
+            }
+            update_action_buttons(state, page);
+        }
+    }
+}
+
+fn show_action_error(error: &UiError) {
+    show_start_error(error, "WinLook Wallpaper Store");
+}
+
+fn show_action_message(message: &str) {
+    let text = wide(message);
+    let title = wide("WinLook Wallpaper Store");
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            text.as_ptr(),
+            title.as_ptr(),
+            0x00000040,
+        );
+    }
+}
+
+fn handle_store_command(state_pointer: *mut WindowState, control_id: usize) {
+    if state_pointer.is_null() {
+        return;
+    }
+    let state = unsafe { &mut *state_pointer };
+    match control_id {
+        LOCATE_ENGINE_BUTTON_ID => match browse_file(
+            "Locate Wallpaper Engine",
+            "Wallpaper Engine executable",
+            "wallpaper64.exe;wallpaper32.exe",
+        ) {
+            Ok(Some(path)) => match WallpaperEngineInstall::from_executable(path) {
+                Ok(install) => {
+                    let workshop = install
+                        .workshop_directory()
+                        .filter(|path| path.is_dir())
+                        .map(|path| path.display().to_string());
+                    state.wallpaper_engine = Some(install);
+                    show_action_message(&workshop.map_or_else(
+                        || "Wallpaper Engine was located. Browse to a local project.json or supported media file.".to_string(),
+                        |path| format!("Wallpaper Engine was located. Workshop wallpapers are available at {path}."),
+                    ));
+                }
+                Err(error) => show_action_error(&UiError::Backend(error.to_string())),
+            },
+            Ok(None) => {}
+            Err(error) => show_action_error(&error),
+        },
+        BROWSE_WALLPAPER_BUTTON_ID => {
+            let Some(install) = state.wallpaper_engine.as_ref() else {
+                show_action_error(&UiError::Backend(
+                    "Wallpaper Engine was not found. Use Locate Wallpaper Engine first."
+                        .to_string(),
+                ));
+                refresh_current_page(state);
+                return;
+            };
+            let workshop_directory = install.workshop_directory().filter(|path| path.is_dir());
+            match browse_file_from(
+                "Browse Wallpaper Engine wallpapers",
+                "Wallpaper Engine project or media",
+                "project.json;*.mp4;*.webm;*.avi;*.mov;*.m4v;*.wmv;*.gif;*.png;*.jpg;*.jpeg;*.webp;*.bmp",
+                workshop_directory.as_deref(),
+            ) {
+                Ok(Some(path)) => match WallpaperTarget::new(path) {
+                    Ok(target) => match install.open_wallpaper(&target, None) {
+                        Ok(_child) => show_action_message(
+                            "The openWallpaper command was sent. Wallpaper Engine should already be running; Steam still manages Workshop subscriptions and downloads.",
+                        ),
+                        Err(error) => show_action_error(&UiError::Backend(error.to_string())),
+                    },
+                    Err(error) => show_action_error(&UiError::Backend(error.to_string())),
+                },
+                Ok(None) => {}
+                Err(error) => show_action_error(&error),
+            }
+        }
+        WORKSHOP_BUTTON_ID => {
+            if let Err(error) =
+                open_url(store_provider(StoreProviderId::WallpaperEngine).browse_url)
+            {
+                show_action_error(&error);
+            }
+        }
+        OPENVERSE_BUTTON_ID => {
+            if let Err(error) = open_url(store_provider(StoreProviderId::Openverse).browse_url) {
+                show_action_error(&error);
+            }
+        }
+        COMMONS_BUTTON_ID => {
+            if let Err(error) =
+                open_url(store_provider(StoreProviderId::WikimediaCommons).browse_url)
+            {
+                show_action_error(&error);
+            }
+        }
+        NASA_BUTTON_ID => {
+            if let Err(error) = open_url(store_provider(StoreProviderId::NasaImages).browse_url) {
+                show_action_error(&error);
+            }
+        }
+        _ => {}
+    }
+    refresh_current_page(state);
 }
 
 fn component_background(application: &UiApplication, component: UiComponent) -> Option<UiColor> {
@@ -372,17 +695,46 @@ unsafe extern "system" fn window_proc(
                 return -1;
             }
 
+            let action_buttons = [
+                create_action_button(
+                    hwnd,
+                    instance,
+                    LOCATE_ENGINE_BUTTON_ID,
+                    "Locate Wallpaper Engine",
+                ),
+                create_action_button(
+                    hwnd,
+                    instance,
+                    BROWSE_WALLPAPER_BUTTON_ID,
+                    "Browse Wallpaper",
+                ),
+                create_action_button(hwnd, instance, WORKSHOP_BUTTON_ID, "Open Steam Workshop"),
+                create_action_button(hwnd, instance, OPENVERSE_BUTTON_ID, "Open Openverse"),
+                create_action_button(hwnd, instance, COMMONS_BUTTON_ID, "Open Wikimedia Commons"),
+                create_action_button(hwnd, instance, NASA_BUTTON_ID, "Open NASA Images"),
+            ];
+            if action_buttons.iter().any(|button| button.is_null()) {
+                return -1;
+            }
+
             unsafe {
                 (*state).navigation = navigation;
                 (*state).content = content;
+                (*state).action_buttons = action_buttons;
                 if !(*state).font.is_null() {
                     SendMessageW(navigation, WM_SETFONT, (*state).font as usize, 1);
                     SendMessageW(content, WM_SETFONT, (*state).font as usize, 1);
+                    for button in (*state).action_buttons.iter() {
+                        SendMessageW(*button, WM_SETFONT, (*state).font as usize, 1);
+                    }
+                }
+                for button in (*state).action_buttons.iter() {
+                    ShowWindow(*button, SW_HIDE);
                 }
             }
 
             for page in application.pages() {
-                let title = wide(page.title());
+                let title = wide(page.navigation_label());
                 unsafe {
                     SendMessageW(navigation, LB_ADDSTRING, 0, title.as_ptr() as isize);
                 }
@@ -396,7 +748,12 @@ unsafe extern "system" fn window_proc(
 
             unsafe {
                 SendMessageW(navigation, LB_SETCURSEL, initial_index, 0);
-                set_page_content(content, &application.pages()[initial_index]);
+                set_page_content(
+                    content,
+                    &application.pages()[initial_index],
+                    (*state).wallpaper_engine.as_ref(),
+                );
+                update_action_buttons(&*state, &application.pages()[initial_index]);
             }
 
             0
@@ -430,6 +787,19 @@ unsafe extern "system" fn window_proc(
                             height.saturating_sub(80),
                             1,
                         );
+                        let content_x = navigation_width + 32;
+                        let content_width = width.saturating_sub(navigation_width + 48);
+                        let action_width = ((content_width.saturating_sub(16)) / 3).max(120);
+                        for (index, button) in (*state).action_buttons.iter().enumerate() {
+                            MoveWindow(
+                                *button,
+                                content_x + (index as i32 * (action_width + 8)),
+                                16,
+                                action_width,
+                                32,
+                                1,
+                            );
+                        }
                     }
                 }
             }
@@ -446,9 +816,18 @@ unsafe extern "system" fn window_proc(
                 let selected = unsafe { SendMessageW((*state).navigation, LB_GETCURSEL, 0, 0) };
                 if selected >= 0 {
                     if let Some(page) = application.pages().get(selected as usize) {
-                        unsafe { set_page_content((*state).content, page) };
+                        unsafe {
+                            set_page_content(
+                                (*state).content,
+                                page,
+                                (*state).wallpaper_engine.as_ref(),
+                            );
+                            update_action_buttons(&*state, page);
+                        }
                     }
                 }
+            } else if !state.is_null() && notification == 0 {
+                handle_store_command(state, control_id);
             }
             0
         }
@@ -467,8 +846,33 @@ unsafe extern "system" fn window_proc(
     }
 }
 
-unsafe fn set_page_content(hwnd: Handle, page: &UiPage) {
-    let body = format!("{}\r\n\r\n{}", page.title(), page.description());
+unsafe fn set_page_content(hwnd: Handle, page: &UiPage, engine: Option<&WallpaperEngineInstall>) {
+    let mut body = format!("{}\r\n\r\n{}", page.title(), page.description());
+    match page.id() {
+        "wallpaper-store" => body.push_str(
+            "\r\n\r\nChoose Wallpaper Engine or browse the free catalogues. Providers keep their own terms, downloads and attribution requirements.",
+        ),
+        "wallpaper-store-wallpaper-engine" => {
+            body.push_str("\r\n\r\n");
+            body.push_str(&match engine {
+                Some(install) => format!("Detected: {}", install.executable().display()),
+                None => "Wallpaper Engine was not detected. Use Locate Wallpaper Engine to browse to wallpaper64.exe or wallpaper32.exe.".to_string(),
+            });
+            body.push_str(
+                "\r\n\r\nUse Browse Wallpaper to select a project.json or supported media file. Wallpaper Engine should already be running.",
+            );
+            body.push_str(
+                "\r\nSteam handles Workshop subscriptions, purchases, downloads and updates. WinLook does not unpack or redistribute Workshop packages.",
+            );
+        }
+        "wallpaper-store-free" => body.push_str(
+            "\r\n\r\nOpenverse: confirm the item's exact license, creator, source and attribution.\r\nWikimedia Commons: licenses vary by file; follow the file page.\r\nNASA: check third-party notices and credits; NASA endorsement is not implied.",
+        ),
+        "wallpaper-library" => body.push_str(
+            "\r\n\r\nLocal offline import and collection management are the next library slice.",
+        ),
+        _ => {}
+    }
     let text = wide(&body);
     unsafe {
         SetWindowTextW(hwnd, text.as_ptr());
@@ -537,6 +941,8 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
         navigation_color,
         content_color,
         text_color,
+        action_buttons: [std::ptr::null_mut(); BUTTON_COUNT],
+        wallpaper_engine: WallpaperEngineInstall::discover(),
     };
     if state.window_brush.is_null()
         || state.navigation_brush.is_null()

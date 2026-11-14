@@ -8,3 +8,4 @@ license = "MIT"
 
 [dependencies]
 wl_ui_core = { version = "0.1.0-alpha.1", path = "../../core" }
+wl_wlde = { version = "0.1.0-alpha.1", path = "../../../wl_wlde" }
