@@ -751,12 +751,7 @@ mod desktop_host_platform {
         let mut image_buffer = vec![0u16; IMAGE_PATH_CAPACITY];
         let mut image_length = image_buffer.len() as u32;
         let image_ok = unsafe {
-            QueryFullProcessImageNameW(
-                process.0,
-                0,
-                image_buffer.as_mut_ptr(),
-                &mut image_length,
-            )
+            QueryFullProcessImageNameW(process.0, 0, image_buffer.as_mut_ptr(), &mut image_length)
         };
         if image_ok == 0 {
             return Err(DesktopHostError::QueryImagePath {
