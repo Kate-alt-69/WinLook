@@ -4498,6 +4498,7 @@ dependencies = [
 name = "wl_wlde_win32"
 version = "0.1.0-alpha.1"
 dependencies = [
+ "sha2",
  "wl_wlde",
 ]
 

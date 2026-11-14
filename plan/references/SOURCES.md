@@ -264,3 +264,13 @@ The Rust renderer accepts caller-decoded RGBA image views and returns a bounded,
 cacheable app-icon bitmap. The C89 renderer writes to a caller-owned buffer and
 does not allocate. Neither implementation opens icon files, registers Shell
 handlers, mutates shortcut/executable resources or changes Explorer state.
+
+
+## WLDE read-only desktop filesystem inventory — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-021 | [KNOWNFOLDERID reference](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid) | `FOLDERID_Desktop` identifies the current user's Desktop folder; `FOLDERID_PublicDesktop` identifies the common Public Desktop folder. The documented GUIDs are used instead of hardcoded profile paths | These are filesystem Known Folders. They do not enumerate virtual Shell namespace objects or represent Explorer's active view/filter state |
+| WLDE-022 | [SHGetKnownFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath), [Known Folders overview](https://learn.microsoft.com/en-us/windows/win32/shell/known-folders) | Resolves the current user's Known Folder path, replacing the older SHGetFolderPath API; the returned path buffer must be released with CoTaskMemFree | Vista+ API. This modern Rust adapter uses it for Win10/11. Legacy C adapters still need generation-specific APIs |
+
+This first inventory is one-level, read-only filesystem enumeration. Opaque path hashes are transient Group keys, not security credentials. Exact Shell desktop membership still requires an IShellFolder/IFolderView-backed adapter.

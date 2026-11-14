@@ -640,6 +640,21 @@ mod tests {
     }
 
     #[test]
+    fn desktop_item_labels_support_long_utf8_names_without_truncation() {
+        let maximum = "界".repeat(MAX_DESKTOP_LABEL_BYTES / 3);
+        assert_eq!(maximum.len(), MAX_DESKTOP_LABEL_BYTES);
+        let item = DesktopItemRef::new("file:unicode", maximum.clone(), DesktopItemKind::File)
+            .unwrap();
+        assert_eq!(item.label(), maximum);
+
+        let over_limit = "界".repeat((MAX_DESKTOP_LABEL_BYTES / 3) + 1);
+        assert_eq!(
+            DesktopItemRef::new("file:unicode", over_limit, DesktopItemKind::File),
+            Err(DesktopModelError::LabelTooLong)
+        );
+    }
+
+    #[test]
     fn groups_are_virtual_bounded_and_reference_existing_items() {
         let items = desktop_items();
         let group = DesktopGroup::new(

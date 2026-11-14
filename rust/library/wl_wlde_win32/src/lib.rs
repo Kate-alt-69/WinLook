@@ -10,6 +10,12 @@ use std::time::Duration;
 
 use wl_wlde::{MonitorTopology, TopologyError};
 
+mod desktop_inventory;
+pub use desktop_inventory::{
+    enumerate_desktop_items, DesktopFolder, DesktopInventoryError, DesktopInventoryItem,
+    MAX_DESKTOP_INVENTORY_ITEMS,
+};
+
 /// Win32 message sent after the display resolution or configuration changes.
 pub const WM_DISPLAYCHANGE: u32 = 0x007E;
 /// Win32 device-change broadcast message.

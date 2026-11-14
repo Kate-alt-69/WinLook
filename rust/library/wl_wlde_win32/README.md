@@ -40,10 +40,13 @@ represented by this first snapshot adapter and remain separate work.
 The same functions are re-exported by the shared Win32 backend and the public
 `wl_ui::windows10` / `wl_ui::windows11` modules on their respective builds.
 
-The adapter uses a narrow, private Win32 FFI boundary and has no additional
-runtime crate dependencies. The portable Rust core remains
+The adapter uses a narrow, private Win32 FFI boundary. Its only Rust runtime
+dependency is `sha2 0.10.9`, used to generate opaque desktop-item IDs; the
+crate uses the Windows Shell and OLE system libraries for Known Folder path
+resolution and memory release. The portable Rust core remains
 `#![forbid(unsafe_code)]`; this crate contains the platform-specific unsafe
-calls and exposes only owned, validated Rust data.
+calls and exposes owned, validated item metadata plus an explicitly ephemeral
+filesystem path for local Shell operations.
 
 ## Explorer desktop-host discovery
 

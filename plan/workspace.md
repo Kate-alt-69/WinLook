@@ -460,3 +460,15 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Added matching C89 desktop-background action values plus read-only Group lookup/membership helpers. C89 editing continues through caller-owned candidate arrays and transactional `wl_Lwlde_desktop_groups_replace()`.
 - Re-exported `render_adaptive_app_icon_into()` from the Rust crate root so BGW can use the allocation-free compositor API described in the README.
 - Added Rust/C89 tests for the new group actions, transactional failure behaviour, lookup and desktop-background menu actions. CI validation is the next acceptance gate; this still does not implement the native Explorer presenter, popup window, persistent Group store or crash-safe icon restoration.
+
+
+## WLDE modern Desktop filesystem inventory — 2026-11-15
+
+- Added `wl_wlde_win32::enumerate_desktop_items()` as a bounded, read-only snapshot of the current user's Desktop and Public Desktop Known Folders, resolved with `SHGetKnownFolderPath`.
+- The snapshot is one level deep, deduplicates entries by opaque SHA-256 hash of the full filesystem path, and returns a portable `DesktopItemRef` plus an ephemeral local path for future Shell operations.
+- Capacity is fixed at 4096 entries. Missing Public Desktop is treated as empty; access or iteration failures abort the snapshot rather than returning partial data.
+- Common launcher extensions are currently classified as Applications; .lnk targets are not yet resolved, so shortcuts to documents/folders need a later Shell-link resolver.
+- The pass does not traverse folders, follow directory links, read file contents or mutate Shell items. It does not include virtual Shell namespace items, hidden/visibility state or the Explorer view's current filtered membership. A future IShellFolder/IFolderView adapter is required for exact desktop view integration.
+- Raised the portable display-label limit to 1023 UTF-8 bytes (C89 buffer to 1024 bytes) so long Unicode Windows filenames can be represented without truncation.
+- sha2 0.10.9 was already in the lockfile; it is now a direct dependency of the Win32 adapter for stable path identity generation.
+- Official references WLDE-021–022 are recorded in plan/references/SOURCES.md. Windows runtime enumeration and cross-user/Public Desktop behaviour remain CI/device verification tasks.

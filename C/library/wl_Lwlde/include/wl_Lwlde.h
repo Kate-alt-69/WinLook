@@ -331,6 +331,7 @@ typedef struct wl_Lwlde_desktop_item_ref {
     wl_Lwlde_desktop_item_kind kind;
 } wl_Lwlde_desktop_item_ref;
 
+/* UTF-8 display labels allow up to 1023 bytes plus the terminating NUL. */
 /* member_ids is caller-owned and must outlive the group record in the set. */
 typedef struct wl_Lwlde_desktop_group {
     char id[WL_LWDE_DESKTOP_ID_CAPACITY];
