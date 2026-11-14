@@ -158,20 +158,16 @@ impl ResourceGovernor {
         }
 
         if peak >= self.policy.suspend_at_percent {
-            self.suspend_streak = advance_streak_value(
-                self.suspend_streak,
-                self.policy.enter_windows,
-            );
+            self.suspend_streak =
+                advance_streak_value(self.suspend_streak, self.policy.enter_windows);
             self.optimize_streak = 0;
             if self.suspend_streak >= self.policy.enter_windows {
                 self.pressure = ResourcePressure::Suspend;
                 self.reset_streaks();
             }
         } else if peak >= self.policy.optimize_at_percent {
-            self.optimize_streak = advance_streak_value(
-                self.optimize_streak,
-                self.policy.enter_windows,
-            );
+            self.optimize_streak =
+                advance_streak_value(self.optimize_streak, self.policy.enter_windows);
             self.suspend_streak = 0;
             if self.optimize_streak >= self.policy.enter_windows {
                 self.pressure = ResourcePressure::Optimize;
@@ -198,7 +194,11 @@ fn advance_streak(counter: &mut u16, required: u16) -> bool {
 }
 
 fn advance_streak_value(counter: u16, required: u16) -> u16 {
-    if counter >= required { required } else { counter + 1 }
+    if counter >= required {
+        required
+    } else {
+        counter + 1
+    }
 }
 
 #[cfg(test)]
@@ -210,14 +210,28 @@ mod tests {
     }
 
     fn sample(cpu: u8, gpu: u8, ram: u8, vram: u8) -> ResourceSample {
-        ResourceSample { cpu_percent: cpu, gpu_percent: gpu, ram_percent: ram, vram_percent: vram }
+        ResourceSample {
+            cpu_percent: cpu,
+            gpu_percent: gpu,
+            ram_percent: ram,
+            vram_percent: vram,
+        }
     }
 
     #[test]
     fn policy_rejects_ambiguous_thresholds_and_empty_windows() {
-        assert_eq!(ResourcePolicy::new(90, 80, 70, 3, 4), Err(ResourcePolicyError::InvalidThresholds));
-        assert_eq!(ResourcePolicy::new(75, 90, 65, 0, 4), Err(ResourcePolicyError::InvalidWindowCount));
-        assert_eq!(ResourcePolicy::new(75, 90, 65, 3, 0), Err(ResourcePolicyError::InvalidWindowCount));
+        assert_eq!(
+            ResourcePolicy::new(90, 80, 70, 3, 4),
+            Err(ResourcePolicyError::InvalidThresholds)
+        );
+        assert_eq!(
+            ResourcePolicy::new(75, 90, 65, 0, 4),
+            Err(ResourcePolicyError::InvalidWindowCount)
+        );
+        assert_eq!(
+            ResourcePolicy::new(75, 90, 65, 3, 0),
+            Err(ResourcePolicyError::InvalidWindowCount)
+        );
     }
 
     #[test]
@@ -234,7 +248,10 @@ mod tests {
         let mut governor = ResourceGovernor::new(policy());
         let optimize = sample(80, 20, 30, 10);
         assert_eq!(governor.update(optimize), Ok(ResourcePressure::Normal));
-        assert_eq!(governor.update(sample(10, 10, 10, 10)), Ok(ResourcePressure::Normal));
+        assert_eq!(
+            governor.update(sample(10, 10, 10, 10)),
+            Ok(ResourcePressure::Normal)
+        );
         assert_eq!(governor.update(optimize), Ok(ResourcePressure::Normal));
         assert_eq!(governor.update(optimize), Ok(ResourcePressure::Normal));
         assert_eq!(governor.update(optimize), Ok(ResourcePressure::Optimize));
@@ -249,7 +266,9 @@ mod tests {
     fn recovery_requires_all_domains_below_recovery_threshold() {
         let mut governor = ResourceGovernor::new(policy());
         let critical = sample(20, 95, 20, 20);
-        for _ in 0..3 { governor.update(critical).unwrap(); }
+        for _ in 0..3 {
+            governor.update(critical).unwrap();
+        }
         assert_eq!(governor.pressure(), ResourcePressure::Suspend);
 
         let recovered = sample(40, 50, 60, 64);
@@ -258,11 +277,18 @@ mod tests {
         }
         assert_eq!(governor.update(recovered), Ok(ResourcePressure::Normal));
 
-        for _ in 0..3 { governor.update(sample(80, 10, 10, 10)).unwrap(); }
+        for _ in 0..3 {
+            governor.update(sample(80, 10, 10, 10)).unwrap();
+        }
         assert_eq!(governor.pressure(), ResourcePressure::Optimize);
-        for _ in 0..3 { governor.update(sample(60, 60, 60, 60)).unwrap(); }
+        for _ in 0..3 {
+            governor.update(sample(60, 60, 60, 60)).unwrap();
+        }
         assert_eq!(governor.pressure(), ResourcePressure::Optimize);
-        assert_eq!(governor.update(sample(60, 60, 60, 60)), Ok(ResourcePressure::Normal));
+        assert_eq!(
+            governor.update(sample(60, 60, 60, 60)),
+            Ok(ResourcePressure::Normal)
+        );
     }
 
     #[test]
