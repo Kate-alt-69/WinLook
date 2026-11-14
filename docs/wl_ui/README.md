@@ -48,6 +48,20 @@ UiPage::new("wallpaper-store", "Wallpaper Store", "Discover wallpaper providers"
     .navigation_title("  Wallpaper Store")
 ```
 
+## WinLook Manager visual baseline
+
+The shared `manager_app()` starts with the **WinLook Graphite** dark theme and
+semantic Window, Navigation, Surface, Card and Button styles. This keeps the
+Manager from falling back to the generic white system palette. The modern
+Windows 11 shell uses bordered status cards and module summaries; the Windows
+10 shell maps the same dark palette to native GDI/Win32 surfaces and controls.
+
+The shared navigation includes dedicated WLDE destinations for Wallpaper,
+Wallpaper Store, Wallpaper Engine, Free Catalogues, Wallpaper Library,
+Widgets, Resource & Performance, Desktop Groups, Rainmeter, Game Mode and
+Displays. These screens distinguish implemented actions from integration
+gates: unavailable telemetry is not represented as fake zero values, and
+Groups remain visibly disabled until native Shell restoration is safe.
 
 ## Example
 

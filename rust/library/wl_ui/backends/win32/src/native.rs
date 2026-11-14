@@ -2,6 +2,7 @@ use std::ffi::c_void;
 use std::mem::size_of;
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
+use crate::{enumerate_monitors, should_refresh_topology};
 use wl_ui_core::{UiApplication, UiColor, UiComponent, UiError, UiPage, UiPalette};
 use wl_wlde::{store_provider, StoreProviderId, WallpaperEngineInstall, WallpaperTarget};
 
@@ -48,7 +49,8 @@ const WORKSHOP_BUTTON_ID: usize = 1103;
 const OPENVERSE_BUTTON_ID: usize = 1104;
 const COMMONS_BUTTON_ID: usize = 1105;
 const NASA_BUTTON_ID: usize = 1106;
-const BUTTON_COUNT: usize = 6;
+const REFRESH_DISPLAYS_BUTTON_ID: usize = 1107;
+const BUTTON_COUNT: usize = 7;
 const CLASS_NAME: &str = "WinLook.WlUi.Win32";
 const WINDOW_STATE_PROPERTY: &str = "WinLook.WlUi.State";
 
@@ -120,6 +122,7 @@ struct WindowState {
     text_color: UiColor,
     action_buttons: [Handle; BUTTON_COUNT],
     wallpaper_engine: Option<WallpaperEngineInstall>,
+    display_status: String,
 }
 
 #[link(name = "user32")]
@@ -353,6 +356,23 @@ pub fn open_url(url: &str) -> Result<(), UiError> {
     Ok(())
 }
 
+fn monitor_snapshot_status() -> String {
+    match enumerate_monitors() {
+        Ok(topology) => {
+            let primary = topology
+                .primary()
+                .map(|monitor| monitor.id().to_string())
+                .unwrap_or_else(|| "not reported".to_string());
+            format!(
+                "{} attached display(s) in the latest snapshot. Primary: {}. The Win32 Manager refreshes this snapshot on display/device notifications.",
+                topology.len(),
+                primary
+            )
+        }
+        Err(error) => format!("Display snapshot unavailable: {error}"),
+    }
+}
+
 fn colorref(color: UiColor) -> u32 {
     u32::from(color.red) | (u32::from(color.green) << 8) | (u32::from(color.blue) << 16)
 }
@@ -380,9 +400,10 @@ fn create_action_button(parent: Handle, instance: Handle, id: usize, label: &str
 
 fn update_action_buttons(state: &WindowState, page: &UiPage) {
     let visible = match page.id() {
-        "wallpaper-store-wallpaper-engine" => [true, true, true, false, false, false],
-        "wallpaper-store-free" => [false, false, false, true, true, true],
-        _ => [false, false, false, false, false, false],
+        "wallpaper-store-wallpaper-engine" => [true, true, true, false, false, false, false],
+        "wallpaper-store-free" => [false, false, false, true, true, true, false],
+        "displays" => [false, false, false, false, false, false, true],
+        _ => [false, false, false, false, false, false, false],
     };
     for (index, button) in state.action_buttons.iter().enumerate() {
         if !button.is_null() {
@@ -398,7 +419,12 @@ fn refresh_current_page(state: &WindowState) {
     if selected >= 0 {
         if let Some(page) = state.application.pages().get(selected as usize) {
             unsafe {
-                set_page_content(state.content, page, state.wallpaper_engine.as_ref());
+                set_page_content(
+                    state.content,
+                    page,
+                    state.wallpaper_engine.as_ref(),
+                    &state.display_status,
+                );
             }
             update_action_buttons(state, page);
         }
@@ -406,12 +432,12 @@ fn refresh_current_page(state: &WindowState) {
 }
 
 fn show_action_error(error: &UiError) {
-    show_start_error(error, "WinLook Wallpaper Store");
+    show_start_error(error, "WinLook Manager");
 }
 
 fn show_action_message(message: &str) {
     let text = wide(message);
-    let title = wide("WinLook Wallpaper Store");
+    let title = wide("WinLook Manager");
     unsafe {
         MessageBoxW(
             std::ptr::null_mut(),
@@ -502,6 +528,10 @@ fn handle_store_command(state_pointer: *mut WindowState, control_id: usize) {
             if let Err(error) = open_url(store_provider(StoreProviderId::NasaImages).browse_url) {
                 show_action_error(&error);
             }
+        }
+        REFRESH_DISPLAYS_BUTTON_ID => {
+            state.display_status = monitor_snapshot_status();
+            show_action_message(&state.display_status);
         }
         _ => {}
     }
@@ -596,6 +626,15 @@ unsafe extern "system" fn window_proc(
     }
 
     let state = state_for(hwnd);
+
+    if !state.is_null()
+        && unsafe { !(*state).navigation.is_null() && !(*state).content.is_null() }
+        && should_refresh_topology(message, w_param)
+        unsafe {
+            (*state).display_status = monitor_snapshot_status();
+            refresh_current_page(&*state);
+        }
+    }
 
     if message == WM_ERASEBKGND && !state.is_null() {
         let mut rect = Rect {
@@ -712,6 +751,12 @@ unsafe extern "system" fn window_proc(
                 create_action_button(hwnd, instance, OPENVERSE_BUTTON_ID, "Open Openverse"),
                 create_action_button(hwnd, instance, COMMONS_BUTTON_ID, "Open Wikimedia Commons"),
                 create_action_button(hwnd, instance, NASA_BUTTON_ID, "Open NASA Images"),
+                create_action_button(
+                    hwnd,
+                    instance,
+                    REFRESH_DISPLAYS_BUTTON_ID,
+                    "Refresh Displays",
+                ),
             ];
             if action_buttons.iter().any(|button| button.is_null()) {
                 return -1;
@@ -752,6 +797,7 @@ unsafe extern "system" fn window_proc(
                     content,
                     &application.pages()[initial_index],
                     (*state).wallpaper_engine.as_ref(),
+                    &(*state).display_status,
                 );
                 update_action_buttons(&*state, &application.pages()[initial_index]);
             }
@@ -821,6 +867,7 @@ unsafe extern "system" fn window_proc(
                                 (*state).content,
                                 page,
                                 (*state).wallpaper_engine.as_ref(),
+                                &(*state).display_status,
                             );
                             update_action_buttons(&*state, page);
                         }
@@ -846,9 +893,20 @@ unsafe extern "system" fn window_proc(
     }
 }
 
-unsafe fn set_page_content(hwnd: Handle, page: &UiPage, engine: Option<&WallpaperEngineInstall>) {
+unsafe fn set_page_content(
+    hwnd: Handle,
+    page: &UiPage,
+    engine: Option<&WallpaperEngineInstall>,
+    display_status: &str,
+) {
     let mut body = format!("{}\r\n\r\n{}", page.title(), page.description());
     match page.id() {
+        "home" => body.push_str(
+            "\r\n\r\nWINLOOK DESKTOP ENGINE\r\nA unified workspace for wallpapers, displays and desktop modules.\r\n\r\nWLDE modules: Store provider hub, monitor snapshot API and resource-pressure policy are available. Native rendering, decoding and widget execution are still in progress.",
+        ),
+        "wallpaper" => body.push_str(
+            "\r\n\r\nWALLPAPER WORKSPACE\r\nOpen the Store, manage local wallpapers, review display topology or inspect Resource & Performance. Widget hosting, Game Mode detection and Groups are shown in their own sections.",
+        ),
         "wallpaper-store" => body.push_str(
             "\r\n\r\nChoose Wallpaper Engine or browse the free catalogues. Providers keep their own terms, downloads and attribution requirements.",
         ),
@@ -869,9 +927,29 @@ unsafe fn set_page_content(hwnd: Handle, page: &UiPage, engine: Option<&Wallpape
             "\r\n\r\nOpenverse: confirm the item's exact license, creator, source and attribution.\r\nWikimedia Commons: licenses vary by file; follow the file page.\r\nNASA: check third-party notices and credits; NASA endorsement is not implied.",
         ),
         "wallpaper-library" => body.push_str(
-            "\r\n\r\nLocal offline import and collection management are the next library slice.",
+            "\r\n\r\nLOCAL LIBRARY\r\nOffline import, previews, collections and backup are not implemented yet. Use the Store/Wallpaper Engine provider to browse available sources.",
         ),
-        _ => {}
+        "displays" => body.push_str(&format!(
+            "\r\n\r\nDISPLAY SNAPSHOT\r\n{}\r\n\r\nA manual snapshot can be refreshed with the button above. Display-change hot-plug events, per-monitor DPI/orientation and wallpaper assignment are still being integrated.",
+            display_status
+        )),
+        "wallpaper-performance" => body.push_str(
+            "\r\n\r\nRESOURCE & PERFORMANCE\r\nThe Rust and C89 resource-pressure controllers are ready for CPU/GPU/RAM/VRAM samples. No OS telemetry provider is connected yet, so live percentages are not available. Optimize targets 30 FPS; Suspend stops animation requests.",
+        ),
+        "wallpaper-widgets" => body.push_str(
+            "\r\n\r\nWIDGETS\r\nThe shared scene clock and capability contract are ready. No third-party widget code is executed until a restricted runtime, explicit permissions and crash isolation are implemented.",
+        ),
+        "wallpaper-groups" => body.push_str(
+            "\r\n\r\nDESKTOP GROUPS\r\nDisabled until original Shell icon visibility/positions can be restored after a crash, disable and uninstall. Groups will be virtual presentation objects, never filesystem folders.",
+        ),
+        "wallpaper-rainmeter" => body.push_str(
+            "\r\n\r\nRAINMETER\r\nRMSKIN parsing is not runtime compatibility. Measures, meters, variables, actions, plugins, extraction safety and licensing still need a reviewed compatibility subset.",
+        ),
+        "game-mode" => body.push_str(
+            "\r\n\r\nGAME MODE\r\nNormal, Optimize and Suspend policy primitives exist. Fullscreen/game detection, per-application profiles and automatic pause/resume are not connected yet.",
+        ),
+        _ => {},
+
     }
     let text = wide(&body);
     unsafe {
@@ -943,6 +1021,7 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
         text_color,
         action_buttons: [std::ptr::null_mut(); BUTTON_COUNT],
         wallpaper_engine: WallpaperEngineInstall::discover(),
+        display_status: monitor_snapshot_status(),
     };
     if state.window_brush.is_null()
         || state.navigation_brush.is_null()

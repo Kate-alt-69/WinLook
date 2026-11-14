@@ -39,12 +39,35 @@ not install a message hook or poll: the host must call it from its own event
 loop. C89 remains the portable policy/scene core and receives monitor snapshots
 from its platform host.
 
+## Manager UI coverage
+
+The shared Manager navigation now includes a dedicated destination for each
+WLDE module: Wallpaper, Wallpaper Store, Wallpaper Engine, Free Catalogues,
+Wallpaper Library, Widgets, Resource & Performance, Desktop Groups, Rainmeter,
+Game Mode and Displays. The UI uses the WinLook Graphite dark design system,
+with bordered status cards and explicit readiness labels rather than empty
+white pages.
+
+The Windows 10 Win32 Manager reports a real monitor snapshot at startup and
+refreshes it on `WM_DISPLAYCHANGE` and
+`WM_DEVICECHANGE/DBT_DEVNODES_CHANGED`, with a manual refresh action as well.
+The Windows 11 Manager also reports a real snapshot and offers manual refresh;
+wiring display/device notifications into its Windows Reactor event loop remains
+open. Neither shell claims DPI/orientation/session reconciliation yet.
+
+The UI reports the current boundary honestly: the Store provider actions and
+Wallpaper Engine hand-off are available; the monitor snapshot and resource
+policy APIs exist; OS telemetry, local library import, native wallpaper
+rendering, widget execution and Rainmeter runtime are not connected. Desktop
+Groups remain visibly disabled until crash-safe Shell restoration is proven.
+
 ## Renderer boundary
 
 **This is not yet a usable desktop wallpaper renderer.** The current branch
-can enumerate attached Windows monitors through the separate Win32 adapter,
-but the Manager/runtime event loops do not yet own a complete monitor
-lifecycle. It does not create desktop-owned surfaces, draw pixels, decode
+can enumerate attached Windows monitors through the separate Win32 adapter.
+The Windows 10 Manager refreshes snapshots on display/device notifications;
+the Windows 11 Manager currently refreshes manually, and the WLDE runtime does
+not yet own a complete cross-session/DPI-aware monitor lifecycle. It does not create desktop-owned surfaces, draw pixels, decode
 image/video assets, host widgets, parse wallpaper packages, provide in-app
 catalogue search/downloads, run Rainmeter skins or manage desktop icons. The
 Store provider directory and Wallpaper Engine hand-off remain separate from
@@ -130,8 +153,8 @@ existing renderer/media and desktop-surface acceptance gates remain open.
 
 ## Next implementation gates
 
-1. Wire Win10/11 host event loops to the new monitor snapshot adapter and test
-   display/device notifications, DPI changes, docking and remote sessions.
+1. Wire the Windows 11 host event loop to display/device notifications, then
+   test both modern shells for DPI changes, docking and remote sessions.
 2. Add trusted Win10/11 telemetry providers and sampling cadence for the
    resource controller; test transitions under independent CPU/GPU/RAM/VRAM
    pressure.

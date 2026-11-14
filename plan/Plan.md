@@ -495,7 +495,9 @@ WinLook Manager is where users configure and load subsystem settings, import/exp
 - [ ] Design taskbar and Start Menu customization pages.
 - [ ] Design Audio & Media's full page and compact mixer/Now Playing popup.
 - [ ] Design the File Explorer page with surface-specific controls, capability states and out-of-band safe mode.
-- [ ] Design WLDE wallpaper library and integrated Wallpaper Store screens.
+- [x] Design WLDE wallpaper library and integrated Wallpaper Store screens.
+- [x] Add a shared WLDE module page map and explicit readiness/disabled states
+  across the Windows 10 and Windows 11 Manager shells.
 - [ ] Design monitor layout and per-monitor wallpaper controls.
 - [ ] Design resource/performance controls and live WLDE status.
 - [ ] Design per-game profiles and Game Mode settings.

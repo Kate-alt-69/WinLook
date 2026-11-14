@@ -29,7 +29,7 @@ pub fn run_with_backend<B: UiBackend>(
     backend.run(application)
 }
 
-const MANAGER_PAGES: [(&str, &str, &str); 18] = [
+const MANAGER_PAGES: [(&str, &str, &str); 23] = [
     (
         "home",
         "Home",
@@ -74,12 +74,37 @@ const MANAGER_PAGES: [(&str, &str, &str); 18] = [
     (
         "wallpaper-library",
         "Wallpaper Library",
-        "Import and organize local wallpapers for offline use.",
+        "Import, organize and back up local wallpapers for offline use.",
+    ),
+    (
+        "wallpaper-widgets",
+        "Widgets",
+        "Desktop-anchored and floating widgets, layouts, permissions and isolated hosting.",
+    ),
+    (
+        "wallpaper-performance",
+        "Resource & Performance",
+        "CPU, GPU, RAM and VRAM pressure policy, frame pacing and playback diagnostics.",
+    ),
+    (
+        "wallpaper-groups",
+        "Desktop Groups",
+        "Virtual desktop groups with native Shell restoration and recovery safeguards.",
+    ),
+    (
+        "wallpaper-rainmeter",
+        "Rainmeter",
+        "Compatibility status for imported skins, measures, meters and plugins.",
     ),
     (
         "window-manager",
         "Window Manager",
         "Window layouts, rules, workspaces and compatibility.",
+    ),
+    (
+        "game-mode",
+        "Game Mode",
+        "Per-application Normal, Optimize and Suspend profiles for foreground games.",
     ),
     (
         "displays",
@@ -126,11 +151,53 @@ pub fn manager_app() -> UiApplication {
         let navigation_title = match id {
             "wallpaper-store" | "wallpaper-library" => format!("  {title}"),
             "wallpaper-store-wallpaper-engine" | "wallpaper-store-free" => format!("    {title}"),
+            "wallpaper-widgets"
+            | "wallpaper-performance"
+            | "wallpaper-groups"
+            | "wallpaper-rainmeter" => format!("  {title}"),
             _ => title.to_string(),
         };
         application = application
             .page(UiPage::new(id, title, description).navigation_title(navigation_title));
     }
+    let theme = UiTheme::dark().name("WinLook Graphite");
+    let palette = *theme.palette();
+    let styles = UiStyleSheet::new()
+        .rule(
+            UiSelector::new(UiComponent::Window),
+            UiStyle::new()
+                .background(palette.window)
+                .foreground(palette.text_primary),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Navigation),
+            UiStyle::new()
+                .background(palette.surface_alt)
+                .foreground(palette.text_primary),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Surface),
+            UiStyle::new()
+                .background(palette.surface)
+                .foreground(palette.text_primary),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Card),
+            UiStyle::new()
+                .background(palette.surface_elevated)
+                .foreground(palette.text_primary)
+                .padding(UiEdges::all(16.0))
+                .border_color(palette.border)
+                .border_radius(14.0),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Button),
+            UiStyle::new()
+                .background(palette.accent)
+                .foreground(palette.accent_text)
+                .border_radius(8.0),
+        );
+    application = application.theme(theme).styles(styles);
     application.initial_page("home")
 }
 
@@ -199,25 +266,22 @@ mod tests {
     fn manager_navigation_ids_are_unique_and_ordered() {
         let application = manager_app();
         assert!(application.validate().is_ok());
-        assert_eq!(application.pages().len(), 18);
+        assert_eq!(application.pages().len(), 23);
         assert_eq!(application.initial_page_id(), "home");
         assert_eq!(application.pages()[0].title(), "Home");
-        assert_eq!(application.pages()[5].id(), "wallpaper");
-        assert_eq!(application.pages()[6].id(), "wallpaper-store");
-        assert_eq!(
-            application.pages()[7].id(),
-            "wallpaper-store-wallpaper-engine"
-        );
-        assert_eq!(application.pages()[8].id(), "wallpaper-store-free");
-        assert_eq!(
-            application.pages()[6].navigation_label(),
-            "  Wallpaper Store"
-        );
-        assert_eq!(
-            application.pages()[7].navigation_label(),
-            "    Wallpaper Engine"
-        );
-        assert_eq!(application.pages()[17].id(), "settings");
+        let page = |id: &str| application.pages().iter().find(|item| item.id() == id).unwrap();
+        assert_eq!(page("wallpaper").title(), "Wallpaper");
+        assert_eq!(page("wallpaper-store").navigation_label(), "  Wallpaper Store");
+        assert_eq!(page("wallpaper-store-wallpaper-engine").navigation_label(), "    Wallpaper Engine");
+        assert_eq!(page("wallpaper-library").navigation_label(), "  Wallpaper Library");
+        assert_eq!(page("wallpaper-widgets").navigation_label(), "  Widgets");
+        assert_eq!(page("wallpaper-performance").navigation_label(), "  Resource & Performance");
+        assert_eq!(page("wallpaper-groups").navigation_label(), "  Desktop Groups");
+        assert_eq!(page("wallpaper-rainmeter").navigation_label(), "  Rainmeter");
+        assert!(application.pages().iter().any(|item| item.id() == "game-mode"));
+        assert_eq!(page("settings").title(), "Settings");
+        assert_eq!(application.theme_ref().color_scheme(), UiColorScheme::Dark);
+        assert_eq!(application.styles_ref().rules().len(), 5);
     }
 
     #[test]

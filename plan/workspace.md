@@ -368,3 +368,13 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Resulting Normal/Optimize/Suspend pressure can be applied to the shared scene: Optimize selects 30 FPS, Suspend suppresses animation requests while preserving the last presented frame.
 - CPUv/GPUv admission tickets remain distinct from system telemetry. No OS sampling provider, polling thread, sampling cadence or resource attribution has been added yet.
 - The plan's 90% severe-pressure threshold remains a host policy/configuration choice, not a hardcoded default.
+
+
+## WLDE Manager UI integration — 2026-11-14
+
+- Expanded the shared Manager navigation from 18 to 23 pages and added dedicated WLDE destinations for Widgets, Resource & Performance, Desktop Groups, Rainmeter and Game Mode alongside Wallpaper, Store, Engine, Free Catalogues, Library and Displays.
+- `manager_app()` now selects the WinLook Graphite dark theme and provides semantic Window, Navigation, Surface, Card and Button styles; it no longer starts in the generic white system palette.
+- Windows 11 uses reusable bordered info/status cards for each WLDE area and exposes a manual display snapshot refresh. It clearly reports that the Windows Reactor display/device event bridge is still pending.
+- Windows 10 uses the same dark palette, shows module-specific status content and has a manual monitor refresh action. Its native message loop now refreshes the topology summary on `WM_DISPLAYCHANGE` and `WM_DEVICECHANGE/DBT_DEVNODES_CHANGED`.
+- The UI does not invent telemetry values: CPU/GPU/RAM/VRAM are shown as unavailable until a trusted sampler is integrated. Wallpaper Library import, native wallpaper rendering, widget execution and Rainmeter runtime remain unimplemented. Desktop Groups remain visibly disabled until crash-safe Shell restoration exists.
+- Hosted CI must verify Rust formatting, manager unit tests, Win10/Win11 UI compilation/package builds, and the full build matrix on the new UI head.
