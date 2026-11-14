@@ -24,6 +24,10 @@ monitor topology, wallpaper placement math and the shared frame schedule.
   RAM and VRAM utilization samples independently, applies configurable
   consecutive-window hysteresis, and feeds Normal/Optimize/Suspend pressure
   into the Scene frame policy. It does not collect OS telemetry.
+- A bounded Game Mode resolver keyed by host-supplied executable SHA-256
+  fingerprints. Explicit per-application profiles override optional OS
+  Game Mode and fullscreen fallbacks. The resolver allocates nothing and
+  does not enumerate processes, inspect files or hash executables itself.
 - Explicit presentation capability checks. Virtual Groups require both a
   presenter capability and a crash-safe restoration capability.
 
@@ -37,6 +41,23 @@ directory and a safe hand-off adapter for an already-installed Wallpaper
 Engine. Interactive content is unavailable unless a future restricted host
 reports that capability. Groups remain disabled until the OS adapter proves
 crash/disable/uninstall restoration.
+
+## Game Mode profile resolver
+
+`resolve_game_mode(signals, policy, profiles)` accepts a host-supplied
+foreground executable SHA-256 fingerprint, foreground/fullscreen state and an
+optional operating-system Game Mode signal. It checks at most 64 unique
+profiles without allocating. Exact user-selected profiles win first (including
+an explicit Normal override), then the enabled OS Game Mode fallback, then the
+enabled fullscreen fallback. Non-foreground applications always resolve to
+Normal.
+
+The host computes and supplies the executable digest; the portable library
+does not scan processes, read executable files, hash binaries, install hooks
+or poll the system. The resulting `GameMode` can be applied through
+`Scene::set_game_mode`. OS-specific foreground/fullscreen detection,
+profile persistence and Manager editing controls remain platform work.
+The matching C89 resolver uses the same fingerprint/precedence contract.
 
 ## Resource pressure policy
 

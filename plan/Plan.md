@@ -322,8 +322,16 @@ WLDE should be a good desktop citizen. Foreground applications and games take pr
 
 ## Full-screen applications and Game Mode
 
+### Portable per-application profile resolver
+
+- [x] Add matching Rust/C89 resolution using host-supplied executable SHA-256 fingerprints.
+- [x] Bound profile evaluation to 64 unique identities and reject duplicates.
+- [x] Define precedence: exact user profile (including Normal override), optional OS Game Mode signal, optional fullscreen fallback, then Normal.
+- [x] Ensure non-foreground applications always resolve to Normal and do not use executable names alone.
+- [ ] Connect Win10/Win11 foreground, fullscreen and OS Game Mode detection, profile persistence and Manager editing controls.
+
 - [ ] Design detection of foreground applications and fullscreen/borderless fullscreen states.
-- [ ] Design game detection using multiple signals, not only executable-name matching.
+- [x] Define the portable input contract for foreground ownership, fullscreen state, host-provided executable fingerprint and OS Game Mode signal; OS-specific collection remains open.
 - [ ] Design automatic Game Mode.
 - [ ] Design **Optimize** behaviour: lower FPS/resolution/effects and minimize wallpaper work to leave resources for the game.
 - [ ] Design **Suspend** behaviour: stop animation, video decoding where possible, and unnecessary rendering/workers.

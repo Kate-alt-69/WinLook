@@ -10,6 +10,9 @@ C89 companion to the portable WinLook Desktop Engine scene core.
 - Visibility-aware frame requests; Unknown stays eligible, fully occluded scenes
   hold their last frame, static scenes do not poll a frame clock.
 - Normal 60 FPS, Optimize/Power Saver 30 FPS and Suspend policies.
+- A bounded, allocation-free per-application Game Mode resolver using
+  host-supplied executable SHA-256 fingerprints, explicit profile precedence,
+  and optional OS Game Mode/fullscreen fallbacks.
 - An allocation-free caller-fed resource controller for CPU/GPU/RAM/VRAM
   percentages, configurable consecutive enter/recovery windows and separate
   Optimize/Suspend states. A peak domain is used instead of an average.
@@ -28,6 +31,19 @@ resource controller update or scene tick paths. Resource telemetry is supplied
 by the platform host; this library does not poll Windows or create threads. The caller supplies monitor storage and serializes governor
 access as required by CPUv/GPUv. The archive links against wl_Lanimate,
 wl_Lcpuv and wl_Lgpuv; the root CMake aggregator wires those targets.
+
+## Game Mode resolution
+
+`wl_Lwlde_game_mode_resolve()` evaluates at most 64 unique executable
+fingerprint profiles. An exact user profile wins first, including a deliberate
+Normal override; an enabled system Game Mode signal is next, followed by an
+enabled fullscreen fallback. Non-foreground applications always resolve to
+Normal. The host supplies the SHA-256 digest and detection signals: the C89
+core does not enumerate processes, inspect files, hash binaries or poll.
+
+`wl_Lwlde_scene_set_game_mode()` applies the resolved mode to the existing
+scene clock policy. Windows-specific foreground/fullscreen detection and
+persistent profile editing remain adapter/Manager work.
 
 ## Not implemented here
 

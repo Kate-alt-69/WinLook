@@ -631,16 +631,16 @@ impl Component for CustomShell {
                 .children((
                     info_card(
                         "Game Mode profiles",
-                        "Normal, Optimize and Suspend map to scene policy, but automatic game/fullscreen detection and per-application profile storage are not connected yet.",
-                        "POLICY PRIMITIVES READY",
+                        "The bounded SHA-256 profile resolver is ready. Exact user profiles override automatic system/fullscreen rules; Windows signal collection and profile persistence are still pending.",
+                        "PROFILE RESOLVER READY",
                         palette.success,
                         palette,
                         metrics,
                     ),
                     info_card(
                         "Foreground priority",
-                        "WLDE must prioritize games and foreground applications, then resume from a fresh frame-clock baseline when the trigger ends.",
-                        "DETECTION PENDING",
+                        "The host must supply the foreground executable fingerprint, fullscreen state and optional OS Game Mode signal. No filename-only detection or background process scan is performed by the portable core.",
+                        "HOST SIGNALS PENDING",
                         palette.warning,
                         palette,
                         metrics,

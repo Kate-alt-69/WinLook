@@ -15,6 +15,8 @@
 #define WL_LWDE_VERSION_PATCH 0
 #define WL_LWDE_MAX_MONITORS 16U
 #define WL_LWDE_MONITOR_ID_CAPACITY 64U
+#define WL_LWDE_EXECUTABLE_SHA256_SIZE 32U
+#define WL_LWDE_MAX_GAME_MODE_PROFILES 64U
 
 typedef enum wl_Lwlde_result {
     WL_LWDE_OK = 0,
@@ -26,7 +28,12 @@ typedef enum wl_Lwlde_result {
     WL_LWDE_TOO_MANY_MONITORS = 6,
     WL_LWDE_INTERNAL_ERROR = 7,
     WL_LWDE_INVALID_RESOURCE_POLICY = 8,
-    WL_LWDE_INVALID_RESOURCE_SAMPLE = 9
+    WL_LWDE_INVALID_RESOURCE_SAMPLE = 9,
+    WL_LWDE_TOO_MANY_GAME_MODE_PROFILES = 10,
+    WL_LWDE_DUPLICATE_GAME_MODE_PROFILE = 11,
+    WL_LWDE_INVALID_GAME_MODE_POLICY = 12,
+    WL_LWDE_INVALID_GAME_MODE_PROFILE = 13,
+    WL_LWDE_INVALID_GAME_MODE_SIGNALS = 14
 } wl_Lwlde_result;
 
 typedef struct wl_Lwlde_rect {
@@ -104,6 +111,35 @@ typedef enum wl_Lwlde_game_mode {
     WL_LWDE_GAME_SUSPEND = 2
 } wl_Lwlde_game_mode;
 
+/* The digest is supplied by the host; filenames are not app identities. */
+typedef struct wl_Lwlde_game_mode_profile {
+    unsigned char executable_sha256[WL_LWDE_EXECUTABLE_SHA256_SIZE];
+    wl_Lwlde_game_mode mode;
+} wl_Lwlde_game_mode_profile;
+
+typedef struct wl_Lwlde_game_mode_policy {
+    unsigned int fullscreen_enabled;
+    wl_Lwlde_game_mode fullscreen_mode;
+    unsigned int system_game_mode_enabled;
+    wl_Lwlde_game_mode system_game_mode;
+} wl_Lwlde_game_mode_policy;
+
+typedef struct wl_Lwlde_game_mode_signals {
+    unsigned char executable_sha256[WL_LWDE_EXECUTABLE_SHA256_SIZE];
+    unsigned int is_foreground;
+    unsigned int is_fullscreen;
+    unsigned int system_game_mode_active;
+} wl_Lwlde_game_mode_signals;
+
+/* No OS process lookup or file hashing occurs in this portable resolver. */
+wl_Lwlde_result wl_Lwlde_game_mode_resolve(
+    const wl_Lwlde_game_mode_signals *signals,
+    const wl_Lwlde_game_mode_policy *policy,
+    const wl_Lwlde_game_mode_profile *profiles,
+    unsigned int profile_count,
+    wl_Lwlde_game_mode *mode_out
+);
+
 typedef enum wl_Lwlde_power_state {
     WL_LWDE_POWER_NORMAL = 0,
     WL_LWDE_POWER_SAVER = 1,
@@ -166,6 +202,10 @@ wl_Lwlde_result wl_Lwlde_scene_set_conditions(
     wl_Lwlde_game_mode game_mode,
     wl_Lwlde_power_state power_state,
     unsigned int active_animations
+);
+wl_Lwlde_result wl_Lwlde_scene_set_game_mode(
+    wl_Lwlde_scene *scene,
+    wl_Lwlde_game_mode game_mode
 );
 wl_Lwlde_result wl_Lwlde_scene_set_resource_pressure(
     wl_Lwlde_scene *scene,

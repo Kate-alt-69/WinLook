@@ -172,6 +172,76 @@ wl_Lwlde_result wl_Lwlde_scene_set_conditions(wl_Lwlde_scene *scene,
     return WL_LWDE_OK;
 }
 
+static int wl_Lwlde_valid_game_mode(wl_Lwlde_game_mode mode)
+{
+    return (int)mode >= (int)WL_LWDE_GAME_NORMAL &&
+        (int)mode <= (int)WL_LWDE_GAME_SUSPEND;
+}
+
+wl_Lwlde_result wl_Lwlde_game_mode_resolve(
+    const wl_Lwlde_game_mode_signals *signals,
+    const wl_Lwlde_game_mode_policy *policy,
+    const wl_Lwlde_game_mode_profile *profiles,
+    unsigned int profile_count,
+    wl_Lwlde_game_mode *mode_out)
+{
+    unsigned int i;
+    unsigned int j;
+    if (signals == 0 || policy == 0 || mode_out == 0 ||
+        (profile_count > 0U && profiles == 0)) return WL_LWDE_INVALID_ARGUMENT;
+    if (profile_count > WL_LWDE_MAX_GAME_MODE_PROFILES)
+        return WL_LWDE_TOO_MANY_GAME_MODE_PROFILES;
+    if (policy->fullscreen_enabled > 1U || policy->system_game_mode_enabled > 1U ||
+        !wl_Lwlde_valid_game_mode(policy->fullscreen_mode) ||
+        !wl_Lwlde_valid_game_mode(policy->system_game_mode))
+        return WL_LWDE_INVALID_GAME_MODE_POLICY;
+    if (signals->is_foreground > 1U || signals->is_fullscreen > 1U ||
+        signals->system_game_mode_active > 1U)
+        return WL_LWDE_INVALID_GAME_MODE_SIGNALS;
+
+    for (i = 0U; i < profile_count; ++i) {
+        if (!wl_Lwlde_valid_game_mode(profiles[i].mode))
+            return WL_LWDE_INVALID_GAME_MODE_PROFILE;
+        for (j = 0U; j < i; ++j) {
+            if (memcmp(profiles[i].executable_sha256,
+                profiles[j].executable_sha256,
+                WL_LWDE_EXECUTABLE_SHA256_SIZE) == 0)
+                return WL_LWDE_DUPLICATE_GAME_MODE_PROFILE;
+        }
+    }
+
+    *mode_out = WL_LWDE_GAME_NORMAL;
+    if (signals->is_foreground == 0U) return WL_LWDE_OK;
+
+    for (i = 0U; i < profile_count; ++i) {
+        if (memcmp(signals->executable_sha256, profiles[i].executable_sha256,
+            WL_LWDE_EXECUTABLE_SHA256_SIZE) == 0) {
+            *mode_out = profiles[i].mode;
+            return WL_LWDE_OK;
+        }
+    }
+
+    if (signals->system_game_mode_active != 0U &&
+        policy->system_game_mode_enabled != 0U) {
+        *mode_out = policy->system_game_mode;
+        return WL_LWDE_OK;
+    }
+    if (signals->is_fullscreen != 0U && policy->fullscreen_enabled != 0U) {
+        *mode_out = policy->fullscreen_mode;
+        return WL_LWDE_OK;
+    }
+    return WL_LWDE_OK;
+}
+
+wl_Lwlde_result wl_Lwlde_scene_set_game_mode(wl_Lwlde_scene *scene,
+    wl_Lwlde_game_mode game_mode)
+{
+    if (scene == 0 || !scene->initialized || !wl_Lwlde_valid_game_mode(game_mode))
+        return WL_LWDE_INVALID_ARGUMENT;
+    scene->game_mode = game_mode;
+    return WL_LWDE_OK;
+}
+
 wl_Lwlde_result wl_Lwlde_scene_set_resource_pressure(wl_Lwlde_scene *scene,
     wl_Lwlde_resource_pressure pressure)
 {

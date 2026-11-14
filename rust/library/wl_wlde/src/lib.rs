@@ -17,10 +17,15 @@ pub use wl_animate::{FrameClock, FrameClockError, FrameTick};
 pub use wl_cpuv as cpu;
 pub use wl_gpuv as gpu;
 
+mod game_mode;
 mod resource;
 mod store;
 mod wallpaper_engine;
 
+pub use game_mode::{
+    resolve_game_mode, GameModeError, GameModePolicy, GameModeProfile, GameModeSignals,
+    MAX_GAME_MODE_PROFILES,
+};
 pub use resource::{
     ResourceGovernor, ResourcePolicy, ResourcePolicyError, ResourcePressure, ResourceSample,
 };
@@ -447,6 +452,11 @@ impl Scene {
         self.conditions = conditions;
     }
 
+    /// Applies the Game Mode selected by the host's profile/signal resolver.
+    pub fn set_game_mode(&mut self, mode: GameMode) {
+        self.conditions.game_mode = mode;
+    }
+
     /// Applies the latest caller-fed system resource pressure state.
     pub fn set_resource_pressure(&mut self, pressure: ResourcePressure) {
         self.resource_pressure = pressure;
@@ -697,6 +707,29 @@ mod tests {
         assert_eq!(scene.recommended_fps(), 30);
         assert!(scene.tick(Duration::from_millis(50)).is_none());
         assert!(scene.tick(Duration::from_millis(84)).is_some());
+    }
+
+    #[test]
+    fn game_mode_resolver_updates_the_scene_without_owning_platform_detection() {
+        let fingerprint = [0x5A; 32];
+        let profiles = [GameModeProfile::new(fingerprint, GameMode::Optimize)];
+        let signals = GameModeSignals {
+            executable_sha256: fingerprint,
+            is_foreground: true,
+            is_fullscreen: false,
+            system_game_mode_active: false,
+        };
+        let mode = resolve_game_mode(signals, GameModePolicy::default(), &profiles).unwrap();
+        let mut scene = Scene::new();
+        scene.set_conditions(SceneConditions {
+            visibility: Visibility::Visible,
+            game_mode: GameMode::Normal,
+            power_state: PowerState::Normal,
+            active_animations: 1,
+        });
+        scene.set_game_mode(mode);
+        assert_eq!(scene.conditions().game_mode, GameMode::Optimize);
+        assert_eq!(scene.recommended_fps(), 30);
     }
 
     #[test]

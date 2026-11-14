@@ -378,3 +378,12 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Windows 10 uses the same dark palette, shows module-specific status content and has a manual monitor refresh action. Its native message loop now refreshes the topology summary on `WM_DISPLAYCHANGE` and `WM_DEVICECHANGE/DBT_DEVNODES_CHANGED`.
 - The UI does not invent telemetry values: CPU/GPU/RAM/VRAM are shown as unavailable until a trusted sampler is integrated. Wallpaper Library import, native wallpaper rendering, widget execution and Rainmeter runtime remain unimplemented. Desktop Groups remain visibly disabled until crash-safe Shell restoration exists.
 - Hosted CI must verify Rust formatting, manager unit tests, Win10/Win11 UI compilation/package builds, and the full build matrix on the new UI head.
+
+
+## WLDE per-application Game Mode resolver — 2026-11-14
+
+- Added matching Rust/C89 bounded per-application resolvers keyed by host-supplied executable SHA-256 bytes, not executable names.
+- Resolver accepts foreground ownership, fullscreen state and an optional OS Game Mode signal; it evaluates up to 64 unique profiles without allocating.
+- Precedence is exact user profile (including explicit Normal override), optional OS Game Mode fallback, optional fullscreen fallback, then Normal. Non-foreground applications always resolve to Normal.
+- The resulting mode can be applied to the existing scene mode setter. Rust exposes `Scene::set_game_mode`; C exposes `wl_Lwlde_scene_set_game_mode`.
+- The portable core does not enumerate processes, inspect or hash executable files, install hooks or poll Windows. Win10/Win11 signal collection, profile persistence and Manager editing remain open.

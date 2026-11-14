@@ -37,6 +37,11 @@ int main(void)
     wl_Lwlde_resource_controller resource_controller;
     wl_Lwlde_resource_sample resource_sample;
     wl_Lwlde_resource_pressure resource_pressure;
+    wl_Lwlde_game_mode_profile game_profiles[2];
+    wl_Lwlde_game_mode_policy game_policy;
+    wl_Lwlde_game_mode_signals game_signals;
+    wl_Lwlde_game_mode resolved_game_mode;
+    unsigned int i;
 
     assert(wl_Lwlde_topology_init(&topology, storage, 4U) == WL_LWDE_OK);
     inputs[0] = monitor_make("DISPLAY-A", 0.0, 1);
@@ -92,6 +97,57 @@ int main(void)
     assert(wl_Lwlde_scene_recommended_fps(&scene) == 30U);
     assert(wl_Lwlde_scene_set_resource_pressure(&scene, WL_LWDE_RESOURCE_SUSPEND) == WL_LWDE_OK);
     assert(wl_Lwlde_scene_frame_action(&scene) == WL_LWDE_FRAME_SUSPENDED);
+    assert(wl_Lwlde_scene_set_resource_pressure(&scene, WL_LWDE_RESOURCE_NORMAL) == WL_LWDE_OK);
+    assert(wl_Lwlde_scene_set_game_mode(&scene, WL_LWDE_GAME_OPTIMIZE) == WL_LWDE_OK);
+    assert(wl_Lwlde_scene_recommended_fps(&scene) == 30U);
+
+    memset(game_profiles, 0, sizeof(game_profiles));
+    memset(&game_policy, 0, sizeof(game_policy));
+    memset(&game_signals, 0, sizeof(game_signals));
+    for (i = 0U; i < WL_LWDE_EXECUTABLE_SHA256_SIZE; ++i) {
+        game_profiles[0].executable_sha256[i] = 0xA1U;
+        game_profiles[1].executable_sha256[i] = 0xB2U;
+    }
+    game_profiles[0].mode = WL_LWDE_GAME_NORMAL;
+    game_profiles[1].mode = WL_LWDE_GAME_SUSPEND;
+    game_policy.fullscreen_enabled = 1U;
+    game_policy.fullscreen_mode = WL_LWDE_GAME_SUSPEND;
+    game_policy.system_game_mode_enabled = 1U;
+    game_policy.system_game_mode = WL_LWDE_GAME_OPTIMIZE;
+    game_signals.is_foreground = 1U;
+    game_signals.is_fullscreen = 1U;
+    game_signals.system_game_mode_active = 1U;
+    memset(game_signals.executable_sha256, 0xA1, WL_LWDE_EXECUTABLE_SHA256_SIZE);
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles, 2U,
+        &resolved_game_mode) == WL_LWDE_OK);
+    assert(resolved_game_mode == WL_LWDE_GAME_NORMAL);
+    memset(game_signals.executable_sha256, 0xB2, WL_LWDE_EXECUTABLE_SHA256_SIZE);
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles, 2U,
+        &resolved_game_mode) == WL_LWDE_OK);
+    assert(resolved_game_mode == WL_LWDE_GAME_SUSPEND);
+    memset(game_signals.executable_sha256, 0xC3, WL_LWDE_EXECUTABLE_SHA256_SIZE);
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles, 2U,
+        &resolved_game_mode) == WL_LWDE_OK);
+    assert(resolved_game_mode == WL_LWDE_GAME_OPTIMIZE);
+    game_signals.system_game_mode_active = 0U;
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles, 2U,
+        &resolved_game_mode) == WL_LWDE_OK);
+    assert(resolved_game_mode == WL_LWDE_GAME_SUSPEND);
+    game_signals.is_foreground = 0U;
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles, 2U,
+        &resolved_game_mode) == WL_LWDE_OK);
+    assert(resolved_game_mode == WL_LWDE_GAME_NORMAL);
+    game_signals.is_foreground = 1U;
+    memcpy(game_profiles[1].executable_sha256, game_profiles[0].executable_sha256,
+        WL_LWDE_EXECUTABLE_SHA256_SIZE);
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles, 2U,
+        &resolved_game_mode) == WL_LWDE_DUPLICATE_GAME_MODE_PROFILE);
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles,
+        WL_LWDE_MAX_GAME_MODE_PROFILES + 1U, &resolved_game_mode) ==
+        WL_LWDE_TOO_MANY_GAME_MODE_PROFILES);
+    game_signals.is_foreground = 2U;
+    assert(wl_Lwlde_game_mode_resolve(&game_signals, &game_policy, game_profiles, 1U,
+        &resolved_game_mode) == WL_LWDE_INVALID_GAME_MODE_SIGNALS);
 
     resource_policy.optimize_at_percent = 75U;
     resource_policy.suspend_at_percent = 90U;

@@ -947,7 +947,7 @@ unsafe fn set_page_content(
             "\r\n\r\nRAINMETER\r\nRMSKIN parsing is not runtime compatibility. Measures, meters, variables, actions, plugins, extraction safety and licensing still need a reviewed compatibility subset.",
         ),
         "game-mode" => body.push_str(
-            "\r\n\r\nGAME MODE\r\nNormal, Optimize and Suspend policy primitives exist. Fullscreen/game detection, per-application profiles and automatic pause/resume are not connected yet.",
+            "\r\n\r\nGAME MODE\r\nThe bounded SHA-256 per-application profile resolver is ready. Exact user profiles override optional OS Game Mode/fullscreen fallbacks. Win32 foreground/fullscreen signal collection and profile persistence are still pending.",
         ),
         _ => {},
 

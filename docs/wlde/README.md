@@ -30,6 +30,13 @@ per-work admission tickets and does not collect operating system telemetry.
 Optimize lowers playback to 30 FPS; Suspend stops animation frame requests.
 The sampling backend and cadence remain host work.
 
+Both cores now also expose a matching Game Mode resolver. It uses a bounded
+set of per-application SHA-256 fingerprints supplied by the host, with exact
+user profiles taking precedence over optional OS Game Mode and fullscreen
+fallbacks. Non-foreground applications resolve to Normal. The resolver does
+not enumerate processes, hash executable files or collect Windows signals;
+platform detection and profile persistence remain open.
+
 The modern Rust side now also has a separate
 [Win32 monitor adapter](../../rust/library/wl_wlde_win32/README.md). It builds
 bounded snapshots from attached GDI display devices and exposes a transactional
@@ -56,9 +63,10 @@ wiring display/device notifications into its Windows Reactor event loop remains
 open. Neither shell claims DPI/orientation/session reconciliation yet.
 
 The UI reports the current boundary honestly: the Store provider actions and
-Wallpaper Engine hand-off are available; the monitor snapshot and resource
-policy APIs exist; OS telemetry, local library import, native wallpaper
-rendering, widget execution and Rainmeter runtime are not connected. Desktop
+Wallpaper Engine hand-off are available; the monitor snapshot, resource
+policy and per-application Game Mode resolver APIs exist; Windows telemetry,
+foreground/fullscreen detection, profile persistence, local library import,
+native wallpaper rendering, widget execution and Rainmeter runtime are not connected. Desktop
 Groups remain visibly disabled until crash-safe Shell restoration is proven.
 
 ## Renderer boundary
@@ -137,7 +145,8 @@ existing renderer/media and desktop-surface acceptance gates remain open.
   Only known full occlusion suppresses animation frame requests.
 - One frame clock is shared across the full scene. Normal uses 60 FPS;
   Optimize and Power Saver use 30 FPS; Suspend, static-only and full-occlusion
-  states request no animation frames. Resume discards hidden elapsed time.
+  states request no animation frames. Game Mode profile resolution feeds this
+  existing Normal/Optimize/Suspend policy. Resume discards hidden elapsed time.
 - Automatic pressure handling preserves source image/video fidelity. It defers
   nonessential work, pauses decode/animation, holds a last-known-good frame,
   releases recoverable resources and suspends when required. It does not

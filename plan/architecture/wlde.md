@@ -149,6 +149,23 @@ Distinguish a brief spike from sustained pressure. Recovery needs hysteresis to 
 
 Detection combines foreground ownership, fullscreen state, user-selected application rules and system signals. Executable names alone are insufficient. User override must be possible. Return to Normal predictably when the trigger ends.
 
+### Portable per-application resolver
+
+The paired Rust `resolve_game_mode()` and C89
+`wl_Lwlde_game_mode_resolve()` APIs accept a host-supplied executable
+SHA-256 fingerprint, foreground/fullscreen flags, an optional OS Game Mode
+signal and up to 64 unique per-application profiles. A matching user profile
+wins first, including an explicit Normal override. If no profile matches, an
+enabled OS Game Mode fallback wins over an enabled fullscreen fallback;
+otherwise the result is Normal. Background applications always resolve to
+Normal.
+
+The resolver allocates nothing and does not enumerate processes, inspect/hash
+executable files, install hooks or poll Windows. The host is responsible for
+obtaining a trustworthy fingerprint and the detection signals, persisting
+profiles and applying the returned mode to the scene. Windows-specific
+detection, profile storage and Manager editing remain open.
+
 ## Desktop Groups lifecycle and recovery
 
 Groups stay disabled by default. They are virtual presentation objects and never filesystem folders.
