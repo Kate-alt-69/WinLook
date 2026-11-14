@@ -20,8 +20,13 @@ pub use wl_gpuv as gpu;
 mod store;
 mod wallpaper_engine;
 
-pub use store::{store_provider, store_providers, StorePriceModel, StoreProvider, StoreProviderAccess, StoreProviderId, STORE_PROVIDERS};
-pub use wallpaper_engine::{WallpaperEngineError, WallpaperEngineInstall, WallpaperTarget, WallpaperTargetKind};
+pub use store::{
+    store_provider, store_providers, StorePriceModel, StoreProvider, StoreProviderAccess,
+    StoreProviderId, STORE_PROVIDERS,
+};
+pub use wallpaper_engine::{
+    WallpaperEngineError, WallpaperEngineInstall, WallpaperTarget, WallpaperTargetKind,
+};
 
 pub const MAX_MONITORS: usize = 16;
 pub const MAX_MONITOR_ID_BYTES: usize = 63;

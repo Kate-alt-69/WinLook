@@ -109,7 +109,9 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(free.len(), 3);
-        assert!(free.iter().all(|provider| provider.browse_url.starts_with("https://")));
+        assert!(free
+            .iter()
+            .all(|provider| provider.browse_url.starts_with("https://")));
         assert!(free.iter().all(|provider| !provider.rights_note.is_empty()));
     }
 

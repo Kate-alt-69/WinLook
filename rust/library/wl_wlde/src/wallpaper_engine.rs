@@ -53,7 +53,9 @@ impl std::fmt::Display for WallpaperEngineError {
             Self::UnsupportedTarget => {
                 f.write_str("select a Wallpaper Engine project.json or supported media file")
             }
-            Self::LaunchFailed(error) => write!(f, "Wallpaper Engine could not be started: {error}"),
+            Self::LaunchFailed(error) => {
+                write!(f, "Wallpaper Engine could not be started: {error}")
+            }
         }
     }
 }
@@ -70,9 +72,15 @@ fn classify_target(path: &Path) -> Result<WallpaperTargetKind, WallpaperEngineEr
     if file_name == "project.json" {
         return Ok(WallpaperTargetKind::SceneProject);
     }
-    match path.extension().and_then(OsStr::to_str).unwrap_or_default().to_ascii_lowercase().as_str() {
-        "mp4" | "webm" | "avi" | "mov" | "m4v" | "wmv" | "gif"
-        | "png" | "jpg" | "jpeg" | "webp" | "bmp" => Ok(WallpaperTargetKind::Media),
+    match path
+        .extension()
+        .and_then(OsStr::to_str)
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "mp4" | "webm" | "avi" | "mov" | "m4v" | "wmv" | "gif" | "png" | "jpg" | "jpeg"
+        | "webp" | "bmp" => Ok(WallpaperTargetKind::Media),
         _ => Err(WallpaperEngineError::UnsupportedTarget),
     }
 }
@@ -153,7 +161,10 @@ impl WallpaperEngineInstall {
         }
 
         for library in unique_paths(libraries) {
-            let install = library.join("steamapps").join("common").join("wallpaper_engine");
+            let install = library
+                .join("steamapps")
+                .join("common")
+                .join("wallpaper_engine");
             for name in ["wallpaper64.exe", "wallpaper32.exe"] {
                 let candidate = install.join(name);
                 if let Ok(found) = Self::from_executable(candidate) {
@@ -174,7 +185,12 @@ impl WallpaperEngineInstall {
         let install = self.executable.parent()?;
         let common = install.parent()?;
         let steamapps = common.parent()?;
-        Some(steamapps.join("workshop").join("content").join(STEAM_APP_ID))
+        Some(
+            steamapps
+                .join("workshop")
+                .join("content")
+                .join(STEAM_APP_ID),
+        )
     }
 
     /// Sends Wallpaper Engine its documented openWallpaper control command.

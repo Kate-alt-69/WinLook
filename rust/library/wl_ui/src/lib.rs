@@ -128,9 +128,8 @@ pub fn manager_app() -> UiApplication {
             "wallpaper-store-wallpaper-engine" | "wallpaper-store-free" => format!("    {title}"),
             _ => title.to_string(),
         };
-        application = application.page(
-            UiPage::new(id, title, description).navigation_title(navigation_title),
-        );
+        application = application
+            .page(UiPage::new(id, title, description).navigation_title(navigation_title));
     }
     application.initial_page("home")
 }
@@ -205,10 +204,19 @@ mod tests {
         assert_eq!(application.pages()[0].title(), "Home");
         assert_eq!(application.pages()[5].id(), "wallpaper");
         assert_eq!(application.pages()[6].id(), "wallpaper-store");
-        assert_eq!(application.pages()[7].id(), "wallpaper-store-wallpaper-engine");
+        assert_eq!(
+            application.pages()[7].id(),
+            "wallpaper-store-wallpaper-engine"
+        );
         assert_eq!(application.pages()[8].id(), "wallpaper-store-free");
-        assert_eq!(application.pages()[6].navigation_label(), "  Wallpaper Store");
-        assert_eq!(application.pages()[7].navigation_label(), "    Wallpaper Engine");
+        assert_eq!(
+            application.pages()[6].navigation_label(),
+            "  Wallpaper Store"
+        );
+        assert_eq!(
+            application.pages()[7].navigation_label(),
+            "    Wallpaper Engine"
+        );
         assert_eq!(application.pages()[17].id(), "settings");
     }
 
