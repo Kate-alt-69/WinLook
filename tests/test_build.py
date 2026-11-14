@@ -631,7 +631,8 @@ class BuildHelpersTests(unittest.TestCase):
             root = Path(temp)
             self.assertFalse(build.check_ui_sources(root))
             required = (
-                "rust/library/wl_ui/core/Cargo.toml",
+                "rust/library/wl_wlde_win32/Cargo.toml",
+"rust/library/wl_ui/core/Cargo.toml",
                 "rust/library/wl_ui/backends/win32/Cargo.toml",
                 "rust/library/wl_ui/backends/windows7/Cargo.toml",
                 "rust/library/wl_ui/backends/windows10/Cargo.toml",
@@ -1075,7 +1076,7 @@ class BuildHelpersTests(unittest.TestCase):
         result = build.subprocess.CompletedProcess(
             ["cargo", "tree"],
             0,
-            stdout="winlook-win10 v0.1.0\n  wl_ui v0.1.0\n    wl_ui_windows10 v0.1.0\n      wl_ui_win32 v0.1.0\n",
+            stdout="winlook-win10 v0.1.0\n  wl_ui v0.1.0\n    wl_ui_windows10 v0.1.0\n      wl_ui_win32 v0.1.0\n        wl_wlde_win32 v0.1.0\n",
             stderr="",
         )
         with mock.patch.object(runner, "run", return_value=result) as run:
@@ -1099,7 +1100,7 @@ class BuildHelpersTests(unittest.TestCase):
         result = build.subprocess.CompletedProcess(
             ["cargo", "tree"],
             0,
-            stdout="winlook-win11 v0.1.0\n  windows-reactor-pre v0.107.1\n",
+            stdout="winlook-win11 v0.1.0\n  windows-reactor-pre v0.107.1\n  wl_wlde_win32 v0.1.0\n",
             stderr="",
         )
         with mock.patch.object(runner, "run", return_value=result):
@@ -1119,7 +1120,8 @@ class BuildHelpersTests(unittest.TestCase):
 
     def test_ui_source_detection_requires_facade_core_and_platform_backends(self):
         required = (
-            "rust/library/wl_ui/core/Cargo.toml",
+            "rust/library/wl_wlde_win32/Cargo.toml",
+"rust/library/wl_ui/core/Cargo.toml",
             "rust/library/wl_ui/backends/win32/Cargo.toml",
             "rust/library/wl_ui/backends/windows7/Cargo.toml",
             "rust/library/wl_ui/backends/windows10/Cargo.toml",

@@ -9,6 +9,9 @@ use std::fmt;
 
 use wl_wlde::{MonitorTopology, TopologyError};
 
+#[cfg(not(windows))]
+use wl_wlde::{Monitor, Rect};
+
 /// Win32 message sent after the display resolution or configuration changes.
 pub const WM_DISPLAYCHANGE: u32 = 0x007E;
 /// Win32 device-change broadcast message.
@@ -73,8 +76,7 @@ impl std::error::Error for MonitorError {}
 /// The function intentionally does not install a listener or perform the refresh;
 /// a host should call `refresh_topology` from its own window/message loop.
 pub const fn should_refresh_topology(message: u32, w_param: usize) -> bool {
-    message == WM_DISPLAYCHANGE
-        || (message == WM_DEVICECHANGE && w_param == DBT_DEVNODES_CHANGED)
+    message == WM_DISPLAYCHANGE || (message == WM_DEVICECHANGE && w_param == DBT_DEVNODES_CHANGED)
 }
 
 /// Enumerates the current Windows desktop-attached monitor topology.
@@ -116,8 +118,7 @@ mod platform {
 
     type HMonitor = *mut c_void;
     type Hdc = *mut c_void;
-    type MonitorEnumCallback =
-        unsafe extern "system" fn(HMonitor, Hdc, *mut WinRect, isize) -> i32;
+    type MonitorEnumCallback = unsafe extern "system" fn(HMonitor, Hdc, *mut WinRect, isize) -> i32;
 
     #[repr(C)]
     #[derive(Clone, Copy, Default)]
@@ -212,8 +213,7 @@ mod platform {
             return Err(MonitorError::NoMonitors);
         }
 
-        MonitorTopology::new(context.monitors)
-            .map_err(MonitorError::InvalidTopology)
+        MonitorTopology::new(context.monitors).map_err(MonitorError::InvalidTopology)
     }
 
     fn attached_display_devices() -> Result<Vec<String>, MonitorError> {
@@ -224,9 +224,8 @@ mod platform {
             if index >= MAX_DISPLAY_ADAPTER_SCAN {
                 let mut probe: DisplayDeviceW = unsafe { zeroed() };
                 probe.cb = size_of::<DisplayDeviceW>() as u32;
-                let more_devices = unsafe {
-                    EnumDisplayDevicesW(ptr::null(), index, &mut probe, 0)
-                };
+                let more_devices =
+                    unsafe { EnumDisplayDevicesW(ptr::null(), index, &mut probe, 0) };
                 if more_devices != 0 {
                     return Err(MonitorError::TooManyMonitors);
                 }
@@ -235,9 +234,7 @@ mod platform {
 
             let mut device: DisplayDeviceW = unsafe { zeroed() };
             device.cb = size_of::<DisplayDeviceW>() as u32;
-            let found = unsafe {
-                EnumDisplayDevicesW(ptr::null(), index, &mut device, 0)
-            };
+            let found = unsafe { EnumDisplayDevicesW(ptr::null(), index, &mut device, 0) };
             if found == 0 {
                 break;
             }
@@ -298,7 +295,11 @@ mod platform {
                 return 0;
             }
         };
-        if !context.attached_devices.iter().any(|device| device == &name) {
+        if !context
+            .attached_devices
+            .iter()
+            .any(|device| device == &name)
+        {
             // Ignore pseudo-monitors and devices not attached to the desktop.
             return 1;
         }
@@ -365,7 +366,6 @@ mod platform {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wl_wlde::{Monitor, Rect};
 
     #[test]
     fn refresh_filter_accepts_only_topology_related_notifications() {
