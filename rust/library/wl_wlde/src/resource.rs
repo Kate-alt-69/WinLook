@@ -270,7 +270,10 @@ mod tests {
         let mut governor = ResourceGovernor::new(policy());
         governor.update(sample(80, 0, 0, 0)).unwrap();
         let before = governor;
-        assert_eq!(governor.update(sample(10, 101, 10, 10)), Err(ResourcePolicyError::InvalidSample));
+        assert_eq!(
+            governor.update(sample(10, 101, 10, 10)),
+            Err(ResourcePolicyError::InvalidSample)
+        );
         assert_eq!(governor, before);
     }
 }
