@@ -92,3 +92,14 @@ The composed Rust probe is Vista+ because it uses
 not a Shell hook: it does not inject code, enumerate desktop PIDLs, suppress
 icons, intercept context menus or draw Group proxies. Windows 95–XP and legacy
 C targets need their own classic host-discovery/runtime implementation.
+
+
+The Win32 watcher uses the documented change-notification handle pattern:
+wait on up to two non-recursive User/Public Desktop handles, call
+`FindNextChangeNotification` after the signaled handle, and then wait again.
+It refreshes the full bounded inventory because the notification APIs do not
+identify the changed entry. UNC roots retain a five-second fallback because
+remote filesystems are not guaranteed to deliver notifications. Paths at or
+beyond the default MAX_PATH limit are passed with the extended-length prefix.
+This watcher is for the modern Win10/11 Rust adapter; the documented API's
+minimum client is Windows XP, not Windows 95/legacy.

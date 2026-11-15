@@ -12,7 +12,8 @@ use std::time::Duration;
 
 #[cfg(windows)]
 use wl_wlde_win32::{
-    enumerate_desktop_items, is_same_desktop_host, monitor_desktop_host, DesktopFolder,
+    enumerate_desktop_items, is_same_desktop_host, monitor_desktop_host, watch_desktop_folders,
+    DesktopFolder, DesktopInventoryWatcher,
 };
 #[cfg(windows)]
 use wl_wlde::DesktopItemKind;
@@ -88,7 +89,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
 
         // Keep the read-only path map alive only for this verified Explorer host.
         // It is discarded when the host changes or exits; Group persistence comes later.
-        let desktop_inventory = match enumerate_desktop_items() {
+        let mut desktop_inventory = match enumerate_desktop_items() {
             Ok(items) => {
                 let user_count = items
                     .iter()
@@ -129,8 +130,36 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             }
         };
 
+        let mut inventory_watcher = match watch_desktop_folders() {
+            Ok(watcher) => Some(watcher),
+            Err(error) => {
+                report_status(&format!(
+                    "Desktop change notifications unavailable; using bounded periodic inventory refresh: {error}"
+                ));
+                None
+            }
+        };
+
         loop {
-            match monitor.wait_for_exit(DESKTOP_HOST_RECHECK_INTERVAL) {
+            let watcher_result = inventory_watcher
+                .as_ref()
+                .map(|watcher| watcher.wait_for_change(DESKTOP_HOST_RECHECK_INTERVAL));
+            let inventory_changed = match watcher_result {
+                Some(Ok(changed)) => changed,
+                Some(Err(error)) => {
+                    report_status(&format!(
+                        "Desktop change notification failed; falling back to periodic inventory refresh: {error}"
+                    ));
+                    inventory_watcher = None;
+                    false
+                }
+                None => {
+                    thread::sleep(DESKTOP_HOST_RECHECK_INTERVAL);
+                    true
+                }
+            };
+
+            match monitor.wait_for_exit(Duration::ZERO) {
                 Ok(true) => {
                     report_status(&format!(
                         "Explorer desktop process {} exited; rediscovering the Shell host",
@@ -158,6 +187,45 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                         "Explorer process wait failed; rediscovering the Shell host: {error}"
                     ));
                     break;
+                }
+            }
+            if inventory_changed {
+                match enumerate_desktop_items() {
+                    Ok(refreshed) => {
+                        let user_count = refreshed
+                            .iter()
+                            .filter(|item| item.source_folder() == DesktopFolder::User)
+                            .count();
+                        let public_count = refreshed
+                            .iter()
+                            .filter(|item| item.source_folder() == DesktopFolder::Public)
+                            .count();
+                        let application_count = refreshed
+                            .iter()
+                            .filter(|item| item.item().kind() == DesktopItemKind::Application)
+                            .count();
+                        let folder_count = refreshed
+                            .iter()
+                            .filter(|item| item.item().kind() == DesktopItemKind::Folder)
+                            .count();
+                        let file_count = refreshed
+                            .iter()
+                            .filter(|item| item.item().kind() == DesktopItemKind::File)
+                            .count();
+                        report_status(&format!(
+                            "Desktop inventory refreshed: {} entries (user={} public={} apps={} folders={} files={})",
+                            refreshed.len(),
+                            user_count,
+                            public_count,
+                            application_count,
+                            folder_count,
+                            file_count
+                        ));
+                        desktop_inventory = refreshed;
+                    }
+                    Err(error) => report_status(&format!(
+                        "Desktop inventory refresh failed; keeping last known snapshot: {error}"
+                    )),
                 }
             }
         }

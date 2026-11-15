@@ -8,6 +8,7 @@
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use wl_wlde::{DesktopItemKind, DesktopItemRef, DesktopModelError};
 
@@ -82,6 +83,12 @@ pub enum DesktopInventoryError {
     },
     /// The inventory exceeded its fixed item bound.
     TooManyItems,
+    /// A Desktop folder change-notification handle could not be created.
+    WatchDirectory { folder: DesktopFolder, code: u32 },
+    /// Waiting for a Desktop folder change notification failed.
+    WaitForChange { code: u32 },
+    /// A signaled Desktop folder notification could not be re-armed.
+    RearmDirectoryWatch { folder: DesktopFolder, code: u32 },
     /// The entry label or generated identity failed portable validation.
     InvalidItem(DesktopModelError),
 }
@@ -106,6 +113,15 @@ impl fmt::Display for DesktopInventoryError {
             }
             Self::TooManyItems => {
                 write!(f, "Desktop inventory exceeds the {}-item bound", MAX_DESKTOP_INVENTORY_ITEMS)
+            }
+            Self::WatchDirectory { folder, code } => {
+                write!(f, "could not watch the {folder:?} Desktop folder (error {code:#x})")
+            }
+            Self::WaitForChange { code } => {
+                write!(f, "waiting for Desktop folder changes failed (error {code:#x})")
+            }
+            Self::RearmDirectoryWatch { folder, code } => {
+                write!(f, "could not re-arm the {folder:?} Desktop folder watcher (error {code:#x})")
             }
             Self::InvalidItem(error) => write!(f, "Desktop item failed validation: {error}"),
         }
@@ -134,6 +150,49 @@ pub fn enumerate_desktop_items() -> Result<Vec<DesktopInventoryItem>, DesktopInv
 /// Non-Windows builds expose an explicit unsupported-platform result.
 #[cfg(not(windows))]
 pub fn enumerate_desktop_items() -> Result<Vec<DesktopInventoryItem>, DesktopInventoryError> {
+    Err(DesktopInventoryError::UnsupportedPlatform)
+}
+
+
+/// A bounded change watcher for the user's and Public Desktop folders.
+///
+/// The watcher observes top-level directory entries only. It never enumerates
+/// recursively, reads file contents or mutates desktop files.
+pub struct DesktopInventoryWatcher {
+    #[cfg(windows)]
+    inner: desktop_inventory_platform::Watcher,
+}
+
+impl DesktopInventoryWatcher {
+    /// Waits for a Desktop folder change or the requested timeout.
+    ///
+    /// Returns true when the caller should refresh the inventory. When a
+    /// Known Folder is temporarily absent, timeout also requests a refresh so
+    /// the watcher can notice that the folder has appeared.
+    pub fn wait_for_change(&self, timeout: Duration) -> Result<bool, DesktopInventoryError> {
+        #[cfg(windows)]
+        {
+            self.inner.wait_for_change(timeout)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = timeout;
+            Err(DesktopInventoryError::UnsupportedPlatform)
+        }
+    }
+}
+
+/// Opens change notifications for the current User and Public Desktop folders.
+#[cfg(windows)]
+pub fn watch_desktop_folders() -> Result<DesktopInventoryWatcher, DesktopInventoryError> {
+    Ok(DesktopInventoryWatcher {
+        inner: desktop_inventory_platform::watch()?,
+    })
+}
+
+/// Non-Windows builds expose an explicit unsupported-platform result.
+#[cfg(not(windows))]
+pub fn watch_desktop_folders() -> Result<DesktopInventoryWatcher, DesktopInventoryError> {
     Err(DesktopInventoryError::UnsupportedPlatform)
 }
 
@@ -171,6 +230,21 @@ mod desktop_inventory_platform {
         data3: u16,
         data4: [u8; 8],
     }
+
+    const FILE_NOTIFY_CHANGE_FILE_NAME: u32 = 0x0000_0001;
+    const FILE_NOTIFY_CHANGE_DIR_NAME: u32 = 0x0000_0002;
+    const FILE_NOTIFY_CHANGE_ATTRIBUTES: u32 = 0x0000_0004;
+    const FILE_NOTIFY_CHANGE_SIZE: u32 = 0x0000_0008;
+    const FILE_NOTIFY_CHANGE_LAST_WRITE: u32 = 0x0000_0010;
+    const FILE_NOTIFY_CHANGE_CREATION: u32 = 0x0000_0040;
+    const WAIT_OBJECT_0: u32 = 0x0000_0000;
+    const WAIT_TIMEOUT: u32 = 0x0000_0102;
+    const WAIT_FAILED: u32 = 0xFFFF_FFFF;
+    const ERROR_FILE_NOT_FOUND: u32 = 2;
+    const ERROR_PATH_NOT_FOUND: u32 = 3;
+    const MAX_PATH_UNITS: usize = 260;
+    const EXTENDED_PATH_PREFIX: &[u16] = &[92, 92, 63, 92];
+    const EXTENDED_UNC_PATH_PREFIX: &[u16] = &[92, 92, 63, 92, 85, 78, 67, 92];
 
     // KNOWNFOLDERID values from KnownFolders.h / Microsoft Learn.
     const FOLDERID_DESKTOP: Guid = Guid {
@@ -211,6 +285,153 @@ mod desktop_inventory_platform {
     #[link(name = "ole32")]
     extern "system" {
         fn CoTaskMemFree(memory: *mut c_void);
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn FindFirstChangeNotificationW(
+            path: *const u16,
+            watch_subtree: i32,
+            filter: u32,
+        ) -> Handle;
+        fn FindNextChangeNotification(change_handle: Handle) -> i32;
+        fn FindCloseChangeNotification(change_handle: Handle) -> i32;
+        fn WaitForMultipleObjects(
+            count: u32,
+            handles: *const Handle,
+            wait_all: i32,
+            milliseconds: u32,
+        ) -> u32;
+        fn GetLastError() -> u32;
+    }
+
+    type Handle = *mut c_void;
+
+    struct ChangeNotification {
+        folder: DesktopFolder,
+        handle: Handle,
+    }
+
+    impl Drop for ChangeNotification {
+        fn drop(&mut self) {
+            if !self.handle.is_null() {
+                unsafe {
+                    FindCloseChangeNotification(self.handle);
+                }
+            }
+        }
+    }
+
+    pub(super) struct Watcher {
+        notifications: Vec<ChangeNotification>,
+        refresh_on_timeout: bool,
+    }
+
+    pub(super) fn watch() -> Result<Watcher, DesktopInventoryError> {
+        let roots = [
+            (DesktopFolder::User, known_folder_path(DesktopFolder::User)?),
+            (DesktopFolder::Public, known_folder_path(DesktopFolder::Public)?),
+        ];
+        let mut notifications = Vec::with_capacity(2);
+        let mut refresh_on_timeout = false;
+        let filter = FILE_NOTIFY_CHANGE_FILE_NAME
+            | FILE_NOTIFY_CHANGE_DIR_NAME
+            | FILE_NOTIFY_CHANGE_ATTRIBUTES
+            | FILE_NOTIFY_CHANGE_SIZE
+            | FILE_NOTIFY_CHANGE_LAST_WRITE
+            | FILE_NOTIFY_CHANGE_CREATION;
+
+        for (folder, root) in roots {
+            if !root.is_dir() {
+                refresh_on_timeout = true;
+                continue;
+            }
+            let path_units = root.as_os_str().encode_wide().collect::<Vec<_>>();
+            if path_units.starts_with(&[92, 92]) {
+                // Remote redirects do not reliably deliver change notifications.
+                refresh_on_timeout = true;
+            }
+            let wide = change_notification_path(path_units);
+            let handle = unsafe { FindFirstChangeNotificationW(wide.as_ptr(), 0, filter) };
+            if handle.is_null() || handle as isize == -1 {
+                let code = unsafe { GetLastError() };
+                if code == ERROR_FILE_NOT_FOUND || code == ERROR_PATH_NOT_FOUND {
+                    refresh_on_timeout = true;
+                    continue;
+                }
+                return Err(DesktopInventoryError::WatchDirectory { folder, code });
+            }
+            notifications.push(ChangeNotification { folder, handle });
+        }
+
+        Ok(Watcher {
+            notifications,
+            refresh_on_timeout,
+        })
+    }
+
+    fn change_notification_path(mut wide: Vec<u16>) -> Vec<u16> {
+        let already_extended = wide.starts_with(EXTENDED_PATH_PREFIX);
+        if wide.len() >= MAX_PATH_UNITS && !already_extended {
+            let mut extended = Vec::with_capacity(wide.len() + EXTENDED_UNC_PATH_PREFIX.len());
+            if wide.starts_with(&[92, 92]) {
+                extended.extend_from_slice(EXTENDED_UNC_PATH_PREFIX);
+                extended.extend_from_slice(&wide[2..]);
+            } else {
+                extended.extend_from_slice(EXTENDED_PATH_PREFIX);
+                extended.extend_from_slice(&wide);
+            }
+            wide = extended;
+        }
+        wide.push(0);
+        wide
+    }
+
+    impl Watcher {
+        pub(super) fn wait_for_change(
+            &self,
+            timeout: Duration,
+        ) -> Result<bool, DesktopInventoryError> {
+            if self.notifications.is_empty() {
+                std::thread::sleep(timeout);
+                return Ok(true);
+            }
+
+            let handles = self
+                .notifications
+                .iter()
+                .map(|notification| notification.handle)
+                .collect::<Vec<_>>();
+            let timeout_ms = timeout.as_millis().min(u128::from(u32::MAX - 1)) as u32;
+            let result = unsafe {
+                WaitForMultipleObjects(
+                    handles.len() as u32,
+                    handles.as_ptr(),
+                    0,
+                    timeout_ms,
+                )
+            };
+            if result == WAIT_TIMEOUT {
+                return Ok(self.refresh_on_timeout);
+            }
+            if result == WAIT_FAILED {
+                return Err(DesktopInventoryError::WaitForChange {
+                    code: unsafe { GetLastError() },
+                });
+            }
+            let index = result.wrapping_sub(WAIT_OBJECT_0) as usize;
+            if index >= self.notifications.len() {
+                return Err(DesktopInventoryError::WaitForChange { code: result });
+            }
+            let notification = &self.notifications[index];
+            if unsafe { FindNextChangeNotification(notification.handle) } == 0 {
+                return Err(DesktopInventoryError::RearmDirectoryWatch {
+                    folder: notification.folder,
+                    code: unsafe { GetLastError() },
+                });
+            }
+            Ok(true)
+        }
     }
 
     pub(super) fn enumerate() -> Result<Vec<DesktopInventoryItem>, DesktopInventoryError> {
@@ -378,9 +599,13 @@ mod tests {
 
     #[cfg(not(windows))]
     #[test]
-    fn non_windows_inventory_is_explicitly_unsupported() {
+    fn non_windows_inventory_and_watcher_are_explicitly_unsupported() {
         assert!(matches!(
             enumerate_desktop_items(),
+            Err(DesktopInventoryError::UnsupportedPlatform)
+        ));
+        assert!(matches!(
+            watch_desktop_folders(),
             Err(DesktopInventoryError::UnsupportedPlatform)
         ));
     }

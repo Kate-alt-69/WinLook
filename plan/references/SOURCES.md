@@ -274,3 +274,16 @@ handlers, mutates shortcut/executable resources or changes Explorer state.
 | WLDE-022 | [SHGetKnownFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath), [Known Folders overview](https://learn.microsoft.com/en-us/windows/win32/shell/known-folders) | Resolves the current user's Known Folder path, replacing the older SHGetFolderPath API; the returned path buffer must be released with CoTaskMemFree | Vista+ API. This modern Rust adapter uses it for Win10/11. Legacy C adapters still need generation-specific APIs |
 
 This first inventory is one-level, read-only filesystem enumeration. Opaque path hashes are transient Group keys, not security credentials. Exact Shell desktop membership still requires an IShellFolder/IFolderView-backed adapter.
+
+
+## WLDE filesystem Desktop change notifications — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-023 | [FindFirstChangeNotificationW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstchangenotificationw), [Obtaining Directory Change Notifications](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-directory-change-notifications) | Opens a waitable notification handle for matching changes inside one directory; filters include file/directory names, attributes, size, last-write and creation. It does not identify which entry changed, so the host must re-enumerate. The handle is waited on and then re-armed | Non-recursive watcher only. The API does not report changes to the watched directory object itself. Minimum supported client is Windows XP, so this modern Rust adapter is for Win10/11; older C targets need a generation-specific watcher. Remote file systems may not reliably deliver notifications |
+| WLDE-024 | [FindNextChangeNotification](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findnextchangenotification), [FindCloseChangeNotification](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findclosechangenotification), [WaitForMultipleObjects](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitformultipleobjects) | FindNext re-arms a signaled notification for a later wait; a successful re-arm must be followed by a wait before another re-arm. FindClose releases the handle. WaitForMultipleObjects can wait on multiple change-notification handles and returns the signaled object's index | BGW waits on at most two handles with a finite timeout. UNC roots retain a five-second snapshot fallback because remote notification delivery is not guaranteed. Long local/UNC paths use the documented extended-length prefix when the default MAX_PATH limit is exceeded |
+
+The watcher is scoped to the current User/Public Desktop Known Folders, sets
+bWatchSubtree=FALSE, and never examines file contents. Each signal causes a
+fresh bounded one-level snapshot; it does not attempt to infer an exact file
+operation from the coarse notification.

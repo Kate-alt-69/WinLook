@@ -280,3 +280,11 @@ shortcuts, draw or suppress native icons, create Group tiles or intercept
 Explorer menus. BGW's read-only Desktop inventory and these portable layout
 contracts are now available, but live desktop presentation remains disabled
 until the native Explorer bridge and crash-safe icon restoration are tested.
+
+
+The current change watcher is a modern Win10/11 adapter. Its API contract
+starts at Windows XP; it is not reused blindly by the planned Windows 95–2000
+C targets. It waits on non-recursive User/Public Desktop change handles,
+re-arms a signaled handle and re-enumerates the entire bounded snapshot.
+Remote/UNC paths retain a five-second fallback because notification delivery
+is not guaranteed there.

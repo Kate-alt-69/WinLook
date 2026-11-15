@@ -500,3 +500,11 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Bounded the model at 4,096 inventory records plus 64 Groups (4,160 layout placements); C89 uses caller-owned fixed storage and no allocation.
 - Added Rust and C89 tests for valid multi-monitor placement, Group tile membership, duplicate target rejection, unknown monitor rejection, invalid coordinate rejection, incomplete layout rejection and transactional preservation.
 - This remains data only. There is no live desktop tile presenter, native icon suppression, Shell context-menu hook, persistent layout storage or verified crash-safe restore yet.
+
+
+## WLDE filesystem change-notification evidence — 2026-11-15
+
+- Added primary Microsoft Learn references WLDE-023/024 for FindFirstChangeNotificationW, FindNextChangeNotification, FindCloseChangeNotification and WaitForMultipleObjects.
+- The modern watcher waits on non-recursive User/Public Desktop directory handles. A signal is only a coarse indication that something changed, so BGW re-enumerates the bounded snapshot rather than assuming which item changed.
+- The documented minimum client is Windows XP; the Win10/11 Rust adapter must not be copied into the Windows 95/98/Me/NT4/2000 C targets without a separate compatibility design.
+- UNC/Desktop redirects use a five-second refresh fallback because remote change notification delivery is not guaranteed. Long paths receive an extended-length prefix where required.
