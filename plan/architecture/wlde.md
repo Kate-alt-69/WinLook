@@ -470,3 +470,24 @@ configuration model only. It does not hide or replace Shell icons, register
 Group proxies, intercept menus or implement crash-safe restoration. The local
 Groups store must not be confused with the separate restoration journal that
 has to be committed before any native icon presentation can be suppressed.
+
+
+## Read-only Explorer Shell icon acquisition — 2026-11-15
+
+The modern Win32 adapter now provides `extract_desktop_shell_icon()` for
+filesystem-backed Desktop inventory records. It asks `SHGetFileInfoW` for
+the Shell icon in small or Shell-sized form and returns an owned HICON wrapper
+plus native dimensions. HICON ownership is explicit: dropping the wrapper
+calls `DestroyIcon`. `GetIconInfo` allocates temporary mask/color bitmap
+handles, and the adapter releases them with `DeleteObject` after reading
+dimensions via `GetObjectW`.
+
+This is read-only icon acquisition. It does not install or replace icon
+registrations, hide native Explorer tiles, intercept context menus or make
+Groups visible. Shell icon acquisition can call item handlers and must run
+on a BGW worker. The output is still a native HICON; a bounded BGRA/RGBA
+rasterizer, alpha/mask normalization, cache keys (item identity, DPI, theme
+and icon-size policy), and handoff to the existing adaptive icon compositor
+remain the next step. Virtual Shell namespace items and exact Explorer view
+membership still require PIDL/IFolderView integration. See WLDE-028–030 in
+`plan/references/SOURCES.md`.
