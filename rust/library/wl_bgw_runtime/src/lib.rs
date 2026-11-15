@@ -1,8 +1,9 @@
 //! Initial BGW runtime host loop.
 //!
-//! This first runtime slice owns Explorer desktop-host discovery/recovery only.
-//! Wallpaper rendering, Shell hooks, Groups, Manager IPC, configuration
-//! persistence and startup registration are separate implementation stages.
+//! The current runtime slice owns Explorer host monitoring, bounded Desktop
+//! inventory refresh and validated local WLDE Group/layout state loading.
+//! Wallpaper rendering, Shell hooks, Manager IPC and startup registration are
+//! separate implementation stages.
 
 use std::fmt;
 #[cfg(windows)]
