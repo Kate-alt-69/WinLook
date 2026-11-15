@@ -702,12 +702,19 @@ fn validate_transition_evidence(
 
 fn transition_allowed(current: DesktopRestoreState, next: DesktopRestoreState) -> bool {
     match current {
-        DesktopRestoreState::Prepared => {
-            matches!(next, DesktopRestoreState::Applying | DesktopRestoreState::Aborted | DesktopRestoreState::Conflict)
-        }
-        DesktopRestoreState::Applying => {
-            matches!(next, DesktopRestoreState::Committed | DesktopRestoreState::Restoring | DesktopRestoreState::Aborted | DesktopRestoreState::Conflict)
-        }
+        DesktopRestoreState::Prepared => matches!(
+            next,
+            DesktopRestoreState::Applying
+                | DesktopRestoreState::Aborted
+                | DesktopRestoreState::Conflict
+        ),
+        DesktopRestoreState::Applying => matches!(
+            next,
+            DesktopRestoreState::Committed
+                | DesktopRestoreState::Restoring
+                | DesktopRestoreState::Aborted
+                | DesktopRestoreState::Conflict
+        ),
         DesktopRestoreState::Committed => {
             matches!(next, DesktopRestoreState::Restoring | DesktopRestoreState::Conflict)
         }
@@ -862,7 +869,12 @@ mod tests {
             .transition(&transaction_id, DesktopRestoreState::Applying, None, false)
             .unwrap();
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Committed, Some(&[1]), true)
+            .transition(
+                &transaction_id,
+                DesktopRestoreState::Committed,
+                Some(&[1]),
+                true,
+            )
             .unwrap();
 
         let encoded = encode_desktop_restore_ledger(&ledger).unwrap();
@@ -927,7 +939,10 @@ mod tests {
         assert_eq!(ledger.records()[2].sequence(), 3);
 
         let encoded = encode_desktop_restore_ledger(&ledger).unwrap();
-        assert_eq!(decode_desktop_restore_ledger(&encoded).unwrap().ledger(), &ledger);
+        assert_eq!(
+            decode_desktop_restore_ledger(&encoded).unwrap().ledger(),
+            &ledger
+        );
     }
 
     #[test]
@@ -938,7 +953,15 @@ mod tests {
             Err(DesktopRestoreJournalError::InvalidTransition)
         );
         assert_eq!(
-            ledger.begin(transaction_id, 1, 1, "desktop.icon_visibility", &[0], &[1], &[1]),
+            ledger.begin(
+                transaction_id,
+                1,
+                1,
+                "desktop.icon_visibility",
+                &[0],
+                &[1],
+                &[1]
+            ),
             Err(DesktopRestoreJournalError::DuplicateTransaction)
         );
         ledger
@@ -1008,7 +1031,7 @@ mod tests {
                 &transaction_id,
                 DesktopRestoreState::Aborted,
                 Some(&[1]),
-                true
+                true,
             ),
             Err(DesktopRestoreJournalError::ReadbackMismatch)
         );
@@ -1017,7 +1040,7 @@ mod tests {
                 &transaction_id,
                 DesktopRestoreState::Aborted,
                 Some(&[0]),
-                false
+                false,
             )
             .unwrap();
         assert_eq!(
@@ -1078,7 +1101,12 @@ mod tests {
         );
 
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Committed, Some(&[1]), true)
+            .transition(
+                &transaction_id,
+                DesktopRestoreState::Committed,
+                Some(&[1]),
+                true,
+            )
             .unwrap();
         let committed = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
@@ -1091,7 +1119,12 @@ mod tests {
         );
 
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Restoring, Some(&[1]), true)
+            .transition(
+                &transaction_id,
+                DesktopRestoreState::Restoring,
+                Some(&[1]),
+                true,
+            )
             .unwrap();
         let restoring = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
@@ -1124,7 +1157,7 @@ mod tests {
                 &transaction_id,
                 DesktopRestoreState::Restored,
                 Some(&[0]),
-                false
+                false,
             )
             .unwrap();
         assert_eq!(
@@ -1138,12 +1171,7 @@ mod tests {
         let (mut ledger, transaction_id) = ledger_with_prepared();
         ledger.encoded_bytes = MAX_DESKTOP_RESTORE_JOURNAL_BYTES;
         assert_eq!(
-            ledger.transition(
-                &transaction_id,
-                DesktopRestoreState::Applying,
-                None,
-                false
-            ),
+            ledger.transition(&transaction_id, DesktopRestoreState::Applying, None, false),
             Err(DesktopRestoreJournalError::JournalTooLarge)
         );
         assert_eq!(ledger.records().len(), 1);
@@ -1161,7 +1189,12 @@ mod tests {
             DesktopRestoreRecoveryAction::Conflict
         );
         assert_eq!(
-            ledger.transition(&transaction_id, DesktopRestoreState::Restored, Some(&[1]), false),
+            ledger.transition(
+                &transaction_id,
+                DesktopRestoreState::Restored,
+                Some(&[1]),
+                false
+            ),
             Err(DesktopRestoreJournalError::InvalidTransition)
         );
     }
