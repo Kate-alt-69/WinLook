@@ -1,9 +1,9 @@
 //! Read-only extraction of the Windows Shell icon for a desktop filesystem item.
 //!
-//! This adapter returns an owned HICON handle and its native dimensions. It
-//! does not replace Explorer's icon registration, mutate the source item,
-//! suppress the native tile or perform RGBA conversion. Rasterization and
-//! adaptive composition are separate BGW work.
+//! This adapter returns an owned HICON handle and its native dimensions,
+//! with a bounded straight-alpha RGBA rasterizer for BGW. It does not replace
+//! Explorer's icon registration, mutate the source item or suppress the
+//! native tile. Adaptive composition and live presentation are separate work.
 
 use std::fmt;
 use std::ptr::NonNull;
