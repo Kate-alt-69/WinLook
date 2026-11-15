@@ -112,8 +112,8 @@ while icon work is pending, then returns to the normal five-second host check.
   filesystem-ID entries are retained when still present.
 - Missing, inaccessible, overlong or non-representable icons are recorded as
   failed for the current context so the monitor loop does not retry the same
-  item on every five-second wake. A new host/context/inventory refresh permits
-  a fresh attempt where appropriate.
+  item on every five-second wake. A new host or icon context retries those
+  failures; path-fallback items are also retried after inventory refresh.
 
 The cache is process memory only. It does not write paths, pixels or icon
 artwork into the local Group/layout file. This pipeline supplies pixels for a
