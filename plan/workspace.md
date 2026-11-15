@@ -465,14 +465,15 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 ## WLDE modern Desktop filesystem inventory — 2026-11-15
 
 - Added `wl_wlde_win32::enumerate_desktop_items()` as a bounded, read-only snapshot of the current user's Desktop and Public Desktop Known Folders, resolved with `SHGetKnownFolderPath`.
-- The snapshot is one level deep, deduplicates entries by opaque SHA-256 hash of the full filesystem path, and returns a portable `DesktopItemRef` plus an ephemeral local path for future Shell operations.
+- The snapshot is one level deep and returns a portable `DesktopItemRef` plus an ephemeral local path for immediate Shell operations.
+- IDs prefer the volume-serial/file-index identity returned by `GetFileInformationByHandle`, with creation time included as an additional reuse discriminator. `DesktopInventoryItem::identity_stability()` distinguishes filesystem-backed IDs from path-hash fallbacks.
+- Ordinary same-volume NTFS renames preserve filesystem-backed IDs. Missing/partial identity queries, reported hard links or duplicate identities in the visible inventory use distinct path-hash fallbacks; fallback IDs are not rename-stable.
 - Capacity is fixed at 4096 entries. Missing Public Desktop is treated as empty; access or iteration failures abort the snapshot rather than returning partial data.
 - Common launcher extensions are currently classified as Applications; .lnk targets are not yet resolved, so shortcuts to documents/folders need a later Shell-link resolver.
 - The pass does not traverse folders, follow directory links, read file contents or mutate Shell items. It does not include virtual Shell namespace items, hidden/visibility state or the Explorer view's current filtered membership. A future IShellFolder/IFolderView adapter is required for exact desktop view integration.
-- Raised the portable display-label limit to 1023 UTF-8 bytes (C89 buffer to 1024 bytes) so long Unicode Windows filenames can be represented without truncation.
-- sha2 0.10.9 was already in the lockfile; it is now a direct dependency of the Win32 adapter for stable path identity generation.
-- Official references WLDE-021–022 are recorded in plan/references/SOURCES.md. Windows runtime enumeration and cross-user/Public Desktop behaviour remain CI/device verification tasks.
-
+- Raised the portable display-label limit to 1023 UTF-8 bytes (C89 buffer to 1024 bytes) so long Unicode filenames can be represented without truncation.
+- sha2 0.10.9 remains a direct Win32-adapter dependency for the explicitly marked path fallback.
+- Official references WLDE-021–026 are recorded in plan/references/SOURCES.md. Windows runtime enumeration and cross-user/Public Desktop behaviour remain CI/device verification tasks.
 
 ## WLDE themed monochrome adaptive app icons — 2026-11-15
 
@@ -519,3 +520,14 @@ the path is UNC/remote, or a Known Folder is temporarily absent, BGW uses a
 finite five-second inventory refresh fallback; local existing folders remain
 event-driven. The wait owns at most two handles and re-arms each signaled
 notification before waiting again.
+
+
+## WLDE stable Desktop filesystem identities — 2026-11-15
+
+- The modern Win32 inventory now prefers a volume serial + 64-bit file index from a metadata-only handle, with creation FILETIME as an additional key discriminator.
+- The handle requests only `FILE_READ_ATTRIBUTES`, permits concurrent read/write/delete sharing, opens directories with `FILE_FLAG_BACKUP_SEMANTICS`, and opens reparse points themselves with `FILE_FLAG_OPEN_REPARSE_POINT`. It does not read file contents or follow a reparse target.
+- `DesktopInventoryItem::identity_stability()` distinguishes `FilesystemFileId` from `PathFallback`; persistent Group storage must not treat path fallbacks as rename-stable.
+- File IDs are used only when the identity is unique in the current inventory and Windows reports exactly one hard link. This keeps hard-link names as separate entries and avoids changing a hard-link's ID between stable and ambiguous states.
+- Windows documentation notes filesystem variation: FAT IDs can change on certain renames/defragmentation, file IDs may be reused after deletion, remote filesystems can return partial data, and ReFS's 64-bit file index is not guaranteed unique. Creation time reduces accidental reuse but is not a formal guarantee.
+- Focused portable tests cover identity construction and fallback selection. Windows-only tests cover same-volume rename continuity and hard-link disambiguation; hosted Windows CI must execute them.
+- Official sources WLDE-025–026 are recorded in `plan/references/SOURCES.md`. This modern Rust adapter work does not implement legacy C adapters for Windows 95–8.1; those still need generation-specific identity providers.
