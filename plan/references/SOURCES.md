@@ -316,3 +316,10 @@ operation from the coarse notification.
 | ID | Source | Claim supported | Scope / consequence |
 |---|---|---|---|
 | WLDE-035 | [SHGetFileInfoW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetfileinfow), [CoInitializeEx](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex), [CoUninitialize](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-couninitialize) | Microsoft requires COM initialization before calling SHGetFileInfoW. A successful CoInitializeEx call, including S_FALSE, must be balanced by exactly one CoUninitialize on the same thread | BGW's dedicated Shell icon worker initializes an STA apartment before accepting work and owns an RAII guard for its lifetime. Initialization failure prevents the worker from starting; no Shell calls are issued from the uninitialized thread |
+
+
+## WLDE STA Shell worker message dispatch — 2026-11-15
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| WLDE-036 | [Processes, Threads, and Apartments](https://learn.microsoft.com/en-us/windows/win32/com/processes--threads--and-apartments), [Single-Threaded Apartments](https://learn.microsoft.com/en-us/windows/win32/com/single-threaded-apartments), [PeekMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-peekmessagew), [TranslateMessage](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-translatemessage), [DispatchMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-dispatchmessagew) | STA threads must retrieve and dispatch their Windows message queue to receive cross-apartment COM calls. Microsoft recommends a message-aware wait rather than blocking indefinitely on a synchronization primitive | The BGW Shell worker pumps queued messages between requests and during bounded result-channel backpressure. It uses a short receive timeout while idle; Shell extraction itself remains synchronous on this one worker |
