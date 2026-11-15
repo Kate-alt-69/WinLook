@@ -85,14 +85,9 @@ pub enum DesktopInventoryError {
     /// The filesystem inventory is available only on Windows.
     UnsupportedPlatform,
     /// Windows could not resolve one of the Known Folder paths.
-    KnownFolderPath {
-        folder: DesktopFolder,
-        hresult: u32,
-    },
+    KnownFolderPath { folder: DesktopFolder, hresult: u32 },
     /// A Known Folder path was null, invalid or not terminated within bounds.
-    InvalidKnownFolderPath {
-        folder: DesktopFolder,
-    },
+    InvalidKnownFolderPath { folder: DesktopFolder },
     /// The root could not be enumerated.
     ReadDirectory { folder: DesktopFolder, code: u32 },
     /// An entry could not be inspected.
@@ -949,7 +944,10 @@ mod tests {
         let (missing, missing_stability) =
             resolve_desktop_item_identity(None, 0, "desktop:path:missing".into());
         assert_eq!(missing, "desktop:path:missing");
-        assert_eq!(missing_stability, DesktopItemIdentityStability::PathFallback);
+        assert_eq!(
+            missing_stability,
+            DesktopItemIdentityStability::PathFallback
+        );
 
         let identity = DesktopFileIdentity {
             volume_serial_number: 7,
@@ -960,12 +958,18 @@ mod tests {
         let (ambiguous, ambiguous_stability) =
             resolve_desktop_item_identity(Some(identity), 1, "desktop:path:alias".into());
         assert_eq!(ambiguous, "desktop:path:alias");
-        assert_eq!(ambiguous_stability, DesktopItemIdentityStability::PathFallback);
+        assert_eq!(
+            ambiguous_stability,
+            DesktopItemIdentityStability::PathFallback
+        );
 
         let (duplicate, duplicate_stability) =
             resolve_desktop_item_identity(Some(identity), 2, "desktop:path:duplicate".into());
         assert_eq!(duplicate, "desktop:path:duplicate");
-        assert_eq!(duplicate_stability, DesktopItemIdentityStability::PathFallback);
+        assert_eq!(
+            duplicate_stability,
+            DesktopItemIdentityStability::PathFallback
+        );
     }
 
     #[cfg(not(windows))]
