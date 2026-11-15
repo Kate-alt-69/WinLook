@@ -500,8 +500,7 @@ mod tests {
         let model = icon(AppIconMask::Circle);
         let tint = [180, 120, 60];
         let expected =
-            render_adaptive_app_icon_monochrome(&model, background, monochrome, tint, 32)
-                .unwrap();
+            render_adaptive_app_icon_monochrome(&model, background, monochrome, tint, 32).unwrap();
         let mut output = vec![0xD7; expected.len() + 8];
         render_adaptive_app_icon_monochrome_into(
             &model,
@@ -510,7 +509,8 @@ mod tests {
             tint,
             32,
             &mut output,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(&output[..expected.len()], expected.as_slice());
         assert!(output[expected.len()..].iter().all(|byte| *byte == 0xD7));
     }
