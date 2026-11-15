@@ -314,3 +314,20 @@ stale fallback references without rewriting the saved state. It is
 configuration persistence, not the crash-safe native icon/Shell restoration
 journal; Group presentation remains disabled until that separate recovery
 path is implemented and tested.
+
+
+## Read-only Shell icon extraction
+
+The modern Win32 adapter can now request the Shell icon for a filesystem-backed
+Desktop inventory record through `extract_desktop_shell_icon()`. The result
+owns its HICON and reports native dimensions; dropping it releases the icon,
+and temporary HBITMAPs from `GetIconInfo` are released immediately. Callers
+must perform this Shell operation on a BGW worker because Shell icon handlers
+can perform blocking work.
+
+This does not change Explorer's native icon presentation. Pixel rasterization
+to bounded RGBA, mask/alpha normalization and a DPI/theme/identity-aware cache
+are still needed before feeding real Shell artwork to the existing adaptive
+icon compositor. The operation covers filesystem Desktop paths only; virtual
+namespace items and exact Explorer view membership require the later Shell-view
+bridge. The BGW/native restore boundary remains unchanged.
