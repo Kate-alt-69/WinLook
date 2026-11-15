@@ -619,11 +619,14 @@ mod platform {
             .ok_or(DesktopShellIconError::ShellIconUnavailable)?;
 
         let mut icon_info = IconInfo::default();
-        if unsafe { GetIconInfo(icon.0.as_ptr(), &mut icon_info) } == 0 {
-            return Err(DesktopShellIconError::IconMetadataUnavailable);
-        }
+        let icon_info_succeeded = unsafe { GetIconInfo(icon.0.as_ptr(), &mut icon_info) } != 0;
+        // Own any handles the API populated even if it reports failure, so all
+        // returned GDI objects are released on every error path.
         let _mask = OwnedGdiObject(icon_info.mask_bitmap);
         let color = OwnedGdiObject(icon_info.color_bitmap);
+        if !icon_info_succeeded {
+            return Err(DesktopShellIconError::IconMetadataUnavailable);
+        }
 
         let (width, raw_height) = if !color.0.is_null() {
             bitmap_dimensions(color.0)?
