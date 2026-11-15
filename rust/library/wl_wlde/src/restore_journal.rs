@@ -305,25 +305,25 @@ pub fn plan_desktop_restore_recovery(
     match record.state {
         DesktopRestoreState::Prepared => DesktopRestoreRecoveryAction::DiscardPrepared,
         DesktopRestoreState::Applying => {
-            if observed_value == record.original_value {
+            if observed_value == record.original_value.as_slice() {
                 DesktopRestoreRecoveryAction::AbortUnapplied
-            } else if observed_value == record.applied_value && ownership_proven {
+            } else if observed_value == record.applied_value.as_slice() && ownership_proven {
                 DesktopRestoreRecoveryAction::RestoreOriginal
             } else {
                 DesktopRestoreRecoveryAction::Conflict
             }
         }
         DesktopRestoreState::Committed => {
-            if observed_value == record.applied_value && ownership_proven {
+            if observed_value == record.applied_value.as_slice() && ownership_proven {
                 DesktopRestoreRecoveryAction::KeepApplied
             } else {
                 DesktopRestoreRecoveryAction::Conflict
             }
         }
         DesktopRestoreState::Restoring => {
-            if observed_value == record.original_value {
+            if observed_value == record.original_value.as_slice() {
                 DesktopRestoreRecoveryAction::MarkRestored
-            } else if observed_value == record.applied_value && ownership_proven {
+            } else if observed_value == record.applied_value.as_slice() && ownership_proven {
                 DesktopRestoreRecoveryAction::RetryRestore
             } else {
                 DesktopRestoreRecoveryAction::Conflict
@@ -417,7 +417,7 @@ pub fn decode_desktop_restore_ledger(
 
     while offset < bytes.len() {
         let remaining = &bytes[offset..];
-        if remaining.len() < FRAME_HEADER_BYTES {
+        if remaining.len() < JOURNAL_MAGIC.len() {
             if !is_magic_prefix(remaining) {
                 return Err(DesktopRestoreJournalError::InvalidFrameMagic);
             }
@@ -427,9 +427,17 @@ pub fn decode_desktop_restore_ledger(
         if remaining[..4] != JOURNAL_MAGIC {
             return Err(DesktopRestoreJournalError::InvalidFrameMagic);
         }
+        if remaining.len() < 6 {
+            incomplete_tail = true;
+            break;
+        }
         let version = read_u16(&remaining[4..6])?;
         if version != DESKTOP_RESTORE_JOURNAL_VERSION {
             return Err(DesktopRestoreJournalError::UnsupportedVersion);
+        }
+        if remaining.len() < FRAME_HEADER_BYTES {
+            incomplete_tail = true;
+            break;
         }
         let payload_len = read_u32(&remaining[6..10])? as usize;
         if payload_len > MAX_RECORD_PAYLOAD_BYTES {
@@ -621,7 +629,7 @@ fn transition_allowed(current: DesktopRestoreState, next: DesktopRestoreState) -
 }
 
 fn is_magic_prefix(bytes: &[u8]) -> bool {
-    bytes.len() <= JOURNAL_MAGIC.len() && JOURNAL_MAGIC[..bytes.len()] == *bytes
+    bytes.len() < JOURNAL_MAGIC.len() && &JOURNAL_MAGIC[..bytes.len()] == bytes
 }
 
 fn decode_record_payload(
