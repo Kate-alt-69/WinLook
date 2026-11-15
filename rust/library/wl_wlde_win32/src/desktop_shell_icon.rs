@@ -422,6 +422,7 @@ mod platform {
             dc: *mut std::ffi::c_void,
             object: *mut std::ffi::c_void,
         ) -> *mut std::ffi::c_void;
+        fn GdiFlush() -> i32;
     }
 
     pub(super) fn rasterize(
@@ -480,10 +481,13 @@ mod platform {
                 0,
             )
         };
-        if raw_bitmap.is_null() || bits.is_null() {
+        if raw_bitmap.is_null() {
             return Err(DesktopShellIconError::RasterizationUnavailable);
         }
         let bitmap = OwnedGdiObject(raw_bitmap);
+        if bits.is_null() {
+            return Err(DesktopShellIconError::RasterizationUnavailable);
+        }
         let previous = unsafe { SelectObject(dc.0, bitmap.0) };
         if previous.is_null() || previous as isize == HGDI_ERROR {
             return Err(DesktopShellIconError::RasterizationUnavailable);
@@ -534,6 +538,11 @@ mod platform {
             )
         };
         if black_drawn == 0 || white_drawn == 0 {
+            return Err(DesktopShellIconError::RasterizationUnavailable);
+        }
+        // CreateDIBSection requires a GDI flush before directly reading its
+        // memory after drawing commands have been issued to the selected DIB.
+        if unsafe { GdiFlush() } == 0 {
             return Err(DesktopShellIconError::RasterizationUnavailable);
         }
 
