@@ -563,7 +563,7 @@ notification before waiting again.
 - The dual-background method handles standard source-over alpha icons and classic AND/XOR icon masks where the result is representable as a static RGBA image. Screen-dependent inversion pixels are rejected with `UnsupportedRasterOperation`; no background-dependent operation is silently converted into a guessed color.
 - The DIB/DC/selected-object lifetime is RAII-managed. `GdiFlush` runs before reading the directly accessible DIB bits, and the original selected object is restored before the DIB is deleted. Output allocation uses checked lengths and `try_reserve_exact`; invalid dimensions, oversized icons, allocation failure and Win32 drawing failures return typed errors.
 - Added portable pixel-math tests for opaque/transparent, half-alpha and inversion cases. Windows smoke coverage still needs to execute the HICON-to-RGBA path on hosted CI.
-- The next integration work is an identity/DPI/theme/size-aware icon cache and a BGW path from the RGBA image into the existing portable adaptive compositor. No native icon registration, Explorer view object, live Group tile or restoration behaviour is changed.
+- BGW now uses the bounded identity/DPI/theme/size-aware in-memory cache and Shell worker described below. Feeding cached pixels into the portable adaptive compositor and live presentation remain later work. No native icon registration, Explorer view object, live Group tile or restoration behaviour is changed.
 - Microsoft sources WLDE-031–033 are recorded in `plan/references/SOURCES.md`.
 
 
