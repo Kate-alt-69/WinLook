@@ -35,7 +35,8 @@ If the current value differs from the value last applied by WinLook, assume the 
 
 ## Crash recovery
 - Persist restoration metadata before changing desktop state.
-- WLDE crash: release visual suppression and show original native desktop items.
+- WLDE/BGW bridge crash: release visual suppression and show original native desktop items; if an in-process bridge is still loaded, it must detect controller loss and enter the native-visible safe state.
+- Explorer restart: BGW rediscovers the desktop-owning process, revalidates the per-version adapter and reattaches only after the prior restore transaction is reconciled.
 - WLWM crash: stop new injection and return to native behaviour where safely possible.
 - BGW crash: injected modules detect controller loss and enter a defined safe state.
 - If unload isn't safe, prevent future targeting and provide a reboot-assisted cleanup path.
@@ -94,3 +95,197 @@ An operation without a reliable restoration path is not eligible for normal auto
 - [ ] Partial restore has a visible, actionable report.
 - [ ] Clean uninstall is tested after normal use and simulated crashes.
 
+## WLDE Explorer Desktop Bridge write-ahead journal contract
+
+**Status: required architecture gate; not yet implemented.** This contract is
+for future native Desktop Bridge changes. The existing
+`DesktopStateStore` is configuration persistence only and does not satisfy
+any of these requirements. Until this journal and an adapter-specific
+recovery proof exist, keep native icon suppression, Shell registration
+changes, hook/presenter activation and Group presentation disabled.
+
+### Journal ownership and scope
+
+- BGW is the single writer for the interactive user's Desktop Bridge journal.
+  Manager communicates through a future authenticated BGW IPC surface; it
+  never edits the journal file directly.
+- The journal is separate from `desktop-state.v1.bin`. It stores only
+  typed restoration metadata: operation/transaction IDs, monotonic sequence,
+  adapter ID and version, allowlisted resource ID, user/session scope,
+  before/desired values, state and bounded adapter ownership evidence.
+- Never persist executable commands, arbitrary registry/file paths, pointers,
+  HICON/HBITMAP values, pixel buffers, Shell item contents, credentials or
+  arbitrary code. A resource ID must resolve to a compiled, allowlisted
+  adapter implementation. Adapter-specific payloads use strict versioned
+  codecs and fixed size/count limits.
+- Create and validate the per-user journal and its security descriptor before
+  permitting any native mutation. If the journal cannot be opened, validated,
+  appended or flushed, fail closed and preserve native desktop presentation.
+  A missing/corrupt journal while a prior mutation may still be active is a
+  recovery failure, not an empty journal.
+- The first implementation should use an append-only log on a supported local
+  filesystem, with bounded record and total-file sizes. Do not compact or
+  discard records while any operation is Committed, Applying, Restoring,
+  Conflict or otherwise unresolved. A later compactor needs its own crash
+  protocol and acceptance tests.
+
+### Write-ahead transaction protocol
+
+One journal operation represents one reversible native mutation. Never group
+multiple independent Shell mutations behind a single unverified commit.
+
+1. Discover the exact adapter/build/architecture and current desktop host.
+   Confirm that this adapter declares capture, apply, inspect, ownership proof,
+   verify and restore operations for the target resource.
+2. Read the original state and capture an adapter-specific ownership/recovery
+   token. Validate the requested state and ensure the adapter can distinguish
+   its own mutation from an external change.
+3. Append a complete `Prepared` record containing the original value, desired
+   value, adapter/resource versions, scope and ownership evidence. Flush the
+   record successfully before proceeding.
+4. Append an `Applying` transition and flush it successfully. The adapter must
+   not be called before this write-ahead boundary has completed.
+5. Apply exactly one reversible mutation. Never do network, filesystem
+   enumeration or unbounded work inside an Explorer callback.
+6. Re-read the resource through the adapter. Only if the observed state equals
+   the desired value **and** the adapter confirms ownership may BGW append and
+   flush `Committed`. A successful API return alone is not verification.
+7. On an apply error or ambiguous readback, do not assume the operation failed
+   cleanly. Leave the durable intent record available for recovery and inspect
+   the real resource before deciding whether to roll back or report Conflict.
+
+Before restoration, append and flush `Restoring`. Re-inspect the resource
+immediately before applying the restore. Restore the captured original value
+only when the observed value still matches the recorded WinLook-applied value
+and adapter ownership proof still matches. Re-read after restoration, then
+append and flush `Restored`. Every transition must be idempotent.
+
+### Recovery interpretation
+
+- Latest state `Prepared`: the protocol guarantees no native call has begun.
+  Discard/close the unstarted operation without applying or restoring anything.
+- Latest state `Applying`: the mutation may or may not have happened. The
+  adapter must inspect current state. If it can prove the original state is
+  still present, record a safe no-op outcome. If it can prove the requested
+  state is present and belongs to this operation, restore and verify it.
+  Otherwise record `Conflict`; never infer ownership from value equality
+  alone.
+- Latest state `Committed`: treat the mutation as active. Reattach only when
+  the exact adapter version and its ownership evidence remain valid. On
+  disable, shutdown or uninstall, restore only after a fresh compare-and-restore
+  check.
+- Latest state `Restoring`: inspect whether the original state is already
+  present. If so, complete the `Restored` record. If the applied state remains
+  and ownership is proven, retry the idempotent restore. Any third state or
+  lost ownership becomes `Conflict`.
+- `Restored`, `Conflict` and explicitly abandoned outcomes are terminal for
+  automatic recovery. A conflict requires an actionable report and an explicit
+  resolution; recovery must not silently overwrite a user's later change.
+- Restore operations in reverse dependency order. Recovery must be safe to run
+  repeatedly after another crash.
+
+A value comparison is necessary but may not prove who changed a Shell resource.
+An adapter that cannot provide reliable ownership evidence, detect external
+changes, or restore after controller loss is not eligible for automatic
+mutation. It must leave the native representation visible and report the
+unsupported capability.
+
+### Windows journal durability contract
+
+The journal writer should use a single append handle and append one complete,
+length-delimited, checksummed record per transition. On Windows, the native
+backend must flush the writable journal handle using `FlushFileBuffers`
+before the associated side effect is allowed. Treat any write/flush error as
+fatal to that operation. Flush only at transaction boundaries, not per frame;
+this is control-plane work, not a rendering hot path.
+
+Do not claim that a temp-file rename alone is a durable write-ahead commit.
+Microsoft documents `FlushFileBuffers` as flushing buffered information for
+the specified file, and warns about the cost of frequent flushes. The
+`MOVEFILE_WRITE_THROUGH` flag documents behavior for file moves (including
+copy/delete moves); it is not a substitute for flushing each journal record.
+`ReplaceFileW` documents `REPLACEFILE_WRITE_THROUGH` as unsupported, so that
+flag must not be used as a journal durability guarantee. These constraints are
+recorded as WLDE-037–039 in the source ledger.
+
+A valid complete record must pass magic/version/length/sequence/state/adapter
+validation and checksum verification. A short trailing fragment may be
+recognized as an incomplete final append only because the protocol forbids
+the native call until the full corresponding transition has flushed. A
+complete record with a bad checksum, invalid transition, duplicate sequence,
+unknown adapter/resource, missing journal, or untrusted ACL is corruption or
+tampering: stop further native changes and report recovery required. CRC32
+detects accidental damage; it is not authentication. File ACLs and allowlisted
+typed decoding are mandatory.
+
+This contract does not assume that every storage device, redirector or
+filesystem has identical power-loss behavior. Supported local filesystems and
+devices must pass process-termination, OS-crash and power-loss-oriented fault
+testing. Unsupported/remote journal locations fail closed.
+
+### Required fault-injection matrix
+
+- Crash before Prepared, during append, after append but before flush, after
+  Prepared flush, during Applying append, after Applying flush, during native
+  apply, after native apply but before readback, after readback, during
+  Committed append/flush, during Restoring, after restore but before readback,
+  and during Restored append/flush.
+- Truncate every possible byte range of the final record; corrupt each header,
+  payload, sequence and checksum field; replay, duplicate and reorder records.
+- Simulate external changes to the resource before apply, between inspect and
+  apply, after commit and during restore. Verify the adapter never overwrites
+  an unowned external change.
+- Crash/restart BGW and Explorer independently; restart the host with a
+  different adapter version, process identity, OS build or architecture.
+- Deny journal create/write/flush access, fill the volume, remove the journal,
+  change its ACL and supply an unsupported filesystem. Every case must prevent
+  new mutations and produce a recovery status.
+- Verify restoration is idempotent, reverse ordered and preserves original
+  desktop items, shortcuts, file contents and user-owned settings.
+
+### Acceptance gate
+
+- [ ] Versioned append-only journal and bounded typed record codec exist.
+- [ ] Journal ACL/owner and supported storage are checked before native work.
+- [ ] Every adapter implements capture, apply, inspect, ownership proof,
+      verify and restore, with build/version scoping.
+- [ ] The durable Prepared and Applying boundaries precede native mutation.
+- [ ] Recovery handles every state above and detects external changes.
+- [ ] Fault injection covers every persistence/native-call boundary.
+- [ ] BGW/adapter controller loss restores native-visible behaviour without
+      requiring Manager startup.
+- [ ] Disable, Explorer restart, BGW crash, OS restart and uninstall all pass
+      on each supported Windows generation.
+- [ ] Only after these gates pass may the corresponding presenter or native
+      Shell mutation be enabled.
+
+
+## Current portable journal-core implementation boundary
+
+The portable `wl_wlde` crate now contains `DesktopRestoreLedger`, a bounded
+record codec and transaction-state validator. It implements versioned
+length-delimited frames, CRC32, strict global sequence progression, immutable
+operation snapshots across transitions, the Prepared/Applying/Committed/
+Restoring/Restored phases plus Aborted/Conflict terminal outcomes, and a pure
+recovery planner which compares adapter readback with original/desired values
+and separately requires ownership proof.
+
+The decoder returns the complete valid-prefix byte length and identifies a
+partial final frame as an incomplete tail. A complete frame with a bad magic,
+unsupported version, invalid schema, sequence/transition or checksum is a hard
+error. The storage writer must truncate only a validated incomplete final
+suffix; it must never auto-discard a complete corrupt record.
+
+**Not implemented by this core:** file creation/opening, owner/DACL validation,
+single-process file locking, supported-local-filesystem detection, durable
+append/flush, adapter allowlist registration, native readback, native apply,
+or restoration side effects. The BGW persistence backend and per-adapter
+proof/restore implementation remain outstanding acceptance gates. The
+portable codec being present does not enable any Explorer/Shell mutation.
+
+
+The pure recovery action for a latest `Prepared` record is
+`AbortPrepared`: because the protocol forbids a native call before the
+durable Applying boundary, the BGW writer can append the terminal Aborted
+transition without inspecting or restoring a native resource. It must retain
+the Prepared/Aborted history in the append-only log rather than deleting it.

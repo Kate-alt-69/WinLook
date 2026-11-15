@@ -4354,6 +4354,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9aec5da331524158c6d1a4ac0ab1541149c0b9505fde06423b02f5ef0106b9f0"
 
 [[package]]
+name = "winlook-bgw"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "wl_bgw_runtime",
+]
+
+[[package]]
 name = "winlook-win10"
 version = "0.1.0-alpha.1"
 dependencies = [
@@ -4406,6 +4413,14 @@ name = "wl_animate"
 version = "0.2.0-beta.1"
 
 [[package]]
+name = "wl_bgw_runtime"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "wl_wlde",
+ "wl_wlde_win32",
+]
+
+[[package]]
 name = "wl_cpuv"
 version = "0.1.0-alpha.1"
 
@@ -4443,6 +4458,8 @@ name = "wl_ui_win32"
 version = "0.1.0-alpha.1"
 dependencies = [
  "wl_ui_core",
+ "wl_wlde",
+ "wl_wlde_win32",
 ]
 
 [[package]]
@@ -4458,6 +4475,8 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "windows-reactor-pre",
  "wl_ui_core",
+ "wl_ui_win32",
+ "wl_wlde",
 ]
 
 [[package]]
@@ -4465,6 +4484,23 @@ name = "wl_ui_windows7"
 version = "0.1.0-alpha.1"
 dependencies = [
  "wl_ui_win32",
+]
+
+[[package]]
+name = "wl_wlde"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "wl_animate",
+ "wl_cpuv",
+ "wl_gpuv",
+]
+
+[[package]]
+name = "wl_wlde_win32"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "sha2",
+ "wl_wlde",
 ]
 
 [[package]]

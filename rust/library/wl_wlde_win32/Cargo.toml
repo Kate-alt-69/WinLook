@@ -1,0 +1,14 @@
+[package]
+name = "wl_wlde_win32"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.77"
+description = "Win32 monitor and read-only Desktop inventory adapter for WinLook Desktop Engine"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+wl_wlde = { version = "0.1.0-alpha.1", path = "../wl_wlde" }
+
+[target.'cfg(windows)'.dependencies]
+sha2 = "0.10.9"

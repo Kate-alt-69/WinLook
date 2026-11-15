@@ -59,7 +59,10 @@ fn main() {
 
     println!("Animations: {ANIMATION_COUNT}");
     println!("Frames: {emitted_frames} at 60 FPS");
-    println!("Total elapsed time: {:.3} ms", elapsed.as_secs_f64() * 1000.0);
+    println!(
+        "Total elapsed time: {:.3} ms",
+        elapsed.as_secs_f64() * 1000.0
+    );
     println!(
         "Average elapsed update time per frame: {:.3} us",
         microseconds_per_frame

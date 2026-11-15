@@ -1,0 +1,13 @@
+[package]
+name = "wl_wlde"
+version = "0.1.0-alpha.1"
+edition = "2021"
+rust-version = "1.77"
+description = "Portable scene, monitor and scheduling core for the WinLook Desktop Engine"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+wl_animate = { version = "0.2.0-beta.1", path = "../wl_animate" }
+wl_cpuv = { version = "0.1.0-alpha.1", path = "../wl_cpuv" }
+wl_gpuv = { version = "0.1.0-alpha.1", path = "../wl_gpuv" }

@@ -1,12 +1,12 @@
 # WinLook File Explorer Customization
 
-> Status: accepted product direction; detailed implementation strategy and per-version surface coverage remain under research. This is a customization layer for the existing Windows File Explorer, not a replacement file manager or Windows Shell.
+> Status: accepted product direction; detailed implementation strategy and per-version surface coverage remain under research. Explorer remains the Windows Shell/file-operation host, while BGW/WLDE provides a required runtime integration for desktop presentation on sessions where Explorer owns the desktop.
 
 ## 1. Product requirement
 
 WinLook should deeply customize the actual Explorer interface: file/folder/background right-click menus; navigation/tree pane; address/breadcrumb bar; search and results presentation; command bar, toolbar and ribbon-era surfaces; tabs; folder/file views and layout; Details columns, status/details/preview panes; icons, thumbnails, overlays and previews; window appearance; and presentation of file-operation progress/confirmation surfaces where safely customizable.
 
-Full visible-interface customization is the product goal. Exact coverage is OS/build-dependent: documented Shell extension points cover selected functions, while other visual surfaces require an optional build-specific adapter. This document does not claim every surface has a stable public API.
+Full visible-interface customization is the product goal. Exact coverage is OS/build-dependent: documented Shell extension points cover selected functions, while other visual surfaces require build-specific adapters. Separately, the Explorer Desktop Bridge used by WLDE Groups and app icons is a required BGW subsystem, not an optional feature toggle. This document does not claim every surface has a stable public API.
 
 ## 2. Boundary: Explorer remains Explorer
 
@@ -34,28 +34,43 @@ This is useful for WinLook-managed virtual content and custom views of that name
 
 Do not claim that `IShellView` replaces the view, navigation pane, address bar, tabs or menus for all user folders.
 
-### Layer C — Explorer presentation adapter
+### Layer C — Explorer presentation adapters
 
-Some requested visual controls—especially the standard navigation pane, address/search controls, tabs/command bar styling and overall Explorer layout—are not fully configurable through documented extension points.
+Some requested visual controls—especially the standard navigation pane,
+address/search controls, tabs/command bar styling and overall Explorer layout—
+are not fully configurable through documented extension points.
 
-To meet the product goal, research a separate optional per-Windows-build Explorer presentation adapter. Depending on the Windows generation, a viable prototype may use a narrowly scoped runtime UI/resource adapter or hook. This is not normal WLWM injection and is not enabled by default.
+There are two distinct adapter responsibilities:
+
+1. The **Explorer Desktop Bridge** is mandatory BGW/WLDE infrastructure on
+   every supported Windows session where Explorer owns the desktop. It connects
+   desktop item identity, icon presentation, Group proxies and right-click
+   routing to the WLDE presenter. BGW selects a native adapter for the detected
+   Windows generation and actual desktop-owning Explorer process.
+2. Additional **Explorer chrome styling** is per-build and capability-based.
+   Where documented APIs do not expose a requested visual surface, a narrow
+   runtime UI/resource adapter or hook may be used after build/signature checks.
+   These chrome changes are not a universal public API and may be unavailable
+   on a particular build without disabling the required WLDE Desktop Bridge.
 
 Requirements:
-- target only a named, tested OS build/architecture and known control/framework signatures;
-- change explicitly supported presentation properties while preserving Shell command/filesystem ownership;
-- fail closed on unknown builds, changed signatures or failed probes;
-- never patch files on disk, replace Explorer components or bypass process mitigations;
-- keep the adapter independently enabled/disabled from normal WLWM features;
-- have an out-of-process coordinator and out-of-band disable/recovery route;
-- auto-quarantine after repeat crashes, initialization failures or signature mismatch;
-- expose partial/unsupported surfaces instead of pretending universal coverage;
-- retain native Explorer operation whenever disabled.
-
-Windhawk's Windows 11 File Explorer Styler demonstrates selected Explorer controls can be restyled on particular builds. This is feasibility evidence for selected surfaces, not a Microsoft compatibility contract or proof of complete Explorer coverage.
+- target the actual desktop-owning Explorer process for desktop features; target
+  other Explorer hosts only for separately specified File Explorer features;
+- identify the OS build, architecture, process identity and control/framework
+  signatures before using version-specific hooks;
+- preserve Shell command/filesystem ownership and never patch files on disk;
+- use documented APIs first and a runtime hook only for behaviour the public
+  interfaces do not expose;
+- have BGW coordinate health, heartbeat, restart and recovery;
+- fail closed on unknown builds, changed signatures, process mitigations or
+  failed probes; keep native icons visible and preserve native Shell behaviour;
+- auto-quarantine a failing adapter and expose exactly which capability is
+  unavailable rather than claiming universal support;
+- keep expensive work outside Explorer callbacks and avoid blocking the Shell UI.
 
 ### Layer D — Manager, Profiles and Templates
 
-WinLook Manager owns a dedicated **File Explorer** page for presentation themes/presets, per-surface controls and capability state, experimental adapter opt-in/recovery, diagnostics and safe reset.
+WinLook Manager owns a dedicated **File Explorer** page for presentation themes/presets, per-surface controls, capability state, adapter diagnostics and safe recovery. The required Desktop Bridge has no end-user opt-in switch; per-build unsupported capabilities are handled by BGW's automatic safe fallback. Additional experimental Explorer chrome styling may have a separate user-controlled setting.
 
 Keep theme data separate from executable integration code. Profiles may select Explorer presentation presets. WLT may carry portable style settings/assets but not private control addresses, process state, binary offsets or local caches.
 
@@ -89,7 +104,8 @@ Do not put raw pointers, control addresses, private process state or arbitrary s
 ## 7. Failure isolation and recovery
 
 - Shell handlers stay small and fast; long operations belong in an out-of-process broker.
-- The presentation adapter is separate from Manager UI and normal WLWM target integrations.
+- The mandatory Desktop Bridge is owned by BGW/WLDE and is separate from Manager UI; it targets only the actual desktop-owning Shell process.
+- Additional Explorer chrome-styling hooks remain separate from WLWM and cannot be used as a reason to skip the required WLDE bridge.
 - Keep an independently readable disable flag outside Explorer's UI/configuration path.
 - On repeated Explorer crashes, adapter initialization failure or signature mismatch, quarantine the adapter and allow native Explorer to restart normally.
 - WinLook safe mode must disable experimental hooks without opening Explorer settings.
@@ -107,9 +123,10 @@ No credential, secure-desktop, UAC or protected-process interaction. Do not insp
 - [ ] Documented Shell routes are mapped to exact OS minimums.
 - [ ] Context commands work for files, folders, background and multi-select without blocking Explorer.
 - [ ] Namespace-extension claims are limited to their own virtual namespace/view.
-- [ ] Deep presentation adapters target named builds and are independently disableable.
-- [ ] Unknown builds refuse activation and preserve native Explorer.
-- [ ] Explorer crashes trigger adapter quarantine and native fallback.
+- [ ] The mandatory Desktop Bridge is detected and coordinated by BGW for every verified Explorer-owned desktop session.
+- [ ] Per-version adapters target named builds; unknown builds preserve native desktop icons and report unsupported WLDE presentation.
+- [ ] Explorer crashes trigger bridge recovery/quarantine and native fallback.
+- [ ] Any extra Explorer chrome-styling adapter remains separately disableable without disabling the required desktop bridge.
 - [ ] Manager safe mode works when Explorer customization is broken.
 - [ ] Profiles/WLT contain portable configuration, not Explorer implementation state.
 - [ ] Accessibility, keyboard navigation, high contrast, scaling and localization are considered.

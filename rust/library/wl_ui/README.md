@@ -218,3 +218,16 @@ Use `default-features = false` in applications so future additions cannot silent
 ## Status
 
 The facade, design-system and backend contracts remain alpha. The Win10 native renderer provides a reusable themed shell and page navigation baseline; it is not a full Win32 declarative controls/layout engine. Win11 exposes Windows Reactor for native custom controls, and Tauri hosts provide CSS-driven custom frontends. BGW IPC and actual system-setting actions remain separate work.
+
+
+## WLDE app icons and desktop Groups status
+
+The Windows 10 and Windows 11 Manager pages reuse the same Icons and Desktop
+Groups navigation entries. Both pages distinguish portable core readiness
+from native Shell integration: color and themed-monochrome bitmap composition
+is implemented, as are transactional virtual Group commands and the BGW
+read-only User/Public Desktop inventory. Shell icon extraction/registration,
+DPI-aware icon caches, Manager-to-BGW status/configuration IPC, durable Group
+storage, Explorer context-menu registration, live Group tiles and crash-safe
+icon restoration remain separate implementation gates. Live Group
+presentation stays disabled until original Shell icons can be restored.

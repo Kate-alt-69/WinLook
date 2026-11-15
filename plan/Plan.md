@@ -47,7 +47,7 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - [ ] Define supported Windows versions and release tiers.
 - [ ] Define what “full customization” means for each OS generation.
 - [ ] Define a feature-capability matrix so unavailable features are reported honestly.
-- [ ] Define the boundary between supported/native customization and optional experimental integrations.
+- [x] Define the boundary between supported/native customization and build-specific compatibility adapters (the WLDE Desktop Bridge itself is required runtime infrastructure).
 - [ ] Finalize product branding and release names for the agreed subsystems.
 - [ ] Define supported hardware/performance tiers, including low-end systems.
 - [ ] Define accessibility requirements and high-contrast/reduced-motion behaviour.
@@ -57,9 +57,10 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - [x] Protect the Windows shell from direct executable modification as a core design requirement.
 - [x] **Never patch, replace, binary-modify, or make WinLook dependent on a modified `explorer.exe`.**
 - [x] Keep the real Explorer/Shell responsible for filesystem, namespace, file-operation, activation and security behaviour; WinLook customizes its visible interface.
-- [ ] Deep Explorer presentation adapters may use narrowly scoped in-process techniques only as an independently gated, opt-in, per-build integration with automatic quarantine and recovery. This is not general WLWM injection.
-- [ ] Prefer documented Windows APIs, supported personalization settings, separate processes, and version-specific adapters.
-- [ ] Keep shell integrations optional and isolated so a failure can be disabled without taking down the desktop.
+- [x] The Explorer Desktop Bridge is a required BGW/WLDE subsystem on every supported Windows session where Explorer owns the desktop; it is not a per-feature user opt-in and is not limited to Windows 10/11.
+- [x] The bridge may use documented Shell extension APIs and, where those cannot provide required desktop icon/Group behaviour, a controlled version-specific runtime hook inside the actual desktop-owning Explorer process.
+- [ ] Keep in-process callbacks short and bounded; BGW owns rendering, persistence, media decode, policy and network work.
+- [ ] Use per-version capability detection, bridge health monitoring, automatic quarantine and restoration; unknown builds preserve native desktop icons and Shell behaviour.
 - [ ] Never capture, store, transmit, simulate, or process the user's Windows password or PIN.
 - [ ] Never assume a normal WinLook window can appear above or replace the secure Windows sign-in desktop.
 - [ ] Every system change must have a known restoration path wherever technically possible.
@@ -67,6 +68,32 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - [ ] Require clear warnings and explicit opt-in for experimental or system-wide changes.
 
 ---
+
+## Explorer runtime integration — approved direction
+
+WinLook does not modify, patch, replace or redistribute the Explorer executable
+on disk. However, Explorer runtime integration is an explicit, required part
+of BGW/WLDE whenever Explorer owns the interactive desktop. It is used for
+desktop item identity, adaptive app-icon presentation, virtual Group proxies
+and WLDE context-menu routing. It applies across supported Windows generations
+where Explorer actually owns the desktop, with separate adapters for each
+OS/build and shell model.
+
+BGW discovers the desktop-owning process in each session and coordinates its
+bridge. Documented Shell COM interfaces are used where they satisfy the
+required contract; controlled in-process runtime hooks are permitted inside
+that actual desktop process where supported interfaces do not expose the
+necessary desktop-view behaviour. This is not an end-user opt-in. It is also
+not permission to attach indiscriminately to every Explorer folder window,
+patch executable code on disk, replace DWM or take over Windows filesystem
+operations. DWM remains the compositor and Explorer remains the Shell
+authority for activation, permissions and file operations.
+
+The bridge's in-process callbacks must be short; expensive work remains in
+BGW/WLDE. BGW monitors Explorer identity/restart, adapter health and restore
+state. Unknown or incompatible builds retain the native desktop presentation
+and mark only the unavailable WLDE features degraded. This automatic fallback
+is a safety mechanism, not an optional product mode.
 
 # 2. Core architecture — hybrid Windows implementations
 
@@ -230,6 +257,19 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 - [ ] Define GPU device-loss recovery and renderer restart behaviour.
 - [ ] Define low-memory and software-rendering fallbacks.
 
+### Modern Win32 monitor snapshot adapter
+
+- [x] Add a bounded Win32 monitor snapshot adapter for attached desktop
+  displays, excluding mirroring-driver pseudo-devices. It returns the shared
+  16-monitor WLDE topology with GDI bounds, work area and primary state.
+- [x] Add transactional topology refresh and a narrow event predicate for
+  WM_DISPLAYCHANGE / WM_DEVICECHANGE + DBT_DEVNODES_CHANGED. The adapter owns
+  no polling loop, hook, timer or window.
+- [ ] Wire both modern Manager/runtime event loops to refresh on those events.
+- [ ] Add per-monitor DPI, orientation and session/docking reconciliation.
+- [ ] Define stable monitor profile identity separately from transient GDI
+  device names.
+
 ## Wallpaper formats and rendering capabilities
 
 - [ ] Specify .wl.wp as the normal wallpaper asset/package format with source-quality preservation.
@@ -254,8 +294,12 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 - [ ] Support importing local wallpapers without an internet connection.
 - [ ] Design favorites, collections, playlists, history, and per-monitor assignments.
 - [ ] Design wallpaper installation, update, removal, and backup.
-- [ ] Design the **Wallpaper Store as an integrated WLDE feature**, not a separate executable/product.
+- [x] Design the **Wallpaper Store as an integrated WLDE feature**, not a separate executable/product.
 - [ ] Design Store search, categories, tags, featured content, and discovery.
+- [x] Add the initial provider directory for Wallpaper Engine, Openverse, Wikimedia Commons and NASA Image and Video Library.
+- [x] Add the existing Wallpaper Engine file-picker / command-line hand-off for an installation the user already owns.
+- [ ] Build the full in-app catalogue client: search results, previews, details, downloads, attribution records and local-library installation.
+- [ ] Add independent community/self-hosted catalogue sources and their trust/permission UX.
 - [ ] Design wallpaper detail pages, previews, screenshots, metadata, and compatibility information.
 - [ ] Design creator profiles and creator publishing/submission flow.
 - [ ] Design free and paid content support, subject to later business and payment decisions.
@@ -269,6 +313,18 @@ WLDE manages the desktop experience: desktop composition, wallpaper rendering/pl
 
 ## Resource-aware rendering
 
+### Portable resource-pressure controller
+
+- [x] Add Rust and C89 caller-fed CPU/GPU/RAM/VRAM percentage samples.
+- [x] Evaluate each domain independently using the maximum pressure, rather
+  than averaging a saturated resource away.
+- [x] Add configurable Optimize/Suspend thresholds plus consecutive enter and
+  recovery windows; invalid samples/policies are rejected.
+- [x] Feed Normal/Optimize/Suspend pressure into the shared scene cadence:
+  Optimize requests 30 FPS; Suspend requests no animated frames.
+- [ ] Add trustworthy Win10/Win11 telemetry providers and explicit sampling
+  cadence, including attribution of WLDE-owned work.
+
 WLDE should be a good desktop citizen. Foreground applications and games take priority. WLDE should reduce its own CPU, GPU, memory, VRAM, decoding, and rendering work when the system is busy.
 
 - [ ] Design a resource monitor for CPU, GPU, RAM, VRAM, power state, and WLDE's own consumption.
@@ -279,17 +335,30 @@ WLDE should be a good desktop citizen. Foreground applications and games take pr
 - [ ] Design pause, freeze-frame, and static-wallpaper fallback.
 - [ ] Design reduced work for fully or mostly occluded wallpaper regions.
 - [ ] Design resource recovery and gradual quality restoration.
-- [ ] Define sampling windows, sustained-pressure rules, and hysteresis to prevent rapid pause/resume oscillation.
-- [ ] Define behaviour when other system resource usage exceeds the user's requested 90% threshold: WLDE should stop animated playback/rendering and minimize its resource use, while preserving a lightweight static fallback only where safe and useful.
-- [ ] Define separate policies for CPU, GPU, RAM, and VRAM pressure rather than relying only on one blended percentage.
+- [x] Define configurable consecutive sample windows and recovery hysteresis
+  in the portable resource controller; platform sampling duration/cadence
+  remains an adapter decision.
+- [ ] Integrate host telemetry policy with the user's requested 90% severe
+  pressure threshold so sustained pressure stops animated playback/rendering
+  while preserving a safe static fallback where available.
+- [x] Evaluate CPU, GPU, RAM and VRAM independently; any saturated domain
+  constrains WLDE rather than being averaged with idle domains.
 - [ ] Design battery-aware and power-plan-aware behaviour.
 - [ ] Design user-configurable quality caps, FPS limits, and resource budgets.
 - [ ] Ensure adaptive controls cannot make the desktop unresponsive.
 
 ## Full-screen applications and Game Mode
 
+### Portable per-application profile resolver
+
+- [x] Add matching Rust/C89 resolution using host-supplied executable SHA-256 fingerprints.
+- [x] Bound profile evaluation to 64 unique identities and reject duplicates.
+- [x] Define precedence: exact user profile (including Normal override), optional OS Game Mode signal, optional fullscreen fallback, then Normal.
+- [x] Ensure non-foreground applications always resolve to Normal and do not use executable names alone.
+- [ ] Connect Win10/Win11 foreground, fullscreen and OS Game Mode detection, profile persistence and Manager editing controls.
+
 - [ ] Design detection of foreground applications and fullscreen/borderless fullscreen states.
-- [ ] Design game detection using multiple signals, not only executable-name matching.
+- [x] Define the portable input contract for foreground ownership, fullscreen state, host-provided executable fingerprint and OS Game Mode signal; OS-specific collection remains open.
 - [ ] Design automatic Game Mode.
 - [ ] Design **Optimize** behaviour: lower FPS/resolution/effects and minimize wallpaper work to leave resources for the game.
 - [ ] Design **Suspend** behaviour: stop animation, video decoding where possible, and unnecessary rendering/workers.
@@ -431,7 +500,7 @@ Restoration is a core requirement. Users must be able to undo WinLook changes an
 
 # 10. Security, privacy, and trust
 
-Process injection is an accepted WLWM technique for compatible targets. The main BGW coordinates WLWM compatibility classification, cache lookup and injection. Protected/authentication processes, DWM and security-critical targets remain excluded. Explorer.exe must never be modified on disk or replaced. Deep Explorer presentation customization is a separate opt-in, build-specific Appearance Engine adapter—not ordinary WLWM injection—and must preserve native Shell/file-operation ownership. See [architecture/explorer-customization.md](architecture/explorer-customization.md) and [architecture/wlwm.md](architecture/wlwm.md).
+Process injection is an accepted WLWM technique for compatible targets. The main BGW coordinates WLWM compatibility classification, cache lookup and injection. Protected/authentication processes, DWM and security-critical targets remain excluded. Explorer.exe must never be modified on disk or replaced. The WLDE Explorer Desktop Bridge is required BGW/WLDE infrastructure wherever Explorer owns the desktop and is not an end-user opt-in. Separate deep Explorer chrome styling may remain a build-specific Appearance Engine adapter—not ordinary WLWM injection—and must preserve native Shell/file-operation ownership. See [architecture/explorer-customization.md](architecture/explorer-customization.md) and [architecture/wlwm.md](architecture/wlwm.md).
 
 
 - [ ] Threat-model the Manager, BGW, optional Service, WLDE, Store, and extension runtime.
@@ -461,7 +530,9 @@ WinLook Manager is where users configure and load subsystem settings, import/exp
 - [ ] Design taskbar and Start Menu customization pages.
 - [ ] Design Audio & Media's full page and compact mixer/Now Playing popup.
 - [ ] Design the File Explorer page with surface-specific controls, capability states and out-of-band safe mode.
-- [ ] Design WLDE wallpaper library and integrated Wallpaper Store screens.
+- [x] Design WLDE wallpaper library and integrated Wallpaper Store screens.
+- [x] Add a shared WLDE module page map and explicit readiness/disabled states
+  across the Windows 10 and Windows 11 Manager shells.
 - [ ] Design monitor layout and per-monitor wallpaper controls.
 - [ ] Design resource/performance controls and live WLDE status.
 - [ ] Design per-game profiles and Game Mode settings.
@@ -627,7 +698,7 @@ This section records the latest user-approved decisions and supersedes any earli
 
 ## DWM, Windows and injection
 
-DWM and the Windows windowing system remain intact. WLWM augments Windows rather than replacing DWM. Process injection and hooks are acceptable techniques for compatible targets and are coordinated by the main BGW. A compatibility layer classifies targets before injection and maintains a local binary cache; the cache must be invalidated when target/environment/module identity changes and cannot replace per-launch safety checks. Explorer.exe must not be modified on disk or replaced. Explorer may receive a separate, opt-in and per-build-verified presentation adapter under [the dedicated Explorer policy](architecture/explorer-customization.md); it is not a general WLWM injection target. DWM and authentication/security-critical processes are excluded.
+DWM and the Windows windowing system remain intact. WLWM augments Windows rather than replacing DWM. Process injection and hooks are acceptable techniques for compatible targets and are coordinated by the main BGW. A compatibility layer classifies targets before injection and maintains a local binary cache; the cache must be invalidated when target/environment/module identity changes and cannot replace per-launch safety checks. Explorer.exe must not be modified on disk or replaced. The WLDE Explorer Desktop Bridge is a required, separate integration scoped to the actual desktop-owning Explorer process when Explorer owns the session desktop; its adapter is version-specific and may use controlled runtime hooks where documented Shell APIs are insufficient. It is not general WLWM injection. Extra Explorer chrome styling may remain separately configurable. DWM and authentication/security-critical processes are excluded.
 
 ## Animation suite
 
@@ -736,8 +807,10 @@ The following decisions were confirmed by the user on 2026-11-08. They are accep
 - The goal is to deeply customize the existing Explorer interface: context menus, navigation pane, address/breadcrumb, search, command bar/toolbar, tabs, folder views, details/status/preview surfaces, icons/thumbnails and other visible controls.
 - Explorer remains the actual Shell/file manager. Windows retains filesystem/namespace work, file operations, activation, search/index, cloud providers and security responsibilities.
 - WinLook must not create a replacement file manager, replace the Shell, modify `explorer.exe` on disk or take over core file-operation logic.
+- The WLDE Explorer Desktop Bridge is mandatory BGW runtime infrastructure wherever Explorer owns the desktop; it provides desktop item/icon/Group/context-menu integration across supported Windows generations.
 - Use documented Shell extensions where possible. Namespace extensions/custom `IShellView` implementations apply to their own virtual namespace/view; they are not a universal Explorer reskin API.
-- Deep styling of surfaces without public APIs is an optional, separately governed, per-build presentation adapter. It must be opt-in, independently disableable, build-verified, quarantined after failures and recoverable without depending on Explorer's own UI.
+- Desktop-view interception unavailable through public interfaces may use a controlled, version-specific runtime hook in the actual desktop-owning Explorer process. This required bridge is not an end-user opt-in; unknown builds must preserve native desktop presentation.
+- Deep styling of additional Explorer chrome without public APIs may be a separate, user-configurable per-build adapter. It must be independently disableable, build-verified, quarantined after failures and recoverable without disabling the required WLDE Desktop Bridge.
 - Full visible-interface customization remains the product goal; exact per-OS/build surface coverage remains research/test work.
 - Detailed design: [File Explorer Customization](architecture/explorer-customization.md).
 
@@ -819,6 +892,19 @@ This is a staged implementation sequence. The current library branch contains po
 - [ ] Complete all workflow jobs on the final staged PR and correct any findings.
 - [ ] Merge order: library foundation → Manager UI → github/workflow last.
 - [ ] Enable the Win95 self-hosted workflow only after C/win95/Makefile and a configured Open Watcom runner exist.
-- [ ] Enable BGW compilation only after explicit Cargo binary targets exist.
+- [x] Add the independent `winlook-bgw` Cargo binary target, include it in Win10/Win11 preview packages, and make the BGW workflow build/upload `winlook.bg.exe` (hosted validation pending).
 
 Detailed command, output/cache, workflow and merge contracts: [Build System and CI](architecture/build-and-ci.md).
+
+
+### Wallpaper Store implementation slice — 2026-11-14
+
+The first provider-hub slice is implemented in PR #11:
+
+- wl_wlde and wl_Lwlde expose matching immutable provider metadata for Wallpaper Engine, Openverse, Wikimedia Commons and NASA.
+- The Manager navigation is nested under Wallpaper → Wallpaper Store, with Wallpaper Engine, Free Catalogues and Wallpaper Library destinations.
+- Win10 and Win11 offer a Browse action to locate an existing Wallpaper Engine executable. The local wallpaper picker starts in the detected Steam Workshop folder when available.
+- The Rust bridge invokes the documented Wallpaper Engine openWallpaper command for a selected local project or supported media file. Steam retains all subscription/download/purchase management.
+- Free catalogue links open official provider pages in the default browser. Exact item-level licenses, attribution and third-party rights remain authoritative.
+
+This is not yet the full Store experience: there is no embedded catalogue/API search, preview/detail screen, direct catalogue downloader, resumable queue, attribution manifest, package-signing/moderation service or library installer. Do not mark those checklist entries complete from the provider hub.

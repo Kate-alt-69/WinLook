@@ -3,6 +3,11 @@
 //! Windows 11 native WinUI 3 renderer.
 
 use wl_ui_core::{UiApplication, UiError};
+pub use wl_ui_win32::{
+    discover_desktop_host, enumerate_monitors, is_same_desktop_host, monitor_desktop_host,
+    refresh_topology, should_refresh_topology, DesktopHostError, DesktopHostIdentity,
+    DesktopHostMonitor, MonitorError, DBT_DEVNODES_CHANGED, WM_DEVICECHANGE, WM_DISPLAYCHANGE,
+};
 
 /// Native Windows Reactor/WinUI 3 component and layout API.
 ///

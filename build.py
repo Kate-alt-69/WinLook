@@ -70,6 +70,7 @@ GITLEAKS_SHA256 = (
 APP_RUNTIME_URL = (
     "https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/downloads"
 )
+BGW_PACKAGE_NAME = "winlook-bgw"
 BGW_TARGET_NAMES = {"winlook.bg", "winlook-bg", "winlook_bg"}
 WINDOWS_APPS = {
     "win10": ("winlook-win10", "build/rust/win10"),
@@ -1483,7 +1484,7 @@ def _recent_visual_studio_setup_logs(started_at: float, limit: int = 3) -> str:
         )
     if not sections:
         return "No new dd_setup/dd_client/dd_bootstrapper logs were found in " + str(log_root) + "."
-    return "\\n\\n".join(sections)[-12000:]
+    return "\n\n".join(sections)[-12000:]
 
 
 def _visual_studio_setup_log_diagnostics(started_at: float) -> List[str]:
@@ -2082,6 +2083,8 @@ def select_bgw_targets(metadata: Dict[str, Any]) -> List[Tuple[str, str]]:
     """Return package/binary pairs for explicitly named BGW executables."""
     matches: List[Tuple[str, str]] = []
     for package in metadata.get("packages", []):
+        if package.get("name") != BGW_PACKAGE_NAME:
+            continue
         for target in package.get("targets", []):
             if is_bgw_target(target.get("name", ""), target.get("kind", [])):
                 matches.append((package["name"], target["name"]))
@@ -2117,6 +2120,7 @@ def require_manifest(root: Path, relative: str, description: str) -> None:
 
 def check_ui_sources(root: Path) -> bool:
     required = (
+        "rust/library/wl_wlde_win32/Cargo.toml",
         "rust/library/wl_ui/core/Cargo.toml",
         "rust/library/wl_ui/backends/win32/Cargo.toml",
         "rust/library/wl_ui/backends/windows7/Cargo.toml",
@@ -2166,17 +2170,21 @@ def target_available(root: Path, target: str) -> Tuple[bool, str]:
         ready = project_has_manifest(root, "C/win95/Makefile")
         return ready, "C/win95/Makefile found" if ready else "C/win95/Makefile is not present"
     if target == "bgw":
-        manifests = (root / "rust/win10/Cargo.toml", root / "rust/win11/Cargo.toml")
-        for manifest in manifests:
-            if manifest.is_file():
-                try:
-                    source = manifest.read_text(encoding="utf-8")
-                except OSError:
-                    continue
-                for target_name in BGW_TARGET_NAMES:
-                    if target_name in source:
-                        return True, "BGW binary declaration found in " + str(manifest.relative_to(root))
-        return False, "BGW binary target is not implemented"
+        manifest = root / "rust/bgw/Cargo.toml"
+        if not manifest.is_file():
+            return False, "rust/bgw/Cargo.toml is not present"
+        try:
+            source = manifest.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise BuildError("Could not read the BGW manifest: " + str(exc)) from exc
+        package_name = 'name = "' + BGW_PACKAGE_NAME + '"'
+        if package_name not in source:
+            return False, "the independent BGW package name is missing from rust/bgw/Cargo.toml"
+        if not any('name = "' + name + '"' in source for name in BGW_TARGET_NAMES):
+            return False, "BGW binary declaration is missing from rust/bgw/Cargo.toml"
+        if not (root / "rust/bgw/src/main.rs").is_file():
+            return False, "rust/bgw/src/main.rs is not present"
+        return True, "independent BGW binary manifest and entry point found"
     raise ValueError("Unknown build target: " + target)
 
 
@@ -2376,11 +2384,11 @@ def rust_verify(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
     commands = [
         ("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"]),
-        ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features"]),
+        ("Rust shared-library tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features"]),
         ("Portable wl_ui facade tests", ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--all-targets"]),
-        ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"]),
+        ("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"]),
         ("Portable wl_ui facade Clippy", ["cargo", "clippy", "-p", "wl_ui", "--no-default-features", "--all-targets", "--", "-D", "warnings"]),
-        ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--no-deps"]),
+        ("Rust shared-library API documentation", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--no-deps"]),
         ("Portable wl_ui public API documentation", ["cargo", "doc", "-p", "wl_ui", "--no-deps"]),
         ("Animation 60 FPS CPU workload benchmark", ["cargo", "run", "--release", "-p", "wl_animate", "--example", "frame_budget"]),
     ]
@@ -2390,7 +2398,7 @@ def rust_verify(runner: Runner) -> None:
 
 def rust_tests(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features"])
+    runner.run("Rust shared-library unit tests", ["cargo", "test", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features"])
     runner.run("Portable wl_ui facade tests", ["cargo", "test", "-p", "wl_ui", "--no-default-features", "--all-targets"])
 
 
@@ -2466,7 +2474,7 @@ def ui_verify(runner: Runner) -> None:
         "UI facade and Win32 backend Clippy",
         [
             "cargo", "clippy", "-p", "wl_ui_core", "-p", "wl_ui_win32",
-            "-p", "wl_ui_windows10", "-p", "wl_ui",
+            "-p", "wl_wlde_win32", "-p", "wl_ui_windows10", "-p", "wl_ui",
             "--no-default-features", "--features", "wl_ui/windows10",
             "--all-targets", "--", "-D", "warnings",
         ],
@@ -2497,6 +2505,10 @@ def verify_windows_ui_dependencies(runner: Runner, target: str) -> None:
         raise BuildError(
             target + " resolved UI dependencies reserved for another backend: "
             + ", ".join(found)
+        )
+    if target in ("win10", "win11") and "wl_wlde_win32" not in dependency_tree:
+        raise BuildError(
+            target + " did not resolve the documented WLDE Win32 monitor adapter."
         )
     if target == "win11" and "windows-reactor-pre" not in dependency_tree:
         raise BuildError(
@@ -2545,6 +2557,19 @@ def build_bgw(runner: Runner) -> None:
             "Build BGW executable " + binary,
             ["cargo", "build", "--release", "-p", package, "--bin", binary, "--target-dir", str(target_dir)],
         )
+        if runner.dry_run:
+            continue
+        release_dir = target_dir / "release"
+        suffix = ".exe" if os.name == "nt" else ""
+        built_executable = release_dir / (binary + suffix)
+        canonical_executable = release_dir / ("winlook.bg.exe" if os.name == "nt" else "winlook.bg")
+        if not built_executable.is_file():
+            raise BuildError(
+                "Cargo reported a successful BGW build but the expected executable is missing: "
+                + str(built_executable)
+            )
+        if built_executable != canonical_executable:
+            shutil.copy2(built_executable, canonical_executable)
 
 
 def build_watcom_application(runner: Runner, version: str) -> None:
@@ -2635,7 +2660,7 @@ def build_windows_generation(runner: Runner, version: str) -> None:
 
 def build_libraries(runner: Runner) -> None:
     require_command("cargo", "Install Rust through https://rustup.rs/.")
-    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "-p", "wl_ui", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
+    runner.run("Build Rust shared libraries", ["cargo", "build", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "-p", "wl_ui", "--release", "--target-dir", str(build_paths(runner.root)["rust"] / "shared")])
     cmake_c_test(runner)
 
 
@@ -2644,8 +2669,8 @@ def test_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
         rust_tests(runner)
         if scope in ("libraries", "all"):
             runner.run("Rust formatting", ["cargo", "fmt", "--all", "--", "--check"])
-            runner.run("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"])
-            runner.run("Rust shared-library API docs", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_ui_core", "--no-deps"])
+            runner.run("Rust shared-library Clippy", ["cargo", "clippy", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--all-targets", "--all-features", "--", "-D", "warnings"])
+            runner.run("Rust shared-library API docs", ["cargo", "doc", "-p", "wl_animate", "-p", "wl_cpuv", "-p", "wl_gpuv", "-p", "wl_wlde", "-p", "wl_wlde_win32", "-p", "wl_ui_core", "--no-deps"])
     if scope in ("c", "libraries", "all"):
         cmake_c_test(runner, sanitizers=sanitizers)
     if scope in ("ui", "all"):
@@ -2710,7 +2735,7 @@ def verify_scope(runner: Runner, scope: str, sanitizers: bool = False) -> None:
         if not runner.dry_run and select_bgw_targets(cargo_metadata(runner)):
             build_bgw(runner)
         else:
-            print_skip("BGW Cargo target is not implemented.")
+            print_skip("BGW package target is not present.")
     else:
         raise BuildError("Unknown verification scope: " + scope)
 
@@ -2722,6 +2747,27 @@ def package_windows_app(runner: Runner, target: str) -> Path:
     executable = runner.root / target_dir / "release" / "winlook.exe"
     if not executable.is_file():
         raise BuildError("Missing " + str(executable) + ". Build the target before packaging.")
+
+    bgw_available, bgw_reason = target_available(runner.root, "bgw")
+    if not bgw_available:
+        raise BuildError("The BGW runtime is required in the Manager package: " + bgw_reason)
+    bgw_executable = (
+        build_paths(runner.root)["rust"]
+        / "bgw"
+        / BGW_PACKAGE_NAME
+        / "release"
+        / "winlook.bg.exe"
+    )
+    if not bgw_executable.is_file():
+        if runner.dry_run:
+            print_skip("BGW build is required before packaging; discovery is deferred in dry-run mode.")
+        else:
+            build_bgw(runner)
+    if not runner.dry_run and not bgw_executable.is_file():
+        raise BuildError(
+            "Missing " + str(bgw_executable) + ". Build the BGW target before packaging."
+        )
+
     output_dir = build_paths(runner.root)["artifacts"]
     archive = output_dir / package_filename(target)
     if target == "win10":
@@ -2729,7 +2775,10 @@ def package_windows_app(runner: Runner, target: str) -> Path:
             "WinLook Windows 10 Manager preview\n\n"
             "This build uses the lightweight native Win32 backend. It does not require "
             "Windows App Runtime, Windows App SDK, WebView2, or Tauri.\n"
-            "\nThis archive does not contain winlook.bg.exe; BGW is not implemented yet.\n"
+            "The archive includes winlook.exe (Manager) and winlook.bg.exe (BGW).\n"
+            "The initial BGW runtime monitors the Explorer desktop host. Windows startup "
+            "registration, Manager IPC, persistent configuration, native Shell hooks, "
+            "icon/Group presentation and wallpaper rendering are not implemented yet.\n"
         )
     else:
         note = (
@@ -2738,14 +2787,25 @@ def package_windows_app(runner: Runner, target: str) -> Path:
             "Windows App SDK deployment. Install the matching Windows App Runtime "
             "before launching the EXE:\n"
             + APP_RUNTIME_URL
-            + "\n\nThis archive does not contain winlook.bg.exe; BGW is not implemented yet.\n"
+            + "\n\nThe archive includes winlook.exe (Manager) and winlook.bg.exe (BGW).\n"
+            "The initial BGW runtime monitors the Explorer desktop host. Windows startup "
+            "registration, Manager IPC, persistent configuration, native Shell hooks, "
+            "icon/Group presentation and wallpaper rendering are not implemented yet.\n"
         )
     if runner.dry_run:
-        print("Would package " + str(executable) + " -> " + str(archive))
+        print(
+            "Would package "
+            + str(executable)
+            + " and "
+            + str(bgw_executable)
+            + " -> "
+            + str(archive)
+        )
         return archive
     output_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as package:
         package.write(executable, "winlook.exe")
+        package.write(bgw_executable, "winlook.bg.exe")
         package.writestr("RUNTIME-REQUIREMENTS.txt", note)
     print("Created " + str(archive))
     return archive

@@ -125,7 +125,7 @@ All third-party Actions used by these workflows are pinned to a verified commit 
 | Workflow | Responsibility | Gate |
 |---|---|---|
 | workflow-lint.yml | Python syntax/unit tests, default CLI smoke test, workflow-command parser coverage and actionlint validation for every workflow | Must pass before workflow changes merge |
-| libraries.yml | Rust shared-library formatting/tests/Clippy/docs (wl_animate, wl_cpuv and wl_gpuv only); C89 MSVC; C89 GCC ASan/UBSan | Portable library gate |
+| libraries.yml | Rust shared-library formatting/tests/Clippy/docs (wl_animate, wl_cpuv, wl_gpuv and wl_wlde); C89 wl_Lanimate/wl_Lcpuv/wl_Lgpuv/wl_Lwlde MSVC and GCC ASan/UBSan | Portable library gate |
 | manager-ui.yml | WinUI 3 Manager unit tests and Clippy | Runs only when all UI manifests exist |
 | win10.yml | Windows 10 Manager build and preview package | Runs only when the Win10 app manifest exists |
 | win11.yml | Windows 11 Manager build and preview package | Runs only when the Win11 app manifest exists |
@@ -192,3 +192,18 @@ The Win10 and Win11 build graphs are intentionally isolated:
 The public `wl_ui` crate exposes explicitly enabled renderer modules. The shared model is target-independent; only the selected module brings in its optional backend dependency. The optional Tauri adapter is checked separately from the native Win32 path. The Windows 10 package notes no Windows App Runtime requirement; the Windows 11 package retains the Windows App Runtime requirement.
 
 The CMake library test suite now includes `wl_Lui` and its portable contract test. Passing the Linux C contract does not prove Win9x/NT-family UI runtime support; those still require native VM testing.
+
+
+## BGW build and packaging
+
+The modern BGW target is an independent Cargo package: `winlook-bgw`
+(`rust/bgw/`) with shared runtime code in `wl_bgw_runtime`. The build runner
+selects only this package, builds the `winlook-bg` binary and normalizes the
+Windows output to `build/rust/bgw/winlook-bgw/release/winlook.bg.exe`.
+
+Use `python build.py build bgw` to build the standalone runtime. The Win10
+and Win11 package commands also build BGW when its executable is missing, then
+include both `winlook.exe` and `winlook.bg.exe` in the preview archive.
+This first BGW binary only monitors the Explorer-owned desktop process;
+startup registration, Manager IPC, persistent configuration and the actual
+in-process Shell bridge remain unfinished.

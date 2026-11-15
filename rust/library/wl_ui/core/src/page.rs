@@ -3,6 +3,7 @@
 pub struct UiPage {
     id: String,
     title: String,
+    navigation_title: String,
     description: String,
 }
 
@@ -13,9 +14,11 @@ impl UiPage {
         title: impl Into<String>,
         description: impl Into<String>,
     ) -> Self {
+        let title = title.into();
         Self {
             id: id.into(),
-            title: title.into(),
+            navigation_title: title.clone(),
+            title,
             description: description.into(),
         }
     }
@@ -26,6 +29,16 @@ impl UiPage {
 
     pub fn title(&self) -> &str {
         &self.title
+    }
+
+    /// Sets the concise label rendered in navigation without changing the page heading.
+    pub fn navigation_title(mut self, value: impl Into<String>) -> Self {
+        self.navigation_title = value.into();
+        self
+    }
+
+    pub fn navigation_label(&self) -> &str {
+        &self.navigation_title
     }
 
     pub fn description(&self) -> &str {

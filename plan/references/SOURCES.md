@@ -170,3 +170,164 @@ Implementation consequence: C and Rust share the build/ root but keep outputs an
 | UI-GDI-004 | [FillRect](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-fillrect) | Fills the client background using a logical brush | User32; uses a supplied GDI brush handle |
 | UI-GDI-005 | [DeleteObject](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-deleteobject) | Releases GDI brushes and fonts owned by the backend | Do not delete objects while selected into a device context |
 | TAURI-003 | [Tauri 2.12.5 WebviewWindowBuilder initialization_script](https://docs.rs/tauri/2.12.5/tauri/webview/struct.WebviewWindowBuilder.html#method.initialization_script) | Initialization script executes after the global object exists and before HTML parsing/other page scripts | Main-frame script; host frontend and permissions remain application-owned |
+
+
+## WLDE desktop presentation research — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-001 | [IDesktopWallpaper::SetWallpaper](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-idesktopwallpaper-setwallpaper) | The documented Windows desktop wallpaper interface accepts a monitor ID and static wallpaper path | Windows 8+ desktop API; setting a file path is not an animated frame-surface or decoder API |
+| WLDE-002 | [IDesktopWallpaper interface](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-idesktopwallpaper) | Provides per-monitor desktop wallpaper management and monitor geometry information | Establishes static wallpaper management/topology access, not a supported custom surface behind desktop icons |
+| WLDE-003 | [Windows.UI.Composition visual layer](https://learn.microsoft.com/en-us/windows/apps/develop/ui/visual-layer/) | Provides visual composition primitives for application UI | App visual composition alone does not establish a desktop wallpaper-layer attachment or Explorer icon ordering contract |
+
+Implementation consequence: keep static wallpaper path management and animated desktop presentation as separate adapter capabilities. Do not treat a composition API as proof of desktop-layer placement, and do not depend on undocumented WorkerW/Progman parenting without an independently reviewed/recoverable OS contract.
+
+
+## Wallpaper Store and Wallpaper Engine integration — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WSTORE-001 | [Wallpaper Engine command-line controls](https://help.wallpaperengine.io/en/functionality/cli.html) | An already-running Wallpaper Engine instance can receive -control openWallpaper -file to open a project.json or supported media path; an optional zero-based -monitor selects a monitor | The executable is wallpaper32.exe or wallpaper64.exe; this is an external-app bridge, not a native WLDE renderer |
+| WSTORE-002 | [Wallpaper Engine Steam Workshop backup guide](https://help.wallpaperengine.io/en/steam/backup.html) | Steam Workshop files for Wallpaper Engine use app ID 431960 in steamapps/workshop/content/431960 | The bridge reads this directory only; Steam retains subscription/download ownership, and the directory must not be manually deleted |
+| WSTORE-003 | [Openverse documentation](https://docs.openverse.org/) and [Terms of Service](https://docs.openverse.org/terms_of_service) | Openverse is a search engine/API for openly licensed media; clients must respect API limits and content-level license/attribution conditions | Openverse says it does not verify license claims; clients must check the source work and must not scrape the catalogue |
+| WSTORE-004 | [Wikimedia Commons reuse licenses](https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia/licenses/en) | Reuse terms are listed on each file's description page; CC-BY and CC-BY-SA require attribution, with share-alike conditions for CC-BY-SA derivatives | Licensing is item-specific; follow the full file-page license |
+| WSTORE-005 | [NASA Images and Media Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/) | NASA media is generally reusable under stated conditions, but third-party copyrighted media may be included and NASA identifiers/endorsement are restricted | Check the credit/rights notice on every item; do not imply NASA endorses WinLook |
+
+Implementation consequence: keep provider browsing separate from asset installation. A provider-level Free marker is discovery metadata, not a blanket right to copy/redistribute the media. Preserve creator/source/license/attribution in any later library importer and never mirror Steam Workshop data into the WinLook catalogue without rights to do so.
+
+
+## Win32 monitor snapshot adapter — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-004 | [EnumDisplayMonitors](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumdisplaymonitors) | Enumerates monitor handles and calls a host-supplied callback; the null HDC/null clipping-rectangle form covers the virtual desktop | The API can include invisible mirroring pseudo-monitors; filter them separately |
+| WLDE-005 | [EnumDisplayDevicesW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumdisplaydevicesw), [DISPLAY_DEVICEW](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-display_devicew) | Enumerates display devices; desktop-attached state can be selected and the mirroring-driver flag identifies pseudo devices | Device-name strings identify the current GDI display device, not a permanent hardware identity |
+| WLDE-006 | [MONITORINFO](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfo), [MONITORINFOEXW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfoexw) | Provides monitor/work-area rectangles in virtual-screen coordinates, primary-display flag and the GDI monitor device name | Secondary monitor coordinates may be negative; set cbSize to the full structure size before GetMonitorInfo |
+
+Implementation consequence: keep enumeration synchronous and bounded, then let the host event loop refresh snapshots on display/device topology notifications. Do not persist GDI names as durable monitor identities and do not introduce a polling thread.
+
+
+## WLDE adaptive icons and Explorer Desktop Bridge — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-007 | [Android adaptive icon design](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive) | Adaptive icons use separate foreground/background layers, may provide a monochrome layer for themed icons, and reserve an inner safe region within a larger masked tile | WinLook borrows the presentation model; this is not an Android runtime dependency or an exact Android resource format |
+| WLDE-008 | [Working with Shell Extensions](https://learn.microsoft.com/en-us/windows/win32/shell/shell-exts) | Shell extension handlers include shortcut-menu, icon/thumbnail/preview and other Shell integration types; handlers are in-process COM DLLs loaded into Explorer or another Shell host | A crash/hang in an extension can crash/hang the hosting Shell process; threading model and per-monitor DPI require care |
+| WLDE-009 | [Windows Shell Namespace Extensions](https://learn.microsoft.com/en-us/windows/win32/shell/nse-works), [IShellFolder::CreateViewObject](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-createviewobject) | Namespace extensions can supply custom folder views and Shell objects for their own virtual namespace | This does not make a namespace extension a universal replacement for the existing desktop or arbitrary filesystem folder views |
+| WLDE-010 | [Debugging with the Shell](https://learn.microsoft.com/en-us/windows/win32/shell/debugging-with-the-shell) | Windows supports a separate Explorer desktop-process mode to isolate Shell extension testing from the active desktop/taskbar process | Development/testing aid only; verify exact target-version behaviour |
+
+Implementation consequence: BGW always owns and initializes the Explorer Desktop Bridge when Explorer owns the desktop. The implementation uses version-specific Shell interfaces and controlled runtime hooks only where required. The Explorer executable on disk is never patched or replaced; DWM remains intact. A failure must restore native icon presentation and fall back without modifying user items.
+
+
+## WLDE Explorer desktop-host discovery — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-011 | [GetShellWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getshellwindow), [GetWindowThreadProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowthreadprocessid) | The Shell desktop window can be resolved and mapped to its creating process/thread | Both are documented from Windows 2000; this only identifies the Shell desktop window owner, not every Explorer folder window |
+| WLDE-012 | [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew) | Returns the full process executable path for a queried process | Vista+ API; do not import as a baseline for Windows 2000/XP or older |
+| WLDE-013 | [ProcessIdToSessionId](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-processidtosessionid) | Resolves the Remote Desktop Services session associated with a PID | Vista+ API; compare against BGW's own session |
+| WLDE-014 | [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) | Returns process creation time as FILETIME | Available from XP; creation time helps distinguish PID reuse |
+
+Implementation consequence: the modern Rust probe is Vista+ because it depends on QueryFullProcessImageNameW and ProcessIdToSessionId. Older Shell generations require a separate classic adapter. PID alone is not a stable Explorer identity; pair it with session and process creation time.
+
+
+## WLDE desktop-host process discovery — 2026-11-14
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-015 | [Process Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights), [ProcessIdToSessionId](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-processidtosessionid), [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew), [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) | The adapter must open the target with PROCESS_QUERY_INFORMATION for session lookup; this right also implies the limited-query right needed by image-path lookup, and permits reading process creation time | Query-only access; it does not request VM read/write, thread creation, termination or process modification. The composed probe remains Vista+ because ProcessIdToSessionId and QueryFullProcessImageNameW are Vista+ |
+
+
+## WLDE BGW host-monitor loop — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-016 | [WaitForSingleObject](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject), [Process Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights) | A process handle can be waited on until it becomes signaled; the handle must include SYNCHRONIZE | The BGW monitor thread does not create windows or own a message loop. The wait is bounded to five seconds so it can revalidate the current Shell desktop owner |
+| WLDE-017 | [OutputDebugStringW](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-outputdebugstringw) | Emits a string to the system debugger when one is active | Used only as initial prototype diagnostics; not a persistent log or guaranteed user-visible status channel |
+
+The monitor requests PROCESS_QUERY_INFORMATION for process/session/time queries
+and SYNCHRONIZE for process waiting. It does not request memory-read/write,
+thread-creation, termination or process-modification access. While no
+compatible Explorer-owned desktop is available, BGW retries discovery every
+two seconds. It drops the old process handle before rediscovery.
+
+
+## WLDE adaptive application-icon composition — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-018 | [Creating Shell Extension Handlers](https://learn.microsoft.com/en-us/windows/win32/shell/handlers), [How to Create Icon Handlers](https://learn.microsoft.com/en-us/windows/win32/shell/how-to-create-icon-handlers) | The Shell supports per-file icon handlers using IExtractIconA/W. The handler is asked for icon location and can return an icon handle when extraction is needed | This describes supported Shell integration points; it does not provide a universal custom desktop-view hook or prove every shortcut can be customized independently |
+| WLDE-019 | [Working with Shell Extensions](https://learn.microsoft.com/en-us/windows/win32/shell/shell-exts), [Registering Shell Extension Handlers](https://learn.microsoft.com/en-us/windows/win32/shell/reg-shell-exts) | Shell extension handlers execute in-process in Explorer/other Shell hosts; a crashing or hanging extension can crash/hang the host. Shell view extensions must use Apartment threading and handle per-monitor DPI | Future native adapters must remain short/bounded, use the correct COM apartment and fail closed; the portable compositor itself does not execute inside Explorer |
+| WLDE-020 | [About Icons](https://learn.microsoft.com/en-us/windows/win32/menurc/about-icons) | Shell icon lists expose different logical sizes and DPI-aware icon sizes; the extra-large desktop list scales with DPI while the 256 px jumbo list is fixed | The adapter chooses output dimensions for the target Shell list/monitor DPI and caches by DPI/output size; renderer output is bounded to 512 px |
+
+The Rust renderer accepts caller-decoded RGBA image views and returns a bounded,
+cacheable app-icon bitmap. The C89 renderer writes to a caller-owned buffer and
+does not allocate. Neither implementation opens icon files, registers Shell
+handlers, mutates shortcut/executable resources or changes Explorer state.
+
+
+## WLDE read-only desktop filesystem inventory — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-021 | [KNOWNFOLDERID reference](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid) | `FOLDERID_Desktop` identifies the current user's Desktop folder; `FOLDERID_PublicDesktop` identifies the common Public Desktop folder. The documented GUIDs are used instead of hardcoded profile paths | These are filesystem Known Folders. They do not enumerate virtual Shell namespace objects or represent Explorer's active view/filter state |
+| WLDE-022 | [SHGetKnownFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath), [Known Folders overview](https://learn.microsoft.com/en-us/windows/win32/shell/known-folders) | Resolves the current user's Known Folder path, replacing the older SHGetFolderPath API; the returned path buffer must be released with CoTaskMemFree | Vista+ API. This modern Rust adapter uses it for Win10/11. Legacy C adapters still need generation-specific APIs |
+
+The inventory is one-level and read-only. It prefers filesystem object identity and uses explicitly marked opaque path hashes when a unique, single-link file ID is unavailable. Exact Shell desktop membership still requires an IShellFolder/IFolderView-backed adapter.
+
+
+
+
+## WLDE read-only Shell desktop icon extraction — 2026-11-15
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| WLDE-028 | [SHGetFileInfoW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetfileinfow), [DestroyIcon](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-destroyicon) | `SHGFI_ICON` returns an HICON; `SHGFI_SHELLICONSIZE` requests a Shell-sized icon and `SHGFI_SMALLICON` selects the small variant. Microsoft says to call from a background thread and release returned icons with `DestroyIcon` | `pszPath` is documented as MAX_PATH-bounded; WinLook rejects inputs over 259 UTF-16 code units (excluding terminator). Modern filesystem-path bridge only. The API can involve Shell handler work, so extraction is not a UI-thread operation. WinLook wraps the HICON in an owned RAII object and has no effect on Explorer's icon registration |
+| WLDE-029 | [GetIconInfo](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-geticoninfo) | Returns icon hotspot/type and creates mask/color bitmap handles. The caller must release the returned bitmaps using `DeleteObject` | WinLook uses the handles only to inspect dimensions, then releases both. It does not retain or modify the Shell source bitmaps |
+| WLDE-030 | [GetObjectW](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getobjectw) | Retrieves BITMAP metadata for an HBITMAP, including dimensions | Used to validate the native icon dimensions before bounded rasterization |
+| WLDE-031 | [DrawIconEx](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-drawiconex) | `DI_NORMAL` draws an icon image and mask. A 32-bit alpha-blended icon uses `AC_SRC_OVER` and ignores the mask; other icons use AND then XOR raster operations | WinLook draws the icon over opaque black and white backgrounds to reconstruct static RGBA coverage. Pixels whose outputs imply screen-dependent inversion are rejected with `UnsupportedRasterOperation` |
+| WLDE-032 | [CreateDIBSection](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createdibsection), [Device-Independent Bitmaps](https://learn.microsoft.com/en-us/windows/win32/gdi/device-independent-bitmaps) | Creates a DIB whose pixel memory is directly accessible; a negative bitmap height creates a top-down DIB with the first row at the top | WinLook creates a 32-bpp top-down probe surface capped at 512×512 source pixels, reads its bytes and converts BGRA samples to tightly packed straight-alpha RGBA. The DIB is deselected before deletion |
+| WLDE-033 | [ICONINFO](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-iconinfo) | A monochrome icon has a mask bitmap twice the icon height, with AND mask above XOR mask; a color icon has same-sized mask and color bitmaps | The dimension adapter uses this rule for monochrome HICON metadata; the rasterizer relies on DrawIconEx for the mask/ROP behaviour and refuses screen-dependent inversion output |
+| WLDE-034 | [GdiFlush](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-gdiflush), [CreateDIBSection remarks](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createdibsection) | A DIB section's directly accessible bits must be synchronized with GDI drawing; Microsoft requires flushing GDI before direct CPU access after drawing | WinLook calls `GdiFlush` after both DrawIconEx operations and before reading the DIB pointer. The selected bitmap is restored before deletion |
+
+## WLDE stable Desktop filesystem identity — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-025 | [GetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle), [BY_HANDLE_FILE_INFORMATION](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information) | The returned structure supplies creation FILETIME and link count, which WinLook uses as additional validation around the preferred 128-bit file identity | Supported from Windows XP. FAT reports a link count of 1 and has variable file-ID/creation-time behavior; network filesystems may return partial information. Its legacy 64-bit file index is not used as WinLook's stable key because Microsoft does not guarantee uniqueness on ReFS |
+| WLDE-026 | [CreateFileW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew) | `FILE_READ_ATTRIBUTES` requests metadata access; `FILE_FLAG_BACKUP_SEMANTICS` permits directory handles; `FILE_FLAG_OPEN_REPARSE_POINT` opens the reparse point itself rather than following its target | WinLook uses `OPEN_EXISTING` and share-read/write/delete. It reads no content and performs no mutation. If handle creation or metadata lookup fails, the adapter marks the ID as a path fallback. |
+| WLDE-027 | [GetFileInformationByHandleEx](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandleex), [FILE_ID_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_info), [FILE_ID_128](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-file_id_128), [FILE_INFO_BY_HANDLE_CLASS](https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ne-minwinbase-file_info_by_handle_class) | The `FileIdInfo` information class returns a 64-bit volume serial plus a 128-bit file identifier. Filesystems that do not support 128-bit IDs return a zero identifier, which must be ignored | `FileIdInfo` is unsupported before Windows 8; the modern Win10/11 adapter uses it and falls back when the ID is zero/unavailable. The 128-bit ID is combined with creation FILETIME; the ID is not promised permanent across deletion/recreation |
+
+## WLDE filesystem Desktop change notifications — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-023 | [FindFirstChangeNotificationW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstchangenotificationw), [Obtaining Directory Change Notifications](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-directory-change-notifications) | Opens a waitable notification handle for matching changes inside one directory. This implementation selects only file-name and directory-name changes so content writes do not cause unnecessary rescans. It does not identify which entry changed, so the host must re-enumerate | Non-recursive watcher only. The API does not report changes to the watched directory object itself. Minimum supported client is Windows XP, so this modern Rust adapter is for Win10/11; older C targets need a generation-specific watcher. Remote file systems may not reliably deliver notifications |
+| WLDE-024 | [FindNextChangeNotification](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findnextchangenotification), [FindCloseChangeNotification](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findclosechangenotification), [WaitForMultipleObjects](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitformultipleobjects) | FindNext re-arms a signaled notification for a later wait; a successful re-arm must be followed by a wait before another re-arm. FindClose releases the handle. WaitForMultipleObjects can wait on multiple change-notification handles and returns the signaled object's index | BGW waits on at most two handles with a finite timeout. UNC roots retain a five-second snapshot fallback because remote notification delivery is not guaranteed. Long local/UNC paths use the documented extended-length prefix when the default MAX_PATH limit is exceeded |
+
+The watcher is scoped to the current User/Public Desktop Known Folders, sets
+bWatchSubtree=FALSE, and never examines file contents. Each signal causes a
+fresh bounded one-level snapshot; it does not attempt to infer an exact file
+operation from the coarse notification.
+
+
+## WLDE Shell worker COM initialization — 2026-11-15
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| WLDE-035 | [SHGetFileInfoW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetfileinfow), [CoInitializeEx](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex), [CoUninitialize](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-couninitialize) | Microsoft requires COM initialization before calling SHGetFileInfoW. A successful CoInitializeEx call, including S_FALSE, must be balanced by exactly one CoUninitialize on the same thread | BGW's dedicated Shell icon worker initializes an STA apartment before accepting work and owns an RAII guard for its lifetime. Initialization failure prevents the worker from starting; no Shell calls are issued from the uninitialized thread |
+
+
+## WLDE STA Shell worker message dispatch — 2026-11-15
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| WLDE-036 | [Processes, Threads, and Apartments](https://learn.microsoft.com/en-us/windows/win32/com/processes--threads--and-apartments), [Single-Threaded Apartments](https://learn.microsoft.com/en-us/windows/win32/com/single-threaded-apartments), [PeekMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-peekmessagew), [TranslateMessage](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-translatemessage), [DispatchMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-dispatchmessagew) | STA threads must retrieve and dispatch their Windows message queue to receive cross-apartment COM calls. Microsoft recommends a message-aware wait rather than blocking indefinitely on a synchronization primitive | The BGW Shell worker pumps queued messages between requests and during bounded result-channel backpressure. It uses a short receive timeout while idle; Shell extraction itself remains synchronous on this one worker |
+
+## WLDE write-ahead restoration journal durability — 2026-11-15
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| WLDE-037 | [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers) | Flushes buffered information for a specified file to its device; the handle requires GENERIC_WRITE | The journal backend must flush each write-ahead state transition before the associated native side effect. The API documentation warns that frequent flushes can be inefficient, so flush at infrequent control-plane transaction boundaries. Device/filesystem power-loss guarantees still require target validation |
+| WLDE-038 | [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw) | MOVEFILE_WRITE_THROUGH delays return until a move is performed on disk and documents flushing for copy/delete moves | This is a file-move behavior, not an append-record write-ahead protocol. Do not treat a temp rename alone as proof that a preceding journal record is durable |
+| WLDE-039 | [ReplaceFileW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew) | The documented REPLACEFILE_WRITE_THROUGH flag is unsupported; ReplaceFileW can return specific errors when its internal rename/replace steps fail | Do not claim this flag supplies journal durability. Prefer a separately specified append/flush protocol and test failure/recovery boundaries |

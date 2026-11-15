@@ -8,17 +8,17 @@ The project aims to cover Windows 95 and later, but that ambition is not a relea
 
 ## Project status
 
-**Early implementation; shared libraries are in place and the Win10/Win11 Manager has an initial native UI prototype.**
+**Early implementation; shared libraries, the first WLDE scene core and its initial Wallpaper Store provider hub are in place, alongside the Win10/Win11 Manager UI prototype.**
 
-This repository is not yet a complete Windows application. It contains the living architecture/compatibility plan, portable shared-library cores and an initial native WinUI 3 Manager shell. The BGW background runtime and OS-specific system-integration implementations remain future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
+This repository is not yet a complete Windows application. It contains the living architecture/compatibility plan, portable shared-library cores, the WLDE scene/policy core and provider metadata in Rust and C, the initial Wallpaper Engine hand-off, and native Manager UI shells. An initial BGW background executable now monitors the Explorer desktop host; startup registration, Manager IPC, the in-process Shell bridge and the remaining OS-specific system integrations are still future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
 
-The first implementation work is focused on the paired animation libraries, both using **Windows 10 as their initial target baseline**:
-- [`wl_animate`](rust/library/wl_animate/README.md) — Rust animation, vector math and SVG path-data core.
-- [`wl_Lanimate`](C/library/wl_Lanimate/README.md) — C89-compatible animation and vector-math core.
-- [`wl_cpuv`](rust/library/wl_cpuv/README.md) / [`wl_Lcpuv`](C/library/wl_Lcpuv/README.md) — CPU work admission/accounting cores.
-- [`wl_gpuv`](rust/library/wl_gpuv/README.md) / [`wl_Lgpuv`](C/library/wl_Lgpuv/README.md) — GPU memory/submission admission cores.
+The shared foundations and first WLDE scene layer use **Windows 10 as the modern implementation baseline**:
+- [`wl_animate`](rust/library/wl_animate/README.md) / [`wl_Lanimate`](C/library/wl_Lanimate/README.md) — paired animation, vector math and shared host-driven frame clocks.
+- [`wl_cpuv`](rust/library/wl_cpuv/README.md) / [`wl_Lcpuv`](C/library/wl_Lcpuv/README.md) — CPU work admission/accounting.
+- [`wl_gpuv`](rust/library/wl_gpuv/README.md) / [`wl_Lgpuv`](C/library/wl_Lgpuv/README.md) — GPU memory/submission admission.
+- [`wl_wlde`](rust/library/wl_wlde/README.md) / [`wl_Lwlde`](C/library/wl_Lwlde/README.md) — portable Desktop Engine scene policy, monitor topology, placement, visibility scheduling and matching Wallpaper Store provider metadata; Rust also bridges to an existing Wallpaper Engine install.
 
-Both cores are renderer-independent: no Windows drawing backend, timer, scheduler, window hook or process injection is included yet. C89 is a source-language constraint, not a claim of support on pre-Windows-10 releases. See the [Animation Suite plan](plan/architecture/animation-suite.md) for implementation status and remaining gates.
+WLDE is **not a complete desktop renderer yet**: there is no OS presentation adapter, media decoder, widget runtime, full in-app Store catalogue/search/download client or desktop-icon/Groups integration. The shared animation and resource libraries remain renderer-independent. C89 is a source-language constraint, not a claim of support on pre-Windows-10 releases. See the [WLDE implementation notes](docs/wlde/README.md) and [Animation Suite plan](plan/architecture/animation-suite.md).
 
 ## Design principles
 
@@ -61,7 +61,7 @@ Sources: [Rust MSVC targets](https://doc.rust-lang.org/rustc/platform-support/wi
 
 ## Runtime architecture
 
-WinLook uses two principal executables: `winlook.exe` is the Manager UI, and `winlook.bg.exe` is the startup-launched BGW background runtime. BGW hosts and coordinates WLDE, WLWM, WLDM, WLOSDE and the other background subsystems, and remains active when the Manager closes. The Manager communicates with BGW through authenticated, versioned local IPC. See the [Background Runtime architecture](plan/architecture/background-runtime.md).
+WinLook's target architecture uses two principal executables: `winlook.exe` is the Manager UI, and `winlook.bg.exe` is the BGW background runtime intended to run independently of the Manager through the user's startup mechanism. The initial BGW executable now monitors the Explorer desktop host, but startup registration and Manager IPC are not implemented yet. The completed BGW will host and coordinate WLDE, WLWM, WLDM, WLOSDE and the other background subsystems, and remain active when the Manager closes. The Manager communicates with BGW through authenticated, versioned local IPC. See the [Background Runtime architecture](plan/architecture/background-runtime.md).
 
 CPUv/GPUv are core resource-governance libraries for WinLook-managed CPU and GPU work. Under pressure, WinLook defers or pauses its own work, freezes the last displayed frame where appropriate and releases recoverable resources; it does not automatically lower wallpaper resolution or degrade visual quality. See [Resource Governors](plan/architecture/resource-governors.md).
 
@@ -132,7 +132,7 @@ Generated files share one ignored build root:
 
 The C and Rust builds therefore share one build footprint without sharing compiler outputs or cache formats. Run python build.py clean --yes to remove compiled outputs while keeping caches; add --all only when you intentionally want to discard both caches.
 
-See [Build System and CI](plan/architecture/build-and-ci.md) for all commands, Rust toolchain selection and setup, C/MSVC prerequisites, workflow inventory and release gates. The Win95 and BGW workflows remain source-gated until those application targets exist.
+See [Build System and CI](plan/architecture/build-and-ci.md) for all commands, Rust toolchain selection and setup, C/MSVC prerequisites, workflow inventory and release gates. The Win95 workflow remains source-gated. The BGW workflow now builds the initial modern host-monitor executable; it is not yet the complete background runtime.
 
 ## Development status
 

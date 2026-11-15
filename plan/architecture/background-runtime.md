@@ -1,6 +1,6 @@
 # WinLook Background Runtime and Two-Executable Architecture
 
-> Status: user-directed architecture baseline, 2026-11-10. This is a design/documentation contract, not an implementation claim. The process split and repository layout below are the current project direction; transport details, per-OS adapters and several subsystem policies remain implementation decisions.
+> Status: user-directed architecture baseline, updated 2026-11-15. The two-executable process split remains the architecture contract. An initial independent BGW executable and Explorer host monitor are implemented for modern Rust targets; startup registration, Manager IPC, persistent configuration, the in-process Shell bridge, desktop presentation and restoration are still unimplemented.
 
 ## 1. The two principal executables
 
@@ -30,10 +30,22 @@ The Manager is not required to remain open for configured background functionali
 
 BGW is the actual background application runtime, not merely a WLWM process detector or a thin policy broker. It is responsible for initializing, hosting, coordinating, monitoring and shutting down WinLook's background subsystems and applying their work to the user's Windows session.
 
+**Initial implementation (2026-11-15):** the independent Cargo package is
+`rust/bgw/` (package `winlook-bgw`, binary target `winlook-bg`), with
+shared runtime logic in `rust/library/wl_bgw_runtime/`. The build runner emits
+`winlook.bg.exe` under `build/rust/bgw/winlook-bgw/release/`. The first
+runtime loop identifies the Explorer-owned desktop process for its own
+interactive session, waits on a query/synchronization-only process handle,
+revalidates the Shell owner every five seconds, and rediscovers after process
+exit or owner replacement. It does not yet install itself into Windows startup,
+communicate with the Manager, load configuration, or initialize the rest of
+the subsystems.
+
 Its responsibilities include:
 
 - Background lifecycle and startup/shutdown.
-- Wallpaper and desktop runtime through WLDE.
+- Wallpaper and desktop runtime through WLDE, including the required Explorer Desktop Bridge on sessions where Explorer owns the desktop.
+- Desktop-host identity discovery, process-exit waiting and Shell-owner revalidation through the initial WLDE Win32 adapter.
 - Window management policy and integrations through WLWM.
 - Display monitoring and supported display operations through WLDM.
 - WinLook notifications, popups and OSD through WLOSDE.
@@ -43,7 +55,67 @@ Its responsibilities include:
 - Configuration validation/application and recovery after Manager disconnects or crashes.
 - Structured diagnostics and controlled subsystem restart/quarantine.
 
+## 6. WLDE Explorer Desktop Bridge
+
+The Explorer Desktop Bridge is a required module inside BGW's WLDE subsystem,
+not a third executable and not an end-user opt-in. It is initialized for each
+interactive session where Explorer owns the desktop. BGW must identify the
+desktop-owning process rather than assuming that every Explorer.exe instance
+is the desktop host.
+
+The bridge is generation-specific. Modern Windows targets can use documented
+Shell COM extension interfaces for icon extraction, command/context-menu
+integration and Shell item identity. Where those interfaces do not expose
+desktop-view interception required for virtual Group proxies or adaptive icon
+presentation, the selected adapter may use a controlled in-process runtime
+hook inside the desktop-owning Explorer process. Legacy targets use their
+verified classic Shell adapter; they must not import modern interfaces merely
+because they exist in shared code.
+
+Explorer callbacks are short and bounded. BGW owns persistence, rendering,
+media decoding, network access, reconciliation, policy and expensive work.
+The in-process bridge sends typed item references and events to BGW over
+authenticated per-user IPC. DWM remains the compositor. Windows Shell remains
+the authority for activation, filesystem operations, permissions, drag/drop,
+file associations and native item semantics.
+
+BGW monitors bridge health and Explorer process identity. On Explorer restart
+it re-detects the desktop host, validates the OS/build/architecture adapter
+and re-establishes the connection. Before the bridge suppresses an original
+icon representation, WLDE must persist the corresponding restore state. On
+bridge failure, BGW restores native icons or keeps them visible, quarantines
+the failing adapter, and records a degraded capability state. The uninstaller
+and crash-recovery path use the same idempotent restoration journal.
+
+The bridge is mandatory as a product/runtime responsibility, but the exact
+available operation set is capability-based per OS build. This distinction
+prevents an unsupported Shell build from being treated as permission to
+destabilize or replace the native desktop.
+
 BGW runs with ordinary user privileges by default. Any future privileged Windows operation must be narrowly scoped and separately justified; an optional service is not a replacement for the interactive BGW runtime.
+
+## Initial BGW Explorer host monitor
+
+The current `winlook-bgw` target is deliberately a lifecycle foundation, not
+the completed bridge or an installer-managed background service. In its
+steady state it waits on the Explorer process object using the Win32
+synchronization right, with a five-second timeout. On timeout it re-resolves
+the Shell desktop window and compares PID, session ID, process creation time
+and image path. If the process exits, the Shell owner changes or the identity
+cannot be verified, BGW drops the old handle and retries discovery. While no
+compatible Explorer-owned desktop is available, it retries every two seconds.
+
+Once the desktop-owning Explorer identity is verified, BGW obtains a
+read-only one-level snapshot of the user's Desktop and Public Desktop Known
+Folders. The path-to-opaque-ID map is held only for the verified host lifetime;
+BGW emits aggregate counts only and drops the map before rediscovering a new
+host. This is a filesystem inventory seed, not exact Shell-view membership.
+
+Status output is sent to the Windows debug-output channel only; this is not a
+persistent diagnostic log. The current prototype has no Manager IPC, explicit
+stop request, Windows startup registration or background configuration store.
+Those must be implemented before treating BGW as an end-user installable
+background runtime.
 
 ## 2. Runtime topology
 
