@@ -586,7 +586,7 @@ mod platform {
         size: DesktopShellIconSize,
     ) -> Result<DesktopShellIcon, DesktopShellIconError> {
         let mut wide_path = path.as_os_str().encode_wide().collect::<Vec<_>>();
-        if wide_path.iter().any(|unit| *unit == 0) {
+        if wide_path.contains(&0) {
             return Err(DesktopShellIconError::ShellIconUnavailable);
         }
         // SHGetFileInfoW documents a MAX_PATH-bounded path input; do not pass
