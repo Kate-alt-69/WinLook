@@ -145,7 +145,9 @@ owns the HICON and destroys it when dropped. Its dimensions are read with
 by `GetIconInfo` are deleted when the metadata query finishes.
 
 Run extraction on a BGW worker, not the Manager UI thread: Shell icon handlers
-may do disk/COM work. The icon API does not replace Explorer's system image
+may do disk/COM work. The caller must initialize COM on that worker before
+calling SHGetFileInfoW and balance the successful initialization with
+CoUninitialize; BGW's dedicated icon worker owns this apartment lifetime. The icon API does not replace Explorer's system image
 list, alter a Shell registration, hide a native tile, write source icon
 resources or intercept context menus. It provides an owned native handle and dimensions. The new
 `rasterize_desktop_shell_icon_rgba()` converts that handle into a bounded
