@@ -62,5 +62,6 @@ popups. Inventory failure keeps the native desktop unchanged.
 The folder watcher uses the documented Windows change-notification handle
 sequence and retains a five-second bounded snapshot fallback for UNC roots
 because remote filesystem notifications are not guaranteed. It watches only
-top-level entries and re-enumerates the full bounded snapshot after each
-signal; it does not rely on the notification to identify the changed item.
+top-level file/directory-name changes, not ordinary content writes, and
+re-enumerates the full bounded snapshot after each signal; it does not rely
+on the notification to identify the changed item.

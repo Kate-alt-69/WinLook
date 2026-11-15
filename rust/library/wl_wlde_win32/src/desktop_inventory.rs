@@ -233,10 +233,6 @@ mod desktop_inventory_platform {
 
     const FILE_NOTIFY_CHANGE_FILE_NAME: u32 = 0x0000_0001;
     const FILE_NOTIFY_CHANGE_DIR_NAME: u32 = 0x0000_0002;
-    const FILE_NOTIFY_CHANGE_ATTRIBUTES: u32 = 0x0000_0004;
-    const FILE_NOTIFY_CHANGE_SIZE: u32 = 0x0000_0008;
-    const FILE_NOTIFY_CHANGE_LAST_WRITE: u32 = 0x0000_0010;
-    const FILE_NOTIFY_CHANGE_CREATION: u32 = 0x0000_0040;
     const WAIT_OBJECT_0: u32 = 0x0000_0000;
     const WAIT_TIMEOUT: u32 = 0x0000_0102;
     const WAIT_FAILED: u32 = 0xFFFF_FFFF;
@@ -334,12 +330,7 @@ mod desktop_inventory_platform {
         ];
         let mut notifications = Vec::with_capacity(2);
         let mut refresh_on_timeout = false;
-        let filter = FILE_NOTIFY_CHANGE_FILE_NAME
-            | FILE_NOTIFY_CHANGE_DIR_NAME
-            | FILE_NOTIFY_CHANGE_ATTRIBUTES
-            | FILE_NOTIFY_CHANGE_SIZE
-            | FILE_NOTIFY_CHANGE_LAST_WRITE
-            | FILE_NOTIFY_CHANGE_CREATION;
+        let filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME;
 
         for (folder, root) in roots {
             if !root.is_dir() {

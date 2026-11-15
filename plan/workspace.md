@@ -508,3 +508,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - The modern watcher waits on non-recursive User/Public Desktop directory handles. A signal is only a coarse indication that something changed, so BGW re-enumerates the bounded snapshot rather than assuming which item changed.
 - The documented minimum client is Windows XP; the Win10/11 Rust adapter must not be copied into the Windows 95/98/Me/NT4/2000 C targets without a separate compatibility design.
 - UNC/Desktop redirects use a five-second refresh fallback because remote change notification delivery is not guaranteed. Long paths receive an extended-length prefix where required.
+
+
+### Desktop watcher resource policy — 2026-11-15
+
+The User/Public Desktop watcher selects only file-name and directory-name
+notifications because those are the changes that can add, remove or rename a
+top-level desktop entry. It does not wake for ordinary content writes. When
+the path is UNC/remote, or a Known Folder is temporarily absent, BGW uses a
+finite five-second inventory refresh fallback; local existing folders remain
+event-driven. The wait owns at most two handles and re-arms each signaled
+notification before waiting again.
