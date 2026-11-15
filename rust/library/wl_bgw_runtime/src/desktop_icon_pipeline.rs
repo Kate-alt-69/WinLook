@@ -490,6 +490,10 @@ impl DesktopIconPipeline {
     pub fn worker_available(&self) -> bool {
         self.worker_available
     }
+
+    pub fn has_pending_work(&self) -> bool {
+        !self.pending.is_empty()
+    }
 }
 
 #[cfg(test)]
