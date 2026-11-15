@@ -23,7 +23,7 @@ extern "system" {
 }
 
 /// The system icon size requested from the Shell image handler.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DesktopShellIconSize {
     Small,
     Large,
@@ -37,6 +37,7 @@ pub enum DesktopShellIconError {
     ShellIconUnavailable,
     IconMetadataUnavailable,
     InvalidIconDimensions,
+    PixelBufferLengthMismatch,
     IconTooLarge,
     RasterizationUnavailable,
     UnsupportedRasterOperation,
@@ -62,6 +63,9 @@ impl fmt::Display for DesktopShellIconError {
             }
             Self::InvalidIconDimensions => {
                 f.write_str("Windows returned invalid dimensions for the Shell icon")
+            }
+            Self::PixelBufferLengthMismatch => {
+                f.write_str("Shell icon RGBA buffer length does not match its dimensions")
             }
             Self::IconTooLarge => {
                 f.write_str("Shell icon dimensions exceed the 512-pixel rasterization bound")
@@ -168,6 +172,34 @@ pub struct DesktopShellIconRgba {
 }
 
 impl DesktopShellIconRgba {
+    /// Validates an owned straight-alpha RGBA buffer for the BGW icon cache.
+    pub fn from_pixels(
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+    ) -> Result<Self, DesktopShellIconError> {
+        if width == 0 || height == 0 {
+            return Err(DesktopShellIconError::InvalidIconDimensions);
+        }
+        if width > MAX_DESKTOP_SHELL_ICON_DIMENSION
+            || height > MAX_DESKTOP_SHELL_ICON_DIMENSION
+        {
+            return Err(DesktopShellIconError::IconTooLarge);
+        }
+        let expected = (width as usize)
+            .checked_mul(height as usize)
+            .and_then(|length| length.checked_mul(4))
+            .ok_or(DesktopShellIconError::InvalidIconDimensions)?;
+        if pixels.len() != expected {
+            return Err(DesktopShellIconError::PixelBufferLengthMismatch);
+        }
+        Ok(Self {
+            width,
+            height,
+            pixels,
+        })
+    }
+
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -673,6 +705,28 @@ mod platform {
 #[cfg(test)]
 mod pixel_tests {
     use super::*;
+
+    #[test]
+    fn rgba_cache_images_reject_invalid_dimensions_and_buffer_lengths() {
+        assert_eq!(
+            DesktopShellIconRgba::from_pixels(1, 1, vec![0; 3]),
+            Err(DesktopShellIconError::PixelBufferLengthMismatch)
+        );
+        assert_eq!(
+            DesktopShellIconRgba::from_pixels(0, 1, Vec::new()),
+            Err(DesktopShellIconError::InvalidIconDimensions)
+        );
+        assert_eq!(
+            DesktopShellIconRgba::from_pixels(
+                MAX_DESKTOP_SHELL_ICON_DIMENSION + 1,
+                1,
+                Vec::new()
+            ),
+            Err(DesktopShellIconError::IconTooLarge)
+        );
+        let image = DesktopShellIconRgba::from_pixels(1, 1, vec![10, 20, 30, 255]).unwrap();
+        assert_eq!(image.pixels(), &[10, 20, 30, 255]);
+    }
 
     #[test]
     fn reconstructs_opaque_and_transparent_pixels() {
