@@ -91,7 +91,6 @@ admission tickets.
 The matching C89 API exposes wl_Lwlde_resource_controller with the same
 threshold/window semantics and an explicit scene pressure setter.
 
-
 ## Desktop groups, adaptive app icons and menus
 
 `DesktopGroups` stores virtual groups over opaque Shell item IDs. A group
@@ -206,7 +205,6 @@ not a charge on every interpolated property.
 5. Add isolated interactive/widget hosting and catalogue/package verification.
 6. Keep Groups disabled until crash-safe native icon restoration is proven.
 
-
 ### Low-allocation rendering
 
 `render_adaptive_app_icon_into()` is the allocation-free Rust entry point.
@@ -217,7 +215,6 @@ and delegates to the same implementation. The matching C89 function always
 uses caller-owned output storage. Neither renderer performs image decoding,
 file I/O, Shell calls or source-asset modification.
 
-
 ### Themed monochrome mode
 
 The optional monochrome source can now be rendered with
@@ -227,7 +224,6 @@ the glyph mask; its RGB values are ignored and replaced by a caller-supplied
 theme tint. Background cover, safe-zone contain and the selected Circle,
 RoundedSquare or Squircle mask are identical to color mode. The source asset
 is never rewritten, and the caller supplies the theme tint at render time.
-
 
 ## Normalized desktop layout model
 
@@ -251,7 +247,6 @@ This remains a portable data contract. It does not move or rename source files,
 draw/hide desktop icons, render Group tiles or register a Shell view. Those
 presentation operations stay behind the required BGW Explorer Desktop Bridge
 and the crash-safe native restoration gate.
-
 
 ## Reuse as a Rust library
 
@@ -304,7 +299,6 @@ external semver commitment.
 For a cross-library dependency map, Win32/BGW examples and the C89 build
 recipe, see the [shared library catalog](../README.md).
 
-
 ## Portable restoration journal record core
 
 The portable core now provides a **record codec and state-machine validator** for
@@ -340,7 +334,6 @@ before invoking an adapter, and test the complete crash/fault-injection matrix
 in [the restoration architecture](../../../plan/architecture/restoration.md).
 Do not use this codec alone to hide, suppress or replace native desktop items.
 
-
 The storage caller must durably append and flush the Prepared record, then
 append and flush Applying, **before** invoking the native adapter. After apply,
 pass `Some(readback)` and `ownership_proven = true` when committing; the
@@ -350,3 +343,33 @@ Use `encode_desktop_restore_record()` for an individual append frame.
 append the complete history repeatedly. A Prepared recovery action is
 `AbortPrepared`, which should append the terminal Aborted transition rather
 than deleting prior records.
+
+A minimal Prepared frame can be produced without opening or writing a file:
+
+```rust
+use wl_wlde::{
+    encode_desktop_restore_record, DesktopRestoreJournalError, DesktopRestoreLedger,
+};
+
+fn encode_prepared_frame() -> Result<Vec<u8>, DesktopRestoreJournalError> {
+    let mut ledger = DesktopRestoreLedger::new();
+    ledger.begin(
+        [0x41; 16],
+        1, // adapter ID from the host's compiled allowlist
+        1, // adapter payload schema version
+        "desktop.icon_visibility",
+        &[0], // captured original value
+        &[1], // desired value
+        &[0xA5, 0x5A], // adapter-defined ownership token
+    )?;
+    encode_desktop_restore_record(ledger.records().last().expect("Prepared record exists"))
+}
+```
+
+The storage backend must append and flush this Prepared frame before adding
+Applying. It must then append and flush Applying before calling the adapter.
+The state machine checks exact observations and ownership on the later phases,
+but it cannot prove the caller actually flushed bytes to disk. CRC32 is an
+accidental-corruption check, not authentication. Adapter payloads must be
+minimal typed state; never place arbitrary paths, commands, pointers, handles,
+credentials, file contents or icon pixels in them.

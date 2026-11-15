@@ -863,6 +863,11 @@ mod tests {
     }
 
     #[test]
+    fn crc32_matches_the_standard_ieee_check_value() {
+        assert_eq!(crc32(b"123456789"), 0xCBF4_3926);
+    }
+
+    #[test]
     fn codec_round_trips_a_complete_operation_history() {
         let (mut ledger, transaction_id) = ledger_with_prepared();
         ledger
@@ -897,6 +902,25 @@ mod tests {
         let complete = decode_desktop_restore_ledger(&encoded).unwrap();
         assert!(!complete.has_incomplete_tail());
         assert_eq!(complete.ledger(), &ledger);
+    }
+
+    #[test]
+    fn decoder_preserves_complete_records_before_a_torn_final_frame() {
+        let (mut ledger, transaction_id) = ledger_with_prepared();
+        ledger
+            .transition(&transaction_id, DesktopRestoreState::Applying, None, false)
+            .unwrap();
+        let first_frame = encode_desktop_restore_record(&ledger.records()[0]).unwrap();
+        let encoded = encode_desktop_restore_ledger(&ledger).unwrap();
+        let decoded = decode_desktop_restore_ledger(&encoded[..encoded.len() - 1]).unwrap();
+
+        assert!(decoded.has_incomplete_tail());
+        assert_eq!(decoded.valid_bytes(), first_frame.len());
+        assert_eq!(decoded.ledger().records().len(), 1);
+        assert_eq!(
+            decoded.ledger().records()[0].state(),
+            DesktopRestoreState::Prepared
+        );
     }
 
     #[test]
@@ -937,6 +961,12 @@ mod tests {
             .transition(&first, DesktopRestoreState::Applying, None, false)
             .unwrap();
         assert_eq!(ledger.records()[2].sequence(), 3);
+
+        let gap_record = ledger.records()[2].with_state(5, DesktopRestoreState::Committed);
+        assert_eq!(
+            validate_record_position(ledger.records(), &gap_record),
+            Err(DesktopRestoreJournalError::InvalidSequence)
+        );
 
         let encoded = encode_desktop_restore_ledger(&ledger).unwrap();
         assert_eq!(

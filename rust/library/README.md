@@ -255,4 +255,4 @@ The portable `wl_wlde` core also contains a bounded restoration journal
 **codec/state-machine model**. It is not a storage implementation: only the
 future BGW writer may append/flush records, after validating its local journal
 ACL and adapter allowlist. See the crate README and
-[restoration architecture](../plan/architecture/restoration.md).
+[restoration architecture](../../plan/architecture/restoration.md).
