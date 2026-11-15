@@ -12,10 +12,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use wl_wlde::{
-    DesktopGroup, DesktopGroups, DesktopItemId, DesktopItemRef, DesktopLayout,
-    DesktopLayoutEntry, DesktopLayoutTarget, DesktopModelError, MonitorTopology,
-    MAX_DESKTOP_GROUP_MEMBERS, MAX_DESKTOP_GROUPS, MAX_DESKTOP_INVENTORY_ITEMS,
-    MAX_DESKTOP_LAYOUT_ENTRIES,
+    DesktopGroup, DesktopGroups, DesktopItemId, DesktopItemRef, DesktopLayout, DesktopLayoutEntry,
+    DesktopLayoutTarget, DesktopModelError, MonitorTopology, MAX_DESKTOP_GROUPS,
+    MAX_DESKTOP_GROUP_MEMBERS, MAX_DESKTOP_INVENTORY_ITEMS, MAX_DESKTOP_LAYOUT_ENTRIES,
 };
 use wl_wlde_win32::{DesktopInventoryItem, DesktopItemIdentityStability};
 
@@ -312,9 +311,7 @@ impl DesktopStateStore {
                         .get(item_id.as_str())
                         .ok_or(DesktopStateStoreError::InvalidData)?,
                 }),
-                DesktopLayoutTarget::Group(group_id) => {
-                    StoredTarget::Group(group_id.clone())
-                }
+                DesktopLayoutTarget::Group(group_id) => StoredTarget::Group(group_id.clone()),
             };
             stored_layout.push(StoredLayoutEntry {
                 target,
@@ -434,8 +431,7 @@ struct StoredLayoutEntry {
 }
 
 fn encode_file(stored: &StoredDesktopState) -> Result<Vec<u8>, DesktopStateStoreError> {
-    if stored.groups.len() > MAX_DESKTOP_GROUPS
-        || stored.layout.len() > MAX_DESKTOP_LAYOUT_ENTRIES
+    if stored.groups.len() > MAX_DESKTOP_GROUPS || stored.layout.len() > MAX_DESKTOP_LAYOUT_ENTRIES
     {
         return Err(DesktopStateStoreError::InvalidData);
     }
@@ -673,7 +669,9 @@ fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), DesktopStateStoreEr
         .parent()
         .filter(|value| !value.as_os_str().is_empty())
         .ok_or(DesktopStateStoreError::InvalidPath)?;
-    let file_name = path.file_name().ok_or(DesktopStateStoreError::InvalidPath)?;
+    let file_name = path
+        .file_name()
+        .ok_or(DesktopStateStoreError::InvalidPath)?;
     fs::create_dir_all(parent)?;
 
     for _ in 0..TEMP_FILE_ATTEMPTS {
@@ -806,9 +804,7 @@ mod tests {
 
     fn topology() -> MonitorTopology {
         let rectangle = Rect::new(0.0, 0.0, 1920.0, 1080.0).unwrap();
-        MonitorTopology::new(vec![
-            Monitor::new("DISPLAY1", rectangle, rectangle, true).unwrap(),
-        ])
+        MonitorTopology::new(vec![Monitor::new("DISPLAY1", rectangle, rectangle, true).unwrap()])
         .unwrap()
     }
 
