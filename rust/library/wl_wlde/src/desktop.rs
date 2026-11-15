@@ -204,11 +204,7 @@ impl DesktopGroups {
         let current = &self.groups[index];
         let mut combined = current.members.clone();
         combined.extend(members);
-        let updated = DesktopGroup::new(
-            current.id.clone(),
-            current.label.clone(),
-            combined,
-        )?;
+        let updated = DesktopGroup::new(current.id.clone(), current.label.clone(), combined)?;
         let mut replacement = self.groups.clone();
         replacement[index] = updated;
         self.replace(replacement, available_items)
@@ -228,12 +224,18 @@ impl DesktopGroups {
         }
 
         let mut requested = HashSet::with_capacity(members.len());
-        if members.iter().any(|member| !requested.insert(member.clone())) {
+        if members
+            .iter()
+            .any(|member| !requested.insert(member.clone()))
+        {
             return Err(DesktopModelError::DuplicateMember);
         }
 
         let current = &self.groups[index];
-        if members.iter().any(|member| !current.members.contains(member)) {
+        if members
+            .iter()
+            .any(|member| !current.members.contains(member))
+        {
             return Err(DesktopModelError::MemberNotInGroup);
         }
 
@@ -247,11 +249,8 @@ impl DesktopGroups {
         if remaining.is_empty() {
             replacement.remove(index);
         } else {
-            replacement[index] = DesktopGroup::new(
-                current.id.clone(),
-                current.label.clone(),
-                remaining,
-            )?;
+            replacement[index] =
+                DesktopGroup::new(current.id.clone(), current.label.clone(), remaining)?;
         }
         self.replace(replacement, available_items)
     }
@@ -347,7 +346,6 @@ fn validate_groups(
     }
     Ok(())
 }
-
 
 /// A top-level desktop object. Group members are represented by their Group
 /// tile and therefore cannot also have independent top-level placements.
@@ -878,9 +876,9 @@ impl std::fmt::Display for DesktopModelError {
             Self::DuplicateLayoutTarget => {
                 f.write_str("a top-level desktop item or Group has more than one layout entry")
             }
-            Self::LayoutIncomplete => {
-                f.write_str("desktop layout must place every ungrouped item and every Group exactly once")
-            }
+            Self::LayoutIncomplete => f.write_str(
+                "desktop layout must place every ungrouped item and every Group exactly once",
+            ),
         }
     }
 }
@@ -903,8 +901,8 @@ mod tests {
     fn desktop_item_labels_support_long_utf8_names_without_truncation() {
         let maximum = "界".repeat(MAX_DESKTOP_LABEL_BYTES / 3);
         assert_eq!(maximum.len(), MAX_DESKTOP_LABEL_BYTES);
-        let item = DesktopItemRef::new("file:unicode", maximum.clone(), DesktopItemKind::File)
-            .unwrap();
+        let item =
+            DesktopItemRef::new("file:unicode", maximum.clone(), DesktopItemKind::File).unwrap();
         assert_eq!(item.label(), maximum);
 
         let over_limit = "界".repeat((MAX_DESKTOP_LABEL_BYTES / 3) + 1);
@@ -1024,7 +1022,9 @@ mod tests {
 
         groups.add_group(group, &items).unwrap();
         assert_eq!(groups.get("group:work").unwrap().label(), "Work");
-        groups.rename_group("group:work", "Projects", &items).unwrap();
+        groups
+            .rename_group("group:work", "Projects", &items)
+            .unwrap();
         assert_eq!(groups.get("group:work").unwrap().label(), "Projects");
 
         let file_id = DesktopItemId::new("file:notes").unwrap();
