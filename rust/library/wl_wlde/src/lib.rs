@@ -26,18 +26,17 @@ mod store;
 mod wallpaper_engine;
 
 pub use adaptive_icon::{
-    render_adaptive_app_icon, render_adaptive_app_icon_into,
-    render_adaptive_app_icon_monochrome, render_adaptive_app_icon_monochrome_into,
-    AdaptiveIconImageView, AdaptiveIconRenderError, MAX_ADAPTIVE_ICON_OUTPUT_SIZE,
-    MAX_ADAPTIVE_ICON_SOURCE_DIMENSION, MIN_ADAPTIVE_ICON_OUTPUT_SIZE,
+    render_adaptive_app_icon, render_adaptive_app_icon_into, render_adaptive_app_icon_monochrome,
+    render_adaptive_app_icon_monochrome_into, AdaptiveIconImageView, AdaptiveIconRenderError,
+    MAX_ADAPTIVE_ICON_OUTPUT_SIZE, MAX_ADAPTIVE_ICON_SOURCE_DIMENSION,
+    MIN_ADAPTIVE_ICON_OUTPUT_SIZE,
 };
 pub use desktop::{
     desktop_context_actions, AdaptiveAppIcon, AppIconLayers, AppIconMask, DesktopContextAction,
     DesktopContextTarget, DesktopGroup, DesktopGroups, DesktopItemId, DesktopItemKind,
     DesktopItemRef, DesktopLayout, DesktopLayoutEntry, DesktopLayoutTarget, DesktopModelError,
-    DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT, DESKTOP_LAYOUT_COORDINATE_MAX,
-    MAX_DESKTOP_GROUPS, MAX_DESKTOP_GROUP_MEMBERS, MAX_DESKTOP_INVENTORY_ITEMS,
-    MAX_DESKTOP_LAYOUT_ENTRIES,
+    DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT, DESKTOP_LAYOUT_COORDINATE_MAX, MAX_DESKTOP_GROUPS,
+    MAX_DESKTOP_GROUP_MEMBERS, MAX_DESKTOP_INVENTORY_ITEMS, MAX_DESKTOP_LAYOUT_ENTRIES,
 };
 pub use game_mode::{
     resolve_game_mode, GameModeError, GameModePolicy, GameModeProfile, GameModeSignals,
