@@ -283,6 +283,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             report_status(
                                 "WLDE discarded a stale Shell namespace snapshot after Explorer host replacement"
                             );
+                            if worker.request_refresh(current_host_generation) {
+                                last_namespace_refresh = Instant::now();
+                            }
                         }
                         DesktopNamespaceWorkerPoll::Failed {
                             generation,
@@ -296,6 +299,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             report_status(
                                 "WLDE discarded an error from a previous Explorer host session"
                             );
+                            if worker.request_refresh(current_host_generation) {
+                                last_namespace_refresh = Instant::now();
+                            }
                         }
                         DesktopNamespaceWorkerPoll::TimedOut { generation }
                             if generation == current_host_generation =>
