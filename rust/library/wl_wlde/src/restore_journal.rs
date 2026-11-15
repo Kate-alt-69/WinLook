@@ -290,8 +290,8 @@ impl DecodedDesktopRestoreLedger {
 /// equality with the desired value. Never restore when this proof is absent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DesktopRestoreRecoveryAction {
-    /// Prepared is guaranteed to precede the native adapter call.
-    DiscardPrepared,
+    /// Prepared guarantees no native call began; append a terminal Aborted record.
+    AbortPrepared,
     /// Current state still equals the captured original value.
     AbortUnapplied,
     /// Current state is WinLook's desired value and ownership is proven.
@@ -319,7 +319,7 @@ pub fn plan_desktop_restore_recovery(
     ownership_proven: bool,
 ) -> DesktopRestoreRecoveryAction {
     match record.state {
-        DesktopRestoreState::Prepared => DesktopRestoreRecoveryAction::DiscardPrepared,
+        DesktopRestoreState::Prepared => DesktopRestoreRecoveryAction::AbortPrepared,
         DesktopRestoreState::Restored | DesktopRestoreState::Aborted => {
             DesktopRestoreRecoveryAction::NoAction
         }
@@ -1031,7 +1031,7 @@ mod tests {
         let prepared = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
             plan_desktop_restore_recovery(&prepared, None, false),
-            DesktopRestoreRecoveryAction::DiscardPrepared
+            DesktopRestoreRecoveryAction::AbortPrepared
         );
 
         ledger

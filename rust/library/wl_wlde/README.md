@@ -315,6 +315,10 @@ platform adapter that needs the same conservative transaction model:
   value, desired value, adapter key/version, resource key and ownership proof.
 - `transition()` appends only legal phases: Prepared → Applying → Committed →
   Restoring → Restored, with explicit Aborted and Conflict terminal outcomes.
+  Committed and Applying/Committed → Restoring transitions require exact desired
+  state readback plus ownership proof; Restored and post-apply Aborted require
+  exact original-state readback. Prepared can be marked Aborted because the
+  protocol forbids native calls before Applying is durably appended.
 - `encode_desktop_restore_record()` / `encode_desktop_restore_ledger()` produce
   bounded versioned frames protected by CRC32.
 - `decode_desktop_restore_ledger()` verifies the complete prefix and exposes
@@ -335,3 +339,14 @@ local file, serialize the single writer, durably append and flush each record
 before invoking an adapter, and test the complete crash/fault-injection matrix
 in [the restoration architecture](../../../plan/architecture/restoration.md).
 Do not use this codec alone to hide, suppress or replace native desktop items.
+
+
+The storage caller must durably append and flush the Prepared record, then
+append and flush Applying, **before** invoking the native adapter. After apply,
+pass `Some(readback)` and `ownership_proven = true` when committing; the
+ledger rejects a missing/mismatched readback or absent ownership proof.
+Use `encode_desktop_restore_record()` for an individual append frame.
+`encode_desktop_restore_ledger()` is intended for snapshots/export, not to
+append the complete history repeatedly. A Prepared recovery action is
+`AbortPrepared`, which should append the terminal Aborted transition rather
+than deleting prior records.

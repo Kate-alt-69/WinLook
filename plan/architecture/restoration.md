@@ -282,3 +282,10 @@ append/flush, adapter allowlist registration, native readback, native apply,
 or restoration side effects. The BGW persistence backend and per-adapter
 proof/restore implementation remain outstanding acceptance gates. The
 portable codec being present does not enable any Explorer/Shell mutation.
+
+
+The pure recovery action for a latest `Prepared` record is
+`AbortPrepared`: because the protocol forbids a native call before the
+durable Applying boundary, the BGW writer can append the terminal Aborted
+transition without inspecting or restoring a native resource. It must retain
+the Prepared/Aborted history in the append-only log rather than deleting it.
