@@ -241,6 +241,23 @@ impl DesktopIconCacheKey {
     }
 }
 
+fn is_current_icon_result(
+    result_generation: u64,
+    current_generation: u64,
+    key: &DesktopIconCacheKey,
+    current_context: DesktopIconContext,
+    current_fallback_generation: u64,
+    current_identities: &HashSet<(String, DesktopItemIdentityStability)>,
+) -> bool {
+    let fallback_is_current = key.identity_stability
+        != DesktopItemIdentityStability::PathFallback
+        || key.fallback_generation == current_fallback_generation;
+    result_generation == current_generation
+        && key.context == current_context
+        && fallback_is_current
+        && current_identities.contains(&(key.item_id.clone(), key.identity_stability))
+}
+
 struct CacheEntry {
     image: DesktopShellIconRgba,
     bytes: usize,
@@ -560,16 +577,14 @@ impl DesktopIconPipeline {
                 Ok(response) => {
                     self.pending
                         .remove(&(response.generation, response.key.clone()));
-                    let fallback_is_current = response.key.identity_stability
-                        != DesktopItemIdentityStability::PathFallback
-                        || response.key.fallback_generation == self.fallback_generation;
-                    let is_current = response.generation == self.generation
-                        && response.key.context == self.context
-                        && fallback_is_current
-                        && self.current_identities.contains(&(
-                            response.key.item_id.clone(),
-                            response.key.identity_stability,
-                        ));
+                    let is_current = is_current_icon_result(
+                        response.generation,
+                        self.generation,
+                        &response.key,
+                        self.context,
+                        self.fallback_generation,
+                        &self.current_identities,
+                    );
                     if !is_current {
                         stats.stale_discarded += 1;
                         continue;
@@ -774,6 +789,43 @@ mod tests {
         assert!(cache.contains(&file_id));
         assert!(!cache.contains(&old_fallback));
         assert_eq!(cache.len(), 1);
+    }
+
+    #[test]
+    fn inventory_refresh_discards_late_fallback_but_keeps_stable_identity_result() {
+        let context = context(96, 0);
+        let current = HashSet::from([
+            (
+                "desktop:file:stable".to_owned(),
+                DesktopItemIdentityStability::FilesystemFileId,
+            ),
+            (
+                "desktop:path:notes".to_owned(),
+                DesktopItemIdentityStability::PathFallback,
+            ),
+        ]);
+        let stable_key = DesktopIconCacheKey::for_test(
+            "desktop:file:stable",
+            DesktopItemIdentityStability::FilesystemFileId,
+            context,
+        );
+        let old_fallback_key = DesktopIconCacheKey::for_test_with_fallback_generation(
+            "desktop:path:notes",
+            DesktopItemIdentityStability::PathFallback,
+            context,
+            0,
+        );
+
+        assert!(is_current_icon_result(4, 4, &stable_key, context, 1, &current));
+        assert!(!is_current_icon_result(
+            4,
+            4,
+            &old_fallback_key,
+            context,
+            1,
+            &current,
+        ));
+        assert!(!is_current_icon_result(3, 4, &stable_key, context, 1, &current));
     }
 
     #[test]
