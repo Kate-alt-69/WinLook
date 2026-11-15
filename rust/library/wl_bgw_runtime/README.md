@@ -1,6 +1,6 @@
 # wl_bgw_runtime
 
-Initial shared runtime library for WinLook's BGW process.
+Shared runtime library for WinLook's BGW process and the current WLDE desktop-inventory/state-store foundation.
 
 ## Implemented in this slice
 
@@ -20,13 +20,15 @@ Initial shared runtime library for WinLook's BGW process.
 
 ## Deliberately not implemented yet
 
-This is a host-lifecycle foundation, not the finished BGW runtime or the full
-Explorer Desktop Bridge. It does not register itself in Windows startup, expose
-Manager IPC or a stop command, load committed configuration, install a Shell
+This is not the finished BGW runtime or the full Explorer Desktop Bridge. It
+does not register itself in Windows startup, expose Manager IPC or a stop
+command, provide a Manager-driven Group editing/save route, install a Shell
 COM extension or in-process hook, enumerate desktop PIDLs, suppress native
 icons, persist restoration journals, render wallpaper, display Groups or
 intercept context menus. Those operations remain gated on their dedicated
-capability and restoration implementations.
+capability and restoration implementations. The current local store can load
+and validate an existing Groups/layout snapshot, but it cannot receive edits
+from Manager until the authenticated IPC/configuration path is implemented.
 
 The shared runtime library is hosted by the independent `winlook-bgw` Cargo
 package under `rust/bgw/`. It is intentionally not a dependency of either
@@ -48,15 +50,17 @@ Manager; authenticated Manager-controlled shutdown is part of the later IPC work
 
 After the desktop-host monitor verifies the actual Explorer-owned process,
 BGW obtains one read-only filesystem snapshot from the user's Desktop and
-Public Desktop folders. It retains the path-to-opaque-ID map only in memory
-for that host lifetime and reports aggregate counts through OutputDebugStringW
-(no item names or paths are logged). The snapshot is dropped before BGW
-rediscovers a replacement host.
+Public Desktop folders. It retains the current inventory and ephemeral filesystem paths only in
+memory for that host lifetime and reports aggregate counts through
+OutputDebugStringW (no item names or paths are logged). The snapshot is dropped
+before BGW rediscovers a replacement host.
 
-This handoff is a foundation for local Group reconciliation, not the live
-Explorer Desktop Bridge. It does not persist Groups, hide icons, replace
-native icon registrations, install a Shell extension/hook or create Group
-popups. Inventory failure keeps the native desktop unchanged.
+The separate versioned local store persists only opaque item IDs, identity
+kinds, Group metadata and normalized layout placements. It never persists
+filesystem paths. This is a validated configuration model, not the live
+Explorer Desktop Bridge: BGW does not yet accept Manager edits, hide icons,
+replace native icon registrations, install a Shell extension/hook or create
+Group popups. Inventory or state-load failure keeps the native desktop unchanged.
 
 
 The folder watcher uses the documented Windows change-notification handle
