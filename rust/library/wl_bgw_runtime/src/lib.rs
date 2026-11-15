@@ -11,11 +11,16 @@ use std::thread;
 #[cfg(windows)]
 use std::time::Duration;
 
+#[cfg(any(windows, test))]
+#[allow(dead_code)]
+mod desktop_icon_pipeline;
 mod desktop_store;
 pub use desktop_store::{
     DesktopItemIdentityRecord, DesktopStateSnapshot, DesktopStateStore, DesktopStateStoreError,
 };
 
+#[cfg(windows)]
+use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
 use wl_wlde::DesktopItemKind;
 #[cfg(windows)]
@@ -85,6 +90,15 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         Err(error) => {
             report_status(&format!(
                 "WLDE local Group/layout persistence unavailable; native desktop remains unchanged: {error}"
+            ));
+            None
+        }
+    };
+    let mut desktop_icon_pipeline = match DesktopIconPipeline::new(DesktopIconContext::initial_bgw()) {
+        Ok(pipeline) => Some(pipeline),
+        Err(error) => {
+            report_status(&format!(
+                "WLDE Shell icon worker unavailable; the native desktop remains unchanged: {error}"
             ));
             None
         }
@@ -161,6 +175,15 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         let mut _restored_desktop_state = desktop_state_store
             .as_ref()
             .and_then(|store| load_committed_desktop_state(store, &desktop_inventory));
+        if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
+            pipeline.begin_host_session();
+            let queued = pipeline.request_missing(&desktop_inventory);
+            if queued != 0 {
+                report_status(&format!(
+                    "WLDE queued {queued} Shell icons for background rasterization"
+                ));
+            }
+        }
 
         let mut inventory_watcher = match watch_desktop_folders() {
             Ok(watcher) => Some(watcher),
@@ -173,6 +196,25 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         };
 
         loop {
+            if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
+                let stats = pipeline.poll();
+                if stats.completed != 0 || stats.failed != 0 || stats.stale_discarded != 0 {
+                    report_status(&format!(
+                        "WLDE Shell icons: cached={} failed={} stale-discarded={} cache-bytes={}",
+                        stats.completed,
+                        stats.failed,
+                        stats.stale_discarded,
+                        pipeline.cached_bytes()
+                    ));
+                }
+                let queued = pipeline.request_missing(&desktop_inventory);
+                if queued != 0 {
+                    report_status(&format!(
+                        "WLDE queued {queued} additional Shell icons for background rasterization"
+                    ));
+                }
+            }
+
             let watcher_result = inventory_watcher
                 .as_ref()
                 .map(|watcher| watcher.wait_for_change(DESKTOP_HOST_RECHECK_INTERVAL));
@@ -257,6 +299,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                         _restored_desktop_state = desktop_state_store.as_ref().and_then(|store| {
                             load_committed_desktop_state(store, &desktop_inventory)
                         });
+                        if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
+                            let queued = pipeline.request_missing(&desktop_inventory);
+                            if queued != 0 {
+                                report_status(&format!(
+                                    "WLDE queued {queued} Shell icons after Desktop inventory refresh"
+                                ));
+                            }
+                        }
                     }
                     Err(error) => report_status(&format!(
                         "Desktop inventory refresh failed; keeping last known snapshot: {error}"
