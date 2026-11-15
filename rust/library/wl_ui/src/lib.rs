@@ -4,13 +4,13 @@
 //! Keep the shared app model renderer-neutral; select a native backend explicitly.
 
 pub use wl_ui_core::{
-    UiBranding, UiAlignContent, UiAlignItems, UiAnimation, UiAnimationDirection, UiAnimationFillMode,
+    UiAlignContent, UiAlignItems, UiAnimation, UiAnimationDirection, UiAnimationFillMode,
     UiAnimationIterations, UiAnimationPlayState, UiApplication, UiBackground, UiBorderStyle,
-    UiBoxSizing, UiColor, UiColorScheme, UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing,
-    UiEdges, UiEffects, UiError, UiFlexDirection, UiFlexWrap, UiFontStyle, UiGradientStop,
-    UiGridTrack, UiJustifyContent, UiJustifyItems, UiKeyframe, UiKeyframes, UiLength,
-    UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage, UiPalette,
-    UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
+    UiBoxSizing, UiBranding, UiColor, UiColorScheme, UiComponent, UiCornerRadii, UiCursor,
+    UiDisplay, UiEasing, UiEdges, UiEffects, UiError, UiFlexDirection, UiFlexWrap, UiFontStyle,
+    UiGradientStop, UiGridTrack, UiJustifyContent, UiJustifyItems, UiKeyframe, UiKeyframes,
+    UiLength, UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage,
+    UiPalette, UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
     UiTextDecoration, UiTextOverflow, UiTextTransform, UiTheme, UiTransform, UiTransition,
     UiTransitionProperty, UiTypography, UiVisualState, UiWhiteSpace, UiWindowConfig,
 };
@@ -256,7 +256,11 @@ pub fn manager_app() -> UiApplication {
                 .border_radius(14.0),
         );
     application = application
-        .branding(UiBranding::new("WinLook").mark("WL").tagline("Your desktop, your way."))
+        .branding(
+            UiBranding::new("WinLook")
+                .mark("WL")
+                .tagline("Your desktop, your way."),
+        )
         .theme(theme)
         .styles(styles);
     application.initial_page("home")

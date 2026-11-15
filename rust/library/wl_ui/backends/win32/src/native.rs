@@ -949,7 +949,14 @@ unsafe extern "system" fn window_proc(
                             1,
                         );
                         MoveWindow((*state).page_title, content_x, 64, content_width, 34, 1);
-                        MoveWindow((*state).page_description, content_x, 99, content_width, 34, 1);
+                        MoveWindow(
+                            (*state).page_description,
+                            content_x,
+                            99,
+                            content_width,
+                            34,
+                            1,
+                        );
                         MoveWindow(
                             (*state).content,
                             content_x,

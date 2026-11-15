@@ -106,7 +106,11 @@ mod tests {
     #[test]
     fn branding_is_optional_and_validated() {
         let app = UiApplication::new("WinLook")
-            .branding(UiBranding::new("WinLook").mark("WL").tagline("Your desktop, your way."))
+            .branding(
+                UiBranding::new("WinLook")
+                    .mark("WL")
+                    .tagline("Your desktop, your way."),
+            )
             .page(UiPage::new("home", "Home", "Overview"));
         assert!(app.validate().is_ok());
         let branding = app.branding_ref().unwrap();
@@ -114,9 +118,12 @@ mod tests {
         assert_eq!(branding.mark_text(), "WL");
         assert_eq!(branding.tagline_text(), "Your desktop, your way.");
 
-        let invalid = UiApplication::new("WinLook")
-            .branding(UiBranding::new(" ").mark("WINLOOKMARK"));
-        assert!(matches!(invalid.validate(), Err(UiError::InvalidBranding(_))));
+        let invalid =
+            UiApplication::new("WinLook").branding(UiBranding::new(" ").mark("WINLOOKMARK"));
+        assert!(matches!(
+            invalid.validate(),
+            Err(UiError::InvalidBranding(_))
+        ));
     }
 
     #[test]

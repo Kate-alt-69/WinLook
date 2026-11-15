@@ -32,9 +32,17 @@ impl UiBranding {
         self
     }
 
-    pub fn title(&self) -> &str { &self.title }
-    pub fn mark_text(&self) -> &str { &self.mark }
-    pub fn tagline_text(&self) -> &str { &self.tagline }
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn mark_text(&self) -> &str {
+        &self.mark
+    }
+
+    pub fn tagline_text(&self) -> &str {
+        &self.tagline
+    }
 
     pub(crate) fn validate(&self) -> Result<(), UiError> {
         if self.title.trim().is_empty() || self.title.chars().count() > 128 {
