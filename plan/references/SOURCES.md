@@ -273,8 +273,16 @@ handlers, mutates shortcut/executable resources or changes Explorer state.
 | WLDE-021 | [KNOWNFOLDERID reference](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid) | `FOLDERID_Desktop` identifies the current user's Desktop folder; `FOLDERID_PublicDesktop` identifies the common Public Desktop folder. The documented GUIDs are used instead of hardcoded profile paths | These are filesystem Known Folders. They do not enumerate virtual Shell namespace objects or represent Explorer's active view/filter state |
 | WLDE-022 | [SHGetKnownFolderPath](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath), [Known Folders overview](https://learn.microsoft.com/en-us/windows/win32/shell/known-folders) | Resolves the current user's Known Folder path, replacing the older SHGetFolderPath API; the returned path buffer must be released with CoTaskMemFree | Vista+ API. This modern Rust adapter uses it for Win10/11. Legacy C adapters still need generation-specific APIs |
 
-This first inventory is one-level, read-only filesystem enumeration. Opaque path hashes are transient Group keys, not security credentials. Exact Shell desktop membership still requires an IShellFolder/IFolderView-backed adapter.
+The inventory is one-level and read-only. It prefers filesystem object identity and uses explicitly marked opaque path hashes when a unique, single-link file ID is unavailable. Exact Shell desktop membership still requires an IShellFolder/IFolderView-backed adapter.
 
+
+
+## WLDE stable Desktop filesystem identity — 2026-11-15
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-025 | [GetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle), [BY_HANDLE_FILE_INFORMATION](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information) | The volume serial number combined with the high/low file index compares handles that refer to the same file on one computer. The structure also exposes creation FILETIME and link count | Minimum supported client is Windows XP. NTFS preserves a file ID until deletion; FAT IDs can change on some renames/defragmentation; IDs can be reused over time; 64-bit file indexes are not guaranteed unique on ReFS; network filesystems can return partial information. WinLook uses creation time as an extra discriminator and falls back for multi-link/duplicate IDs |
+| WLDE-026 | [CreateFileW](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew) | `FILE_READ_ATTRIBUTES` requests metadata access; `FILE_FLAG_BACKUP_SEMANTICS` permits directory handles; `FILE_FLAG_OPEN_REPARSE_POINT` opens the reparse point itself rather than following its target | WinLook uses `OPEN_EXISTING` and share-read/write/delete. It reads no content and performs no mutation. If handle creation or metadata lookup fails, the adapter marks the ID as a path fallback. |
 
 ## WLDE filesystem Desktop change notifications — 2026-11-15
 
