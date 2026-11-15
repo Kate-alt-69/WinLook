@@ -153,7 +153,10 @@ rasterization and an identity/DPI/theme-aware cache before calling the
 portable adaptive-icon compositor.
 
 The adapter handles both color icons and legacy monochrome mask-only icons
-when reporting dimensions. Unsupported, inaccessible or missing icons return
-a typed error and leave Explorer's native desktop unchanged. This path-based
+when reporting dimensions. `SHGetFileInfoW` documents a `MAX_PATH`-bounded
+path argument, so paths over 259 UTF-16 code units (excluding the terminator)
+return `PathTooLong` rather than being passed through undocumented extended
+path behavior. Unsupported, inaccessible or missing icons return a typed
+error and leave Explorer's native desktop unchanged. This path-based
 first step does not cover virtual Shell namespace items or exact IFolderView
 membership; those need the dedicated PIDL/Shell-view bridge.
