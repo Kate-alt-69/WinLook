@@ -147,13 +147,19 @@ by `GetIconInfo` are deleted when the metadata query finishes.
 Run extraction on a BGW worker, not the Manager UI thread: Shell icon handlers
 may do disk/COM work. The icon API does not replace Explorer's system image
 list, alter a Shell registration, hide a native tile, write source icon
-resources or intercept context menus. It provides an owned native handle and
-dimensions only; BGW's next stage still needs bounded HICON-to-RGBA
-rasterization and an identity/DPI/theme-aware cache before calling the
-portable adaptive-icon compositor.
+resources or intercept context menus. It provides an owned native handle and dimensions. The new
+`rasterize_desktop_shell_icon_rgba()` converts that handle into a bounded
+512×512 straight-alpha RGBA buffer by drawing onto opaque black and white
+probe backgrounds and reconstructing alpha from their output difference.
+This works for alpha-blended icons and classic AND/XOR mask icons where their
+pixel operation is representable as static RGBA. Screen-dependent inversion
+pixels return `UnsupportedRasterOperation` rather than being misrepresented.
+The RGBA result can be passed to WLDE's `AdaptiveIconImageView` and
+compositor. Identity/DPI/theme-aware caching and live presentation remain
+separate work.
 
 The adapter handles both color icons and legacy monochrome mask-only icons
-when reporting dimensions. `SHGetFileInfoW` documents a `MAX_PATH`-bounded
+when reporting dimensions and rasterizing their representable pixels. `SHGetFileInfoW` documents a `MAX_PATH`-bounded
 path argument, so paths over 259 UTF-16 code units (excluding the terminator)
 return `PathTooLong` rather than being passed through undocumented extended
 path behavior. Unsupported, inaccessible or missing icons return a typed
