@@ -705,7 +705,17 @@ mod tests {
         assert!(!icon.as_raw_handle().is_null());
         assert!(icon.width() > 0);
         assert!(icon.height() > 0);
-        assert!(icon.width() <= 512);
-        assert!(icon.height() <= 512);
+        assert!(icon.width() <= MAX_DESKTOP_SHELL_ICON_DIMENSION);
+        assert!(icon.height() <= MAX_DESKTOP_SHELL_ICON_DIMENSION);
+
+        let rgba = rasterize_desktop_shell_icon_rgba(&icon)
+            .expect("rasterize the current executable's Shell icon");
+        assert_eq!(rgba.width(), icon.width());
+        assert_eq!(rgba.height(), icon.height());
+        assert_eq!(
+            rgba.pixels().len(),
+            rgba.width() as usize * rgba.height() as usize * 4
+        );
+        assert!(rgba.pixels().chunks_exact(4).any(|pixel| pixel[3] != 0));
     }
 }
