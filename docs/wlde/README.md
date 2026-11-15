@@ -297,16 +297,20 @@ is not guaranteed there.
 
 ## Desktop item identity and future Group persistence
 
-The modern Win32 inventory assigns filesystem-backed IDs using a volume
-serial number, file index and creation-time discriminator from a metadata-only
-Windows handle. Each item exposes whether its key is `FilesystemFileId` or
-`PathFallback`. Unique single-link IDs preserve Group references across
-ordinary same-volume NTFS renames. Multi-link entries and unavailable,
-partial or duplicate identities use distinct path-hash fallbacks rather than
-collapsing separate desktop names into one Group member.
+The modern Win32 inventory prefers the volume serial plus 128-bit
+`FILE_ID_128` returned by `GetFileInformationByHandleEx(FileIdInfo)`, with
+creation FILETIME as an additional discriminator. Each item exposes whether
+its key is `FilesystemFileId` or `PathFallback`. Unique single-link IDs
+preserve Group references across ordinary same-volume NTFS renames. The
+adapter deliberately avoids the legacy 64-bit index because Microsoft does
+not guarantee its uniqueness on ReFS. A zero/unsupported 128-bit ID,
+unavailable creation timestamp, hard-link ambiguity or duplicate identity
+uses a path-hash fallback rather than collapsing separate desktop entries.
 
-This is not a universal identity guarantee: file IDs vary by filesystem and
-can be reused after deletion. Durable Group storage must persist the identity
-kind and reconcile path fallbacks before restoring membership. The normalized
-layout is still in-memory only; this work does not add persistence or a
-crash-recovery journal.
+This is not a permanent identity guarantee across deletion/re-creation.
+File IDs can be reused and network filesystems may return partial information.
+The BGW-owned local Group/layout store persists the identity kind and rejects
+stale fallback references without rewriting the saved state. It is
+configuration persistence, not the crash-safe native icon/Shell restoration
+journal; Group presentation remains disabled until that separate recovery
+path is implemented and tested.
