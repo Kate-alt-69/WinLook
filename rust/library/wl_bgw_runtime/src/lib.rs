@@ -10,13 +10,31 @@ use std::thread;
 #[cfg(windows)]
 use std::time::Duration;
 
+mod desktop_store;
+pub use desktop_store::{
+    DesktopItemIdentityRecord, DesktopStateSnapshot, DesktopStateStore, DesktopStateStoreError,
+};
+
 #[cfg(windows)]
 use wl_wlde_win32::{
-    enumerate_desktop_items, is_same_desktop_host, monitor_desktop_host, watch_desktop_folders,
-    DesktopFolder, DesktopInventoryWatcher,
+    enumerate_desktop_items, enumerate_monitors, is_same_desktop_host, monitor_desktop_host,
+    watch_desktop_folders, DesktopFolder, DesktopInventoryItem, DesktopInventoryWatcher,
 };
 #[cfg(windows)]
 use wl_wlde::DesktopItemKind;
+
+#[cfg(windows)]
+fn load_desktop_state(
+    store: &DesktopStateStore,
+    inventory: &[DesktopInventoryItem],
+) -> Result<Option<DesktopStateSnapshot>, String> {
+    let topology = enumerate_monitors()
+        .map_err(|error| format!("monitor topology unavailable: {error}"))?;
+    let identities = DesktopItemIdentityRecord::from_inventory(inventory);
+    store
+        .load(&identities, &topology)
+        .map_err(|error| error.to_string())
+}
 
 #[cfg(windows)]
 const DESKTOP_HOST_RECHECK_INTERVAL: Duration = Duration::from_secs(5);
