@@ -515,7 +515,8 @@ notifications. Host changes invalidate the whole generation; inventory
 refreshes discard stale results and path-fallback artwork, while still-present
 filesystem-ID entries may remain cached.
 
-The cache stores neither filesystem paths nor persistent icon assets.
+The cache stores neither filesystem paths nor persistent icon assets. It
+exposes cached pixels as a borrowed WLDE AdaptiveIconImageView without copying.
 Failures are suppressed for stable filesystem IDs within the current host
 context; a new host/context retries them, while path-fallback failures are
 retried after inventory refresh. The cache is not connected to the native
