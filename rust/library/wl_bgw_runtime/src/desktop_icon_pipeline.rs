@@ -337,13 +337,13 @@ impl DesktopIconPipeline {
 
     /// Starts a new verified Explorer-host session and discards old pixels.
     ///
-    /// An already-running old-host request may finish, but its generation
-    /// prevents the result from entering the new session's cache.
+    /// An already-running or queued old-host request may finish, but its
+    /// generation prevents the result from entering the new session's cache.
+    /// Old pending keys stay tracked until poll drains their stale results.
     pub fn begin_host_session(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         self.current_identities.clear();
         self.failed.clear();
-        self.pending.clear();
         self.cache.clear();
     }
 
@@ -353,9 +353,9 @@ impl DesktopIconPipeline {
     /// rename. Path-derived IDs cannot distinguish replacement at the same
     /// path, so their icons are conservatively reacquired on every refresh.
     /// The generation also causes any in-flight results to be discarded.
+    /// Pending keys remain until those stale results have been drained.
     pub fn invalidate_path_fallbacks(&mut self) {
         self.generation = self.generation.wrapping_add(1);
-        self.pending.clear();
         self.cache.retain_filesystem_backed();
         self.failed.retain(|key| {
             key.identity_stability == DesktopItemIdentityStability::FilesystemFileId
@@ -370,7 +370,6 @@ impl DesktopIconPipeline {
         self.context = context;
         self.generation = self.generation.wrapping_add(1);
         self.failed.clear();
-        self.pending.clear();
         self.cache.clear();
     }
 
@@ -492,7 +491,7 @@ impl DesktopIconPipeline {
     }
 
     pub fn has_pending_work(&self) -> bool {
-        !self.pending.is_empty()
+        self.worker_available && !self.pending.is_empty()
     }
 }
 
