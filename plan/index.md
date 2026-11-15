@@ -58,6 +58,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Vector/SVG contract: [Vector Animation](architecture/vector-animation.md).
 - Desktop inventory, filesystem identity/rename semantics and Explorer bridge constraints: [WLDE architecture](architecture/wlde.md), [Explorer customization](architecture/explorer-customization.md), and [wl_wlde_win32 adapter](../rust/library/wl_wlde_win32/README.md).
 - Read-only Shell icon acquisition, bounded black/white-probe RGBA rasterization, GDI synchronization and ownership/alpha rules: [wl_wlde_win32 adapter](../rust/library/wl_wlde_win32/README.md), [WLDE architecture](architecture/wlde.md) and [source ledger](references/SOURCES.md).
+- BGW memory-only Shell icon worker, COM apartment and bounded LRU cache: [BGW runtime](../rust/library/wl_bgw_runtime/README.md), [WLDE architecture](architecture/wlde.md) and [source ledger](references/SOURCES.md).
 - Local Group/layout persistence, identity-aware validation and BGW restore loading: [WLDE architecture](architecture/wlde.md) and [BGW runtime](../rust/library/wl_bgw_runtime/README.md).
 - Resource-governor contract: [CPUv/GPUv](architecture/resource-governors.md).
 - UI structure and selection rules: [Manager UI Architecture](architecture/ui-architecture.md).
