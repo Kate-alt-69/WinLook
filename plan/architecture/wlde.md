@@ -430,19 +430,20 @@ Shell verbs and restore original icons after a BGW or Explorer failure.
 
 ## Desktop inventory identity — 2026-11-15
 
-The modern Win32 filesystem inventory prefers a volume-serial/file-index
-identity from a metadata-only handle and includes creation FILETIME as an
-additional discriminator. It exposes the identity kind as
-`FilesystemFileId` or `PathFallback`. Unique single-link IDs remain stable
-across ordinary same-volume NTFS renames; ambiguous, multi-link, unavailable
-or partial identities use path hashes instead so separate desktop entries
-are not merged.
+The modern Win32 filesystem inventory prefers the volume serial and 128-bit
+`FILE_ID_128` returned by `GetFileInformationByHandleEx(FileIdInfo)`, plus
+creation FILETIME as an additional discriminator. It exposes the identity
+kind as `FilesystemFileId` or `PathFallback`. Unique single-link IDs remain
+stable across ordinary same-volume NTFS renames; ambiguous, multi-link,
+unavailable or partial identities use path hashes instead so separate desktop
+entries are not merged. The adapter does not use the legacy 64-bit file index
+as a stable key because Microsoft does not guarantee its uniqueness on ReFS.
 
-This is not universal across filesystems: FAT identities can change on some
-renames, IDs can be reused after deletion, ReFS's 64-bit index is not
-guaranteed unique, and remote filesystems can return partial information.
-Legacy C hosts still need generation-specific identity providers. See
-WLDE-025/026 in `plan/references/SOURCES.md`.
+File IDs may be reused after deletion and remote filesystems may return
+partial information. A zero/unsupported 128-bit ID or unavailable creation
+time is explicitly downgraded to `PathFallback`. Legacy C hosts still need
+generation-specific identity providers. See WLDE-025–027 in
+`plan/references/SOURCES.md`.
 
 
 ## Local Desktop Groups and normalized layout persistence — 2026-11-15
