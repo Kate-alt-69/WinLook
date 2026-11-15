@@ -570,7 +570,7 @@ notification before waiting again.
 ## WLDE BGW memory-only Shell icon pipeline — 2026-11-15
 
 - Added rust/library/wl_bgw_runtime/src/desktop_icon_pipeline.rs: one dedicated Shell worker, bounded 16-entry work/result queues, an 8 MiB / 256-entry LRU RGBA cache, and generation/identity checks that discard stale results.
-- Worker calls SHGetFileInfoW only after initializing an STA COM apartment; CoUninitialize is paired through an RAII guard. The BGW inventory/Explorer monitor loop only queues and polls, never waits on the Shell handler.
+- Worker calls SHGetFileInfoW only after initializing an STA COM apartment; CoUninitialize is paired through an RAII guard. The BGW inventory/Explorer monitor loop only queues and polls, never waits on the Shell handler. It polls every 250 ms while icon requests are pending and returns to the five-second host cadence when the queue drains.
 - Cache identity is opaque item ID + identity stability + Shell icon size + DPI bucket + theme generation. Initial context is 96 DPI/theme generation 0 pending actual BGW DPI/appearance events.
 - Inventory refresh removes stale identities and invalidates path-fallback artwork even when a path-derived ID string remains the same. Filesystem-ID artwork is retained for identities still present. Host/context generation changes drop old pixels and stale worker results.
 - The cache is memory-only and is not part of desktop-state persistence. The pipeline produces pixels but does not render them or change Explorer/native icon state; Group presentation remains gated on the separate crash-safe restoration journal.
