@@ -65,3 +65,21 @@ because remote filesystem notifications are not guaranteed. It watches only
 top-level file/directory-name changes, not ordinary content writes, and
 re-enumerates the full bounded snapshot after each signal; it does not rely
 on the notification to identify the changed item.
+
+
+## Local Desktop Groups and layout state
+
+BGW now has a bounded local state store in `desktop_store.rs`:
+
+- The default Windows path is `%LOCALAPPDATA%/WinLook/WLDE/desktop-state.v1.bin`.
+- The versioned binary format stores Group IDs/labels/member IDs, identity kinds and normalized top-level layout placements. It does not store item paths, file content, icon artwork, executable paths or portable-template data.
+- The format is capped at 4 MiB and has a CRC32 integrity check. The checksum detects accidental corruption; it is not a digital signature or tamper-proof authentication mechanism.
+- Writes use a unique temporary file in the same directory, flush the file, then rename it into place. BGW is the single-writer owner; a second independent writer is not supported.
+- Loads validate the complete Group set, current desktop inventory, identity stability, all required layout entries and the current monitor topology before returning a snapshot. A stale path-fallback ID, missing item, incomplete inventory, changed monitor ID or corrupt file is rejected. The saved file is left untouched so recovery/reconciliation can be handled separately.
+- Filesystem-backed item IDs are persisted with their identity kind. Path-fallback IDs are never silently treated as rename-stable.
+
+BGW loads the committed snapshot after it has verified the Explorer desktop host and collected the current inventory/topology. It also revalidates after inventory notifications. This currently restores only the validated in-memory configuration model: Manager IPC and a Manager-driven save/edit flow are not implemented yet, and Groups remain non-presenting until native icon restoration is proven.
+
+Monitor IDs in the current layout are adapter snapshot IDs (for example, GDI display-device names), not stable physical monitor identities. Until WLDM supplies a durable monitor mapping/reconciliation layer, a changed monitor identifier rejects the stored layout rather than guessing where a Group should move.
+
+This file is configuration persistence, not the restoration journal. It does not record or restore native icon suppression, Explorer hooks, Shell registrations or other OS mutations. Crash-safe native restoration remains a separate prerequisite before Groups can be shown.
