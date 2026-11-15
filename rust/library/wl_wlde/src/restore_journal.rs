@@ -180,7 +180,11 @@ impl DesktopRestoreLedger {
             applied_value,
             ownership_proof,
         )?;
-        if self.records.iter().any(|record| record.transaction_id == transaction_id) {
+        if self
+            .records
+            .iter()
+            .any(|record| record.transaction_id == transaction_id)
+        {
             return Err(DesktopRestoreJournalError::DuplicateTransaction);
         }
         let sequence = self.next_sequence()?;
@@ -221,12 +225,7 @@ impl DesktopRestoreLedger {
         if !transition_allowed(previous.state, next_state) {
             return Err(DesktopRestoreJournalError::InvalidTransition);
         }
-        validate_transition_evidence(
-            &previous,
-            next_state,
-            observed_value,
-            ownership_proven,
-        )?;
+        validate_transition_evidence(&previous, next_state, observed_value, ownership_proven)?;
         let sequence = self.next_sequence()?;
         let next = previous.with_state(sequence, next_state);
         self.push_validated(next)?;
@@ -377,9 +376,7 @@ pub fn plan_desktop_restore_recovery(
     }
 }
 
-fn encoded_record_len(
-    record: &DesktopRestoreRecord,
-) -> Result<usize, DesktopRestoreJournalError> {
+fn encoded_record_len(record: &DesktopRestoreRecord) -> Result<usize, DesktopRestoreJournalError> {
     validate_record(record)?;
     let payload_len = 8usize
         .checked_add(16)
@@ -672,24 +669,32 @@ fn validate_transition_evidence(
     let original_readback_required = matches!(
         (previous.state, next),
         (DesktopRestoreState::Applying, DesktopRestoreState::Aborted)
-            | (DesktopRestoreState::Restoring, DesktopRestoreState::Restored)
+            | (
+                DesktopRestoreState::Restoring,
+                DesktopRestoreState::Restored
+            )
     );
     let applied_readback_required = matches!(
         (previous.state, next),
-        (DesktopRestoreState::Applying, DesktopRestoreState::Committed)
-            | (DesktopRestoreState::Applying, DesktopRestoreState::Restoring)
-            | (DesktopRestoreState::Committed, DesktopRestoreState::Restoring)
+        (
+            DesktopRestoreState::Applying,
+            DesktopRestoreState::Committed
+        ) | (
+            DesktopRestoreState::Applying,
+            DesktopRestoreState::Restoring
+        ) | (
+            DesktopRestoreState::Committed,
+            DesktopRestoreState::Restoring
+        )
     );
 
     if original_readback_required {
-        let observed =
-            observed_value.ok_or(DesktopRestoreJournalError::MissingObservation)?;
+        let observed = observed_value.ok_or(DesktopRestoreJournalError::MissingObservation)?;
         if observed != previous.original_value.as_slice() {
             return Err(DesktopRestoreJournalError::ReadbackMismatch);
         }
     } else if applied_readback_required {
-        let observed =
-            observed_value.ok_or(DesktopRestoreJournalError::MissingObservation)?;
+        let observed = observed_value.ok_or(DesktopRestoreJournalError::MissingObservation)?;
         if observed != previous.applied_value.as_slice() {
             return Err(DesktopRestoreJournalError::ReadbackMismatch);
         }
@@ -715,13 +720,17 @@ fn transition_allowed(current: DesktopRestoreState, next: DesktopRestoreState) -
                 | DesktopRestoreState::Aborted
                 | DesktopRestoreState::Conflict
         ),
-        DesktopRestoreState::Committed => {
-            matches!(next, DesktopRestoreState::Restoring | DesktopRestoreState::Conflict)
-        }
-        DesktopRestoreState::Restoring => {
-            matches!(next, DesktopRestoreState::Restored | DesktopRestoreState::Conflict)
-        }
-        DesktopRestoreState::Restored | DesktopRestoreState::Aborted | DesktopRestoreState::Conflict => false,
+        DesktopRestoreState::Committed => matches!(
+            next,
+            DesktopRestoreState::Restoring | DesktopRestoreState::Conflict
+        ),
+        DesktopRestoreState::Restoring => matches!(
+            next,
+            DesktopRestoreState::Restored | DesktopRestoreState::Conflict
+        ),
+        DesktopRestoreState::Restored
+        | DesktopRestoreState::Aborted
+        | DesktopRestoreState::Conflict => false,
     }
 }
 
