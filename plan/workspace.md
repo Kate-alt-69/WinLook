@@ -565,3 +565,13 @@ notification before waiting again.
 - Added portable pixel-math tests for opaque/transparent, half-alpha and inversion cases. Windows smoke coverage still needs to execute the HICON-to-RGBA path on hosted CI.
 - The next integration work is an identity/DPI/theme/size-aware icon cache and a BGW path from the RGBA image into the existing portable adaptive compositor. No native icon registration, Explorer view object, live Group tile or restoration behaviour is changed.
 - Microsoft sources WLDE-031–033 are recorded in `plan/references/SOURCES.md`.
+
+
+## WLDE BGW memory-only Shell icon pipeline — 2026-11-15
+
+- Added rust/library/wl_bgw_runtime/src/desktop_icon_pipeline.rs: one dedicated Shell worker, bounded 16-entry work/result queues, an 8 MiB / 256-entry LRU RGBA cache, and generation/identity checks that discard stale results.
+- Worker calls SHGetFileInfoW only after initializing an STA COM apartment; CoUninitialize is paired through an RAII guard. The BGW inventory/Explorer monitor loop only queues and polls, never waits on the Shell handler.
+- Cache identity is opaque item ID + identity stability + Shell icon size + DPI bucket + theme generation. Initial context is 96 DPI/theme generation 0 pending actual BGW DPI/appearance events.
+- Inventory refresh removes stale identities and invalidates path-fallback artwork even when a path-derived ID string remains the same. Filesystem-ID artwork is retained for identities still present. Host/context generation changes drop old pixels and stale worker results.
+- The cache is memory-only and is not part of desktop-state persistence. The pipeline produces pixels but does not render them or change Explorer/native icon state; Group presentation remains gated on the separate crash-safe restoration journal.
+- Microsoft COM initialization evidence is recorded as WLDE-035 in plan/references/SOURCES.md.
