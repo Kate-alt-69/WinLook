@@ -13,7 +13,8 @@ use wl_wlde::{MonitorTopology, TopologyError};
 mod desktop_inventory;
 pub use desktop_inventory::{
     enumerate_desktop_items, watch_desktop_folders, DesktopFolder, DesktopInventoryError,
-    DesktopInventoryItem, DesktopInventoryWatcher, MAX_DESKTOP_INVENTORY_ITEMS,
+    DesktopInventoryItem, DesktopItemIdentityStability, DesktopInventoryWatcher,
+    MAX_DESKTOP_INVENTORY_ITEMS,
 };
 
 /// Win32 message sent after the display resolution or configuration changes.
