@@ -40,13 +40,33 @@ represented by this first snapshot adapter and remain separate work.
 The same functions are re-exported by the shared Win32 backend and the public
 `wl_ui::windows10` / `wl_ui::windows11` modules on their respective builds.
 
-The adapter uses a narrow, private Win32 FFI boundary. Its only Rust runtime
-dependency is `sha2 0.10.9`, used to generate opaque desktop-item IDs; the
-crate uses the Windows Shell and OLE system libraries for Known Folder path
-resolution and memory release. The portable Rust core remains
-`#![forbid(unsafe_code)]`; this crate contains the platform-specific unsafe
-calls and exposes owned, validated item metadata plus an explicitly ephemeral
-filesystem path for local Shell operations.
+The adapter uses a narrow, private Win32 FFI boundary. Its `sha2 0.10.9`
+dependency is used only for path-hash fallbacks; normal inventory IDs are
+derived from the volume serial number, 64-bit file index and creation-time
+discriminator returned by `GetFileInformationByHandle`. Identity handles
+request only `FILE_READ_ATTRIBUTES`, share read/write/delete access, and use
+`FILE_FLAG_OPEN_REPARSE_POINT` so a shortcut/reparse entry is identified
+without opening its target. `FILE_FLAG_BACKUP_SEMANTICS` permits directory
+handles. No file content is read or changed.
+
+## Desktop item identity and Group continuity
+
+`DesktopInventoryItem::identity_stability()` distinguishes
+`FilesystemFileId` from `PathFallback`. A unique single-link filesystem
+identity keeps the same Group key through ordinary same-volume NTFS renames.
+The adapter includes creation time as an additional discriminator; this
+reduces accidental key reuse but is not a universal anti-reuse guarantee.
+
+Filesystem support varies. FAT file IDs can change on certain renames or
+defragmentation, network filesystems may return partial identity information,
+and the 64-bit file index is not guaranteed unique on ReFS. When identity
+cannot be read, when Windows reports multiple hard links, or when duplicate
+identities occur in the visible inventory, the adapter uses distinct
+path-hash IDs and marks them `PathFallback` rather than merging desktop
+entries. Path fallbacks change on rename and must be reconciled before durable
+Group membership is restored. The portable Rust/C89 Group models remain
+host-ID agnostic; legacy C platform adapters need their own per-generation
+identity implementation.
 
 ## Explorer desktop-host discovery
 
