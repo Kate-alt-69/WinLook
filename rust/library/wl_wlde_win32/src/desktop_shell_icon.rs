@@ -242,6 +242,7 @@ pub fn rasterize_desktop_shell_icon_rgba(
     Err(DesktopShellIconError::UnsupportedPlatform)
 }
 
+#[cfg(any(windows, test))]
 fn reconstruct_rgba_pixel(
     black: [u8; 3],
     white: [u8; 3],

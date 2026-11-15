@@ -14,6 +14,7 @@ use wl_wlde::{DesktopItemKind, DesktopItemRef, DesktopModelError};
 
 /// Maximum number of filesystem entries accepted from both Desktop roots.
 pub const MAX_DESKTOP_INVENTORY_ITEMS: usize = 4096;
+#[cfg(windows)]
 const MAX_KNOWN_FOLDER_PATH_UNITS: usize = 32_768;
 
 /// The Known Folder from which a desktop entry was discovered.
@@ -232,6 +233,7 @@ pub fn watch_desktop_folders() -> Result<DesktopInventoryWatcher, DesktopInvento
     Err(DesktopInventoryError::UnsupportedPlatform)
 }
 
+#[cfg(any(windows, test))]
 fn classify_desktop_entry(path: &Path, is_directory: bool) -> DesktopItemKind {
     if is_directory {
         return DesktopItemKind::Folder;
