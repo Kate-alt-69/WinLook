@@ -300,6 +300,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             load_committed_desktop_state(store, &desktop_inventory)
                         });
                         if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
+                            pipeline.invalidate_path_fallbacks();
                             let queued = pipeline.request_missing(&desktop_inventory);
                             if queued != 0 {
                                 report_status(&format!(
