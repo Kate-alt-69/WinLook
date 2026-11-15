@@ -938,8 +938,8 @@ unsafe extern "system" fn window_proc(
                         let content_x = navigation_width + 32;
                         let content_width = width.saturating_sub(navigation_width + 48);
                         MoveWindow((*state).brand_mark, 16, 12, 40, 40, 1);
-                        MoveWindow((*state).brand_title, 64, 10, 240, 26, 1);
-                        MoveWindow((*state).brand_tagline, 64, 36, 240, 18, 1);
+                        MoveWindow((*state).brand_title, 64, 10, 200, 26, 1);
+                        MoveWindow((*state).brand_tagline, 64, 36, 200, 18, 1);
                         MoveWindow(
                             (*state).navigation,
                             16,
