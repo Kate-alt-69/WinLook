@@ -584,3 +584,11 @@ notification before waiting again.
 - Recovery distinguishes Prepared (no side effect started), Applying (inspect and prove ownership before any restore), Committed (active WinLook-owned state) and Restoring (inspect/complete or retry). External changes or missing ownership become Conflict, never blind rollback.
 - Windows write-ahead persistence requires the native journal backend to flush the writable handle with `FlushFileBuffers` before mutation. `ReplaceFileW(REPLACEFILE_WRITE_THROUGH)` is not a valid substitute because Microsoft documents that flag as unsupported; `MoveFileExW(MOVEFILE_WRITE_THROUGH)` is documented for file moves, not as a record-level append protocol.
 - This remains design only: no native Shell mutation, icon suppression, Shell registration, Group presenter or hook was enabled. Sources WLDE-037–039 were added. Implementation must pass fault injection at every write/flush/native-operation boundary and per-build ownership/restoration tests before the gate opens.
+
+
+## Portable WLDE restoration record core — 2026-11-15
+
+- Added `wl_wlde::DesktopRestoreLedger` in `rust/library/wl_wlde/src/restore_journal.rs`: bounded, versioned length-delimited record codec; CRC32; monotonic global sequence; immutable adapter/resource/original/desired/ownership snapshots; strictly validated transaction state transitions; explicit Aborted/Conflict outcomes.
+- The decoder distinguishes an incomplete final append from a complete corrupt frame and exposes `valid_bytes` for a future storage writer. The pure recovery planner makes no restoration recommendation unless the observed desired value and adapter ownership proof both match.
+- This is a reusable portable codec/state-machine only. It does not open or lock a file, inspect user ACLs, enforce the runtime adapter registry, flush durable storage or call native APIs. The actual BGW journal writer and platform adapters are still required before any desktop mutation can be enabled.
+- Added public exports and library README/catalog guidance. Portable unit tests cover round-trip histories, truncation at every byte position, checksum corruption, transaction/sequence rules, resource bounds and safe recovery decisions; hosted Rust CI must verify them.

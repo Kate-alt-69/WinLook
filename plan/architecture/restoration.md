@@ -258,3 +258,27 @@ testing. Unsupported/remote journal locations fail closed.
       on each supported Windows generation.
 - [ ] Only after these gates pass may the corresponding presenter or native
       Shell mutation be enabled.
+
+
+## Current portable journal-core implementation boundary
+
+The portable `wl_wlde` crate now contains `DesktopRestoreLedger`, a bounded
+record codec and transaction-state validator. It implements versioned
+length-delimited frames, CRC32, strict global sequence progression, immutable
+operation snapshots across transitions, the Prepared/Applying/Committed/
+Restoring/Restored phases plus Aborted/Conflict terminal outcomes, and a pure
+recovery planner which compares adapter readback with original/desired values
+and separately requires ownership proof.
+
+The decoder returns the complete valid-prefix byte length and identifies a
+partial final frame as an incomplete tail. A complete frame with a bad magic,
+unsupported version, invalid schema, sequence/transition or checksum is a hard
+error. The storage writer must truncate only a validated incomplete final
+suffix; it must never auto-discard a complete corrupt record.
+
+**Not implemented by this core:** file creation/opening, owner/DACL validation,
+single-process file locking, supported-local-filesystem detection, durable
+append/flush, adapter allowlist registration, native readback, native apply,
+or restoration side effects. The BGW persistence backend and per-adapter
+proof/restore implementation remain outstanding acceptance gates. The
+portable codec being present does not enable any Explorer/Shell mutation.

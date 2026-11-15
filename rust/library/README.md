@@ -13,7 +13,7 @@ a consumer should depend only on the layer it actually needs.
 
 | Library | Language / target | Responsibility | Start here |
 | --- | --- | --- | --- |
-| `wl_wlde` | Rust, portable | Scene policy, monitor geometry, wallpaper placement, shared frame policy, resource/Game Mode policy, virtual Groups/layout, adaptive icon composition and provider metadata | [Rust core README](wl_wlde/README.md) |
+| `wl_wlde` | Rust, portable | Scene policy, monitor geometry, wallpaper placement, resource/Game Mode policy, virtual Groups/layout, adaptive icon composition, provider metadata and the typed write-ahead restoration record codec/state machine | [Rust core README](wl_wlde/README.md) |
 | `wl_wlde_win32` | Rust, Windows adapter | Monitor snapshots, read-only User/Public Desktop inventory and change watcher, Explorer desktop-host identity/monitoring, owned Shell icon extraction and bounded RGBA rasterization | [Win32 adapter README](wl_wlde_win32/README.md) |
 | `wl_bgw_runtime` | Rust, Windows runtime | BGW host loop, validated local Groups/layout store and private memory-only Shell icon worker/cache | [BGW runtime README](wl_bgw_runtime/README.md) |
 | `wl_Lwlde` | C89, portable | Caller-owned fixed-storage companion to the Rust WLDE policy/model contracts | [C89 core README](../../C/library/wl_Lwlde/README.md) |
@@ -249,3 +249,10 @@ platforms and compiler/runtime minimums, dependency graph, public API map,
 small usage example, ownership/lifetime rules, threading model, bounds,
 non-goals, and exact verification commands. When a public API changes, update
 both the crate README and this catalog in the same change.
+
+
+The portable `wl_wlde` core also contains a bounded restoration journal
+**codec/state-machine model**. It is not a storage implementation: only the
+future BGW writer may append/flush records, after validating its local journal
+ACL and adapter allowlist. See the crate README and
+[restoration architecture](../plan/architecture/restoration.md).

@@ -303,3 +303,35 @@ external semver commitment.
 
 For a cross-library dependency map, Win32/BGW examples and the C89 build
 recipe, see the [shared library catalog](../README.md).
+
+
+## Portable restoration journal record core
+
+The portable core now provides a **record codec and state-machine validator** for
+the future Explorer Desktop Bridge write-ahead journal. It is reusable by any
+platform adapter that needs the same conservative transaction model:
+
+- `DesktopRestoreLedger::begin()` validates and records the immutable original
+  value, desired value, adapter key/version, resource key and ownership proof.
+- `transition()` appends only legal phases: Prepared → Applying → Committed →
+  Restoring → Restored, with explicit Aborted and Conflict terminal outcomes.
+- `encode_desktop_restore_record()` / `encode_desktop_restore_ledger()` produce
+  bounded versioned frames protected by CRC32.
+- `decode_desktop_restore_ledger()` verifies the complete prefix and exposes
+  the byte offset for a partial final append. A full frame with invalid magic,
+  schema or checksum is corruption; it is never silently discarded.
+- `plan_desktop_restore_recovery()` requires current adapter readback and a
+  separate ownership proof before recommending a restore or retry.
+
+The format is capped at 4 MiB and 8,192 records. Each resource key is a bounded
+path-free token; before/desired values are bounded opaque adapter payloads,
+and ownership proof bytes are bounded separately. The adapter registry must
+still enforce an explicit allowlist and validate its own payload schema.
+
+**This is not yet a persistent journal.** The portable crate performs no file
+I/O, ACL/owner validation, durable flush, adapter registration or native
+mutation. A future BGW storage backend must provide a user-private supported
+local file, serialize the single writer, durably append and flush each record
+before invoking an adapter, and test the complete crash/fault-injection matrix
+in [the restoration architecture](../../../plan/architecture/restoration.md).
+Do not use this codec alone to hide, suppress or replace native desktop items.

@@ -22,6 +22,7 @@ mod adaptive_icon;
 mod desktop;
 mod game_mode;
 mod resource;
+mod restore_journal;
 mod store;
 mod wallpaper_engine;
 
@@ -44,6 +45,14 @@ pub use game_mode::{
 };
 pub use resource::{
     ResourceGovernor, ResourcePolicy, ResourcePolicyError, ResourcePressure, ResourceSample,
+};
+pub use restore_journal::{
+    decode_desktop_restore_ledger, encode_desktop_restore_ledger,
+    encode_desktop_restore_record, plan_desktop_restore_recovery,
+    DecodedDesktopRestoreLedger, DesktopRestoreJournalError, DesktopRestoreLedger,
+    DesktopRestoreRecord, DesktopRestoreRecoveryAction, DesktopRestoreState,
+    DESKTOP_RESTORE_JOURNAL_VERSION, MAX_DESKTOP_RESTORE_JOURNAL_BYTES,
+    MAX_DESKTOP_RESTORE_RECORDS,
 };
 pub use store::{
     store_provider, store_providers, StorePriceModel, StoreProvider, StoreProviderAccess,
