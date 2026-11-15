@@ -25,6 +25,19 @@ pub enum DesktopFolder {
     Public,
 }
 
+/// Describes how confidently an inventory ID survives filesystem changes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DesktopItemIdentityStability {
+    /// Derived from a volume serial and filesystem file ID.
+    ///
+    /// Stable across ordinary same-volume renames on filesystems that preserve
+    /// file IDs; not guaranteed across deletion or every filesystem.
+    FilesystemFileId,
+    /// Derived from the current path because a unique file ID was unavailable
+    /// or the entry has multiple hard links. Changes when the path changes.
+    PathFallback,
+}
+
 /// A desktop item plus its ephemeral filesystem location.
 ///
 /// item() is the portable identity stored in a Group. filesystem_path() is
@@ -35,6 +48,7 @@ pub struct DesktopInventoryItem {
     item: DesktopItemRef,
     filesystem_path: PathBuf,
     source_folder: DesktopFolder,
+    identity_stability: DesktopItemIdentityStability,
 }
 
 impl DesktopInventoryItem {
@@ -55,6 +69,14 @@ impl DesktopInventoryItem {
     pub fn source_folder(&self) -> DesktopFolder {
         self.source_folder
     }
+
+    /// Whether the ID is filesystem-backed or a path fallback.
+    ///
+    /// Persistent Group storage must reconcile PathFallback entries before
+    /// restoring membership because their IDs change when their paths change.
+    pub fn identity_stability(&self) -> DesktopItemIdentityStability {
+        self.identity_stability
+    }
 }
 
 /// Errors from the bounded filesystem Desktop snapshot.
@@ -72,15 +94,9 @@ pub enum DesktopInventoryError {
         folder: DesktopFolder,
     },
     /// The root could not be enumerated.
-    ReadDirectory {
-        folder: DesktopFolder,
-        code: u32,
-    },
+    ReadDirectory { folder: DesktopFolder, code: u32 },
     /// An entry could not be inspected.
-    ReadDirectoryEntry {
-        folder: DesktopFolder,
-        code: u32,
-    },
+    ReadDirectoryEntry { folder: DesktopFolder, code: u32 },
     /// The inventory exceeded its fixed item bound.
     TooManyItems,
     /// A Desktop folder change-notification handle could not be created.
@@ -100,28 +116,53 @@ impl fmt::Display for DesktopInventoryError {
                 f.write_str("desktop filesystem inventory is available only on Windows")
             }
             Self::KnownFolderPath { folder, hresult } => {
-                write!(f, "could not resolve the {folder:?} Desktop Known Folder (HRESULT {hresult:#x})")
+                write!(
+                    f,
+                    "could not resolve the {folder:?} Desktop Known Folder (HRESULT {hresult:#x})"
+                )
             }
             Self::InvalidKnownFolderPath { folder } => {
-                write!(f, "Windows returned an invalid {folder:?} Desktop Known Folder path")
+                write!(
+                    f,
+                    "Windows returned an invalid {folder:?} Desktop Known Folder path"
+                )
             }
             Self::ReadDirectory { folder, code } => {
-                write!(f, "could not enumerate the {folder:?} Desktop folder (error {code:#x})")
+                write!(
+                    f,
+                    "could not enumerate the {folder:?} Desktop folder (error {code:#x})"
+                )
             }
             Self::ReadDirectoryEntry { folder, code } => {
-                write!(f, "could not inspect an entry in the {folder:?} Desktop folder (error {code:#x})")
+                write!(
+                    f,
+                    "could not inspect an entry in the {folder:?} Desktop folder (error {code:#x})"
+                )
             }
             Self::TooManyItems => {
-                write!(f, "Desktop inventory exceeds the {}-item bound", MAX_DESKTOP_INVENTORY_ITEMS)
+                write!(
+                    f,
+                    "Desktop inventory exceeds the {}-item bound",
+                    MAX_DESKTOP_INVENTORY_ITEMS
+                )
             }
             Self::WatchDirectory { folder, code } => {
-                write!(f, "could not watch the {folder:?} Desktop folder (error {code:#x})")
+                write!(
+                    f,
+                    "could not watch the {folder:?} Desktop folder (error {code:#x})"
+                )
             }
             Self::WaitForChange { code } => {
-                write!(f, "waiting for Desktop folder changes failed (error {code:#x})")
+                write!(
+                    f,
+                    "waiting for Desktop folder changes failed (error {code:#x})"
+                )
             }
             Self::RearmDirectoryWatch { folder, code } => {
-                write!(f, "could not re-arm the {folder:?} Desktop folder watcher (error {code:#x})")
+                write!(
+                    f,
+                    "could not re-arm the {folder:?} Desktop folder watcher (error {code:#x})"
+                )
             }
             Self::InvalidItem(error) => write!(f, "Desktop item failed validation: {error}"),
         }
@@ -137,11 +178,12 @@ impl std::error::Error for DesktopInventoryError {}
 /// one-level only: it does not crawl folders, follow links, resolve shortcut
 /// targets, inspect file contents or mutate the filesystem.
 ///
-/// Returned IDs are SHA-256 hashes of the Windows path identity with a
-/// desktop: prefix. They are opaque Group keys, not security credentials.
-/// Renaming or moving an item changes its ID. This first pass classifies common
-/// launcher extensions as Application; a later Shell-link resolver can refine
-/// shortcuts whose targets are documents or folders.
+/// IDs prefer a volume-scoped Windows file identity, preserving Group keys
+/// across ordinary same-volume renames on filesystems that retain file IDs.
+/// Entries with unavailable or ambiguous identities use a marked path-hash
+/// fallback. IDs are opaque Group keys, not security credentials. This first
+/// pass classifies common launcher extensions as Application; a later Shell-link
+/// resolver can refine shortcuts whose targets are documents or folders.
 #[cfg(windows)]
 pub fn enumerate_desktop_items() -> Result<Vec<DesktopInventoryItem>, DesktopInventoryError> {
     desktop_inventory_platform::enumerate()
@@ -152,7 +194,6 @@ pub fn enumerate_desktop_items() -> Result<Vec<DesktopInventoryItem>, DesktopInv
 pub fn enumerate_desktop_items() -> Result<Vec<DesktopInventoryItem>, DesktopInventoryError> {
     Err(DesktopInventoryError::UnsupportedPlatform)
 }
-
 
 /// A bounded change watcher for the user's and Public Desktop folders.
 ///
@@ -212,11 +253,43 @@ fn classify_desktop_entry(path: &Path, is_directory: bool) -> DesktopItemKind {
     }
 }
 
+#[cfg(any(windows, test))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct DesktopFileIdentity {
+    volume_serial_number: u32,
+    file_index: u64,
+    creation_time_100ns: u64,
+    number_of_links: u32,
+}
+
+#[cfg(any(windows, test))]
+fn stable_desktop_id(identity: DesktopFileIdentity) -> String {
+    format!(
+        "desktop:file:{:08x}:{:016x}:{:016x}",
+        identity.volume_serial_number, identity.file_index, identity.creation_time_100ns
+    )
+}
+
+#[cfg(any(windows, test))]
+fn resolve_desktop_item_identity(
+    identity: Option<DesktopFileIdentity>,
+    identity_occurrences: usize,
+    path_fallback_id: String,
+) -> (String, DesktopItemIdentityStability) {
+    match identity {
+        Some(identity) if identity_occurrences == 1 && identity.number_of_links == 1 => (
+            stable_desktop_id(identity),
+            DesktopItemIdentityStability::FilesystemFileId,
+        ),
+        _ => (path_fallback_id, DesktopItemIdentityStability::PathFallback),
+    }
+}
+
 #[cfg(windows)]
 mod desktop_inventory_platform {
     use super::*;
     use sha2::{Digest, Sha256};
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
     use std::ffi::{c_void, OsString};
     use std::io::ErrorKind;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
@@ -241,6 +314,15 @@ mod desktop_inventory_platform {
     const MAX_PATH_UNITS: usize = 260;
     const EXTENDED_PATH_PREFIX: &[u16] = &[92, 92, 63, 92];
     const EXTENDED_UNC_PATH_PREFIX: &[u16] = &[92, 92, 63, 92, 85, 78, 67, 92];
+
+    const FILE_READ_ATTRIBUTES: u32 = 0x0000_0080;
+    const FILE_SHARE_READ: u32 = 0x0000_0001;
+    const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+    const FILE_SHARE_DELETE: u32 = 0x0000_0004;
+    const OPEN_EXISTING: u32 = 3;
+    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    const INVALID_HANDLE_VALUE: isize = -1;
 
     // KNOWNFOLDERID values from KnownFolders.h / Microsoft Learn.
     const FOLDERID_DESKTOP: Guid = Guid {
@@ -285,6 +367,20 @@ mod desktop_inventory_platform {
 
     #[link(name = "kernel32")]
     extern "system" {
+        fn CreateFileW(
+            path: *const u16,
+            desired_access: u32,
+            share_mode: u32,
+            security_attributes: *mut c_void,
+            creation_disposition: u32,
+            flags_and_attributes: u32,
+            template_file: Handle,
+        ) -> Handle;
+        fn GetFileInformationByHandle(
+            file: Handle,
+            information: *mut ByHandleFileInformation,
+        ) -> i32;
+        fn CloseHandle(object: Handle) -> i32;
         fn FindFirstChangeNotificationW(
             path: *const u16,
             watch_subtree: i32,
@@ -302,6 +398,48 @@ mod desktop_inventory_platform {
     }
 
     type Handle = *mut c_void;
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    struct FileTime {
+        low_date_time: u32,
+        high_date_time: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    struct ByHandleFileInformation {
+        file_attributes: u32,
+        creation_time: FileTime,
+        last_access_time: FileTime,
+        last_write_time: FileTime,
+        volume_serial_number: u32,
+        file_size_high: u32,
+        file_size_low: u32,
+        number_of_links: u32,
+        file_index_high: u32,
+        file_index_low: u32,
+    }
+
+    struct OwnedFileHandle(Handle);
+
+    impl Drop for OwnedFileHandle {
+        fn drop(&mut self) {
+            if !self.0.is_null() && self.0 as isize != INVALID_HANDLE_VALUE {
+                unsafe {
+                    CloseHandle(self.0);
+                }
+            }
+        }
+    }
+
+    struct DesktopInventoryCandidate {
+        path: PathBuf,
+        label: String,
+        kind: DesktopItemKind,
+        source_folder: DesktopFolder,
+        file_identity: Option<DesktopFileIdentity>,
+    }
 
     struct ChangeNotification {
         folder: DesktopFolder,
@@ -326,7 +464,10 @@ mod desktop_inventory_platform {
     pub(super) fn watch() -> Result<Watcher, DesktopInventoryError> {
         let roots = [
             (DesktopFolder::User, known_folder_path(DesktopFolder::User)?),
-            (DesktopFolder::Public, known_folder_path(DesktopFolder::Public)?),
+            (
+                DesktopFolder::Public,
+                known_folder_path(DesktopFolder::Public)?,
+            ),
         ];
         let mut notifications = Vec::with_capacity(2);
         let mut refresh_on_timeout = false;
@@ -342,7 +483,7 @@ mod desktop_inventory_platform {
                 // Remote redirects do not reliably deliver change notifications.
                 refresh_on_timeout = true;
             }
-            let wide = change_notification_path(path_units);
+            let wide = extended_length_path(path_units);
             let handle = unsafe { FindFirstChangeNotificationW(wide.as_ptr(), 0, filter) };
             if handle.is_null() || handle as isize == -1 {
                 let code = unsafe { GetLastError() };
@@ -361,7 +502,7 @@ mod desktop_inventory_platform {
         })
     }
 
-    fn change_notification_path(mut wide: Vec<u16>) -> Vec<u16> {
+    fn extended_length_path(mut wide: Vec<u16>) -> Vec<u16> {
         let already_extended = wide.starts_with(EXTENDED_PATH_PREFIX);
         if wide.len() >= MAX_PATH_UNITS && !already_extended {
             let mut extended = Vec::with_capacity(wide.len() + EXTENDED_UNC_PATH_PREFIX.len());
@@ -395,12 +536,7 @@ mod desktop_inventory_platform {
                 .collect::<Vec<_>>();
             let timeout_ms = timeout.as_millis().min(u128::from(u32::MAX - 1)) as u32;
             let result = unsafe {
-                WaitForMultipleObjects(
-                    handles.len() as u32,
-                    handles.as_ptr(),
-                    0,
-                    timeout_ms,
-                )
+                WaitForMultipleObjects(handles.len() as u32, handles.as_ptr(), 0, timeout_ms)
             };
             if result == WAIT_TIMEOUT {
                 return Ok(self.refresh_on_timeout);
@@ -433,11 +569,46 @@ mod desktop_inventory_platform {
                 known_folder_path(DesktopFolder::Public)?,
             ),
         ];
-        let mut inventory = Vec::new();
-        let mut identifiers = HashSet::new();
+        let mut candidates = Vec::new();
 
         for (folder, root) in roots {
-            read_one_level(&root, folder, &mut inventory, &mut identifiers)?;
+            read_one_level(&root, folder, &mut candidates)?;
+        }
+
+        // File IDs identify filesystem objects, not individual hard-link names.
+        // Count identities before assignment so distinct entries are not merged.
+        let mut identity_counts = HashMap::with_capacity(candidates.len());
+        for candidate in &candidates {
+            if let Some(identity) = candidate.file_identity {
+                *identity_counts.entry(identity).or_insert(0usize) += 1;
+            }
+        }
+
+        let mut identifiers = HashSet::with_capacity(candidates.len());
+        let mut inventory = Vec::with_capacity(candidates.len());
+        for candidate in candidates {
+            let identity_occurrences = candidate
+                .file_identity
+                .and_then(|identity| identity_counts.get(&identity).copied())
+                .unwrap_or(0);
+            let fallback_id = path_fallback_desktop_id(&candidate.path);
+            let (id, identity_stability) = resolve_desktop_item_identity(
+                candidate.file_identity,
+                identity_occurrences,
+                fallback_id,
+            );
+            if !identifiers.insert(id.clone()) {
+                continue;
+            }
+
+            let item = DesktopItemRef::new(id, candidate.label, candidate.kind)
+                .map_err(DesktopInventoryError::InvalidItem)?;
+            inventory.push(DesktopInventoryItem {
+                item,
+                filesystem_path: candidate.path,
+                source_folder: candidate.source_folder,
+                identity_stability,
+            });
         }
 
         inventory.sort_by(|left, right| {
@@ -483,8 +654,7 @@ mod desktop_inventory_platform {
     fn read_one_level(
         root: &Path,
         folder: DesktopFolder,
-        inventory: &mut Vec<DesktopInventoryItem>,
-        identifiers: &mut HashSet<String>,
+        candidates: &mut Vec<DesktopInventoryCandidate>,
     ) -> Result<(), DesktopInventoryError> {
         let entries = match std::fs::read_dir(root) {
             Ok(entries) => entries,
@@ -518,33 +688,61 @@ mod desktop_inventory_platform {
             let path = entry.path();
             let label = entry.file_name().to_string_lossy().into_owned();
             let kind = classify_desktop_entry(&path, file_type.is_dir());
-            let id = opaque_desktop_id(&path);
-            if !identifiers.insert(id.clone()) {
-                continue;
-            }
-
-            let item =
-                DesktopItemRef::new(id, label, kind).map_err(DesktopInventoryError::InvalidItem)?;
-            if inventory.len() >= MAX_DESKTOP_INVENTORY_ITEMS {
+            if candidates.len() >= MAX_DESKTOP_INVENTORY_ITEMS {
                 return Err(DesktopInventoryError::TooManyItems);
             }
-            inventory.push(DesktopInventoryItem {
-                item,
-                filesystem_path: path,
+            candidates.push(DesktopInventoryCandidate {
+                file_identity: read_file_identity(&path),
+                path,
+                label,
+                kind,
                 source_folder: folder,
             });
         }
         Ok(())
     }
 
-    fn opaque_desktop_id(path: &Path) -> String {
+    fn read_file_identity(path: &Path) -> Option<DesktopFileIdentity> {
+        let wide_path = extended_length_path(path.as_os_str().encode_wide().collect());
+        let raw_handle = unsafe {
+            CreateFileW(
+                wide_path.as_ptr(),
+                FILE_READ_ATTRIBUTES,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                ptr::null_mut(),
+                OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                ptr::null_mut(),
+            )
+        };
+        if raw_handle.is_null() || raw_handle as isize == INVALID_HANDLE_VALUE {
+            return None;
+        }
+
+        let handle = OwnedFileHandle(raw_handle);
+        let mut information = ByHandleFileInformation::default();
+        if unsafe { GetFileInformationByHandle(handle.0, &mut information) } == 0 {
+            return None;
+        }
+
+        Some(DesktopFileIdentity {
+            volume_serial_number: information.volume_serial_number,
+            file_index: (u64::from(information.file_index_high) << 32)
+                | u64::from(information.file_index_low),
+            creation_time_100ns: (u64::from(information.creation_time.high_date_time) << 32)
+                | u64::from(information.creation_time.low_date_time),
+            number_of_links: information.number_of_links,
+        })
+    }
+
+    fn path_fallback_desktop_id(path: &Path) -> String {
         let mut hasher = Sha256::new();
         for unit in path.as_os_str().encode_wide() {
             hasher.update(unit.to_le_bytes());
         }
         let digest = hasher.finalize();
-        let mut id = String::with_capacity(8 + digest.len() * 2);
-        id.push_str("desktop:");
+        let mut id = String::with_capacity(13 + digest.len() * 2);
+        id.push_str("desktop:path:");
         for byte in digest {
             use std::fmt::Write as _;
             let _ = write!(id, "{byte:02x}");
@@ -586,6 +784,65 @@ mod tests {
             classify_desktop_entry(Path::new("notes.txt"), false),
             DesktopItemKind::File
         );
+    }
+
+    #[test]
+    fn filesystem_identity_keys_are_volume_scoped_and_path_independent() {
+        let identity = DesktopFileIdentity {
+            volume_serial_number: 0x1234_abcd,
+            file_index: 0x0123_4567_89ab_cdef,
+            creation_time_100ns: 0x0fed_cba9_8765_4321,
+            number_of_links: 1,
+        };
+        let id = stable_desktop_id(identity);
+        assert_eq!(id, stable_desktop_id(identity));
+        assert!(id.starts_with("desktop:file:"));
+        assert!(id.len() <= 127);
+        assert_ne!(
+            id,
+            stable_desktop_id(DesktopFileIdentity {
+                volume_serial_number: identity.volume_serial_number + 1,
+                ..identity
+            })
+        );
+        assert_ne!(
+            id,
+            stable_desktop_id(DesktopFileIdentity {
+                file_index: identity.file_index + 1,
+                ..identity
+            })
+        );
+        assert_ne!(
+            id,
+            stable_desktop_id(DesktopFileIdentity {
+                creation_time_100ns: identity.creation_time_100ns + 1,
+                ..identity
+            })
+        );
+    }
+
+    #[test]
+    fn missing_or_ambiguous_file_identity_uses_a_path_fallback() {
+        let (missing, missing_stability) =
+            resolve_desktop_item_identity(None, 0, "desktop:path:missing".into());
+        assert_eq!(missing, "desktop:path:missing");
+        assert_eq!(missing_stability, DesktopItemIdentityStability::PathFallback);
+
+        let identity = DesktopFileIdentity {
+            volume_serial_number: 7,
+            file_index: 11,
+            creation_time_100ns: 13,
+            number_of_links: 2,
+        };
+        let (ambiguous, ambiguous_stability) =
+            resolve_desktop_item_identity(Some(identity), 1, "desktop:path:alias".into());
+        assert_eq!(ambiguous, "desktop:path:alias");
+        assert_eq!(ambiguous_stability, DesktopItemIdentityStability::PathFallback);
+
+        let (duplicate, duplicate_stability) =
+            resolve_desktop_item_identity(Some(identity), 2, "desktop:path:duplicate".into());
+        assert_eq!(duplicate, "desktop:path:duplicate");
+        assert_eq!(duplicate_stability, DesktopItemIdentityStability::PathFallback);
     }
 
     #[cfg(not(windows))]
