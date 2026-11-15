@@ -277,9 +277,13 @@ monitors and invalid coordinates do not replace the last valid model.
 
 The layout is data only. It does not move files, create folders, alter
 shortcuts, draw or suppress native icons, create Group tiles or intercept
-Explorer menus. BGW's read-only Desktop inventory and these portable layout
-contracts are now available, but live desktop presentation remains disabled
-until the native Explorer bridge and crash-safe icon restoration are tested.
+Explorer menus. BGW now loads a versioned machine-local Groups/layout snapshot
+through `wl_bgw_runtime::DesktopStateStore`, validating it against the live
+inventory and monitor topology. The store is configuration persistence, not a
+restoration journal; stale references and monitor mappings are rejected rather
+than guessed. Manager-driven saves still require authenticated BGW IPC, and
+live desktop presentation remains disabled until the native Explorer bridge
+and crash-safe icon restoration are tested.
 
 
 The current change watcher is a modern Win10/11 adapter. Its API contract
