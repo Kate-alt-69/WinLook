@@ -338,3 +338,24 @@ releasing the DIB. A DPI/theme/identity-aware cache and
 BGW presentation integration remain outstanding. The operation covers filesystem Desktop paths only; virtual
 namespace items and exact Explorer view membership require the later Shell-view
 bridge. The BGW/native restore boundary remains unchanged.
+
+
+## Memory-only BGW Shell icon pipeline
+
+BGW now queues read-only Shell icon work to one dedicated worker. It
+initializes COM before calling SHGetFileInfoW, extracts an owned HICON,
+and rasterizes it into bounded straight-alpha RGBA. The BGW host-monitor loop
+only submits requests and polls results. Work/result queues hold at most 16
+entries each, and an LRU cache is capped at 256 images / 8 MiB.
+
+Cache keys contain opaque item identity, identity kind, icon size, DPI and
+theme generation. A new Explorer host drops the previous cache generation.
+On inventory refresh, stale results are discarded and path-fallback artwork
+is reacquired; still-present filesystem-ID artwork can be retained. The cache
+is memory-only and writes no paths or artwork to the persisted Group/layout
+state.
+
+This is artwork acquisition only. It does not hide native Explorer icons,
+replace Shell registrations, draw Group tiles or turn on presentation. The
+separate crash-safe restoration journal remains mandatory. Microsoft COM
+requirements are in WLDE-035 of plan/references/SOURCES.md.
