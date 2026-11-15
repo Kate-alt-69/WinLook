@@ -10,6 +10,18 @@ use std::ptr::NonNull;
 
 use crate::DesktopInventoryItem;
 
+#[cfg(windows)]
+#[link(name = "user32")]
+extern "system" {
+    fn DestroyIcon(icon: *mut std::ffi::c_void) -> i32;
+}
+
+#[cfg(windows)]
+#[link(name = "gdi32")]
+extern "system" {
+    fn DeleteObject(object: *mut std::ffi::c_void) -> i32;
+}
+
 /// The system icon size requested from the Shell image handler.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DesktopShellIconSize {
@@ -78,6 +90,7 @@ struct OwnedIcon(NonNull<std::ffi::c_void>);
 
 impl Drop for OwnedIcon {
     fn drop(&mut self) {
+        #[cfg(windows)]
         unsafe {
             DestroyIcon(self.0.as_ptr());
         }
@@ -88,6 +101,7 @@ struct OwnedGdiObject(*mut std::ffi::c_void);
 
 impl Drop for OwnedGdiObject {
     fn drop(&mut self) {
+        #[cfg(windows)]
         if !self.0.is_null() {
             unsafe {
                 DeleteObject(self.0);
@@ -207,7 +221,6 @@ mod platform {
 
     #[link(name = "user32")]
     extern "system" {
-        fn DestroyIcon(icon: *mut std::ffi::c_void) -> i32;
         fn GetIconInfo(icon: *mut std::ffi::c_void, info: *mut IconInfo) -> i32;
     }
 
@@ -218,7 +231,6 @@ mod platform {
             object_size: i32,
             object_data: *mut std::ffi::c_void,
         ) -> i32;
-        fn DeleteObject(object: *mut std::ffi::c_void) -> i32;
     }
 
     pub(super) fn extract(
