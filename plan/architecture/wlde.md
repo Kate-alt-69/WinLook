@@ -515,8 +515,11 @@ notifications. Host changes invalidate the whole generation; inventory
 refreshes discard stale results and path-fallback artwork, while still-present
 filesystem-ID entries may remain cached.
 
-The cache stores neither filesystem paths nor persistent icon assets. It is
-not connected to the native desktop presenter: no icon is hidden or replaced,
-no Shell registration changes, and no Group is shown. The crash-safe native
+The cache stores neither filesystem paths nor persistent icon assets.
+Failures are suppressed for stable filesystem IDs within the current host
+context; a new host/context retries them, while path-fallback failures are
+retried after inventory refresh. The cache is not connected to the native
+desktop presenter: no icon is hidden or replaced, no Shell registration
+changes, and no Group is shown. The crash-safe native
 restoration journal remains a hard gate for presentation. See WLDE-028–035 in
 plan/references/SOURCES.md.
