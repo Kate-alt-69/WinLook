@@ -79,6 +79,15 @@ pub fn run() -> Result<(), BgwRuntimeError> {
 #[cfg(windows)]
 fn run_windows() -> Result<(), BgwRuntimeError> {
     let mut waiting_for_shell_logged = false;
+    let desktop_state_store = match DesktopStateStore::for_current_user() {
+        Ok(store) => Some(store),
+        Err(error) => {
+            report_status(&format!(
+                "WLDE local Group/layout persistence unavailable; native desktop remains unchanged: {error}"
+            ));
+            None
+        }
+    };
 
     loop {
         let monitor = match monitor_desktop_host() {
@@ -105,8 +114,8 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             identity.image_path().display()
         ));
 
-        // Keep the read-only path map alive only for this verified Explorer host.
-        // It is discarded when the host changes or exits; Group persistence comes later.
+        // Keep the read-only inventory alive only for this verified Explorer host.
+        // The state store retains only opaque IDs; no filesystem path is persisted.
         let mut desktop_inventory = match enumerate_desktop_items() {
             Ok(items) => {
                 let user_count = items
@@ -147,6 +156,10 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 Vec::new()
             }
         };
+
+        let mut _restored_desktop_state = desktop_state_store.as_ref().and_then(|store| {
+            load_committed_desktop_state(store, &desktop_inventory)
+        });
 
         let mut inventory_watcher = match watch_desktop_folders() {
             Ok(watcher) => Some(watcher),
@@ -240,6 +253,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             file_count
                         ));
                         desktop_inventory = refreshed;
+                        _restored_desktop_state = desktop_state_store.as_ref().and_then(|store| {
+                            load_committed_desktop_state(store, &desktop_inventory)
+                        });
                     }
                     Err(error) => report_status(&format!(
                         "Desktop inventory refresh failed; keeping last known snapshot: {error}"
@@ -250,6 +266,33 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         // Dropping the inventory releases its ephemeral path map; dropping the
         // monitor closes the process handle before the next host probe.
         drop(desktop_inventory);
+    }
+}
+
+#[cfg(windows)]
+fn load_committed_desktop_state(
+    store: &DesktopStateStore,
+    inventory: &[DesktopInventoryItem],
+) -> Option<DesktopStateSnapshot> {
+    match load_desktop_state(store, inventory) {
+        Ok(Some(snapshot)) => {
+            report_status(&format!(
+                "WLDE local state validated: {} Groups and {} desktop placements; Group presentation remains disabled until crash-safe Shell restoration is available",
+                snapshot.groups().len(),
+                snapshot.layout().len()
+            ));
+            Some(snapshot)
+        }
+        Ok(None) => {
+            report_status("No committed local WLDE Group/layout state exists yet");
+            None
+        }
+        Err(error) => {
+            report_status(&format!(
+                "WLDE local state was not applied; the saved file was preserved and native desktop presentation remains unchanged: {error}"
+            ));
+            None
+        }
     }
 }
 
