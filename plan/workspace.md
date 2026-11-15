@@ -554,3 +554,14 @@ notification before waiting again.
 - Shell icon extraction may invoke a Shell handler and is documented for a BGW worker, never the Manager UI thread. Missing/unsupported icons return a typed error; no native desktop icon registration changes occur.
 - The API remains path-based, enforces the documented SHGetFileInfoW MAX_PATH input bound and does not enumerate virtual Shell namespace items or the Explorer view's exact filtered membership. PIDL/IFolderView integration remains part of the Explorer Desktop Bridge.
 - Microsoft sources WLDE-028–030 are recorded in `plan/references/SOURCES.md`.
+
+
+## WLDE Shell icon RGBA rasterization — 2026-11-15
+
+- Added `rasterize_desktop_shell_icon_rgba()` after the owned HICON acquisition step. Output is tightly packed straight-alpha RGBA suitable for `wl_wlde::AdaptiveIconImageView`.
+- The rasterizer is bounded to 512×512 pixels and uses a top-down 32-bpp DIB selected into a memory DC. It draws the same icon onto opaque black and white probe backgrounds and reconstructs alpha and straight color from their channel differences.
+- The dual-background method handles standard source-over alpha icons and classic AND/XOR icon masks where the result is representable as a static RGBA image. Screen-dependent inversion pixels are rejected with `UnsupportedRasterOperation`; no background-dependent operation is silently converted into a guessed color.
+- The DIB/DC/selected-object lifetime is RAII-managed. Output allocation uses checked lengths and `try_reserve_exact`; invalid dimensions, oversized icons, allocation failure and Win32 drawing failures return typed errors.
+- Added portable pixel-math tests for opaque/transparent, half-alpha and inversion cases. Windows smoke coverage still needs to execute the HICON-to-RGBA path on hosted CI.
+- The next integration work is an identity/DPI/theme/size-aware icon cache and a BGW path from the RGBA image into the existing portable adaptive compositor. No native icon registration, Explorer view object, live Group tile or restoration behaviour is changed.
+- Microsoft sources WLDE-031–033 are recorded in `plan/references/SOURCES.md`.
