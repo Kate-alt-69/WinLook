@@ -277,6 +277,15 @@ The inventory is one-level and read-only. It prefers filesystem object identity 
 
 
 
+
+## WLDE read-only Shell desktop icon extraction — 2026-11-15
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| WLDE-028 | [SHGetFileInfoW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetfileinfow), [DestroyIcon](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-destroyicon) | `SHGFI_ICON` returns an HICON; `SHGFI_SHELLICONSIZE` requests a Shell-sized icon and `SHGFI_SMALLICON` selects the small variant. Microsoft says to call from a background thread and release returned icons with `DestroyIcon` | Modern filesystem-path bridge only. The API can involve Shell handler work, so extraction is not a UI-thread operation. WinLook wraps the HICON in an owned RAII object and has no effect on Explorer's icon registration |
+| WLDE-029 | [GetIconInfo](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-geticoninfo) | Returns icon hotspot/type and creates mask/color bitmap handles. The caller must release the returned bitmaps using `DeleteObject` | WinLook uses the handles only to inspect dimensions, then releases both. It does not retain or modify the Shell source bitmaps |
+| WLDE-030 | [GetObjectW](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-getobjectw) | Retrieves the BITMAP metadata for an HBITMAP, including dimensions | Used only to return validated native icon dimensions. Pixel extraction/rasterization is not yet implemented; a separate bounded BGRA/RGBA conversion step is required |
+
 ## WLDE stable Desktop filesystem identity — 2026-11-15
 
 | ID | Source | Claim supported | Scope / caveat |
