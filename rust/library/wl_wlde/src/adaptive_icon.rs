@@ -478,8 +478,8 @@ mod tests {
     fn monochrome_mode_uses_alpha_as_mask_and_applies_theme_tint() {
         let background = AdaptiveIconImageView::new(1, 1, &[12, 24, 36, 255]).unwrap();
         let monochrome_pixels = [
-            240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 255,
-            240, 10, 20, 255, 240, 10, 20, 0, 240, 10, 20, 255, 240, 10, 20, 255,
+            240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 255, 240,
+            10, 20, 255, 240, 10, 20, 0, 240, 10, 20, 255, 240, 10, 20, 255,
         ];
         let monochrome = AdaptiveIconImageView::new(3, 3, &monochrome_pixels).unwrap();
         let rendered = render_adaptive_app_icon_monochrome(
