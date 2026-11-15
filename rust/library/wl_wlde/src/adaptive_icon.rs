@@ -484,7 +484,8 @@ mod tests {
             monochrome,
             [32, 160, 224],
             32,
-        ).unwrap();
+        )
+        .unwrap();
 
         let center = (16 * 32 + 16) * 4;
         let outside_glyph = (8 * 32 + 16) * 4;
