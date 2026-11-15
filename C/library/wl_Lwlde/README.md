@@ -127,3 +127,21 @@ Properties remain owned by Windows.
 monochrome layer using the source alpha as a glyph mask and a caller-supplied
 RGB tint. It writes directly into caller-owned RGBA storage and performs no
 allocation or source mutation.
+
+
+## Normalized desktop layout
+
+The C89 API provides `wl_Lwlde_desktop_layout` with caller-owned fixed storage.
+Each entry is an Item or Group target, a current monitor ID, x/y basis-point
+anchors (0–10,000) against that monitor's work area, and a stable z-order hint.
+
+`wl_Lwlde_desktop_layout_replace()` validates the complete replacement before
+copying it into the active array. Every ungrouped inventory item and each Group
+must occur exactly once; a Group member cannot also be a standalone tile.
+Unknown IDs/monitors, duplicated targets, invalid coordinates, incomplete
+layouts and malformed caller-supplied snapshots are rejected transactionally.
+The portable maximum is 4,096 inventory items plus 64 Groups (4,160 placements).
+
+The layout only describes presentation intent. It does not move files, change
+shortcuts, modify Explorer or make a Group visible. The native presenter and
+crash-safe restoration path are still required.

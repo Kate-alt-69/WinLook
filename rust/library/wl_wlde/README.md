@@ -227,3 +227,27 @@ the glyph mask; its RGB values are ignored and replaced by a caller-supplied
 theme tint. Background cover, safe-zone contain and the selected Circle,
 RoundedSquare or Squircle mask are identical to color mode. The source asset
 is never rewritten, and the caller supplies the theme tint at render time.
+
+
+## Normalized desktop layout model
+
+The desktop model now includes a transactional top-level placement map:
+
+- Each ungrouped inventory item and each Group has exactly one top-level entry.
+- Group members are presented within their Group and cannot also have a separate desktop-icon position.
+- Each entry identifies a current monitor snapshot ID, normalized x/y anchors in
+  basis points (0–10,000) relative to that monitor's work area, and a stable
+  z-order hint. A native presenter resolves those anchors against current
+  monitor dimensions and its selected icon/grid metrics.
+- Layout replacement validates the full current inventory, Group set and
+  monitor topology before committing. Unknown/stale items, unknown monitors,
+  duplicate targets, incomplete layouts and out-of-range coordinates are
+  rejected without losing the last valid layout.
+- The layout is capped at 4,160 entries (4,096 desktop inventory items plus
+  64 Groups). It stores opaque item IDs and Group IDs, not filesystem paths,
+  file contents, absolute pixels or Shell pointers.
+
+This remains a portable data contract. It does not move or rename source files,
+draw/hide desktop icons, render Group tiles or register a Shell view. Those
+presentation operations stay behind the required BGW Explorer Desktop Bridge
+and the crash-safe native restoration gate.

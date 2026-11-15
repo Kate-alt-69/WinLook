@@ -411,3 +411,18 @@ Still open: in-app catalogue API integration, categories/search/filtering,
 previews/details, downloads/resume/hash verification, attribution sidecars,
 package import, local library management, independent community catalogues,
 moderation and publisher identity.
+
+
+## Desktop Groups and normalized layout model — 2026-11-15
+
+The paired Rust/C89 cores now include a bounded top-level desktop placement
+contract. It stores each ungrouped item and Group tile exactly once, with
+monitor-relative basis-point anchors and z-order hints. A Group member cannot
+also have its own top-level tile position. Replacements validate the inventory,
+Group set and current monitor snapshot transactionally; invalid or incomplete
+replacements retain the prior layout.
+
+The bound is 4,096 inventory items plus 64 Groups (4,160 layout entries).
+This is a logical data contract only: the presenter still needs to map anchors
+onto native desktop-view objects, register Group/icon surfaces, preserve native
+Shell verbs and restore original icons after a BGW or Explorer failure.

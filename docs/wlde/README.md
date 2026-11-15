@@ -262,3 +262,21 @@ caller-owned RGBA buffer. The allocating `render_adaptive_app_icon()` helper
 is retained for convenience and delegates to the same compositor. The C89 API
 already accepts caller-owned output storage. Both compositors leave source
 buffers unchanged and must run outside time-sensitive Explorer callbacks.
+
+
+## Normalized desktop layout contract
+
+The Rust and C89 WLDE cores now expose the same bounded placement model.
+Ungrouped desktop items and Group tiles each receive exactly one top-level
+placement; Group members cannot also be rendered as separate top-level icons.
+A placement stores the current monitor ID, x/y anchors in 0–10,000 basis
+points relative to that monitor's work area, and a z-order hint. Replacing the
+layout validates the full inventory, Groups and monitor topology before
+committing, so stale items, duplicate entries, missing placements, unknown
+monitors and invalid coordinates do not replace the last valid model.
+
+The layout is data only. It does not move files, create folders, alter
+shortcuts, draw or suppress native icons, create Group tiles or intercept
+Explorer menus. BGW's read-only Desktop inventory and these portable layout
+contracts are now available, but live desktop presentation remains disabled
+until the native Explorer bridge and crash-safe icon restoration are tested.

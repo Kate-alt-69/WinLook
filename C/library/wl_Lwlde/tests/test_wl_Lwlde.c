@@ -226,6 +226,11 @@ int main(void)
         wl_Lwlde_desktop_groups desktop_groups;
         wl_Lwlde_desktop_group group_input[1];
         const char *group_members[2];
+        wl_Lwlde_desktop_layout_entry layout_storage[4];
+        wl_Lwlde_desktop_layout_entry layout_input[4];
+        wl_Lwlde_desktop_layout desktop_layout;
+        const wl_Lwlde_desktop_layout_entry *layout_found;
+
         wl_Lwlde_adaptive_app_icon app_icon;
         wl_Lwlde_desktop_context_action context_actions[5];
         unsigned int context_count;
@@ -269,6 +274,78 @@ int main(void)
         assert(desktop_groups.count == 1U);
         assert(strcmp(desktop_groups.groups[0].id, "group:work") == 0);
         group_members[1] = "folder:assets";
+
+        assert(wl_Lwlde_desktop_layout_init(&desktop_layout,
+            layout_storage, 4U) == WL_LWDE_OK);
+        memset(layout_input, 0, sizeof(layout_input));
+        layout_input[0].target_kind = WL_LWDE_DESKTOP_LAYOUT_GROUP;
+        strcpy(layout_input[0].target_id, "group:work");
+        strcpy(layout_input[0].monitor_id, "DISPLAY-A");
+        layout_input[0].x_basis_points = 2500U;
+        layout_input[0].y_basis_points = 3500U;
+        layout_input[0].z_order = 0U;
+        layout_input[1].target_kind = WL_LWDE_DESKTOP_LAYOUT_ITEM;
+        strcpy(layout_input[1].target_id, "file:notes");
+        strcpy(layout_input[1].monitor_id, "DISPLAY-B");
+        layout_input[1].x_basis_points = 7500U;
+        layout_input[1].y_basis_points = 2000U;
+        layout_input[1].z_order = 1U;
+        assert(wl_Lwlde_desktop_layout_replace(&desktop_layout, layout_input, 2U,
+            desktop_items, 3U, &desktop_groups, &topology) == WL_LWDE_OK);
+        assert(desktop_layout.count == 2U);
+
+        /* The same top-level target cannot be placed twice. */
+        layout_input[1] = layout_input[0];
+        assert(wl_Lwlde_desktop_layout_replace(&desktop_layout, layout_input, 2U,
+            desktop_items, 3U, &desktop_groups, &topology) ==
+            WL_LWDE_INVALID_DESKTOP_LAYOUT);
+        assert(desktop_layout.count == 2U);
+        memset(&layout_input[1], 0, sizeof(layout_input[1]));
+        layout_input[1].target_kind = WL_LWDE_DESKTOP_LAYOUT_ITEM;
+        strcpy(layout_input[1].target_id, "file:notes");
+        strcpy(layout_input[1].monitor_id, "DISPLAY-B");
+        layout_input[1].x_basis_points = 7500U;
+        layout_input[1].y_basis_points = 2000U;
+        layout_input[1].z_order = 1U;
+        layout_found = wl_Lwlde_desktop_layout_find(&desktop_layout,
+            WL_LWDE_DESKTOP_LAYOUT_GROUP, "group:work");
+        assert(layout_found == &desktop_layout.entries[0]);
+        assert(layout_found->x_basis_points == 2500U);
+        assert(strcmp(layout_found->monitor_id, "DISPLAY-A") == 0);
+        layout_found = wl_Lwlde_desktop_layout_find(&desktop_layout,
+            WL_LWDE_DESKTOP_LAYOUT_ITEM, "file:notes");
+        assert(layout_found == &desktop_layout.entries[1]);
+        assert(layout_found->y_basis_points == 2000U);
+
+        /* A Group member cannot also appear as a separate desktop tile. */
+        strcpy(layout_input[1].target_id, "app:editor");
+        strcpy(layout_input[1].monitor_id, "DISPLAY-A");
+        assert(wl_Lwlde_desktop_layout_replace(&desktop_layout, layout_input, 2U,
+            desktop_items, 3U, &desktop_groups, &topology) ==
+            WL_LWDE_INVALID_DESKTOP_LAYOUT);
+        assert(desktop_layout.count == 2U);
+        assert(wl_Lwlde_desktop_layout_find(&desktop_layout,
+            WL_LWDE_DESKTOP_LAYOUT_ITEM, "file:notes") != 0);
+
+        /* Invalid monitor IDs and unbounded coordinates do not replace state. */
+        strcpy(layout_input[1].target_id, "file:notes");
+        strcpy(layout_input[1].monitor_id, "DISPLAY-MISSING");
+        assert(wl_Lwlde_desktop_layout_replace(&desktop_layout, layout_input, 2U,
+            desktop_items, 3U, &desktop_groups, &topology) ==
+            WL_LWDE_INVALID_DESKTOP_LAYOUT);
+        strcpy(layout_input[1].monitor_id, "DISPLAY-B");
+        layout_input[1].x_basis_points = WL_LWDE_DESKTOP_LAYOUT_COORDINATE_MAX + 1U;
+        assert(wl_Lwlde_desktop_layout_replace(&desktop_layout, layout_input, 2U,
+            desktop_items, 3U, &desktop_groups, &topology) ==
+            WL_LWDE_INVALID_DESKTOP_LAYOUT);
+        assert(desktop_layout.count == 2U);
+        layout_input[1].x_basis_points = 7500U;
+
+        /* Every ungrouped item and every Group must have exactly one entry. */
+        assert(wl_Lwlde_desktop_layout_replace(&desktop_layout, layout_input, 1U,
+            desktop_items, 3U, &desktop_groups, &topology) ==
+            WL_LWDE_INVALID_DESKTOP_LAYOUT);
+        assert(desktop_layout.count == 2U);
 
         memset(&app_icon, 0, sizeof(app_icon));
         app_icon.application_id = "app:editor";

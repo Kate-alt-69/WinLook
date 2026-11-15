@@ -6,7 +6,7 @@
 
 use std::collections::HashSet;
 
-use crate::PresentationCapabilities;
+use crate::{Monitor, MonitorTopology, PresentationCapabilities};
 
 pub const MAX_DESKTOP_GROUPS: usize = 64;
 pub const MAX_DESKTOP_GROUP_MEMBERS: usize = 128;
@@ -14,6 +14,9 @@ pub const MAX_DESKTOP_IDENTIFIER_BYTES: usize = 127;
 pub const MAX_DESKTOP_LABEL_BYTES: usize = 255;
 pub const MAX_ICON_ASSET_REFERENCE_BYTES: usize = 255;
 pub const DEFAULT_ADAPTIVE_ICON_SAFE_ZONE_PERCENT: u8 = 61;
+pub const MAX_DESKTOP_INVENTORY_ITEMS: usize = 4_096;
+pub const MAX_DESKTOP_LAYOUT_ENTRIES: usize = 4_160;
+pub const DESKTOP_LAYOUT_COORDINATE_MAX: u16 = 10_000;
 
 /// An item discovered by the platform adapter. Its ID is an opaque adapter key,
 /// not a path; the portable core never opens or changes the underlying item.
@@ -345,6 +348,241 @@ fn validate_groups(
     Ok(())
 }
 
+
+/// A top-level desktop object. Group members are represented by their Group
+/// tile and therefore cannot also have independent top-level placements.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum DesktopLayoutTarget {
+    Item(DesktopItemId),
+    Group(String),
+}
+
+/// A monitor-relative anchor in basis points (0..=10,000).
+///
+/// Coordinates are normalized against the monitor work area, not absolute
+/// pixels. A presenter resolves them against the current monitor snapshot and
+/// applies its own icon/grid dimensions. z_order is a stable tie-break/order
+/// hint; it does not represent a filesystem or Shell ordering.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DesktopLayoutEntry {
+    target: DesktopLayoutTarget,
+    monitor_id: String,
+    x_basis_points: u16,
+    y_basis_points: u16,
+    z_order: u32,
+}
+
+impl DesktopLayoutEntry {
+    pub fn new(
+        target: DesktopLayoutTarget,
+        monitor_id: impl Into<String>,
+        x_basis_points: u16,
+        y_basis_points: u16,
+        z_order: u32,
+    ) -> Result<Self, DesktopModelError> {
+        let monitor_id = monitor_id.into();
+        validate_text(
+            &monitor_id,
+            crate::MAX_MONITOR_ID_BYTES,
+            DesktopModelError::EmptyIdentifier,
+            DesktopModelError::IdentifierTooLong,
+        )?;
+        if x_basis_points > DESKTOP_LAYOUT_COORDINATE_MAX
+            || y_basis_points > DESKTOP_LAYOUT_COORDINATE_MAX
+        {
+            return Err(DesktopModelError::InvalidLayoutCoordinate);
+        }
+        if let DesktopLayoutTarget::Group(group_id) = &target {
+            validate_text(
+                group_id,
+                MAX_DESKTOP_IDENTIFIER_BYTES,
+                DesktopModelError::EmptyIdentifier,
+                DesktopModelError::IdentifierTooLong,
+            )?;
+        }
+        Ok(Self {
+            target,
+            monitor_id,
+            x_basis_points,
+            y_basis_points,
+            z_order,
+        })
+    }
+
+    pub fn target(&self) -> &DesktopLayoutTarget {
+        &self.target
+    }
+
+    pub fn monitor_id(&self) -> &str {
+        &self.monitor_id
+    }
+
+    pub fn x_basis_points(&self) -> u16 {
+        self.x_basis_points
+    }
+
+    pub fn y_basis_points(&self) -> u16 {
+        self.y_basis_points
+    }
+
+    pub fn z_order(&self) -> u32 {
+        self.z_order
+    }
+}
+
+/// Transactional placement map for the complete top-level desktop.
+///
+/// Every ungrouped inventory item and every Group gets exactly one entry.
+/// Items belonging to one or more Groups are rendered inside those Group
+/// surfaces and must not also appear as top-level icons. No path, file contents,
+/// Shell object or source icon is stored in this layout.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DesktopLayout {
+    entries: Vec<DesktopLayoutEntry>,
+}
+
+impl DesktopLayout {
+    pub fn new(
+        entries: Vec<DesktopLayoutEntry>,
+        available_items: &[DesktopItemRef],
+        groups: &DesktopGroups,
+        topology: &MonitorTopology,
+    ) -> Result<Self, DesktopModelError> {
+        validate_desktop_layout(&entries, available_items, groups, topology)?;
+        Ok(Self { entries })
+    }
+
+    /// Validates the complete replacement before changing the active layout.
+    pub fn replace(
+        &mut self,
+        entries: Vec<DesktopLayoutEntry>,
+        available_items: &[DesktopItemRef],
+        groups: &DesktopGroups,
+        topology: &MonitorTopology,
+    ) -> Result<(), DesktopModelError> {
+        validate_desktop_layout(&entries, available_items, groups, topology)?;
+        self.entries = entries;
+        Ok(())
+    }
+
+    pub fn entries(&self) -> &[DesktopLayoutEntry] {
+        &self.entries
+    }
+
+    pub fn get(&self, target: &DesktopLayoutTarget) -> Option<&DesktopLayoutEntry> {
+        self.entries.iter().find(|entry| &entry.target == target)
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Whether this layout includes Group tiles that require the full Group
+    /// presentation and crash-safe restore capability pair.
+    pub fn groups_available(&self, capabilities: &PresentationCapabilities) -> bool {
+        !self
+            .entries
+            .iter()
+            .any(|entry| matches!(&entry.target, DesktopLayoutTarget::Group(_)))
+            || capabilities.groups_available()
+    }
+}
+
+fn validate_desktop_layout(
+    entries: &[DesktopLayoutEntry],
+    available_items: &[DesktopItemRef],
+    groups: &DesktopGroups,
+    topology: &MonitorTopology,
+) -> Result<(), DesktopModelError> {
+    if entries.len() > MAX_DESKTOP_LAYOUT_ENTRIES {
+        return Err(DesktopModelError::TooManyLayoutEntries);
+    }
+    if available_items.len() > MAX_DESKTOP_INVENTORY_ITEMS {
+        return Err(DesktopModelError::TooManyLayoutEntries);
+    }
+
+    let mut available = HashSet::with_capacity(available_items.len());
+    for item in available_items {
+        if !available.insert(item.id()) {
+            return Err(DesktopModelError::DuplicateItemIdentifier);
+        }
+    }
+
+    let mut grouped_items = HashSet::new();
+    for group in groups.groups() {
+        for member in group.members() {
+            if !available.contains(member) {
+                return Err(DesktopModelError::UnknownMember);
+            }
+            grouped_items.insert(member.clone());
+        }
+    }
+
+    let mut seen_targets = HashSet::with_capacity(entries.len());
+    let monitor_ids = topology
+        .monitors()
+        .iter()
+        .map(Monitor::id)
+        .collect::<HashSet<_>>();
+
+    for entry in entries {
+        if !monitor_ids.contains(entry.monitor_id.as_str()) {
+            return Err(DesktopModelError::UnknownMonitor);
+        }
+        if entry.x_basis_points > DESKTOP_LAYOUT_COORDINATE_MAX
+            || entry.y_basis_points > DESKTOP_LAYOUT_COORDINATE_MAX
+        {
+            return Err(DesktopModelError::InvalidLayoutCoordinate);
+        }
+        if let DesktopLayoutTarget::Group(group_id) = &entry.target {
+            validate_text(
+                group_id,
+                MAX_DESKTOP_IDENTIFIER_BYTES,
+                DesktopModelError::EmptyIdentifier,
+                DesktopModelError::IdentifierTooLong,
+            )?;
+            if groups.get(group_id).is_none() {
+                return Err(DesktopModelError::UnknownGroup);
+            }
+        }
+        if let DesktopLayoutTarget::Item(item_id) = &entry.target {
+            if !available.contains(item_id) {
+                return Err(DesktopModelError::UnknownMember);
+            }
+            if grouped_items.contains(item_id) {
+                return Err(DesktopModelError::GroupedItemHasIndependentPosition);
+            }
+        }
+        if !seen_targets.insert(entry.target.clone()) {
+            return Err(DesktopModelError::DuplicateLayoutTarget);
+        }
+    }
+
+    let expected_entries = available.len() - grouped_items.len() + groups.len();
+    if entries.len() != expected_entries {
+        return Err(DesktopModelError::LayoutIncomplete);
+    }
+
+    for item in available_items {
+        if !grouped_items.contains(item.id())
+            && !seen_targets.contains(&DesktopLayoutTarget::Item(item.id().clone()))
+        {
+            return Err(DesktopModelError::LayoutIncomplete);
+        }
+    }
+    for group in groups.groups() {
+        if !seen_targets.contains(&DesktopLayoutTarget::Group(group.id().to_string())) {
+            return Err(DesktopModelError::LayoutIncomplete);
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AppIconMask {
     Circle,
@@ -590,6 +828,12 @@ pub enum DesktopModelError {
     InvalidSafeZone,
     UnknownGroup,
     MemberNotInGroup,
+    TooManyLayoutEntries,
+    UnknownMonitor,
+    InvalidLayoutCoordinate,
+    GroupedItemHasIndependentPosition,
+    DuplicateLayoutTarget,
+    LayoutIncomplete,
 }
 
 impl std::fmt::Display for DesktopModelError {
@@ -621,6 +865,22 @@ impl std::fmt::Display for DesktopModelError {
             }
             Self::UnknownGroup => f.write_str("desktop Group does not exist"),
             Self::MemberNotInGroup => f.write_str("desktop item is not a member of this Group"),
+            Self::TooManyLayoutEntries => {
+                f.write_str("desktop layout exceeds the 4,160-entry limit")
+            }
+            Self::UnknownMonitor => f.write_str("desktop layout references an unknown monitor"),
+            Self::InvalidLayoutCoordinate => {
+                f.write_str("desktop layout coordinates must be between 0 and 10,000 basis points")
+            }
+            Self::GroupedItemHasIndependentPosition => {
+                f.write_str("a Group member cannot also have an independent desktop position")
+            }
+            Self::DuplicateLayoutTarget => {
+                f.write_str("a top-level desktop item or Group has more than one layout entry")
+            }
+            Self::LayoutIncomplete => {
+                f.write_str("desktop layout must place every ungrouped item and every Group exactly once")
+            }
         }
     }
 }
@@ -823,6 +1083,215 @@ mod tests {
             Err(DesktopModelError::UnknownGroup)
         );
         assert_eq!(groups, before);
+    }
+
+
+    fn desktop_topology() -> MonitorTopology {
+        MonitorTopology::new(vec![
+            crate::Monitor::new(
+                "DISPLAY-A",
+                crate::Rect::new(0.0, 0.0, 1920.0, 1080.0).unwrap(),
+                crate::Rect::new(0.0, 0.0, 1920.0, 1040.0).unwrap(),
+                true,
+            ).unwrap(),
+            crate::Monitor::new(
+                "DISPLAY-B",
+                crate::Rect::new(1920.0, 0.0, 1920.0, 1080.0).unwrap(),
+                crate::Rect::new(1920.0, 0.0, 1920.0, 1040.0).unwrap(),
+                false,
+            ).unwrap(),
+        ]).unwrap()
+    }
+
+    #[test]
+    fn desktop_layout_places_groups_and_ungrouped_items_once_per_monitor() {
+        let items = desktop_items();
+        let groups = DesktopGroups::new(
+            vec![DesktopGroup::new(
+                "group:work",
+                "Work",
+                vec![
+                    DesktopItemId::new("app:editor").unwrap(),
+                    DesktopItemId::new("file:notes").unwrap(),
+                ],
+            ).unwrap()],
+            &items,
+        ).unwrap();
+        let topology = desktop_topology();
+        let layout = DesktopLayout::new(
+            vec![
+                DesktopLayoutEntry::new(
+                    DesktopLayoutTarget::Group("group:work".into()),
+                    "DISPLAY-A",
+                    2_500,
+                    3_500,
+                    0,
+                ).unwrap(),
+                DesktopLayoutEntry::new(
+                    DesktopLayoutTarget::Item(DesktopItemId::new("folder:assets").unwrap()),
+                    "DISPLAY-B",
+                    7_500,
+                    2_000,
+                    1,
+                ).unwrap(),
+            ],
+            &items,
+            &groups,
+            &topology,
+        ).unwrap();
+
+        assert_eq!(layout.len(), 2);
+        assert_eq!(
+            layout.get(&DesktopLayoutTarget::Group("group:work".into()))
+                .unwrap()
+                .monitor_id(),
+            "DISPLAY-A"
+        );
+        assert_eq!(
+            layout.get(&DesktopLayoutTarget::Item(DesktopItemId::new("folder:assets").unwrap()))
+                .unwrap()
+                .x_basis_points(),
+            7_500
+        );
+
+        let capabilities = PresentationCapabilities {
+            virtual_groups: true,
+            crash_safe_group_restore: false,
+            ..PresentationCapabilities::default()
+        };
+        assert!(!layout.groups_available(&capabilities));
+        let capabilities = PresentationCapabilities {
+            virtual_groups: true,
+            crash_safe_group_restore: true,
+            ..PresentationCapabilities::default()
+        };
+        assert!(layout.groups_available(&capabilities));
+    }
+
+    #[test]
+    fn desktop_layout_rejects_duplicate_missing_unknown_and_grouped_targets() {
+        let items = desktop_items();
+        let groups = DesktopGroups::new(
+            vec![DesktopGroup::new(
+                "group:work",
+                "Work",
+                vec![
+                    DesktopItemId::new("app:editor").unwrap(),
+                    DesktopItemId::new("file:notes").unwrap(),
+                ],
+            ).unwrap()],
+            &items,
+        ).unwrap();
+        let topology = desktop_topology();
+        let valid_entries = vec![
+            DesktopLayoutEntry::new(
+                DesktopLayoutTarget::Group("group:work".into()),
+                "DISPLAY-A",
+                2_500,
+                3_500,
+                0,
+            ).unwrap(),
+            DesktopLayoutEntry::new(
+                DesktopLayoutTarget::Item(DesktopItemId::new("folder:assets").unwrap()),
+                "DISPLAY-B",
+                7_500,
+                2_000,
+                1,
+            ).unwrap(),
+        ];
+        let mut layout = DesktopLayout::new(
+            valid_entries.clone(),
+            &items,
+            &groups,
+            &topology,
+        ).unwrap();
+
+        let duplicate = vec![valid_entries[0].clone(), valid_entries[0].clone()];
+        assert_eq!(
+            layout.replace(duplicate, &items, &groups, &topology),
+            Err(DesktopModelError::DuplicateLayoutTarget)
+        );
+        assert_eq!(layout.entries(), valid_entries.as_slice());
+
+        let grouped_item = vec![
+            valid_entries[0].clone(),
+            DesktopLayoutEntry::new(
+                DesktopLayoutTarget::Item(DesktopItemId::new("app:editor").unwrap()),
+                "DISPLAY-A",
+                5_000,
+                5_000,
+                1,
+            ).unwrap(),
+            valid_entries[1].clone(),
+        ];
+        assert_eq!(
+            layout.replace(grouped_item, &items, &groups, &topology),
+            Err(DesktopModelError::GroupedItemHasIndependentPosition)
+        );
+        assert_eq!(layout.entries(), valid_entries.as_slice());
+
+        let missing = vec![valid_entries[0].clone()];
+        assert_eq!(
+            layout.replace(missing, &items, &groups, &topology),
+            Err(DesktopModelError::LayoutIncomplete)
+        );
+        assert_eq!(layout.entries(), valid_entries.as_slice());
+
+        let unknown_monitor = vec![
+            valid_entries[0].clone(),
+            DesktopLayoutEntry::new(
+                valid_entries[1].target().clone(),
+                "DISPLAY-MISSING",
+                7_500,
+                2_000,
+                1,
+            ).unwrap(),
+        ];
+        assert_eq!(
+            layout.replace(unknown_monitor, &items, &groups, &topology),
+            Err(DesktopModelError::UnknownMonitor)
+        );
+    }
+
+    #[test]
+    fn desktop_layout_coordinates_are_bounded() {
+        assert_eq!(
+            DesktopLayoutEntry::new(
+                DesktopLayoutTarget::Item(DesktopItemId::new("file:notes").unwrap()),
+                "DISPLAY-A",
+                10_001,
+                0,
+                0,
+            ),
+            Err(DesktopModelError::InvalidLayoutCoordinate)
+        );
+        assert!(DesktopLayoutEntry::new(
+            DesktopLayoutTarget::Item(DesktopItemId::new("file:notes").unwrap()),
+            "DISPLAY-A",
+            10_000,
+            10_000,
+            0,
+        ).is_ok());
+    }
+
+    #[test]
+    fn desktop_layout_rejects_inventory_over_the_portable_bound() {
+        let items = (0..=MAX_DESKTOP_INVENTORY_ITEMS)
+            .map(|index| {
+                DesktopItemRef::new(
+                    format!("file:item-{index}"),
+                    format!("Item {index}"),
+                    DesktopItemKind::File,
+                )
+                .unwrap()
+            })
+            .collect::<Vec<_>>();
+        let groups = DesktopGroups::default();
+        let topology = desktop_topology();
+        assert_eq!(
+            DesktopLayout::new(Vec::new(), &items, &groups, &topology),
+            Err(DesktopModelError::TooManyLayoutEntries)
+        );
     }
 
     #[test]

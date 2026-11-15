@@ -655,6 +655,263 @@ int wl_Lwlde_desktop_group_contains(
     return 0;
 }
 
+
+static int wl_Lwlde_desktop_item_is_grouped(
+    const wl_Lwlde_desktop_groups *groups,
+    const char *item_id
+)
+{
+    unsigned int index;
+    if (groups == 0 || groups->groups == 0) return 0;
+    for (index = 0U; index < groups->count; ++index) {
+        if (wl_Lwlde_desktop_group_contains(&groups->groups[index], item_id)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int wl_Lwlde_desktop_layout_target_present(
+    const wl_Lwlde_desktop_layout_entry *entries,
+    unsigned int count,
+    wl_Lwlde_desktop_layout_target_kind target_kind,
+    const char *target_id
+)
+{
+    unsigned int index;
+    if (entries == 0 || target_id == 0) return 0;
+    for (index = 0U; index < count; ++index) {
+        if (entries[index].target_kind == target_kind &&
+            strcmp(entries[index].target_id, target_id) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int wl_Lwlde_desktop_layout_monitor_exists(
+    const wl_Lwlde_topology *topology,
+    const char *monitor_id
+)
+{
+    unsigned int index;
+    const wl_Lwlde_monitor *monitor;
+    if (topology == 0 || topology->monitors == 0 || monitor_id == 0) return 0;
+    for (index = 0U; index < topology->count; ++index) {
+        monitor = wl_Lwlde_topology_get(topology, index);
+        if (monitor != 0 && strcmp(monitor->id, monitor_id) == 0) return 1;
+    }
+    return 0;
+}
+
+wl_Lwlde_result wl_Lwlde_desktop_layout_init(
+    wl_Lwlde_desktop_layout *layout,
+    wl_Lwlde_desktop_layout_entry *storage,
+    unsigned int capacity
+)
+{
+    if (layout == 0 || capacity > WL_LWDE_MAX_DESKTOP_LAYOUT_ENTRIES ||
+        (capacity > 0U && storage == 0)) {
+        return WL_LWDE_INVALID_ARGUMENT;
+    }
+    layout->entries = storage;
+    layout->count = 0U;
+    layout->capacity = capacity;
+    return WL_LWDE_OK;
+}
+
+wl_Lwlde_result wl_Lwlde_desktop_layout_replace(
+    wl_Lwlde_desktop_layout *layout,
+    const wl_Lwlde_desktop_layout_entry *replacement,
+    unsigned int replacement_count,
+    const wl_Lwlde_desktop_item_ref *available_items,
+    unsigned int available_item_count,
+    const wl_Lwlde_desktop_groups *groups,
+    const wl_Lwlde_topology *topology
+)
+{
+    unsigned int index;
+    unsigned int previous;
+    unsigned int expected_count;
+    unsigned int group_index;
+    unsigned int member_index;
+    unsigned int previous_member;
+    const wl_Lwlde_desktop_group *group;
+    const wl_Lwlde_monitor *monitor;
+    const wl_Lwlde_desktop_layout_entry *entry;
+
+    if (layout == 0 || groups == 0 || topology == 0 ||
+        (replacement_count > 0U && replacement == 0) ||
+        (available_item_count > 0U && available_items == 0)) {
+        return WL_LWDE_INVALID_ARGUMENT;
+    }
+    if (available_item_count > WL_LWDE_MAX_DESKTOP_INVENTORY_ITEMS ||
+        layout->count > layout->capacity ||
+        layout->capacity > WL_LWDE_MAX_DESKTOP_LAYOUT_ENTRIES ||
+        (layout->capacity > 0U && layout->entries == 0) ||
+        groups->count > WL_LWDE_MAX_DESKTOP_GROUPS ||
+        groups->count > groups->capacity ||
+        (groups->count > 0U && groups->groups == 0) ||
+        topology->count > WL_LWDE_MAX_MONITORS ||
+        topology->count > topology->capacity ||
+        (topology->count > 0U && topology->monitors == 0)) {
+        return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+    }
+    if (replacement_count > WL_LWDE_MAX_DESKTOP_LAYOUT_ENTRIES ||
+        replacement_count > layout->capacity) {
+        return WL_LWDE_TOO_MANY_DESKTOP_LAYOUT_ENTRIES;
+    }
+
+    for (index = 0U; index < available_item_count; ++index) {
+        if (!wl_Lwlde_text_valid(available_items[index].id,
+                WL_LWDE_DESKTOP_ID_CAPACITY) ||
+            !wl_Lwlde_text_valid(available_items[index].label,
+                WL_LWDE_DESKTOP_LABEL_CAPACITY) ||
+            available_items[index].kind < WL_LWDE_DESKTOP_FILE ||
+            available_items[index].kind > WL_LWDE_DESKTOP_APPLICATION) {
+            return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+        }
+        for (previous = 0U; previous < index; ++previous) {
+            if (strcmp(available_items[index].id,
+                    available_items[previous].id) == 0) {
+                return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+            }
+        }
+    }
+
+    for (index = 0U; index < groups->count; ++index) {
+        group = &groups->groups[index];
+        if (!wl_Lwlde_text_valid(group->id, WL_LWDE_DESKTOP_ID_CAPACITY) ||
+            !wl_Lwlde_text_valid(group->label, WL_LWDE_DESKTOP_LABEL_CAPACITY) ||
+            group->member_count == 0U ||
+            group->member_count > WL_LWDE_MAX_DESKTOP_GROUP_MEMBERS ||
+            group->member_ids == 0) {
+            return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+        }
+        for (previous = 0U; previous < index; ++previous) {
+            if (strcmp(group->id, groups->groups[previous].id) == 0) {
+                return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+            }
+        }
+        for (member_index = 0U; member_index < group->member_count; ++member_index) {
+            if (!wl_Lwlde_text_valid(group->member_ids[member_index],
+                    WL_LWDE_DESKTOP_ID_CAPACITY) ||
+                !wl_Lwlde_desktop_item_exists(group->member_ids[member_index],
+                    available_items, available_item_count)) {
+                return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+            }
+            for (previous_member = 0U; previous_member < member_index; ++previous_member) {
+                if (strcmp(group->member_ids[member_index],
+                        group->member_ids[previous_member]) == 0) {
+                    return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+                }
+            }
+        }
+    }
+
+    for (index = 0U; index < topology->count; ++index) {
+        monitor = wl_Lwlde_topology_get(topology, index);
+        if (monitor == 0 || !wl_Lwlde_valid_monitor(monitor)) {
+            return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+        }
+        for (previous = 0U; previous < index; ++previous) {
+            if (strcmp(monitor->id, topology->monitors[previous].id) == 0) {
+                return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+            }
+        }
+    }
+
+    expected_count = groups->count;
+    for (index = 0U; index < available_item_count; ++index) {
+        if (!wl_Lwlde_desktop_item_is_grouped(groups, available_items[index].id)) {
+            ++expected_count;
+        }
+    }
+    if (expected_count > WL_LWDE_MAX_DESKTOP_LAYOUT_ENTRIES) {
+        return WL_LWDE_TOO_MANY_DESKTOP_LAYOUT_ENTRIES;
+    }
+    if (replacement_count != expected_count) {
+        return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+    }
+
+    for (index = 0U; index < replacement_count; ++index) {
+        entry = &replacement[index];
+        if (!wl_Lwlde_text_valid(entry->target_id, WL_LWDE_DESKTOP_ID_CAPACITY) ||
+            !wl_Lwlde_text_valid(entry->monitor_id, WL_LWDE_MONITOR_ID_CAPACITY) ||
+            entry->x_basis_points > WL_LWDE_DESKTOP_LAYOUT_COORDINATE_MAX ||
+            entry->y_basis_points > WL_LWDE_DESKTOP_LAYOUT_COORDINATE_MAX ||
+            !wl_Lwlde_desktop_layout_monitor_exists(topology, entry->monitor_id)) {
+            return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+        }
+
+        if (entry->target_kind == WL_LWDE_DESKTOP_LAYOUT_ITEM) {
+            if (!wl_Lwlde_desktop_item_exists(entry->target_id,
+                    available_items, available_item_count) ||
+                wl_Lwlde_desktop_item_is_grouped(groups, entry->target_id)) {
+                return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+            }
+        } else if (entry->target_kind == WL_LWDE_DESKTOP_LAYOUT_GROUP) {
+            if (wl_Lwlde_desktop_groups_find(groups, entry->target_id) == 0) {
+                return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+            }
+        } else {
+            return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+        }
+
+        for (previous = 0U; previous < index; ++previous) {
+            if (replacement[previous].target_kind == entry->target_kind &&
+                strcmp(replacement[previous].target_id, entry->target_id) == 0) {
+                return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+            }
+        }
+    }
+
+    for (index = 0U; index < available_item_count; ++index) {
+        if (!wl_Lwlde_desktop_item_is_grouped(groups, available_items[index].id) &&
+            !wl_Lwlde_desktop_layout_target_present(replacement, replacement_count,
+                WL_LWDE_DESKTOP_LAYOUT_ITEM, available_items[index].id)) {
+            return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+        }
+    }
+    for (group_index = 0U; group_index < groups->count; ++group_index) {
+        if (!wl_Lwlde_desktop_layout_target_present(replacement, replacement_count,
+                WL_LWDE_DESKTOP_LAYOUT_GROUP, groups->groups[group_index].id)) {
+            return WL_LWDE_INVALID_DESKTOP_LAYOUT;
+        }
+    }
+
+    if (replacement_count > 0U) {
+        memmove(layout->entries, replacement,
+            replacement_count * sizeof(wl_Lwlde_desktop_layout_entry));
+    }
+    layout->count = replacement_count;
+    return WL_LWDE_OK;
+}
+
+const wl_Lwlde_desktop_layout_entry *wl_Lwlde_desktop_layout_find(
+    const wl_Lwlde_desktop_layout *layout,
+    wl_Lwlde_desktop_layout_target_kind target_kind,
+    const char *target_id
+)
+{
+    unsigned int index;
+    if (layout == 0 || layout->count > layout->capacity ||
+        layout->count > WL_LWDE_MAX_DESKTOP_LAYOUT_ENTRIES ||
+        (layout->count > 0U && layout->entries == 0) ||
+        !wl_Lwlde_text_valid(target_id, WL_LWDE_DESKTOP_ID_CAPACITY) ||
+        (target_kind != WL_LWDE_DESKTOP_LAYOUT_ITEM &&
+            target_kind != WL_LWDE_DESKTOP_LAYOUT_GROUP)) {
+        return 0;
+    }
+    for (index = 0U; index < layout->count; ++index) {
+        if (layout->entries[index].target_kind == target_kind &&
+            strcmp(layout->entries[index].target_id, target_id) == 0) {
+            return &layout->entries[index];
+        }
+    }
+    return 0;
+}
+
 wl_Lwlde_result wl_Lwlde_adaptive_app_icon_validate(
     const wl_Lwlde_adaptive_app_icon *icon
 )

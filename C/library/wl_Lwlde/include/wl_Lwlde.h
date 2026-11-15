@@ -17,6 +17,9 @@
 #define WL_LWDE_MONITOR_ID_CAPACITY 64U
 #define WL_LWDE_EXECUTABLE_SHA256_SIZE 32U
 #define WL_LWDE_MAX_GAME_MODE_PROFILES 64U
+#define WL_LWDE_MAX_DESKTOP_INVENTORY_ITEMS 4096U
+#define WL_LWDE_MAX_DESKTOP_LAYOUT_ENTRIES 4160U
+#define WL_LWDE_DESKTOP_LAYOUT_COORDINATE_MAX 10000U
 
 typedef enum wl_Lwlde_result {
     WL_LWDE_OK = 0,
@@ -38,7 +41,9 @@ typedef enum wl_Lwlde_result {
     WL_LWDE_TOO_MANY_DESKTOP_GROUPS = 16,
     WL_LWDE_INVALID_APP_ICON = 17,
     WL_LWDE_INVALID_ICON_PIXELS = 18,
-    WL_LWDE_INVALID_ICON_OUTPUT = 19
+    WL_LWDE_INVALID_ICON_OUTPUT = 19,
+    WL_LWDE_INVALID_DESKTOP_LAYOUT = 20,
+    WL_LWDE_TOO_MANY_DESKTOP_LAYOUT_ENTRIES = 21
 } wl_Lwlde_result;
 
 typedef struct wl_Lwlde_rect {
@@ -366,6 +371,51 @@ const wl_Lwlde_desktop_group *wl_Lwlde_desktop_groups_find(
 int wl_Lwlde_desktop_group_contains(
     const wl_Lwlde_desktop_group *group,
     const char *item_id
+);
+
+typedef enum wl_Lwlde_desktop_layout_target_kind {
+    WL_LWDE_DESKTOP_LAYOUT_ITEM = 0,
+    WL_LWDE_DESKTOP_LAYOUT_GROUP = 1
+} wl_Lwlde_desktop_layout_target_kind;
+
+/*
+ * Normalized monitor-work-area anchor: x/y are basis points in 0..=10,000.
+ * z_order is a stable presentation-order hint, not Shell/file ordering.
+ */
+typedef struct wl_Lwlde_desktop_layout_entry {
+    wl_Lwlde_desktop_layout_target_kind target_kind;
+    char target_id[WL_LWDE_DESKTOP_ID_CAPACITY];
+    char monitor_id[WL_LWDE_MONITOR_ID_CAPACITY];
+    unsigned int x_basis_points;
+    unsigned int y_basis_points;
+    unsigned int z_order;
+} wl_Lwlde_desktop_layout_entry;
+
+/* Caller-owned fixed storage; a valid replacement is committed atomically. */
+typedef struct wl_Lwlde_desktop_layout {
+    wl_Lwlde_desktop_layout_entry *entries;
+    unsigned int count;
+    unsigned int capacity;
+} wl_Lwlde_desktop_layout;
+
+wl_Lwlde_result wl_Lwlde_desktop_layout_init(
+    wl_Lwlde_desktop_layout *layout,
+    wl_Lwlde_desktop_layout_entry *storage,
+    unsigned int capacity
+);
+wl_Lwlde_result wl_Lwlde_desktop_layout_replace(
+    wl_Lwlde_desktop_layout *layout,
+    const wl_Lwlde_desktop_layout_entry *replacement,
+    unsigned int replacement_count,
+    const wl_Lwlde_desktop_item_ref *available_items,
+    unsigned int available_item_count,
+    const wl_Lwlde_desktop_groups *groups,
+    const wl_Lwlde_topology *topology
+);
+const wl_Lwlde_desktop_layout_entry *wl_Lwlde_desktop_layout_find(
+    const wl_Lwlde_desktop_layout *layout,
+    wl_Lwlde_desktop_layout_target_kind target_kind,
+    const char *target_id
 );
 
 typedef enum wl_Lwlde_app_icon_mask {

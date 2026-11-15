@@ -489,3 +489,14 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Updated both Desktop Groups pages to describe transactional Group commands and the BGW read-only User/Public Desktop filesystem inventory.
 - Added explicit boundaries for work not yet wired: Manager/BGW status and configuration IPC, durable Group storage, exact Shell-view membership, virtual namespace entries, Explorer context-menu registration, native icon presentation, live Group tiles and crash restoration.
 - Kept Groups disabled for live presentation until native icon restoration can be demonstrated across BGW crash, Explorer restart, disable, session exit and uninstall.
+
+
+## WLDE normalized desktop layout — 2026-11-15
+
+- Added paired Rust/C89 top-level placement models for ordinary desktop items and Group tiles.
+- Each entry stores an Item/Group target, a current monitor ID, normalized x/y anchors in 0–10,000 basis points against the monitor work area, and a stable z-order hint.
+- Every ungrouped inventory item and every Group must have exactly one placement. Group members cannot also have standalone desktop-icon positions.
+- Replacement validates inventory identity, Group membership/uniqueness, monitor membership, coordinate bounds, duplicate targets and completeness before committing. Failed replacement preserves the last valid layout.
+- Bounded the model at 4,096 inventory records plus 64 Groups (4,160 layout placements); C89 uses caller-owned fixed storage and no allocation.
+- Added Rust and C89 tests for valid multi-monitor placement, Group tile membership, duplicate target rejection, unknown monitor rejection, invalid coordinate rejection, incomplete layout rejection and transactional preservation.
+- This remains data only. There is no live desktop tile presenter, native icon suppression, Shell context-menu hook, persistent layout storage or verified crash-safe restore yet.
