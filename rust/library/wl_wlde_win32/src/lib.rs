@@ -11,11 +11,16 @@ use std::time::Duration;
 use wl_wlde::{MonitorTopology, TopologyError};
 
 mod desktop_inventory;
+mod desktop_namespace;
 mod desktop_shell_icon;
 pub use desktop_inventory::{
     enumerate_desktop_items, watch_desktop_folders, DesktopFolder, DesktopInventoryError,
     DesktopInventoryItem, DesktopInventoryWatcher, DesktopItemIdentityStability,
     MAX_DESKTOP_INVENTORY_ITEMS,
+};
+pub use desktop_namespace::{
+    enumerate_desktop_namespace_items, DesktopNamespaceError, DesktopNamespaceItem,
+    DesktopNamespaceItemKind, DesktopNamespaceSnapshot, MAX_DESKTOP_NAMESPACE_ITEMS,
 };
 pub use desktop_shell_icon::{
     extract_desktop_shell_icon, rasterize_desktop_shell_icon_rgba, DesktopShellIcon,

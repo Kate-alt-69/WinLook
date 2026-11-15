@@ -76,6 +76,20 @@ reconciled before durable Group membership is restored. The portable Rust/C89 Gr
 host-ID agnostic; legacy C platform adapters need their own per-generation
 identity implementation.
 
+## Read-only Shell Desktop namespace snapshot
+
+enumerate_desktop_namespace_items() calls SHGetDesktopFolder to obtain the root Desktop IShellFolder, then calls EnumObjects for folder and non-folder children. Each child is inspected with GetAttributesOf and GetDisplayNameOf; filesystem-backed children may also expose an ephemeral parsing path. Virtual namespace records are represented separately as VirtualItem or VirtualFolder.
+
+The snapshot is deliberately bounded: at most 4,096 enumerated children, one single-level child PIDL per item (64 KiB maximum), 32,768 UTF-16 units per Shell name and 16 MiB of retained label/path text. Entries whose PIDL, attributes or display name cannot be validated are skipped and included in skipped_items(). The call uses a null owner window so a provider that needs user input must fail silently rather than display a prompt.
+
+Each id() is a SHA-256 digest of the current PIDL bytes. Treat it as session-only: Shell PIDL encodings are not durable file/profile identities and must never be persisted into Groups, templates or remote messages. Any filesystem_path() is also ephemeral and must not be logged or persisted.
+
+This enumerates direct children exposed by the root Shell namespace; it is not an IFolderView snapshot. It does not report the actual desktop view's current visible/filtered items, icon positions, ordering, selection, hidden-item policy or view state. It does not enumerate descendants. The existing filesystem inventory remains a separate path-free identity source for local Group state.
+
+The function initializes an STA COM apartment on its calling thread and balances CoUninitialize. Run it on a dedicated worker: Shell namespace providers can be slow or unresponsive. BGW uses one bounded STA worker, one request at a time, and does not block its Explorer-host monitor loop. A 20-second timeout is diagnostic only; the worker is not force-killed or replaced while a Shell call may still be active.
+
+The current adapter path is the modern Windows implementation. This snapshot is read-only: it does not hide or replace native icons, register Shell objects, intercept menus, display Groups, or change Explorer state.
+
 ## Explorer desktop-host discovery
 
 `discover_desktop_host()` identifies the process that owns the current
@@ -168,8 +182,10 @@ path argument, so paths over 259 UTF-16 code units (excluding the terminator)
 return `PathTooLong` rather than being passed through undocumented extended
 path behavior. Unsupported, inaccessible or missing icons return a typed
 error and leave Explorer's native desktop unchanged. This path-based
-first step does not cover virtual Shell namespace items or exact IFolderView
-membership; those need the dedicated PIDL/Shell-view bridge.
+icon extraction still does not operate on virtual namespace items or the
+actual IFolderView membership. The separate read-only namespace inventory
+below classifies root namespace items, but it does not provide live view state
+or render icons into the desktop.
 
 
 ## Reuse as a Windows platform adapter
@@ -192,6 +208,8 @@ Public API families:
 - `enumerate_desktop_items`, `watch_desktop_folders`,
   `DesktopInventoryItem`, `DesktopFolder`,
   `DesktopItemIdentityStability` and the fixed inventory limit.
+- `enumerate_desktop_namespace_items`, `DesktopNamespaceSnapshot`,
+  `DesktopNamespaceItem`, `DesktopNamespaceItemKind` and the namespace limits.
 - `discover_desktop_host`, `monitor_desktop_host`,
   `is_same_desktop_host`, `DesktopHostIdentity` and the process-monitor
   contract.
@@ -213,6 +231,6 @@ icons, replace Shell registrations, intercept menus or draw Group tiles.
 
 Non-Windows builds retain pure helper tests and return explicit
 `UnsupportedPlatform` errors for the Windows collection operations. Run
-`cargo test -p wl_wlde_win32`; the actual Win32 monitor, inventory, host
+`cargo test -p wl_wlde_win32`; the actual Win32 monitor, filesystem inventory, Shell namespace, host
 monitor and HICON smoke checks require Windows CI. See the [shared library
 catalog](../README.md) for dependency selection and the repository-wide gate.

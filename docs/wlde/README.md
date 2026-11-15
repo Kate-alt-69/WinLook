@@ -78,6 +78,21 @@ startup registration, authenticated Manager IPC, configuration persistence,
 Shell extension/hook installation, icon suppression/restoration, Group
 presentation and wallpaper rendering remain unimplemented.
 
+## Read-only Shell namespace inventory
+
+The modern Win32 adapter and BGW runtime now perform a bounded read-only
+enumeration of direct children exposed by the root Desktop IShellFolder. This
+supplements the filesystem-only User/Public Desktop inventory with virtual
+namespace records and filesystem-backed Shell items. BGW performs the calls on
+one isolated STA worker and reports aggregate counts without logging item
+names or paths.
+
+PIDL-derived IDs are session-only and are not written into Group/layout
+persistence. The snapshot is not the actual IFolderView desktop view: item
+visibility/filtering, positions, order, selection, and view state remain
+unimplemented. Native icon replacement, Shell hooks, Group presentation and
+crash-safe restoration remain disabled.
+
 ## Manager UI coverage
 
 The shared Manager navigation now includes a dedicated destination for each
@@ -98,8 +113,8 @@ The UI reports the current boundary honestly: the Store provider actions and
 Wallpaper Engine hand-off are available; the monitor snapshot, resource
 policy, Game Mode resolver, virtual Group model and adaptive app-icon bitmap compositor exist.
 Windows telemetry, foreground/fullscreen detection, profile persistence, local
-library import, native wallpaper rendering, icon extraction/drawing, live
-desktop inventory, custom right-click presentation, widget execution and
+library import, native wallpaper rendering, live desktop-view membership,
+icon replacement/drawing into the desktop, custom right-click presentation, widget execution and
 Rainmeter runtime are not connected. Desktop Groups remain visibly disabled
 until crash-safe Shell restoration is proven.
 

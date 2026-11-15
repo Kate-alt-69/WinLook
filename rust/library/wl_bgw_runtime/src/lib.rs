@@ -14,6 +14,8 @@ use std::time::{Duration, Instant};
 #[cfg(any(windows, test))]
 #[allow(dead_code)]
 mod desktop_icon_pipeline;
+#[cfg(windows)]
+mod desktop_namespace_worker;
 mod desktop_store;
 pub use desktop_store::{
     DesktopItemIdentityRecord, DesktopStateSnapshot, DesktopStateStore, DesktopStateStoreError,
@@ -22,11 +24,14 @@ pub use desktop_store::{
 #[cfg(windows)]
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
+use desktop_namespace_worker::{DesktopNamespaceWorker, DesktopNamespaceWorkerPoll};
+#[cfg(windows)]
 use wl_wlde::DesktopItemKind;
 #[cfg(windows)]
 use wl_wlde_win32::{
     enumerate_desktop_items, enumerate_monitors, is_same_desktop_host, monitor_desktop_host,
     watch_desktop_folders, DesktopFolder, DesktopInventoryItem, DesktopInventoryWatcher,
+    DesktopNamespaceItemKind,
 };
 
 #[cfg(windows)]
@@ -46,6 +51,8 @@ fn load_desktop_state(
 const DESKTOP_HOST_RECHECK_INTERVAL: Duration = Duration::from_secs(5);
 #[cfg(windows)]
 const DESKTOP_ICON_POLL_INTERVAL: Duration = Duration::from_millis(250);
+#[cfg(windows)]
+const DESKTOP_NAMESPACE_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 #[cfg(windows)]
 const SHELL_UNAVAILABLE_RETRY_INTERVAL: Duration = Duration::from_secs(2);
 
@@ -106,6 +113,16 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             None
         }
     };
+    let mut desktop_namespace_worker = match DesktopNamespaceWorker::new() {
+        Ok(worker) => Some(worker),
+        Err(error) => {
+            report_status(&format!(
+                "WLDE Shell namespace worker unavailable; virtual Desktop items will not be indexed: {error}"
+            ));
+            None
+        }
+    };
+    let mut host_generation = 0u64;
 
     loop {
         let monitor = match monitor_desktop_host() {
@@ -124,6 +141,13 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
 
         waiting_for_shell_logged = false;
         let identity = monitor.identity().clone();
+        host_generation = host_generation.wrapping_add(1).max(1);
+        let current_host_generation = host_generation;
+        if let Some(worker) = desktop_namespace_worker.as_mut() {
+            if worker.request_refresh(current_host_generation) {
+                report_status("WLDE queued a read-only Shell Desktop namespace snapshot");
+            }
+        }
         report_status(&format!(
             "WLDE desktop host attached: explorer.exe pid={} session={} created={} image={}",
             identity.process_id(),
@@ -198,6 +222,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             }
         };
         let mut last_fallback_inventory_refresh = Instant::now();
+        let mut last_namespace_refresh = Instant::now();
 
         loop {
             if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
@@ -216,6 +241,81 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     report_status(&format!(
                         "WLDE queued {queued} additional Shell icons for background rasterization"
                     ));
+                }
+            }
+
+            if let Some(worker) = desktop_namespace_worker.as_mut() {
+                while let Some(update) = worker.poll() {
+                    match update {
+                        DesktopNamespaceWorkerPoll::Ready {
+                            generation,
+                            snapshot,
+                        } if generation == current_host_generation => {
+                            let filesystem_items = snapshot
+                                .items()
+                                .iter()
+                                .filter(|item| item.is_filesystem_backed())
+                                .count();
+                            let virtual_folders = snapshot
+                                .items()
+                                .iter()
+                                .filter(|item| {
+                                    item.kind() == DesktopNamespaceItemKind::VirtualFolder
+                                })
+                                .count();
+                            let virtual_items = snapshot
+                                .items()
+                                .iter()
+                                .filter(|item| {
+                                    item.kind() == DesktopNamespaceItemKind::VirtualItem
+                                })
+                                .count();
+                            report_status(&format!(
+                                "WLDE Shell namespace snapshot ready: {} entries (filesystem={} virtual-folders={} virtual-items={} skipped={}); PIDL identities are session-only",
+                                snapshot.len(),
+                                filesystem_items,
+                                virtual_folders,
+                                virtual_items,
+                                snapshot.skipped_items()
+                            ));
+                        }
+                        DesktopNamespaceWorkerPoll::Ready { .. } => {
+                            report_status(
+                                "WLDE discarded a stale Shell namespace snapshot after Explorer host replacement"
+                            );
+                        }
+                        DesktopNamespaceWorkerPoll::Failed {
+                            generation,
+                            message,
+                        } if generation == current_host_generation => {
+                            report_status(&format!(
+                                "WLDE Shell namespace snapshot failed; native desktop presentation remains unchanged: {message}"
+                            ));
+                        }
+                        DesktopNamespaceWorkerPoll::Failed { .. } => {
+                            report_status(
+                                "WLDE discarded an error from a previous Explorer host session"
+                            );
+                        }
+                        DesktopNamespaceWorkerPoll::TimedOut { generation }
+                            if generation == current_host_generation =>
+                        {
+                            report_status(
+                                "WLDE Shell namespace enumeration exceeded 20 seconds; BGW remains responsive and will not spawn a replacement worker"
+                            );
+                        }
+                        DesktopNamespaceWorkerPoll::TimedOut { .. } => {
+                            report_status(
+                                "WLDE previous Shell namespace request timed out after Explorer host replacement"
+                            );
+                        }
+                    }
+                }
+
+                if last_namespace_refresh.elapsed() >= DESKTOP_NAMESPACE_REFRESH_INTERVAL
+                    && worker.request_refresh(current_host_generation)
+                {
+                    last_namespace_refresh = Instant::now();
                 }
             }
 
@@ -316,6 +416,11 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                         _restored_desktop_state = desktop_state_store.as_ref().and_then(|store| {
                             load_committed_desktop_state(store, &desktop_inventory)
                         });
+                        if let Some(worker) = desktop_namespace_worker.as_mut() {
+                            if worker.request_refresh(current_host_generation) {
+                                last_namespace_refresh = Instant::now();
+                            }
+                        }
                         if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
                             pipeline.invalidate_path_fallbacks();
                             let queued = pipeline.request_missing(&desktop_inventory);

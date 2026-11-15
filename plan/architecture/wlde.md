@@ -494,8 +494,9 @@ represented by a static RGBA image. It flushes GDI before reading DIB memory
 and restores the original selected object before deleting the DIB. The output
 is compatible with the portable adaptive icon input. BGW now supplies a
 bounded memory cache keyed by item identity, DPI, theme and icon-size policy.
-Feeding the cached pixels into a presenter and enabling Groups remain later work. Virtual Shell namespace items and exact Explorer view
-membership still require PIDL/IFolderView integration. See WLDE-028–030 in
+Feeding the cached pixels into a presenter and enabling Groups remain later work. Virtual Shell namespace items now have a separate read-only root-namespace
+inventory; exact Explorer view membership still requires IFolderView integration.
+See WLDE-028–030 in
 `plan/references/SOURCES.md`.
 
 
@@ -525,3 +526,31 @@ desktop presenter: no icon is hidden or replaced, no Shell registration
 changes, and no Group is shown. The crash-safe native
 restoration journal remains a hard gate for presentation. See WLDE-028–036 in
 plan/references/SOURCES.md.
+
+
+## Read-only Shell Desktop namespace inventory — 2026-11-16
+
+The modern Win32 adapter now exposes enumerate_desktop_namespace_items()
+using SHGetDesktopFolder, IShellFolder::EnumObjects, GetAttributesOf and
+GetDisplayNameOf. It snapshots at most 4,096 direct namespace children,
+validates each returned single-level PIDL, and bounds retained label/path text.
+Filesystem-backed objects may expose an ephemeral parsing path; virtual
+objects are classified separately.
+
+PIDL hashes are session-scoped diagnostics, not stable item identities. Never
+persist them into Groups, templates or remote state. No Shell item path or name
+is emitted in BGW logs. BGW requests snapshots on verified Explorer attachment,
+every 30 seconds and after filesystem Desktop notifications through one
+isolated STA worker with a single in-flight request. Results carry an
+Explorer-host generation so a previous host's result is discarded after
+restart. A 20-second delay is logged but the worker is not killed/replaced; a
+blocked Shell provider must not cause unbounded thread creation or block the
+BGW monitor loop.
+
+This is not IFolderView and does not describe the current visible/filter/order/
+position/selection state of Explorer's desktop view. It does not hide, register,
+replace or draw icons, install an in-process hook, route context menus or enable
+Groups. Native presentation remains disabled until the separate restoration
+journal and per-generation bridge are implemented and tested.
+
+See WLDE-040–043 in the plan/references/SOURCES.md file.
