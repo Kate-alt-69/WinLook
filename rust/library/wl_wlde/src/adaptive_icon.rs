@@ -477,7 +477,11 @@ mod tests {
     #[test]
     fn monochrome_mode_uses_alpha_as_mask_and_applies_theme_tint() {
         let background = AdaptiveIconImageView::new(1, 1, &[12, 24, 36, 255]).unwrap();
-        let monochrome = AdaptiveIconImageView::new(1, 1, &[240, 10, 20, 255]).unwrap();
+        let monochrome_pixels = [
+            240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 0, 240, 10, 20, 255,
+            240, 10, 20, 255, 240, 10, 20, 0, 240, 10, 20, 255, 240, 10, 20, 255,
+        ];
+        let monochrome = AdaptiveIconImageView::new(3, 3, &monochrome_pixels).unwrap();
         let rendered = render_adaptive_app_icon_monochrome(
             &icon(AppIconMask::Squircle),
             background,
@@ -488,10 +492,10 @@ mod tests {
         .unwrap();
 
         let center = (16 * 32 + 16) * 4;
-        let outside_glyph = (8 * 32 + 16) * 4;
+        let outside_glyph = (5 * 32 + 16) * 4;
         assert_eq!(&rendered[center..center + 4], &[32, 160, 224, 255]);
         assert_eq!(&rendered[outside_glyph..outside_glyph + 3], &[12, 24, 36]);
-        assert_eq!(monochrome.pixels(), &[240, 10, 20, 255]);
+        assert_eq!(monochrome.pixels(), &monochrome_pixels);
     }
 
     #[test]
