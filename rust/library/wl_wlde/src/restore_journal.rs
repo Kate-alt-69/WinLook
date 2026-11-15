@@ -19,17 +19,18 @@ const FRAME_HEADER_BYTES: usize = 10;
 const FRAME_CHECKSUM_BYTES: usize = 4;
 const MAX_RECORD_PAYLOAD_BYTES: usize = 768;
 
-/// Durable operation phase encoded in every restoration record.
+/// Operation phase encoded in every append-only restoration record; the
+/// storage backend is responsible for durability.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum DesktopRestoreState {
     /// Captured original state; the native adapter has not been called.
     Prepared = 1,
-    /// The write-ahead boundary is durable; the native adapter may have run.
+    /// The caller has durably recorded write-ahead intent; the adapter may have run.
     Applying = 2,
     /// The desired state was read back and WinLook ownership was verified.
     Committed = 3,
-    /// Restoration intent is durable; the adapter may be restoring.
+    /// The caller has durably recorded restoration intent; the adapter may be restoring.
     Restoring = 4,
     /// The original state was read back after restoration.
     Restored = 5,
@@ -202,8 +203,9 @@ impl DesktopRestoreLedger {
     /// Applying an operation to the OS is outside this type. Evidence is
     /// required for every transition that claims a readback result:
     /// Committed and Restoring require the desired value plus ownership proof;
-    /// Restored and Applying->Aborted require the original value. Prepared may
-    /// move to Applying only after the caller has durably appended that record.
+    /// Restored and Applying->Aborted require the original value. The caller
+    /// must persist and flush the returned Applying record before invoking the
+    /// native adapter; this in-memory model cannot enforce a storage boundary.
     pub fn transition(
         &mut self,
         transaction_id: &[u8; 16],
@@ -864,6 +866,17 @@ mod tests {
     }
 
     #[test]
+    fn unsupported_version_is_rejected_even_in_a_partial_final_header() {
+        let (ledger, _) = ledger_with_prepared();
+        let mut encoded = encode_desktop_restore_ledger(&ledger).unwrap();
+        encoded[4] = 0xFF;
+        assert_eq!(
+            decode_desktop_restore_ledger(&encoded[..7]),
+            Err(DesktopRestoreJournalError::UnsupportedVersion)
+        );
+    }
+
+    #[test]
     fn complete_frame_with_bad_checksum_is_corruption() {
         let (ledger, _) = ledger_with_prepared();
         let mut encoded = encode_desktop_restore_ledger(&ledger).unwrap();
@@ -959,6 +972,39 @@ mod tests {
     }
 
     #[test]
+    fn aborting_after_apply_requires_readback_of_the_original_value() {
+        let (mut ledger, transaction_id) = ledger_with_prepared();
+        ledger
+            .transition(&transaction_id, DesktopRestoreState::Applying, None, false)
+            .unwrap();
+        assert_eq!(
+            ledger.transition(&transaction_id, DesktopRestoreState::Aborted, None, false),
+            Err(DesktopRestoreJournalError::MissingObservation)
+        );
+        assert_eq!(
+            ledger.transition(
+                &transaction_id,
+                DesktopRestoreState::Aborted,
+                Some(&[1]),
+                true
+            ),
+            Err(DesktopRestoreJournalError::ReadbackMismatch)
+        );
+        ledger
+            .transition(
+                &transaction_id,
+                DesktopRestoreState::Aborted,
+                Some(&[0]),
+                false
+            )
+            .unwrap();
+        assert_eq!(
+            ledger.latest_record(&transaction_id).unwrap().state(),
+            DesktopRestoreState::Aborted
+        );
+    }
+
+    #[test]
     fn operation_fields_and_resource_ids_are_bounded_and_path_free() {
         let mut ledger = DesktopRestoreLedger::new();
         assert_eq!(
@@ -1037,6 +1083,31 @@ mod tests {
         assert_eq!(
             plan_desktop_restore_recovery(&restoring, Some(&[2]), true),
             DesktopRestoreRecoveryAction::Conflict
+        );
+        assert_eq!(
+            ledger.transition(&transaction_id, DesktopRestoreState::Restored, None, false),
+            Err(DesktopRestoreJournalError::MissingObservation)
+        );
+        assert_eq!(
+            ledger.transition(
+                &transaction_id,
+                DesktopRestoreState::Restored,
+                Some(&[1]),
+                false
+            ),
+            Err(DesktopRestoreJournalError::ReadbackMismatch)
+        );
+        ledger
+            .transition(
+                &transaction_id,
+                DesktopRestoreState::Restored,
+                Some(&[0]),
+                false
+            )
+            .unwrap();
+        assert_eq!(
+            ledger.latest_record(&transaction_id).unwrap().state(),
+            DesktopRestoreState::Restored
         );
     }
 
