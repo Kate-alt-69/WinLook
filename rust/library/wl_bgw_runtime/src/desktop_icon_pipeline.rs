@@ -6,8 +6,11 @@
 
 use std::collections::{HashMap, HashSet};
 use std::io;
-use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
+use std::sync::mpsc::{
+    self, Receiver, RecvTimeoutError, SyncSender, TryRecvError, TrySendError,
+};
 use std::thread;
+use std::time::Duration;
 
 use wl_wlde::AdaptiveIconImageView;
 use wl_wlde_win32::{
@@ -28,6 +31,71 @@ extern "system" {
     fn CoInitializeEx(reserved: *mut std::ffi::c_void, concurrency_model: u32) -> i32;
     fn CoUninitialize();
 }
+
+#[cfg(windows)]
+#[allow(dead_code)]
+#[repr(C)]
+struct NativePoint {
+    x: i32,
+    y: i32,
+}
+
+#[cfg(windows)]
+#[allow(dead_code)]
+#[repr(C)]
+struct NativeMessage {
+    hwnd: *mut std::ffi::c_void,
+    message: u32,
+    w_param: usize,
+    l_param: isize,
+    time: u32,
+    point: NativePoint,
+    private: u32,
+}
+
+#[cfg(windows)]
+#[link(name = "user32")]
+extern "system" {
+    fn PeekMessageW(
+        message: *mut NativeMessage,
+        window: *mut std::ffi::c_void,
+        minimum: u32,
+        maximum: u32,
+        remove: u32,
+    ) -> i32;
+    fn TranslateMessage(message: *const NativeMessage) -> i32;
+    fn DispatchMessageW(message: *const NativeMessage) -> isize;
+}
+
+#[cfg(windows)]
+const PM_REMOVE: u32 = 0x0001;
+
+#[cfg(windows)]
+fn pump_sta_messages() {
+    loop {
+        let mut message = std::mem::MaybeUninit::<NativeMessage>::uninit();
+        let available = unsafe {
+            PeekMessageW(
+                message.as_mut_ptr(),
+                std::ptr::null_mut(),
+                0,
+                0,
+                PM_REMOVE,
+            )
+        };
+        if available == 0 {
+            break;
+        }
+        let message = unsafe { message.assume_init() };
+        unsafe {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn pump_sta_messages() {}
 
 #[cfg(windows)]
 struct ShellComApartment;
@@ -61,6 +129,23 @@ struct ShellComApartment;
 impl ShellComApartment {
     fn initialize() -> Result<Self, i32> {
         Ok(Self)
+    }
+}
+
+fn send_result(
+    sender: &SyncSender<IconWorkResult>,
+    mut result: IconWorkResult,
+) -> bool {
+    loop {
+        pump_sta_messages();
+        match sender.try_send(result) {
+            Ok(()) => return true,
+            Err(TrySendError::Full(returned)) => {
+                result = returned;
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(TrySendError::Disconnected(_)) => return false,
+        }
     }
 }
 
@@ -323,17 +408,23 @@ impl DesktopIconPipeline {
                     }
                 };
 
-                while let Ok(work) = request_rx.recv() {
+                loop {
+                    pump_sta_messages();
+                    let work = match request_rx.recv_timeout(Duration::from_millis(50)) {
+                        Ok(work) => work,
+                        Err(RecvTimeoutError::Timeout) => continue,
+                        Err(RecvTimeoutError::Disconnected) => break,
+                    };
                     let result = extract_desktop_shell_icon(&work.item, work.key.context.size)
                         .and_then(|icon| rasterize_desktop_shell_icon_rgba(&icon));
-                    if result_tx
-                        .send(IconWorkResult {
+                    if !send_result(
+                        &result_tx,
+                        IconWorkResult {
                             generation: work.generation,
                             key: work.key,
                             result,
-                        })
-                        .is_err()
-                    {
+                        },
+                    ) {
                         break;
                     }
                 }
