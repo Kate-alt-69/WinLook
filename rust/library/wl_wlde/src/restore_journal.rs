@@ -198,10 +198,18 @@ impl DesktopRestoreLedger {
     }
 
     /// Appends a legal state transition while preserving the operation snapshot.
+    ///
+    /// Applying an operation to the OS is outside this type. Evidence is
+    /// required for every transition that claims a readback result:
+    /// Committed and Restoring require the desired value plus ownership proof;
+    /// Restored and Applying->Aborted require the original value. Prepared may
+    /// move to Applying only after the caller has durably appended that record.
     pub fn transition(
         &mut self,
         transaction_id: &[u8; 16],
         next_state: DesktopRestoreState,
+        observed_value: Option<&[u8]>,
+        ownership_proven: bool,
     ) -> Result<&DesktopRestoreRecord, DesktopRestoreJournalError> {
         let previous = self
             .latest_record(transaction_id)
@@ -210,6 +218,12 @@ impl DesktopRestoreLedger {
         if !transition_allowed(previous.state, next_state) {
             return Err(DesktopRestoreJournalError::InvalidTransition);
         }
+        validate_transition_evidence(
+            &previous,
+            next_state,
+            observed_value,
+            ownership_proven,
+        )?;
         let sequence = self.next_sequence()?;
         let next = previous.with_state(sequence, next_state);
         self.push_validated(next)?;
@@ -499,6 +513,9 @@ pub enum DesktopRestoreJournalError {
     DuplicateTransaction,
     UnknownTransaction,
     InvalidTransition,
+    MissingObservation,
+    ReadbackMismatch,
+    OwnershipNotProven,
     InvalidRecord,
     InvalidFrameMagic,
     UnsupportedVersion,
@@ -617,6 +634,43 @@ fn validate_record_position(
             {
                 return Err(DesktopRestoreJournalError::InvalidRecord);
             }
+        }
+    }
+    Ok(())
+}
+
+fn validate_transition_evidence(
+    previous: &DesktopRestoreRecord,
+    next: DesktopRestoreState,
+    observed_value: Option<&[u8]>,
+    ownership_proven: bool,
+) -> Result<(), DesktopRestoreJournalError> {
+    let original_readback_required = matches!(
+        (previous.state, next),
+        (DesktopRestoreState::Applying, DesktopRestoreState::Aborted)
+            | (DesktopRestoreState::Restoring, DesktopRestoreState::Restored)
+    );
+    let applied_readback_required = matches!(
+        (previous.state, next),
+        (DesktopRestoreState::Applying, DesktopRestoreState::Committed)
+            | (DesktopRestoreState::Applying, DesktopRestoreState::Restoring)
+            | (DesktopRestoreState::Committed, DesktopRestoreState::Restoring)
+    );
+
+    if original_readback_required {
+        let observed =
+            observed_value.ok_or(DesktopRestoreJournalError::MissingObservation)?;
+        if observed != previous.original_value.as_slice() {
+            return Err(DesktopRestoreJournalError::ReadbackMismatch);
+        }
+    } else if applied_readback_required {
+        let observed =
+            observed_value.ok_or(DesktopRestoreJournalError::MissingObservation)?;
+        if observed != previous.applied_value.as_slice() {
+            return Err(DesktopRestoreJournalError::ReadbackMismatch);
+        }
+        if !ownership_proven {
+            return Err(DesktopRestoreJournalError::OwnershipNotProven);
         }
     }
     Ok(())
@@ -781,10 +835,10 @@ mod tests {
     fn codec_round_trips_a_complete_operation_history() {
         let (mut ledger, transaction_id) = ledger_with_prepared();
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Applying)
+            .transition(&transaction_id, DesktopRestoreState::Applying, None, false)
             .unwrap();
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Committed)
+            .transition(&transaction_id, DesktopRestoreState::Committed, Some(&[1]), true)
             .unwrap();
 
         let encoded = encode_desktop_restore_ledger(&ledger).unwrap();
@@ -833,7 +887,7 @@ mod tests {
             .begin(second, 1, 1, "desktop.item.two", &[0], &[1], &[2])
             .unwrap();
         ledger
-            .transition(&first, DesktopRestoreState::Applying)
+            .transition(&first, DesktopRestoreState::Applying, None, false)
             .unwrap();
         assert_eq!(ledger.records()[2].sequence(), 3);
 
@@ -845,7 +899,7 @@ mod tests {
     fn invalid_transitions_and_duplicate_transactions_are_rejected() {
         let (mut ledger, transaction_id) = ledger_with_prepared();
         assert_eq!(
-            ledger.transition(&transaction_id, DesktopRestoreState::Committed),
+            ledger.transition(&transaction_id, DesktopRestoreState::Committed, None, false),
             Err(DesktopRestoreJournalError::InvalidTransition)
         );
         assert_eq!(
@@ -853,12 +907,55 @@ mod tests {
             Err(DesktopRestoreJournalError::DuplicateTransaction)
         );
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Aborted)
+            .transition(&transaction_id, DesktopRestoreState::Aborted, None, false)
             .unwrap();
         assert_eq!(
-            ledger.transition(&transaction_id, DesktopRestoreState::Applying),
+            ledger.transition(&transaction_id, DesktopRestoreState::Applying, None, false),
             Err(DesktopRestoreJournalError::InvalidTransition)
         );
+    }
+
+    #[test]
+    fn commit_requires_exact_readback_and_adapter_ownership_proof() {
+        let (mut ledger, transaction_id) = ledger_with_prepared();
+        ledger
+            .transition(&transaction_id, DesktopRestoreState::Applying, None, false)
+            .unwrap();
+
+        assert_eq!(
+            ledger.transition(&transaction_id, DesktopRestoreState::Committed, None, false),
+            Err(DesktopRestoreJournalError::MissingObservation)
+        );
+        assert_eq!(
+            ledger.transition(
+                &transaction_id,
+                DesktopRestoreState::Committed,
+                Some(&[0]),
+                true
+            ),
+            Err(DesktopRestoreJournalError::ReadbackMismatch)
+        );
+        assert_eq!(
+            ledger.transition(
+                &transaction_id,
+                DesktopRestoreState::Committed,
+                Some(&[1]),
+                false
+            ),
+            Err(DesktopRestoreJournalError::OwnershipNotProven)
+        );
+        assert_eq!(
+            ledger.latest_record(&transaction_id).unwrap().state(),
+            DesktopRestoreState::Applying
+        );
+        ledger
+            .transition(
+                &transaction_id,
+                DesktopRestoreState::Committed,
+                Some(&[1]),
+                true
+            )
+            .unwrap();
     }
 
     #[test]
@@ -892,9 +989,13 @@ mod tests {
         );
 
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Applying)
+            .transition(&transaction_id, DesktopRestoreState::Applying, None, false)
             .unwrap();
         let applying = ledger.latest_record(&transaction_id).unwrap().clone();
+        assert_eq!(
+            plan_desktop_restore_recovery(&applying, None, false),
+            DesktopRestoreRecoveryAction::Conflict
+        );
         assert_eq!(
             plan_desktop_restore_recovery(&applying, Some(&[0]), false),
             DesktopRestoreRecoveryAction::AbortUnapplied
@@ -909,7 +1010,7 @@ mod tests {
         );
 
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Committed)
+            .transition(&transaction_id, DesktopRestoreState::Committed, Some(&[1]), true)
             .unwrap();
         let committed = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
@@ -922,7 +1023,7 @@ mod tests {
         );
 
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Restoring)
+            .transition(&transaction_id, DesktopRestoreState::Restoring, Some(&[1]), true)
             .unwrap();
         let restoring = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
@@ -943,7 +1044,7 @@ mod tests {
     fn conflict_is_terminal_and_encoded_as_an_explicit_state() {
         let (mut ledger, transaction_id) = ledger_with_prepared();
         ledger
-            .transition(&transaction_id, DesktopRestoreState::Conflict)
+            .transition(&transaction_id, DesktopRestoreState::Conflict, None, false)
             .unwrap();
         let conflict = ledger.latest_record(&transaction_id).unwrap();
         assert_eq!(
@@ -951,7 +1052,7 @@ mod tests {
             DesktopRestoreRecoveryAction::Conflict
         );
         assert_eq!(
-            ledger.transition(&transaction_id, DesktopRestoreState::Restored),
+            ledger.transition(&transaction_id, DesktopRestoreState::Restored, Some(&[1]), false),
             Err(DesktopRestoreJournalError::InvalidTransition)
         );
     }
