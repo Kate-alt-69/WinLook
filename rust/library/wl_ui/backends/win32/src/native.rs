@@ -727,11 +727,14 @@ unsafe extern "system" fn window_proc(
                 ),
                 WM_CTLCOLORSTATIC
                     if control == (*state).brand_tagline
-                        || control == (*state).page_description => (
-                    (*state).content_brush,
-                    (*state).content_color,
-                    (*state).secondary_text_color,
-                ),
+                        || control == (*state).page_description =>
+                {
+                    (
+                        (*state).content_brush,
+                        (*state).content_color,
+                        (*state).secondary_text_color,
+                    )
+                }
                 WM_CTLCOLORSTATIC => (
                     (*state).content_brush,
                     (*state).content_color,
@@ -820,13 +823,20 @@ unsafe extern "system" fn window_proc(
                 .filter(|tagline| !tagline.is_empty())
                 .unwrap_or("Application workspace");
             let brand_mark = create_static_label(
-                hwnd, instance, BRAND_MARK_CONTROL_ID, brand_mark_text, SS_CENTER,
+                hwnd,
+                instance,
+                BRAND_MARK_CONTROL_ID,
+                brand_mark_text,
+                SS_CENTER,
             );
-            let brand_title = create_static_label(
-                hwnd, instance, BRAND_TITLE_CONTROL_ID, brand_title_text, 0,
-            );
+            let brand_title =
+                create_static_label(hwnd, instance, BRAND_TITLE_CONTROL_ID, brand_title_text, 0);
             let brand_tagline = create_static_label(
-                hwnd, instance, BRAND_TAGLINE_CONTROL_ID, brand_tagline_text, 0,
+                hwnd,
+                instance,
+                BRAND_TAGLINE_CONTROL_ID,
+                brand_tagline_text,
+                0,
             );
             let page_title = create_static_label(hwnd, instance, PAGE_TITLE_CONTROL_ID, "", 0);
             let page_description =
