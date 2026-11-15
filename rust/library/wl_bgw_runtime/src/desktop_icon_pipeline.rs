@@ -19,6 +19,49 @@ const WORK_QUEUE_CAPACITY: usize = 16;
 const RESULT_QUEUE_CAPACITY: usize = 16;
 const MAX_ICON_CACHE_BYTES: usize = 8 * 1024 * 1024;
 const MAX_ICON_CACHE_ENTRIES: usize = 256;
+const COINIT_APARTMENTTHREADED: u32 = 0x2;
+
+#[cfg(windows)]
+#[link(name = "ole32")]
+extern "system" {
+    fn CoInitializeEx(reserved: *mut std::ffi::c_void, concurrency_model: u32) -> i32;
+    fn CoUninitialize();
+}
+
+#[cfg(windows)]
+struct ShellComApartment;
+
+#[cfg(windows)]
+impl ShellComApartment {
+    fn initialize() -> Result<Self, i32> {
+        let result = unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_APARTMENTTHREADED) };
+        if result < 0 {
+            Err(result)
+        } else {
+            // S_OK and S_FALSE both require a balancing CoUninitialize call.
+            Ok(Self)
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Drop for ShellComApartment {
+    fn drop(&mut self) {
+        unsafe {
+            CoUninitialize();
+        }
+    }
+}
+
+#[cfg(not(windows))]
+struct ShellComApartment;
+
+#[cfg(not(windows))]
+impl ShellComApartment {
+    fn initialize() -> Result<Self, i32> {
+        Ok(Self)
+    }
+}
 
 /// Rendering context used to distinguish cached Shell icon variants.
 ///
@@ -169,6 +212,13 @@ impl DesktopIconCache {
         self.recount_bytes();
     }
 
+    fn retain_filesystem_backed(&mut self) {
+        self.entries.retain(|key, _| {
+            key.identity_stability == DesktopItemIdentityStability::FilesystemFileId
+        });
+        self.recount_bytes();
+    }
+
     fn clear(&mut self) {
         self.entries.clear();
         self.used_bytes = 0;
@@ -229,10 +279,22 @@ impl DesktopIconPipeline {
         let (request_tx, request_rx) = mpsc::sync_channel::<IconWork>(WORK_QUEUE_CAPACITY);
         let (result_tx, result_rx) =
             mpsc::sync_channel::<IconWorkResult>(RESULT_QUEUE_CAPACITY);
+        let (startup_tx, startup_rx) = mpsc::sync_channel::<Result<(), i32>>(1);
 
         thread::Builder::new()
             .name("winlook-wlde-shell-icons".to_owned())
             .spawn(move || {
+                let _com_apartment = match ShellComApartment::initialize() {
+                    Ok(apartment) => {
+                        let _ = startup_tx.send(Ok(()));
+                        apartment
+                    }
+                    Err(code) => {
+                        let _ = startup_tx.send(Err(code));
+                        return;
+                    }
+                };
+
                 while let Ok(work) = request_rx.recv() {
                     let result = extract_desktop_shell_icon(&work.item, work.key.context.size)
                         .and_then(|icon| rasterize_desktop_shell_icon_rgba(&icon));
@@ -248,6 +310,17 @@ impl DesktopIconPipeline {
                     }
                 }
             })?;
+
+        match startup_rx.recv() {
+            Ok(Ok(())) => {}
+            Ok(Err(code)) => return Err(io::Error::from_raw_os_error(code)),
+            Err(_) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::BrokenPipe,
+                    "Shell icon worker exited before COM initialization completed",
+                ));
+            }
+        }
 
         Ok(Self {
             context,
@@ -272,6 +345,21 @@ impl DesktopIconPipeline {
         self.failed.clear();
         self.pending.clear();
         self.cache.clear();
+    }
+
+    /// Drops path-fallback cache entries after a filesystem inventory refresh.
+    ///
+    /// Stable single-link filesystem identities may survive a same-volume
+    /// rename. Path-derived IDs cannot distinguish replacement at the same
+    /// path, so their icons are conservatively reacquired on every refresh.
+    /// The generation also causes any in-flight results to be discarded.
+    pub fn invalidate_path_fallbacks(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
+        self.pending.clear();
+        self.cache.retain_filesystem_backed();
+        self.failed.retain(|key| {
+            key.identity_stability == DesktopItemIdentityStability::FilesystemFileId
+        });
     }
 
     /// Changes DPI/theme/size policy and invalidates every cached variant.
@@ -301,11 +389,11 @@ impl DesktopIconPipeline {
             })
             .collect();
         self.cache.retain_identities(&self.current_identities);
+        let context = self.context;
+        let current_identities = &self.current_identities;
         self.failed.retain(|key| {
-            key.context == self.context
-                && self
-                    .current_identities
-                    .contains(&(key.item_id.clone(), key.identity_stability))
+            key.context == context
+                && current_identities.contains(&(key.item_id.clone(), key.identity_stability))
         });
 
         if !self.worker_available {
