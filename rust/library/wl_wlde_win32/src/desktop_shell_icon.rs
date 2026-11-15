@@ -439,9 +439,7 @@ mod platform {
         if width == 0 || height == 0 {
             return Err(DesktopShellIconError::InvalidIconDimensions);
         }
-        if width > MAX_DESKTOP_SHELL_ICON_DIMENSION
-            || height > MAX_DESKTOP_SHELL_ICON_DIMENSION
-        {
+        if width > MAX_DESKTOP_SHELL_ICON_DIMENSION || height > MAX_DESKTOP_SHELL_ICON_DIMENSION {
             return Err(DesktopShellIconError::IconTooLarge);
         }
 
@@ -498,10 +496,7 @@ mod platform {
         if previous.is_null() || previous as isize == HGDI_ERROR {
             return Err(DesktopShellIconError::RasterizationUnavailable);
         }
-        let _selected = SelectedBitmap {
-            dc: dc.0,
-            previous,
-        };
+        let _selected = SelectedBitmap { dc: dc.0, previous };
 
         // Seed opaque black and white backgrounds. Their output difference
         // reveals coverage/alpha for source-over icons without assuming whether
