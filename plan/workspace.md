@@ -552,5 +552,5 @@ notification before waiting again.
 - The returned `DesktopShellIcon` owns the HICON and destroys it on drop. The HICON metadata path uses `GetIconInfo` and `GetObjectW`; any HBITMAPs created by `GetIconInfo` are released with `DeleteObject`.
 - This is handle + dimensions only, not RGBA pixel extraction. The next renderer boundary is a bounded BGRA/RGBA rasterizer with alpha/mask handling and a reusable cache, then the existing portable adaptive icon compositor.
 - Shell icon extraction may invoke a Shell handler and is documented for a BGW worker, never the Manager UI thread. Missing/unsupported icons return a typed error; no native desktop icon registration changes occur.
-- The API remains path-based and does not enumerate virtual Shell namespace items or the Explorer view's exact filtered membership. PIDL/IFolderView integration remains part of the Explorer Desktop Bridge.
+- The API remains path-based, enforces the documented SHGetFileInfoW MAX_PATH input bound and does not enumerate virtual Shell namespace items or the Explorer view's exact filtered membership. PIDL/IFolderView integration remains part of the Explorer Desktop Bridge.
 - Microsoft sources WLDE-028–030 are recorded in `plan/references/SOURCES.md`.
