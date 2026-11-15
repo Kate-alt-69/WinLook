@@ -50,7 +50,9 @@ impl fmt::Display for DesktopShellIconError {
                 f.write_str("desktop Shell icon extraction is available only on Windows")
             }
             Self::PathTooLong => {
-                f.write_str("Shell icon extraction path exceeds the SHGetFileInfoW MAX_PATH limit")
+                f.write_str(
+                    "Shell icon extraction path exceeds the SHGetFileInfoW MAX_PATH limit",
+                )
             }
             Self::ShellIconUnavailable => {
                 f.write_str("Windows Shell did not provide an icon for this desktop item")
@@ -68,7 +70,9 @@ impl fmt::Display for DesktopShellIconError {
                 f.write_str("Windows could not rasterize the Shell icon into a DIB")
             }
             Self::UnsupportedRasterOperation => {
-                f.write_str("the Shell icon uses screen-dependent inversion and cannot be represented as static RGBA")
+                f.write_str(
+                    "the Shell icon uses screen-dependent inversion and cannot be represented as static RGBA",
+                )
             }
             Self::AllocationFailed => {
                 f.write_str("not enough memory to rasterize the Shell icon")
@@ -151,7 +155,6 @@ pub fn extract_desktop_shell_icon(
 ) -> Result<DesktopShellIcon, DesktopShellIconError> {
     Err(DesktopShellIconError::UnsupportedPlatform)
 }
-
 
 /// Maximum width or height accepted by the BGW Shell icon rasterizer.
 pub const MAX_DESKTOP_SHELL_ICON_DIMENSION: u32 = 512;
