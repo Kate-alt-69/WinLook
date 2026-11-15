@@ -71,3 +71,5 @@ Read this index first when resuming work, then open only the relevant sections/f
 5. Read the target OS page before proposing APIs, compiler flags, imports or process techniques.
 6. Update the source ledger when a decision depends on new research.
 7. Do not create Final-Plan.md unless explicitly requested.
+
+- Proposed Explorer Desktop Bridge write-ahead restoration journal, transaction ordering, typed ownership proof and crash/fault-injection acceptance gates: [restoration architecture](architecture/restoration.md) and [WLDE source ledger](references/SOURCES.md).
