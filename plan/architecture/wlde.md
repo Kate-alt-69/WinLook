@@ -426,3 +426,20 @@ The bound is 4,096 inventory items plus 64 Groups (4,160 layout entries).
 This is a logical data contract only: the presenter still needs to map anchors
 onto native desktop-view objects, register Group/icon surfaces, preserve native
 Shell verbs and restore original icons after a BGW or Explorer failure.
+
+
+## Desktop inventory identity — 2026-11-15
+
+The modern Win32 filesystem inventory prefers a volume-serial/file-index
+identity from a metadata-only handle and includes creation FILETIME as an
+additional discriminator. It exposes the identity kind as
+`FilesystemFileId` or `PathFallback`. Unique single-link IDs remain stable
+across ordinary same-volume NTFS renames; ambiguous, multi-link, unavailable
+or partial identities use path hashes instead so separate desktop entries
+are not merged.
+
+This is not universal across filesystems: FAT identities can change on some
+renames, IDs can be reused after deletion, ReFS's 64-bit index is not
+guaranteed unique, and remote filesystems can return partial information.
+Legacy C hosts still need generation-specific identity providers. See
+WLDE-025/026 in `plan/references/SOURCES.md`.
