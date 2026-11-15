@@ -523,5 +523,5 @@ context; a new host/context retries them, while path-fallback failures are
 retried after inventory refresh. The cache is not connected to the native
 desktop presenter: no icon is hidden or replaced, no Shell registration
 changes, and no Group is shown. The crash-safe native
-restoration journal remains a hard gate for presentation. See WLDE-028–035 in
+restoration journal remains a hard gate for presentation. See WLDE-028–036 in
 plan/references/SOURCES.md.
