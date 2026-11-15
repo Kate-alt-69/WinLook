@@ -5,12 +5,15 @@
 //! virtual namespace items and Explorer visibility/filter state need a later
 //! Shell adapter.
 
+#[cfg(any(windows, test))]
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use wl_wlde::{DesktopItemKind, DesktopItemRef, DesktopModelError};
+#[cfg(any(windows, test))]
+use wl_wlde::DesktopItemKind;
+use wl_wlde::{DesktopItemRef, DesktopModelError};
 
 /// Maximum number of filesystem entries accepted from both Desktop roots.
 pub const MAX_DESKTOP_INVENTORY_ITEMS: usize = 4096;
