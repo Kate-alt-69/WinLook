@@ -1064,9 +1064,11 @@ mod tests {
                 "group:work",
                 "Work",
                 vec![DesktopItemId::new("app:editor").unwrap()],
-            ).unwrap()],
+            )
+            .unwrap()],
             &items,
-        ).unwrap();
+        )
+        .unwrap();
         let before = groups.clone();
 
         assert_eq!(
@@ -1114,9 +1116,11 @@ mod tests {
                     DesktopItemId::new("app:editor").unwrap(),
                     DesktopItemId::new("file:notes").unwrap(),
                 ],
-            ).unwrap()],
+            )
+            .unwrap()],
             &items,
-        ).unwrap();
+        )
+        .unwrap();
         let topology = desktop_topology();
         let layout = DesktopLayout::new(
             vec![
@@ -1179,9 +1183,11 @@ mod tests {
                     DesktopItemId::new("app:editor").unwrap(),
                     DesktopItemId::new("file:notes").unwrap(),
                 ],
-            ).unwrap()],
+            )
+            .unwrap()],
             &items,
-        ).unwrap();
+        )
+        .unwrap();
         let topology = desktop_topology();
         let valid_entries = vec![
             DesktopLayoutEntry::new(
@@ -1199,12 +1205,8 @@ mod tests {
                 1,
             ).unwrap(),
         ];
-        let mut layout = DesktopLayout::new(
-            valid_entries.clone(),
-            &items,
-            &groups,
-            &topology,
-        ).unwrap();
+        let mut layout =
+            DesktopLayout::new(valid_entries.clone(), &items, &groups, &topology).unwrap();
 
         let duplicate = vec![valid_entries[0].clone(), valid_entries[0].clone()];
         assert_eq!(
@@ -1221,7 +1223,8 @@ mod tests {
                 5_000,
                 5_000,
                 1,
-            ).unwrap(),
+            )
+            .unwrap(),
             valid_entries[1].clone(),
         ];
         assert_eq!(
