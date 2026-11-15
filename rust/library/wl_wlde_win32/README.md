@@ -156,8 +156,8 @@ probe backgrounds and reconstructing alpha from their output difference.
 This works for alpha-blended icons and classic AND/XOR mask icons where their
 pixel operation is representable as static RGBA. Screen-dependent inversion
 pixels return `UnsupportedRasterOperation` rather than being misrepresented.
-The RGBA result can be passed to WLDE's `AdaptiveIconImageView` and
-compositor. The DIB is top-down, GDI commands are flushed before the CPU reads
+The RGBA wrapper exposes `as_adaptive_image_view()` so consumers can
+borrow its pixels directly as WLDE compositor input without a copy. The DIB is top-down, GDI commands are flushed before the CPU reads
 its bits, the selected bitmap is restored before its handle is deleted, and
 all dimensions/allocations are bounded. The BGW runtime now owns a bounded
 identity/DPI/theme-aware memory cache; live presentation remains separate work.
