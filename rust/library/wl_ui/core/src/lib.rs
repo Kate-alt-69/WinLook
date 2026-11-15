@@ -118,8 +118,9 @@ mod tests {
         assert_eq!(branding.mark_text(), "WL");
         assert_eq!(branding.tagline_text(), "Your desktop, your way.");
 
-        let invalid =
-            UiApplication::new("WinLook").branding(UiBranding::new(" ").mark("WINLOOKMARK"));
+        let invalid = UiApplication::new("WinLook")
+            .page(UiPage::new("home", "Home", "Overview"))
+            .branding(UiBranding::new(" ").mark("WINLOOKMARK"));
         assert!(matches!(
             invalid.validate(),
             Err(UiError::InvalidBranding(_))
