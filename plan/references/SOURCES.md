@@ -309,3 +309,10 @@ The watcher is scoped to the current User/Public Desktop Known Folders, sets
 bWatchSubtree=FALSE, and never examines file contents. Each signal causes a
 fresh bounded one-level snapshot; it does not attempt to infer an exact file
 operation from the coarse notification.
+
+
+## WLDE Shell worker COM initialization — 2026-11-15
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| WLDE-035 | [SHGetFileInfoW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shgetfileinfow), [CoInitializeEx](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex), [CoUninitialize](https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-couninitialize) | Microsoft requires COM initialization before calling SHGetFileInfoW. A successful CoInitializeEx call, including S_FALSE, must be balanced by exactly one CoUninitialize on the same thread | BGW's dedicated Shell icon worker initializes an STA apartment before accepting work and owns an RAII guard for its lifetime. Initialization failure prevents the worker from starting; no Shell calls are issued from the uninitialized thread |
