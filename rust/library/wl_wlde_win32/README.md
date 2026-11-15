@@ -41,13 +41,20 @@ The same functions are re-exported by the shared Win32 backend and the public
 `wl_ui::windows10` / `wl_ui::windows11` modules on their respective builds.
 
 The adapter uses a narrow, private Win32 FFI boundary. Its `sha2 0.10.9`
-dependency is used only for path-hash fallbacks; normal inventory IDs are
-derived from the volume serial number, 64-bit file index and creation-time
-discriminator returned by `GetFileInformationByHandle`. Identity handles
-request only `FILE_READ_ATTRIBUTES`, share read/write/delete access, and use
-`FILE_FLAG_OPEN_REPARSE_POINT` so a shortcut/reparse entry is identified
-without opening its target. `FILE_FLAG_BACKUP_SEMANTICS` permits directory
-handles. No file content is read or changed.
+dependency is used only for path-hash fallbacks. Stable inventory IDs prefer
+the volume serial number and 128-bit `FILE_ID_128` returned by
+`GetFileInformationByHandleEx(FileIdInfo)`, plus the creation FILETIME
+returned by `GetFileInformationByHandle` as a reuse discriminator. The
+legacy 64-bit file index is deliberately not used as a stable key because
+Microsoft does not guarantee that it is unique on ReFS. If the 128-bit file
+identifier is unavailable/zero, or the filesystem does not expose a creation
+time, the item uses a marked path-hash fallback instead.
+
+Identity handles request only `FILE_READ_ATTRIBUTES`, share
+read/write/delete access, and use `FILE_FLAG_OPEN_REPARSE_POINT` so a
+shortcut/reparse entry is identified without opening its target.
+`FILE_FLAG_BACKUP_SEMANTICS` permits directory handles. No file content is
+read or changed.
 
 ## Desktop item identity and Group continuity
 
@@ -57,14 +64,15 @@ identity keeps the same Group key through ordinary same-volume NTFS renames.
 The adapter includes creation time as an additional discriminator; this
 reduces accidental key reuse but is not a universal anti-reuse guarantee.
 
-Filesystem support varies. FAT file IDs can change on certain renames or
-defragmentation, network filesystems may return partial identity information,
-and the 64-bit file index is not guaranteed unique on ReFS. When identity
-cannot be read, when Windows reports multiple hard links, or when duplicate
-identities occur in the visible inventory, the adapter uses distinct
-path-hash IDs and marks them `PathFallback` rather than merging desktop
-entries. Path fallbacks change on rename and must be reconciled before durable
-Group membership is restored. The portable Rust/C89 Group models remain
+Filesystem support varies. File IDs can be reused after deletion, and
+network filesystems may return partial identity information. A 128-bit ID
+reduces collision risk and avoids the documented ReFS limitation of the
+legacy 64-bit index, but it is not a permanent identity across deletion and
+re-creation. When identity cannot be read, when Windows reports multiple hard
+links, or when duplicate identities occur in the visible inventory, the
+adapter uses distinct path-hash IDs and marks them `PathFallback` rather than
+merging desktop entries. Path fallbacks change on rename and must be
+reconciled before durable Group membership is restored. The portable Rust/C89 Group models remain
 host-ID agnostic; legacy C platform adapters need their own per-generation
 identity implementation.
 
