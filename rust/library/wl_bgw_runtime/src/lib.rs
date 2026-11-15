@@ -9,7 +9,7 @@ use std::fmt;
 #[cfg(windows)]
 use std::thread;
 #[cfg(windows)]
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[cfg(any(windows, test))]
 #[allow(dead_code)]
@@ -44,6 +44,8 @@ fn load_desktop_state(
 
 #[cfg(windows)]
 const DESKTOP_HOST_RECHECK_INTERVAL: Duration = Duration::from_secs(5);
+#[cfg(windows)]
+const DESKTOP_ICON_POLL_INTERVAL: Duration = Duration::from_millis(250);
 #[cfg(windows)]
 const SHELL_UNAVAILABLE_RETRY_INTERVAL: Duration = Duration::from_secs(2);
 
@@ -194,6 +196,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 None
             }
         };
+        let mut last_fallback_inventory_refresh = Instant::now();
 
         loop {
             if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
@@ -215,9 +218,17 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 }
             }
 
+            let icon_work_pending = desktop_icon_pipeline
+                .as_ref()
+                .is_some_and(DesktopIconPipeline::has_pending_work);
+            let wait_interval = if icon_work_pending {
+                DESKTOP_ICON_POLL_INTERVAL
+            } else {
+                DESKTOP_HOST_RECHECK_INTERVAL
+            };
             let watcher_result = inventory_watcher
                 .as_ref()
-                .map(|watcher| watcher.wait_for_change(DESKTOP_HOST_RECHECK_INTERVAL));
+                .map(|watcher| watcher.wait_for_change(wait_interval));
             let inventory_changed = match watcher_result {
                 Some(Ok(changed)) => changed,
                 Some(Err(error)) => {
@@ -228,8 +239,13 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     false
                 }
                 None => {
-                    thread::sleep(DESKTOP_HOST_RECHECK_INTERVAL);
-                    true
+                    thread::sleep(wait_interval);
+                    if last_fallback_inventory_refresh.elapsed() >= DESKTOP_HOST_RECHECK_INTERVAL {
+                        last_fallback_inventory_refresh = Instant::now();
+                        true
+                    } else {
+                        false
+                    }
                 }
             };
 
