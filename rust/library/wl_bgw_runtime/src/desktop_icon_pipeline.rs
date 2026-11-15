@@ -6,9 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::io;
-use std::sync::mpsc::{
-    self, Receiver, RecvTimeoutError, SyncSender, TryRecvError, TrySendError,
-};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SyncSender, TryRecvError, TrySendError};
 use std::thread;
 use std::time::Duration;
 
@@ -75,15 +73,8 @@ const PM_REMOVE: u32 = 0x0001;
 fn pump_sta_messages() {
     loop {
         let mut message = std::mem::MaybeUninit::<NativeMessage>::uninit();
-        let available = unsafe {
-            PeekMessageW(
-                message.as_mut_ptr(),
-                std::ptr::null_mut(),
-                0,
-                0,
-                PM_REMOVE,
-            )
-        };
+        let available =
+            unsafe { PeekMessageW(message.as_mut_ptr(), std::ptr::null_mut(), 0, 0, PM_REMOVE) };
         if available == 0 {
             break;
         }
@@ -133,10 +124,7 @@ impl ShellComApartment {
     }
 }
 
-fn send_result(
-    sender: &SyncSender<IconWorkResult>,
-    mut result: IconWorkResult,
-) -> bool {
+fn send_result(sender: &SyncSender<IconWorkResult>, mut result: IconWorkResult) -> bool {
     loop {
         pump_sta_messages();
         match sender.try_send(result) {
@@ -203,7 +191,8 @@ impl DesktopIconCacheKey {
         Self {
             item_id: item.item().id().as_str().to_owned(),
             identity_stability,
-            fallback_generation: if identity_stability == DesktopItemIdentityStability::PathFallback {
+            fallback_generation: if identity_stability == DesktopItemIdentityStability::PathFallback
+            {
                 fallback_generation
             } else {
                 0
@@ -231,7 +220,8 @@ impl DesktopIconCacheKey {
         Self {
             item_id: item_id.to_owned(),
             identity_stability,
-            fallback_generation: if identity_stability == DesktopItemIdentityStability::PathFallback {
+            fallback_generation: if identity_stability == DesktopItemIdentityStability::PathFallback
+            {
                 fallback_generation
             } else {
                 0
@@ -249,8 +239,7 @@ fn is_current_icon_result(
     current_fallback_generation: u64,
     current_identities: &HashSet<(String, DesktopItemIdentityStability)>,
 ) -> bool {
-    let fallback_is_current = key.identity_stability
-        != DesktopItemIdentityStability::PathFallback
+    let fallback_is_current = key.identity_stability != DesktopItemIdentityStability::PathFallback
         || key.fallback_generation == current_fallback_generation;
     result_generation == current_generation
         && key.context == current_context
@@ -332,13 +321,9 @@ impl DesktopIconCache {
         true
     }
 
-    fn retain_identities(
-        &mut self,
-        current: &HashSet<(String, DesktopItemIdentityStability)>,
-    ) {
-        self.entries.retain(|key, _| {
-            current.contains(&(key.item_id.clone(), key.identity_stability))
-        });
+    fn retain_identities(&mut self, current: &HashSet<(String, DesktopItemIdentityStability)>) {
+        self.entries
+            .retain(|key, _| current.contains(&(key.item_id.clone(), key.identity_stability)));
         self.recount_bytes();
     }
 
