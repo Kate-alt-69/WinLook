@@ -133,3 +133,27 @@ to deliver notifications. Paths at or beyond the default MAX_PATH limit are
 passed with the extended-length prefix.
 This watcher is for the modern Win10/11 Rust adapter; the documented API's
 minimum client is Windows XP, not Windows 95/legacy.
+
+
+## Read-only Shell icon extraction
+
+`extract_desktop_shell_icon(&DesktopInventoryItem, DesktopShellIconSize)`
+uses `SHGetFileInfoW(SHGFI_ICON | SHGFI_SHELLICONSIZE)` to obtain the current
+Shell icon for a desktop filesystem path. The returned `DesktopShellIcon`
+owns the HICON and destroys it when dropped. Its dimensions are read with
+`GetIconInfo` and `GetObjectW`; the temporary mask/color HBITMAPs returned
+by `GetIconInfo` are deleted when the metadata query finishes.
+
+Run extraction on a BGW worker, not the Manager UI thread: Shell icon handlers
+may do disk/COM work. The icon API does not replace Explorer's system image
+list, alter a Shell registration, hide a native tile, write source icon
+resources or intercept context menus. It provides an owned native handle and
+dimensions only; BGW's next stage still needs bounded HICON-to-RGBA
+rasterization and an identity/DPI/theme-aware cache before calling the
+portable adaptive-icon compositor.
+
+The adapter handles both color icons and legacy monochrome mask-only icons
+when reporting dimensions. Unsupported, inaccessible or missing icons return
+a typed error and leave Explorer's native desktop unchanged. This path-based
+first step does not cover virtual Shell namespace items or exact IFolderView
+membership; those need the dedicated PIDL/Shell-view bridge.
