@@ -1028,7 +1028,9 @@ mod tests {
         assert_eq!(groups.get("group:work").unwrap().label(), "Projects");
 
         let file_id = DesktopItemId::new("file:notes").unwrap();
-        groups.add_members("group:work", [file_id.clone()], &items).unwrap();
+        groups
+            .add_members("group:work", [file_id.clone()], &items)
+            .unwrap();
         assert!(groups.is_member("group:work", &file_id).unwrap());
 
         let before_duplicate = groups.clone();
@@ -1038,22 +1040,32 @@ mod tests {
         );
         assert_eq!(groups, before_duplicate);
 
-        groups.remove_members("group:work", &[file_id], &items).unwrap();
+        groups
+            .remove_members("group:work", &[file_id], &items)
+            .unwrap();
         let app_id = DesktopItemId::new("app:editor").unwrap();
-        groups.remove_members("group:work", &[app_id], &items).unwrap();
+        groups
+            .remove_members("group:work", &[app_id], &items)
+            .unwrap();
         assert!(groups.is_empty());
 
-        groups.add_group(
-            DesktopGroup::new(
-                "group:temporary",
-                "Temporary",
-                vec![DesktopItemId::new("folder:assets").unwrap()],
-            ).unwrap(),
-            &items,
-        ).unwrap();
+        groups
+            .add_group(
+                DesktopGroup::new(
+                    "group:temporary",
+                    "Temporary",
+                    vec![DesktopItemId::new("folder:assets").unwrap()],
+                )
+                .unwrap(),
+                &items,
+            )
+            .unwrap();
         groups.ungroup("group:temporary", &items).unwrap();
         assert!(groups.is_empty());
-        assert_eq!(groups.ungroup("group:missing", &items), Err(DesktopModelError::UnknownGroup));
+        assert_eq!(
+            groups.ungroup("group:missing", &items),
+            Err(DesktopModelError::UnknownGroup)
+        );
     }
 
     #[test]
@@ -1087,7 +1099,6 @@ mod tests {
         assert_eq!(groups, before);
     }
 
-
     fn desktop_topology() -> MonitorTopology {
         MonitorTopology::new(vec![
             crate::Monitor::new(
@@ -1095,14 +1106,17 @@ mod tests {
                 crate::Rect::new(0.0, 0.0, 1920.0, 1080.0).unwrap(),
                 crate::Rect::new(0.0, 0.0, 1920.0, 1040.0).unwrap(),
                 true,
-            ).unwrap(),
+            )
+            .unwrap(),
             crate::Monitor::new(
                 "DISPLAY-B",
                 crate::Rect::new(1920.0, 0.0, 1920.0, 1080.0).unwrap(),
                 crate::Rect::new(1920.0, 0.0, 1920.0, 1040.0).unwrap(),
                 false,
-            ).unwrap(),
-        ]).unwrap()
+            )
+            .unwrap(),
+        ])
+        .unwrap()
     }
 
     #[test]
@@ -1130,14 +1144,16 @@ mod tests {
                     2_500,
                     3_500,
                     0,
-                ).unwrap(),
+                )
+                .unwrap(),
                 DesktopLayoutEntry::new(
                     DesktopLayoutTarget::Item(DesktopItemId::new("folder:assets").unwrap()),
                     "DISPLAY-B",
                     7_500,
                     2_000,
                     1,
-                ).unwrap(),
+                )
+                .unwrap(),
             ],
             &items,
             &groups,
@@ -1147,13 +1163,17 @@ mod tests {
 
         assert_eq!(layout.len(), 2);
         assert_eq!(
-            layout.get(&DesktopLayoutTarget::Group("group:work".into()))
+            layout
+                .get(&DesktopLayoutTarget::Group("group:work".into()))
                 .unwrap()
                 .monitor_id(),
             "DISPLAY-A"
         );
         assert_eq!(
-            layout.get(&DesktopLayoutTarget::Item(DesktopItemId::new("folder:assets").unwrap()))
+            layout
+                .get(&DesktopLayoutTarget::Item(
+                    DesktopItemId::new("folder:assets").unwrap()
+                ))
                 .unwrap()
                 .x_basis_points(),
             7_500
