@@ -87,3 +87,35 @@ BGW loads the committed snapshot after it has verified the Explorer desktop host
 Monitor IDs in the current layout are adapter snapshot IDs (for example, GDI display-device names), not stable physical monitor identities. Until WLDM supplies a durable monitor mapping/reconciliation layer, a changed monitor identifier rejects the stored layout rather than guessing where a Group should move.
 
 This file is configuration persistence, not the restoration journal. It does not record or restore native icon suppression, Explorer hooks, Shell registrations or other OS mutations. Crash-safe native restoration remains a separate prerequisite before Groups can be shown.
+
+
+## Memory-only Shell icon acquisition pipeline
+
+BGW now creates one dedicated Shell icon worker after startup. The worker
+initializes an STA COM apartment before calling SHGetFileInfoW and balances
+it with CoUninitialize when the worker exits. The host-monitor loop only
+queues bounded requests and drains completed results; Shell extraction and
+HICON rasterization never run on the host-monitor thread.
+
+- Work and result channels each hold at most 16 messages; there is one worker.
+- The in-memory LRU cache is capped at 8 MiB and 256 icons. Each icon is limited
+  to 512×512 straight-alpha RGBA.
+- Cache keys include the opaque desktop item ID, identity-stability kind,
+  requested Shell icon size, DPI bucket and theme generation. The initial
+  host context is 96 DPI / theme generation 0 until BGW receives real DPI and
+  appearance notifications.
+- A verified Explorer-host change advances the worker generation and clears
+  the cache. Results from older generations or removed inventory identities
+  are discarded. Path-fallback icons are reacquired after every inventory
+  refresh because their IDs cannot prove that the same file remains at a path;
+  filesystem-ID entries are retained when still present.
+- Missing, inaccessible, overlong or non-representable icons are recorded as
+  failed for the current context so the monitor loop does not retry the same
+  item on every five-second wake. A new host/context/inventory refresh permits
+  a fresh attempt where appropriate.
+
+The cache is process memory only. It does not write paths, pixels or icon
+artwork into the local Group/layout file. This pipeline supplies pixels for a
+future presenter, but it does not display them, hide native Explorer icons,
+change Shell registrations or make Groups available. Crash-safe restoration
+remains a separate prerequisite.
