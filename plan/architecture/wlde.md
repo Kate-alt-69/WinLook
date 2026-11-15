@@ -492,8 +492,9 @@ the HICON onto opaque black and white top-down DIB probe surfaces, reconstructs
 straight alpha, and rejects screen-dependent inversion pixels that cannot be
 represented by a static RGBA image. It flushes GDI before reading DIB memory
 and restores the original selected object before deleting the DIB. The output
-is compatible with the portable adaptive icon input. A cache keyed by item identity, DPI, theme and icon-size
-policy plus BGW presentation integration remain the next steps. Virtual Shell namespace items and exact Explorer view
+is compatible with the portable adaptive icon input. BGW now supplies a
+bounded memory cache keyed by item identity, DPI, theme and icon-size policy.
+Feeding the cached pixels into a presenter and enabling Groups remain later work. Virtual Shell namespace items and exact Explorer view
 membership still require PIDL/IFolderView integration. See WLDE-028–030 in
 `plan/references/SOURCES.md`.
 
