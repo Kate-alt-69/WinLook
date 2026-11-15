@@ -229,7 +229,7 @@ mod desktop_namespace_platform {
     use super::*;
     use sha2::{Digest, Sha256};
     use std::ffi::{c_void, OsString};
-    use std::os::windows::ffi::OsStringExt;
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::ptr::{self, NonNull};
 
     type HResult = i32;
@@ -415,9 +415,7 @@ mod desktop_namespace_platform {
         }
 
         let bytes = pidl.cast::<u8>();
-        let child_bytes = usize::from(unsafe {
-            ptr::read_unaligned(bytes.cast::<u16>())
-        });
+        let child_bytes = usize::from(unsafe { ptr::read_unaligned(bytes.cast::<u16>()) });
         if child_bytes < 2 {
             return Ok(None);
         }
@@ -450,14 +448,8 @@ mod desktop_namespace_platform {
             value: StrRetValue { offset: 0 },
         };
         let vtable = unsafe { folder.0.as_ref().vtable };
-        let get_name_result = unsafe {
-            ((*vtable).get_display_name_of)(
-                folder.0.as_ptr(),
-                pidl,
-                flags,
-                &mut result,
-            )
-        };
+        let get_name_result =
+            unsafe { ((*vtable).get_display_name_of)(folder.0.as_ptr(), pidl, flags, &mut result) };
         if get_name_result < 0 {
             return None;
         }
@@ -478,10 +470,7 @@ mod desktop_namespace_platform {
         buffer.iter().position(|character| *character == 0)
     }
 
-    fn get_attributes(
-        folder: &OwnedShellFolder,
-        pidl: *const ItemIdList,
-    ) -> Option<u32> {
+    fn get_attributes(folder: &OwnedShellFolder, pidl: *const ItemIdList) -> Option<u32> {
         let child_items = [pidl];
         let mut attributes = SFGAO_FOLDER | SFGAO_FILESYSTEM;
         let vtable = unsafe { folder.0.as_ref().vtable };
@@ -496,8 +485,7 @@ mod desktop_namespace_platform {
         (result >= 0).then_some(attributes)
     }
 
-    pub(super) fn enumerate(
-    ) -> Result<DesktopNamespaceSnapshot, DesktopNamespaceError> {
+    pub(super) fn enumerate() -> Result<DesktopNamespaceSnapshot, DesktopNamespaceError> {
         let _apartment = ComApartment::initialize()?;
 
         let mut raw_folder = ptr::null_mut();
@@ -539,12 +527,7 @@ mod desktop_namespace_platform {
             let mut fetched = 0u32;
             let enumerator_vtable = unsafe { enumerator.0.as_ref().vtable };
             let result = unsafe {
-                ((*enumerator_vtable).next)(
-                    enumerator.0.as_ptr(),
-                    1,
-                    &mut raw_pidl,
-                    &mut fetched,
-                )
+                ((*enumerator_vtable).next)(enumerator.0.as_ptr(), 1, &mut raw_pidl, &mut fetched)
             };
             if result < 0 {
                 return Err(DesktopNamespaceError::Enumeration(result));
@@ -571,12 +554,9 @@ mod desktop_namespace_platform {
                 continue;
             };
 
-            let Some(label_units) = read_shell_name(
-                &folder,
-                pidl.0.as_ptr(),
-                SHGDN_NORMAL,
-                &mut name_buffer,
-            ) else {
+            let Some(label_units) =
+                read_shell_name(&folder, pidl.0.as_ptr(), SHGDN_NORMAL, &mut name_buffer)
+            else {
                 skipped_items = skipped_items.saturating_add(1);
                 continue;
             };
@@ -590,13 +570,10 @@ mod desktop_namespace_platform {
             let filesystem_backed = attributes & SFGAO_FILESYSTEM != 0;
             let is_folder = attributes & SFGAO_FOLDER != 0;
             let filesystem_path = if filesystem_backed {
-                read_shell_name(
-                    &folder,
-                    pidl.0.as_ptr(),
-                    SHGDN_FORPARSING,
-                    &mut name_buffer,
-                )
-                .map(|path_units| PathBuf::from(OsString::from_wide(&name_buffer[..path_units])))
+                read_shell_name(&folder, pidl.0.as_ptr(), SHGDN_FORPARSING, &mut name_buffer)
+                    .map(|path_units| {
+                        PathBuf::from(OsString::from_wide(&name_buffer[..path_units]))
+                    })
                 .filter(|path| path.is_absolute())
             } else {
                 None
@@ -606,11 +583,7 @@ mod desktop_namespace_platform {
                 .as_ref()
                 .map(|path| path.to_string_lossy().into_owned())
                 .unwrap_or_else(|| label.clone());
-            let kind = classify_namespace_item(
-                filesystem_backed,
-                is_folder,
-                &classification_name,
-            );
+            let kind = classify_namespace_item(filesystem_backed, is_folder, &classification_name);
 
             let path_bytes = filesystem_path
                 .as_ref()
