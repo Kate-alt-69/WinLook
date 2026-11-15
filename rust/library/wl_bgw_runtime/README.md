@@ -123,3 +123,63 @@ buffer without copying. This supplies compositor-ready pixels for a future
 presenter, but it does not display them, hide native Explorer icons,
 change Shell registrations or make Groups available. Crash-safe restoration
 remains a separate prerequisite.
+
+
+## Public API and reuse
+
+Package: `wl_bgw_runtime` `0.1.0-alpha.1` (Rust 2021; declared MSRV 1.77).
+It depends on `wl_wlde` and `wl_wlde_win32`. Add it as a path dependency
+only when the consuming program is the BGW host or deliberately reuses its
+local-state persistence contract:
+
+```toml
+[dependencies]
+wl_bgw_runtime = { path = "../WinLook/rust/library/wl_bgw_runtime" }
+```
+
+The public entry point `run()` starts the current Windows BGW host loop.
+The reusable configuration API is exported from the crate root:
+
+- `DesktopItemIdentityRecord::from_inventory()` turns the current inventory
+  into path-free identity records for state validation.
+- `DesktopStateStore::for_current_user()` selects the normal per-user store;
+  `at_path()` is for controlled tests/embedding and places path-security
+  responsibility on the caller.
+- `DesktopStateStore::load()` returns `Option<DesktopStateSnapshot>` after
+  validating inventory identities, Groups, layout completeness and monitor
+  topology. Missing state is `Ok(None)`; stale/corrupt/incompatible state is
+  a typed error and is not silently overwritten.
+- `DesktopStateStore::save()` validates against the current inventory and
+  monitor snapshot before committing.
+- `DesktopStateSnapshot::groups()` and `layout()` provide read-only views.
+
+Example:
+
+```rust
+use wl_bgw_runtime::{DesktopItemIdentityRecord, DesktopStateStore};
+use wl_wlde_win32::{enumerate_desktop_items, enumerate_monitors};
+
+fn load_state() -> Result<(), Box<dyn std::error::Error>> {
+    let inventory = enumerate_desktop_items()?;
+    let topology = enumerate_monitors()?;
+    let identities = DesktopItemIdentityRecord::from_inventory(&inventory);
+    let store = DesktopStateStore::for_current_user()?;
+    let _snapshot = store.load(&identities, &topology)?;
+    Ok(())
+}
+```
+
+The store is single-writer and contains configuration, not a recovery journal.
+It stores opaque identities, identity kinds, Group metadata and normalized
+placements only. Its CRC32 detects accidental damage; it is not encryption,
+authentication or tamper protection. Protect the parent directory using the
+interactive user's normal profile ACLs, and do not point `at_path()` at a
+shared or untrusted location. Save only on the BGW owner thread/process.
+
+The Shell icon worker, bounded channels and RGBA LRU cache are private
+implementation details, not stable public types. The BGW runtime remains
+Windows-only and is not intended to be embedded in the Manager UI. It does
+not register startup, expose Manager IPC, suppress native icons or display
+Groups. `cargo test -p wl_bgw_runtime` checks portable store/runtime tests;
+the Explorer process and STA Shell path requires Windows CI/device validation.
+See the [shared library catalog](../README.md) before choosing a dependency.

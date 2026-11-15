@@ -251,3 +251,55 @@ This remains a portable data contract. It does not move or rename source files,
 draw/hide desktop icons, render Group tiles or register a Shell view. Those
 presentation operations stay behind the required BGW Explorer Desktop Bridge
 and the crash-safe native restoration gate.
+
+
+## Reuse as a Rust library
+
+Package: `wl_wlde` `0.1.0-alpha.1` (Rust 2021; declared MSRV 1.77).
+The crate is portable and forbids unsafe Rust. It depends on the shared
+`wl_animate`, `wl_cpuv` and `wl_gpuv` workspace libraries.
+
+Add a path dependency while developing against this repository:
+
+```toml
+[dependencies]
+wl_wlde = { path = "../WinLook/rust/library/wl_wlde" }
+```
+
+The main API families are geometry/topology (`Rect`, `Size`, `Monitor`,
+`MonitorTopology`), scene timing and visibility (`FrameClock`,
+`FrameTick`), caller-fed resource pressure (`ResourceGovernor`,
+`ResourcePolicy`, `ResourceSample`), Game Mode resolution
+(`resolve_game_mode` and its policy/profile/signal types), virtual desktop
+Groups and normalized layouts, adaptive icon metadata/composition, and
+immutable Store provider / Wallpaper Engine hand-off metadata. The public
+re-exports are declared in `src/lib.rs`; start there when selecting a smaller
+API subset.
+
+Minimal topology construction:
+
+```rust
+use wl_wlde::{Monitor, MonitorTopology, Rect};
+
+fn topology() -> Result<MonitorTopology, Box<dyn std::error::Error>> {
+    let bounds = Rect::new(0.0, 0.0, 1920.0, 1080.0)?;
+    let work_area = Rect::new(0.0, 0.0, 1920.0, 1040.0)?;
+    let primary = Monitor::new("DISPLAY1", bounds, work_area, true)?;
+    Ok(MonitorTopology::new(vec![primary])?)
+}
+```
+
+The core owns policy and validation, not platform side effects. It does not
+sample OS telemetry, enumerate processes, hash executables, decode image files,
+call the Shell, create threads/timers/windows or render a desktop surface.
+Callers supply the relevant measurements, identities, capabilities and
+decoded pixel views. Use the matching `wl_Lwlde` C89 library when the target
+needs fixed caller-owned storage and strict C90 compatibility.
+
+Run `cargo test -p wl_wlde` or the repository-wide
+`python build.py verify libraries --sanitizers` gate. The API is pre-1.0;
+treat `0.1.0-alpha.1` as an evolving workspace contract, not a stable
+external semver commitment.
+
+For a cross-library dependency map, Win32/BGW examples and the C89 build
+recipe, see the [shared library catalog](../README.md).

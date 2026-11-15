@@ -170,3 +170,49 @@ path behavior. Unsupported, inaccessible or missing icons return a typed
 error and leave Explorer's native desktop unchanged. This path-based
 first step does not cover virtual Shell namespace items or exact IFolderView
 membership; those need the dedicated PIDL/Shell-view bridge.
+
+
+## Reuse as a Windows platform adapter
+
+Package: `wl_wlde_win32` `0.1.0-alpha.1` (Rust 2021; declared MSRV 1.77).
+Its portable dependency is `wl_wlde`; `sha2 0.10.9` is compiled only for
+Windows and is used for explicitly marked path-based fallback identities.
+
+```toml
+[dependencies]
+wl_wlde = { path = "../WinLook/rust/library/wl_wlde" }
+wl_wlde_win32 = { path = "../WinLook/rust/library/wl_wlde_win32" }
+```
+
+Public API families:
+
+- `enumerate_monitors`, `refresh_topology`,
+  `should_refresh_topology` and the `WM_DISPLAYCHANGE` /
+  `WM_DEVICECHANGE` constants.
+- `enumerate_desktop_items`, `watch_desktop_folders`,
+  `DesktopInventoryItem`, `DesktopFolder`,
+  `DesktopItemIdentityStability` and the fixed inventory limit.
+- `discover_desktop_host`, `monitor_desktop_host`,
+  `is_same_desktop_host`, `DesktopHostIdentity` and the process-monitor
+  contract.
+- `extract_desktop_shell_icon`, `DesktopShellIcon`,
+  `rasterize_desktop_shell_icon_rgba` and the RGBA/icon-size/error types.
+
+Refresh monitor snapshots from the host's event loop; this crate does not
+install listeners or own a loop. Keep inventory paths ephemeral and use the
+opaque item reference plus its identity-stability classification for model
+and persistence work. A path fallback is not rename-stable.
+
+The Shell icon entry points must run on a worker that initialized COM as an
+STA and dispatches its message queue. The returned HICON is owned by
+`DesktopShellIcon`; its drop releases the handle. Rasterized pixels are
+bounded to 512×512 RGBA and can be borrowed as an
+`AdaptiveIconImageView`. The Shell path entry point enforces the documented
+MAX_PATH limit. This adapter only acquires data: it does not suppress native
+icons, replace Shell registrations, intercept menus or draw Group tiles.
+
+Non-Windows builds retain pure helper tests and return explicit
+`UnsupportedPlatform` errors for the Windows collection operations. Run
+`cargo test -p wl_wlde_win32`; the actual Win32 monitor, inventory, host
+monitor and HICON smoke checks require Windows CI. See the [shared library
+catalog](../README.md) for dependency selection and the repository-wide gate.

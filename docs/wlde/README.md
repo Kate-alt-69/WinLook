@@ -4,6 +4,10 @@ WLDE is the integrated subsystem for wallpapers, widgets, desktop presentation,
 the local wallpaper library and community catalogue. It is not a separate
 Wallpaper Engine product and it does not replace Explorer or DWM.
 
+For reusable components, package relationships, Rust/C89 integration examples,
+public API maps and verification commands, start with the
+[WinLook shared library catalog](../../rust/library/README.md).
+
 ## Current implementation
 
 The new portable core is split into paired language libraries:

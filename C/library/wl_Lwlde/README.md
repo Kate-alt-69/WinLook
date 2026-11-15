@@ -145,3 +145,30 @@ The portable maximum is 4,096 inventory items plus 64 Groups (4,160 placements).
 The layout only describes presentation intent. It does not move files, change
 shortcuts, modify Explorer or make a Group visible. The native presenter and
 crash-safe restoration path are still required.
+
+
+## Reuse and build integration
+
+This directory builds the portable `wl_Lwlde` static library with the CMake
+target `WinLook::Lwlde`. The target requires C90 with compiler extensions
+disabled and links the companion `wl_Lanimate`, `wl_Lcpuv` and
+`wl_Lgpuv` targets. From a consuming CMake project, add the repository's
+`C/library` directory and link the alias:
+
+```cmake
+add_subdirectory(path/to/WinLook/C/library)
+target_link_libraries(your_target PRIVATE WinLook::Lwlde)
+```
+
+Include `wl_Lwlde.h`. All record arrays, string storage and RGBA output
+buffers remain caller-owned. Initialize topology with
+`wl_Lwlde_topology_init()`, then replace it transactionally with
+`wl_Lwlde_topology_replace()`; do not assume the library allocates or frees
+caller memory. See the header for exact structures, result codes, size limits
+and function signatures.
+
+Run `python build.py verify c --sanitizers` from the repository root, or
+configure/build/test through the `C/library/CMakeLists.txt` aggregator.
+C89 source compatibility is not proof that a particular Windows generation,
+compiler ABI or executable target is supported; validate the target toolchain
+and Win32 adapter separately.

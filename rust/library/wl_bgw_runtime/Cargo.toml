@@ -5,6 +5,7 @@ edition = "2021"
 rust-version = "1.77"
 description = "Initial WinLook BGW runtime host loop"
 license = "MIT"
+readme = "README.md"
 
 [dependencies]
 wl_wlde = { version = "0.1.0-alpha.1", path = "../wl_wlde" }
