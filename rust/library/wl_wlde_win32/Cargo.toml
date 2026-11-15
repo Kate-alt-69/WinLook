@@ -9,3 +9,6 @@ readme = "README.md"
 
 [dependencies]
 wl_wlde = { version = "0.1.0-alpha.1", path = "../wl_wlde" }
+
+[target.'cfg(windows)'.dependencies]
+sha2 = "0.10.9"

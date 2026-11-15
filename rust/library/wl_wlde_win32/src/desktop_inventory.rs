@@ -216,7 +216,10 @@ mod desktop_inventory_platform {
     pub(super) fn enumerate() -> Result<Vec<DesktopInventoryItem>, DesktopInventoryError> {
         let roots = [
             (DesktopFolder::User, known_folder_path(DesktopFolder::User)?),
-            (DesktopFolder::Public, known_folder_path(DesktopFolder::Public)?),
+            (
+                DesktopFolder::Public,
+                known_folder_path(DesktopFolder::Public)?,
+            ),
         ];
         let mut inventory = Vec::new();
         let mut identifiers = HashSet::new();
@@ -240,9 +243,7 @@ mod desktop_inventory_platform {
             DesktopFolder::Public => &FOLDERID_PUBLIC_DESKTOP,
         };
         let mut raw_path = ptr::null_mut();
-        let hresult = unsafe {
-            SHGetKnownFolderPath(folder_id, 0, ptr::null_mut(), &mut raw_path)
-        };
+        let hresult = unsafe { SHGetKnownFolderPath(folder_id, 0, ptr::null_mut(), &mut raw_path) };
         let path = CoTaskMemString(raw_path);
 
         if hresult < 0 {
@@ -256,9 +257,7 @@ mod desktop_inventory_platform {
         }
 
         let mut length = 0usize;
-        while length < MAX_KNOWN_FOLDER_PATH_UNITS
-            && unsafe { *path.0.add(length) } != 0
-        {
+        while length < MAX_KNOWN_FOLDER_PATH_UNITS && unsafe { *path.0.add(length) } != 0 {
             length += 1;
         }
         if length == 0 || length == MAX_KNOWN_FOLDER_PATH_UNITS {
@@ -291,12 +290,13 @@ mod desktop_inventory_platform {
                 folder,
                 code: io_code(&error),
             })?;
-            let file_type = entry.file_type().map_err(|error| {
-                DesktopInventoryError::ReadDirectoryEntry {
-                    folder,
-                    code: io_code(&error),
-                }
-            })?;
+            let file_type =
+                entry
+                    .file_type()
+                    .map_err(|error| DesktopInventoryError::ReadDirectoryEntry {
+                        folder,
+                        code: io_code(&error),
+                    })?;
 
             // Never recurse into a child; symlinks are included as leaf entries.
             if !(file_type.is_file() || file_type.is_dir() || file_type.is_symlink()) {
@@ -311,8 +311,8 @@ mod desktop_inventory_platform {
                 continue;
             }
 
-            let item = DesktopItemRef::new(id, label, kind)
-                .map_err(DesktopInventoryError::InvalidItem)?;
+            let item =
+                DesktopItemRef::new(id, label, kind).map_err(DesktopInventoryError::InvalidItem)?;
             if inventory.len() >= MAX_DESKTOP_INVENTORY_ITEMS {
                 return Err(DesktopInventoryError::TooManyItems);
             }
@@ -341,7 +341,10 @@ mod desktop_inventory_platform {
     }
 
     fn io_code(error: &std::io::Error) -> u32 {
-        error.raw_os_error().map(|code| code as u32).unwrap_or(u32::MAX)
+        error
+            .raw_os_error()
+            .map(|code| code as u32)
+            .unwrap_or(u32::MAX)
     }
 }
 
