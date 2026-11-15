@@ -344,6 +344,7 @@ mod platform {
         ) -> i32;
     }
 
+    #[allow(dead_code)]
     #[repr(C)]
     struct BitmapInfoHeader {
         size: u32,
@@ -359,6 +360,7 @@ mod platform {
         colors_important: u32,
     }
 
+    #[allow(dead_code)]
     #[repr(C)]
     #[derive(Clone, Copy, Default)]
     struct RgbQuad {
@@ -368,6 +370,7 @@ mod platform {
         reserved: u8,
     }
 
+    #[allow(dead_code)]
     #[repr(C)]
     struct BitmapInfo {
         header: BitmapInfoHeader,
