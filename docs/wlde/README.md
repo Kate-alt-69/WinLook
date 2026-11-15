@@ -289,3 +289,20 @@ re-arms a signaled handle and re-enumerates the entire bounded snapshot. It
 watches only file/directory-name changes, not ordinary content writes.
 Remote/UNC paths retain a five-second fallback because notification delivery
 is not guaranteed there.
+
+
+## Desktop item identity and future Group persistence
+
+The modern Win32 inventory assigns filesystem-backed IDs using a volume
+serial number, file index and creation-time discriminator from a metadata-only
+Windows handle. Each item exposes whether its key is `FilesystemFileId` or
+`PathFallback`. Unique single-link IDs preserve Group references across
+ordinary same-volume NTFS renames. Multi-link entries and unavailable,
+partial or duplicate identities use distinct path-hash fallbacks rather than
+collapsing separate desktop names into one Group member.
+
+This is not a universal identity guarantee: file IDs vary by filesystem and
+can be reused after deletion. Durable Group storage must persist the identity
+kind and reconcile path fallbacks before restoring membership. The normalized
+layout is still in-memory only; this work does not add persistence or a
+crash-recovery journal.
