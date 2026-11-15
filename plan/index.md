@@ -56,7 +56,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - C: [`wl_Lanimate`](../C/library/wl_Lanimate/README.md), [`wl_Lcpuv`](../C/library/wl_Lcpuv/README.md), [`wl_Lgpuv`](../C/library/wl_Lgpuv/README.md), [`wl_Lwlde`](../C/library/wl_Lwlde/README.md), and legacy Win32 [`wl_Lui`](../C/library/wl_Lui/README.md).
 - UI backend paths: `wl_ui::windows10`, `wl_ui::windows11`, `wl_ui::tauri2`, and experimental `wl_ui::windows7` / `windows8` / `windows81`.
 - Vector/SVG contract: [Vector Animation](architecture/vector-animation.md).
-- Desktop inventory and Explorer bridge constraints: [WLDE architecture](architecture/wlde.md), [Explorer customization](architecture/explorer-customization.md), and [wl_wlde_win32 adapter](../rust/library/wl_wlde_win32/README.md).
+- Desktop inventory, filesystem identity/rename semantics and Explorer bridge constraints: [WLDE architecture](architecture/wlde.md), [Explorer customization](architecture/explorer-customization.md), and [wl_wlde_win32 adapter](../rust/library/wl_wlde_win32/README.md).
 - Resource-governor contract: [CPUv/GPUv](architecture/resource-governors.md).
 - UI structure and selection rules: [Manager UI Architecture](architecture/ui-architecture.md).
 
