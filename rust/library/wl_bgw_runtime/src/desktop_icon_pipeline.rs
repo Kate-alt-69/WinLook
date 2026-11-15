@@ -676,6 +676,15 @@ mod tests {
         assert_eq!(cache.len(), 0);
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn shell_worker_initializes_com_before_accepting_requests() {
+        let pipeline = DesktopIconPipeline::new(context(96, 0))
+            .expect("initialize the dedicated Shell worker COM apartment");
+        assert!(pipeline.worker_available());
+        drop(pipeline);
+    }
+
     #[test]
     fn zero_dpi_context_is_rejected() {
         assert_eq!(
