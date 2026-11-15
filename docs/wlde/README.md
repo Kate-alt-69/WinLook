@@ -335,7 +335,8 @@ classic AND/XOR icons where representable, and rejects screen-dependent
 inversion pixels rather than guessing. It flushes GDI before reading the
 directly accessible DIB pixels and restores the selected object before
 releasing the DIB. BGW now provides a bounded DPI/theme/identity-aware
-memory cache; live presentation remains outstanding. The operation covers filesystem Desktop paths only; virtual
+memory cache and a zero-copy borrowed AdaptiveIconImageView handoff; live
+presentation remains outstanding. The operation covers filesystem Desktop paths only; virtual
 namespace items and exact Explorer view membership require the later Shell-view
 bridge. The BGW/native restore boundary remains unchanged.
 
