@@ -96,7 +96,8 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             None
         }
     };
-    let mut desktop_icon_pipeline = match DesktopIconPipeline::new(DesktopIconContext::initial_bgw()) {
+    let mut desktop_icon_pipeline = match DesktopIconPipeline::new(DesktopIconContext::initial_bgw())
+    {
         Ok(pipeline) => Some(pipeline),
         Err(error) => {
             report_status(&format!(

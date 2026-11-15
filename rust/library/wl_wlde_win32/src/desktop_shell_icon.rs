@@ -183,9 +183,7 @@ impl DesktopShellIconRgba {
         if width == 0 || height == 0 {
             return Err(DesktopShellIconError::InvalidIconDimensions);
         }
-        if width > MAX_DESKTOP_SHELL_ICON_DIMENSION
-            || height > MAX_DESKTOP_SHELL_ICON_DIMENSION
-        {
+        if width > MAX_DESKTOP_SHELL_ICON_DIMENSION || height > MAX_DESKTOP_SHELL_ICON_DIMENSION {
             return Err(DesktopShellIconError::IconTooLarge);
         }
         let expected = (width as usize)
@@ -726,11 +724,7 @@ mod pixel_tests {
             Err(DesktopShellIconError::InvalidIconDimensions)
         );
         assert_eq!(
-            DesktopShellIconRgba::from_pixels(
-                MAX_DESKTOP_SHELL_ICON_DIMENSION + 1,
-                1,
-                Vec::new()
-            ),
+            DesktopShellIconRgba::from_pixels(MAX_DESKTOP_SHELL_ICON_DIMENSION + 1, 1, Vec::new()),
             Err(DesktopShellIconError::IconTooLarge)
         );
         let image = DesktopShellIconRgba::from_pixels(1, 1, vec![10, 20, 30, 255]).unwrap();

@@ -408,8 +408,7 @@ pub struct DesktopIconPipeline {
 impl DesktopIconPipeline {
     pub fn new(context: DesktopIconContext) -> io::Result<Self> {
         let (request_tx, request_rx) = mpsc::sync_channel::<IconWork>(WORK_QUEUE_CAPACITY);
-        let (result_tx, result_rx) =
-            mpsc::sync_channel::<IconWorkResult>(RESULT_QUEUE_CAPACITY);
+        let (result_tx, result_rx) = mpsc::sync_channel::<IconWorkResult>(RESULT_QUEUE_CAPACITY);
         let (startup_tx, startup_rx) = mpsc::sync_channel::<Result<(), i32>>(1);
 
         thread::Builder::new()
@@ -496,9 +495,8 @@ impl DesktopIconPipeline {
     pub fn invalidate_path_fallbacks(&mut self) {
         self.fallback_generation = self.fallback_generation.wrapping_add(1);
         self.cache.retain_filesystem_backed();
-        self.failed.retain(|key| {
-            key.identity_stability == DesktopItemIdentityStability::FilesystemFileId
-        });
+        self.failed
+            .retain(|key| key.identity_stability == DesktopItemIdentityStability::FilesystemFileId);
     }
 
     /// Changes DPI/theme/size policy and invalidates every cached variant.
@@ -659,11 +657,7 @@ mod tests {
         dpi: u32,
         theme_generation: u64,
     ) -> DesktopIconCacheKey {
-        DesktopIconCacheKey::for_test(
-            item_id,
-            identity_stability,
-            context(dpi, theme_generation),
-        )
+        DesktopIconCacheKey::for_test(item_id, identity_stability, context(dpi, theme_generation))
     }
 
     fn image(red: u8) -> DesktopShellIconRgba {
@@ -816,7 +810,14 @@ mod tests {
             0,
         );
 
-        assert!(is_current_icon_result(4, 4, &stable_key, context, 1, &current));
+        assert!(is_current_icon_result(
+            4,
+            4,
+            &stable_key,
+            context,
+            1,
+            &current
+        ));
         assert!(!is_current_icon_result(
             4,
             4,
@@ -825,7 +826,14 @@ mod tests {
             1,
             &current,
         ));
-        assert!(!is_current_icon_result(3, 4, &stable_key, context, 1, &current));
+        assert!(!is_current_icon_result(
+            3,
+            4,
+            &stable_key,
+            context,
+            1,
+            &current
+        ));
     }
 
     #[test]

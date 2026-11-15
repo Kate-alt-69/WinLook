@@ -804,7 +804,9 @@ mod tests {
 
     fn topology() -> MonitorTopology {
         let rectangle = Rect::new(0.0, 0.0, 1920.0, 1080.0).unwrap();
-        MonitorTopology::new(vec![Monitor::new("DISPLAY1", rectangle, rectangle, true).unwrap()])
+        MonitorTopology::new(vec![
+            Monitor::new("DISPLAY1", rectangle, rectangle, true).unwrap()
+        ])
         .unwrap()
     }
 
