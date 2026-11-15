@@ -633,6 +633,32 @@ mod tests {
     }
 
     #[test]
+    fn path_fallback_invalidation_keeps_only_filesystem_backed_icons() {
+        let mut cache = DesktopIconCache::new(1024, 8);
+        let file_id = key(
+            "desktop:file:stable",
+            DesktopItemIdentityStability::FilesystemFileId,
+            96,
+            0,
+        );
+        let fallback = key(
+            "desktop:path:notes",
+            DesktopItemIdentityStability::PathFallback,
+            96,
+            0,
+        );
+        assert!(cache.insert(file_id.clone(), image(1)));
+        assert!(cache.insert(fallback.clone(), image(2)));
+
+        cache.retain_filesystem_backed();
+
+        assert!(cache.contains(&file_id));
+        assert!(!cache.contains(&fallback));
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.used_bytes(), 4);
+    }
+
+    #[test]
     fn cache_rejects_images_larger_than_its_memory_budget() {
         let mut cache = DesktopIconCache::new(3, 2);
         let cache_key = key(
