@@ -95,7 +95,8 @@ BGW now creates one dedicated Shell icon worker after startup. The worker
 initializes an STA COM apartment before calling SHGetFileInfoW and balances
 it with CoUninitialize when the worker exits. The host-monitor loop only
 queues bounded requests and drains completed results; Shell extraction and
-HICON rasterization never run on the host-monitor thread.
+HICON rasterization never run on the host-monitor thread. BGW polls at 250 ms
+while icon work is pending, then returns to the normal five-second host check.
 
 - Work and result channels each hold at most 16 messages; there is one worker.
 - The in-memory LRU cache is capped at 8 MiB and 256 icons. Each icon is limited
