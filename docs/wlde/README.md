@@ -332,7 +332,9 @@ This does not change Explorer's native icon presentation. The new
 RGBA suitable for the existing adaptive icon compositor. It reconstructs
 source coverage from black/white backdrop renders, supports normal alpha and
 classic AND/XOR icons where representable, and rejects screen-dependent
-inversion pixels rather than guessing. A DPI/theme/identity-aware cache and
+inversion pixels rather than guessing. It flushes GDI before reading the
+directly accessible DIB pixels and restores the selected object before
+releasing the DIB. A DPI/theme/identity-aware cache and
 BGW presentation integration remain outstanding. The operation covers filesystem Desktop paths only; virtual
 namespace items and exact Explorer view membership require the later Shell-view
 bridge. The BGW/native restore boundary remains unchanged.
