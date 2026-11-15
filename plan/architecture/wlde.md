@@ -505,7 +505,7 @@ The BGW runtime owns a single dedicated Shell icon worker and a bounded
 process-memory RGBA cache. The worker initializes an STA COM apartment before
 using SHGetFileInfoW and releases it with a balanced CoUninitialize. The
 Explorer monitor loop only submits requests and polls completed results;
-a slow Shell handler cannot block host-exit detection.
+a slow Shell handler cannot block host-exit detection. BGW polls every 250 ms while icon work is pending, then returns to the regular five-second host check.
 
 Work/result queues are capped at 16 messages each. The LRU stores at most 256
 icons or 8 MiB, with each RGBA source bounded to 512×512. Keys include the
