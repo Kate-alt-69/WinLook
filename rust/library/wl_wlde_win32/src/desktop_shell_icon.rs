@@ -33,6 +33,7 @@ pub enum DesktopShellIconSize {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DesktopShellIconError {
     UnsupportedPlatform,
+    PathTooLong,
     ShellIconUnavailable,
     IconMetadataUnavailable,
     InvalidIconDimensions,
@@ -43,6 +44,9 @@ impl fmt::Display for DesktopShellIconError {
         match self {
             Self::UnsupportedPlatform => {
                 f.write_str("desktop Shell icon extraction is available only on Windows")
+            }
+            Self::PathTooLong => {
+                f.write_str("Shell icon extraction path exceeds the SHGetFileInfoW MAX_PATH limit")
             }
             Self::ShellIconUnavailable => {
                 f.write_str("Windows Shell did not provide an icon for this desktop item")
@@ -138,6 +142,7 @@ mod platform {
     use std::os::windows::ffi::OsStrExt;
     use std::path::Path;
 
+    const MAX_SHELL_PATH_UNITS: usize = 260;
     const SHGFI_ICON: u32 = 0x0000_0100;
     const SHGFI_SHELLICONSIZE: u32 = 0x0000_0004;
     const SHGFI_SMALLICON: u32 = 0x0000_0001;
@@ -241,6 +246,11 @@ mod platform {
         let mut wide_path = path.as_os_str().encode_wide().collect::<Vec<_>>();
         if wide_path.iter().any(|unit| *unit == 0) {
             return Err(DesktopShellIconError::ShellIconUnavailable);
+        }
+        // SHGetFileInfoW documents a MAX_PATH-bounded path input; do not pass
+        // extended-length paths through an API that does not promise support.
+        if wide_path.len() + 1 > MAX_SHELL_PATH_UNITS {
+            return Err(DesktopShellIconError::PathTooLong);
         }
         wide_path.push(0);
 
