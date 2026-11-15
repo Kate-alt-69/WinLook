@@ -1142,7 +1142,8 @@ mod tests {
             &items,
             &groups,
             &topology,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(layout.len(), 2);
         assert_eq!(
@@ -1196,14 +1197,16 @@ mod tests {
                 2_500,
                 3_500,
                 0,
-            ).unwrap(),
+            )
+            .unwrap(),
             DesktopLayoutEntry::new(
                 DesktopLayoutTarget::Item(DesktopItemId::new("folder:assets").unwrap()),
                 "DISPLAY-B",
                 7_500,
                 2_000,
                 1,
-            ).unwrap(),
+            )
+            .unwrap(),
         ];
         let mut layout =
             DesktopLayout::new(valid_entries.clone(), &items, &groups, &topology).unwrap();
