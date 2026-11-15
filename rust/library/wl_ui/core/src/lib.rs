@@ -5,6 +5,7 @@
 
 mod application;
 mod backend;
+mod branding;
 mod error;
 mod page;
 mod style;
@@ -12,6 +13,7 @@ mod window;
 
 pub use application::UiApplication;
 pub use backend::{UiBackend, UiBackendCapabilities};
+pub use branding::UiBranding;
 pub use error::UiError;
 pub use page::UiPage;
 pub use style::{
@@ -99,5 +101,41 @@ mod tests {
         assert!(app.validate().is_ok());
         assert_eq!(app.theme_ref().color_scheme(), UiColorScheme::Dark);
         assert_eq!(app.styles_ref().rules().len(), 1);
+    }
+
+    #[test]
+    fn branding_is_optional_and_validated() {
+        let app = UiApplication::new("WinLook")
+            .branding(UiBranding::new("WinLook").mark("WL").tagline("Your desktop, your way."))
+            .page(UiPage::new("home", "Home", "Overview"));
+        assert!(app.validate().is_ok());
+        let branding = app.branding_ref().unwrap();
+        assert_eq!(branding.title(), "WinLook");
+        assert_eq!(branding.mark_text(), "WL");
+        assert_eq!(branding.tagline_text(), "Your desktop, your way.");
+
+        let invalid = UiApplication::new("WinLook")
+            .branding(UiBranding::new(" ").mark("WINLOOKMARK"));
+        assert!(matches!(invalid.validate(), Err(UiError::InvalidBranding(_))));
+    }
+
+    #[test]
+    fn state_selectors_and_transitions_are_available_for_interactive_styles() {
+        let styles = UiStyleSheet::new()
+            .rule(
+                UiSelector::new(UiComponent::Button),
+                UiStyle::new().transition(UiTransition::new(
+                    UiTransitionProperty::Background,
+                    160,
+                    UiEasing::EaseOut,
+                )),
+            )
+            .rule(
+                UiSelector::new(UiComponent::Button).state(UiVisualState::Hover),
+                UiStyle::new().background(UiColor::rgb(20, 80, 140)),
+            );
+        let css = styles.to_css().unwrap();
+        assert!(css.contains(":hover"));
+        assert!(css.contains("transition"));
     }
 }
