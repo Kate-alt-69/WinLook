@@ -327,9 +327,12 @@ can perform blocking work. The path-based `SHGetFileInfoW` boundary enforces
 its documented MAX_PATH input limit; inventory can still contain longer
 paths, but their icon extraction returns a typed `PathTooLong` error.
 
-This does not change Explorer's native icon presentation. Pixel rasterization
-to bounded RGBA, mask/alpha normalization and a DPI/theme/identity-aware cache
-are still needed before feeding real Shell artwork to the existing adaptive
-icon compositor. The operation covers filesystem Desktop paths only; virtual
+This does not change Explorer's native icon presentation. The new
+`rasterize_desktop_shell_icon_rgba()` returns bounded 512×512 straight-alpha
+RGBA suitable for the existing adaptive icon compositor. It reconstructs
+source coverage from black/white backdrop renders, supports normal alpha and
+classic AND/XOR icons where representable, and rejects screen-dependent
+inversion pixels rather than guessing. A DPI/theme/identity-aware cache and
+BGW presentation integration remain outstanding. The operation covers filesystem Desktop paths only; virtual
 namespace items and exact Explorer view membership require the later Shell-view
 bridge. The BGW/native restore boundary remains unchanged.
