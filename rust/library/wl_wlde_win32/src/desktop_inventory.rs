@@ -256,18 +256,23 @@ fn classify_desktop_entry(path: &Path, is_directory: bool) -> DesktopItemKind {
 #[cfg(any(windows, test))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct DesktopFileIdentity {
-    volume_serial_number: u32,
-    file_index: u64,
+    volume_serial_number: u64,
+    file_id: [u8; 16],
     creation_time_100ns: u64,
     number_of_links: u32,
 }
 
 #[cfg(any(windows, test))]
 fn stable_desktop_id(identity: DesktopFileIdentity) -> String {
-    format!(
-        "desktop:file:{:08x}:{:016x}:{:016x}",
-        identity.volume_serial_number, identity.file_index, identity.creation_time_100ns
-    )
+    use std::fmt::Write as _;
+
+    let mut id = String::with_capacity(79);
+    let _ = write!(id, "desktop:file:{:016x}:", identity.volume_serial_number);
+    for byte in identity.file_id {
+        let _ = write!(id, "{byte:02x}");
+    }
+    let _ = write!(id, ":{:016x}", identity.creation_time_100ns);
+    id
 }
 
 #[cfg(any(windows, test))]
@@ -323,6 +328,7 @@ mod desktop_inventory_platform {
     const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
     const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
     const INVALID_HANDLE_VALUE: isize = -1;
+    const FILE_ID_INFO_CLASS: i32 = 18;
 
     // KNOWNFOLDERID values from KnownFolders.h / Microsoft Learn.
     const FOLDERID_DESKTOP: Guid = Guid {
@@ -380,6 +386,12 @@ mod desktop_inventory_platform {
             file: Handle,
             information: *mut ByHandleFileInformation,
         ) -> i32;
+        fn GetFileInformationByHandleEx(
+            file: Handle,
+            information_class: i32,
+            information: *mut c_void,
+            buffer_size: u32,
+        ) -> i32;
         fn CloseHandle(object: Handle) -> i32;
         fn FindFirstChangeNotificationW(
             path: *const u16,
@@ -404,6 +416,13 @@ mod desktop_inventory_platform {
     struct FileTime {
         low_date_time: u32,
         high_date_time: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    struct FileIdInfo {
+        volume_serial_number: u64,
+        file_id: [u8; 16],
     }
 
     #[repr(C)]
@@ -720,18 +739,41 @@ mod desktop_inventory_platform {
         }
 
         let handle = OwnedFileHandle(raw_handle);
-        let mut information = ByHandleFileInformation::default();
-        if unsafe { GetFileInformationByHandle(handle.0, &mut information) } == 0 {
+        let mut file_information = ByHandleFileInformation::default();
+        if unsafe { GetFileInformationByHandle(handle.0, &mut file_information) } == 0 {
+            return None;
+        }
+
+        let mut file_id_information = FileIdInfo::default();
+        let file_id_result = unsafe {
+            GetFileInformationByHandleEx(
+                handle.0,
+                FILE_ID_INFO_CLASS,
+                (&mut file_id_information as *mut FileIdInfo).cast(),
+                std::mem::size_of::<FileIdInfo>() as u32,
+            )
+        };
+        if file_id_result == 0 || file_id_information.file_id.iter().all(|byte| *byte == 0) {
+            // Zero is the documented "unsupported" FILE_ID_128 value. Do not
+            // fall back to the legacy 64-bit index: ReFS does not guarantee it
+            // is unique. Let the caller use a marked path-derived key instead.
+            return None;
+        }
+
+        let creation_time_100ns =
+            (u64::from(file_information.creation_time.high_date_time) << 32)
+                | u64::from(file_information.creation_time.low_date_time);
+        if creation_time_100ns == 0 {
+            // Without a creation discriminator, deletion/reuse cannot be
+            // distinguished safely enough for a persistent Group reference.
             return None;
         }
 
         Some(DesktopFileIdentity {
-            volume_serial_number: information.volume_serial_number,
-            file_index: (u64::from(information.file_index_high) << 32)
-                | u64::from(information.file_index_low),
-            creation_time_100ns: (u64::from(information.creation_time.high_date_time) << 32)
-                | u64::from(information.creation_time.low_date_time),
-            number_of_links: information.number_of_links,
+            volume_serial_number: file_id_information.volume_serial_number,
+            file_id: file_id_information.file_id,
+            creation_time_100ns,
+            number_of_links: file_information.number_of_links,
         })
     }
 
@@ -755,6 +797,84 @@ mod desktop_inventory_platform {
             .raw_os_error()
             .map(|code| code as u32)
             .unwrap_or(u32::MAX)
+    }
+
+    #[cfg(test)]
+    mod identity_tests {
+        use super::*;
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        struct TestDirectory(PathBuf);
+
+        impl Drop for TestDirectory {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+
+        fn test_directory() -> TestDirectory {
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system clock must be after the Unix epoch")
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!(
+                "winlook-wlde-file-id-{}-{timestamp}",
+                std::process::id()
+            ));
+            fs::create_dir(&path).expect("create isolated test directory");
+            TestDirectory(path)
+        }
+
+        #[test]
+        fn file_id_info_survives_a_same_volume_rename() {
+            let directory = test_directory();
+            let original = directory.0.join("source.tmp");
+            let renamed = directory.0.join("renamed.tmp");
+            fs::write(&original, b"file identity test").expect("create test file");
+
+            let before = read_file_identity(&original).expect("query original file identity");
+            fs::rename(&original, &renamed).expect("rename test file on the same volume");
+            let after = read_file_identity(&renamed).expect("query renamed file identity");
+
+            assert_eq!(before.volume_serial_number, after.volume_serial_number);
+            assert_eq!(before.file_id, after.file_id);
+            assert_eq!(before.creation_time_100ns, after.creation_time_100ns);
+            assert_eq!(stable_desktop_id(before), stable_desktop_id(after));
+        }
+
+        #[test]
+        fn hard_link_aliases_use_path_fallbacks() {
+            let directory = test_directory();
+            let original = directory.0.join("original.tmp");
+            let alias = directory.0.join("alias.tmp");
+            fs::write(&original, b"hard-link identity test").expect("create test file");
+            if let Err(error) = fs::hard_link(&original, &alias) {
+                eprintln!("hard-link test skipped: {error}");
+                return;
+            }
+
+            let first = read_file_identity(&original).expect("query original identity");
+            let second = read_file_identity(&alias).expect("query alias identity");
+            assert_eq!(first.volume_serial_number, second.volume_serial_number);
+            assert_eq!(first.file_id, second.file_id);
+            assert!(first.number_of_links > 1);
+            assert_eq!(first.number_of_links, second.number_of_links);
+
+            let (first_id, first_kind) = resolve_desktop_item_identity(
+                Some(first),
+                1,
+                path_fallback_desktop_id(&original),
+            );
+            let (second_id, second_kind) = resolve_desktop_item_identity(
+                Some(second),
+                1,
+                path_fallback_desktop_id(&alias),
+            );
+            assert_ne!(first_id, second_id);
+            assert_eq!(first_kind, DesktopItemIdentityStability::PathFallback);
+            assert_eq!(second_kind, DesktopItemIdentityStability::PathFallback);
+        }
     }
 }
 
@@ -789,8 +909,11 @@ mod tests {
     #[test]
     fn filesystem_identity_keys_are_volume_scoped_and_path_independent() {
         let identity = DesktopFileIdentity {
-            volume_serial_number: 0x1234_abcd,
-            file_index: 0x0123_4567_89ab_cdef,
+            volume_serial_number: 0x0123_4567_89ab_cdef,
+            file_id: [
+                0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98,
+                0x76, 0x54, 0x32, 0x10,
+            ],
             creation_time_100ns: 0x0fed_cba9_8765_4321,
             number_of_links: 1,
         };
@@ -808,7 +931,7 @@ mod tests {
         assert_ne!(
             id,
             stable_desktop_id(DesktopFileIdentity {
-                file_index: identity.file_index + 1,
+                file_id: [0x55; 16],
                 ..identity
             })
         );
@@ -830,7 +953,7 @@ mod tests {
 
         let identity = DesktopFileIdentity {
             volume_serial_number: 7,
-            file_index: 11,
+            file_id: [0x11; 16],
             creation_time_100ns: 13,
             number_of_links: 2,
         };
