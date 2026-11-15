@@ -26,7 +26,7 @@ pub enum DesktopFolder {
 }
 
 /// Describes how confidently an inventory ID survives filesystem changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DesktopItemIdentityStability {
     /// Derived from a volume serial and filesystem file ID.
     ///
