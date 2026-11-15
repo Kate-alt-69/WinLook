@@ -574,4 +574,4 @@ notification before waiting again.
 - Cache identity is opaque item ID + identity stability + Shell icon size + DPI bucket + theme generation. Initial context is 96 DPI/theme generation 0 pending actual BGW DPI/appearance events.
 - Inventory refresh removes stale identities and invalidates path-fallback artwork even when a path-derived ID string remains the same. Filesystem-ID artwork is retained for identities still present. Host/context generation changes drop old pixels and stale worker results.
 - The cache is memory-only and is not part of desktop-state persistence. Stable filesystem-ID failures are suppressed for the current host/context; path-fallback failures retry after inventory refresh. The cache exposes RGBA as a borrowed WLDE AdaptiveIconImageView without copying. It does not draw tiles or change Explorer/native icon state; Group presentation remains gated on the separate crash-safe restoration journal.
-- Microsoft COM initialization evidence is recorded as WLDE-035 in plan/references/SOURCES.md.
+- Microsoft COM initialization and STA message-dispatch evidence is recorded as WLDE-035–036 in plan/references/SOURCES.md.
