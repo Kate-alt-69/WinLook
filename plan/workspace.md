@@ -459,7 +459,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Extended the right-click model with a Desktop Background target and WLDE actions Create Group / Open Desktop Settings. Native Shell entries and file operations remain Shell-owned.
 - Added matching C89 desktop-background action values plus read-only Group lookup/membership helpers. C89 editing continues through caller-owned candidate arrays and transactional `wl_Lwlde_desktop_groups_replace()`.
 - Re-exported `render_adaptive_app_icon_into()` from the Rust crate root so BGW can use the allocation-free compositor API described in the README.
-- Added Rust/C89 tests for the new group actions, transactional failure behaviour, lookup and desktop-background menu actions. CI validation is the next acceptance gate; this still does not implement the native Explorer presenter, popup window, persistent Group store or crash-safe icon restoration.
+- Added Rust/C89 tests for the new group actions, transactional failure behaviour, lookup and desktop-background menu actions. The BGW-owned binary Group/layout store is implemented in a later 2026-11-15 checkpoint; the native Explorer presenter, popup window and crash-safe icon restoration remain unimplemented.
 
 
 ## WLDE modern Desktop filesystem inventory — 2026-11-15
@@ -488,7 +488,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 
 - Updated the existing Win10 and Win11 Icons pages to state that the shared color and themed-monochrome bitmap composers are ready. The monochrome alpha-mask/theme-tint behaviour is now reflected accurately; Shell extraction, DPI cache policy and icon registration remain adapter work.
 - Updated both Desktop Groups pages to describe transactional Group commands and the BGW read-only User/Public Desktop filesystem inventory.
-- Added explicit boundaries for work not yet wired: Manager/BGW status and configuration IPC, durable Group storage, exact Shell-view membership, virtual namespace entries, Explorer context-menu registration, native icon presentation, live Group tiles and crash restoration.
+- Added explicit boundaries for work not yet wired: Manager/BGW status and configuration IPC and a Manager-driven save/edit route, exact Shell-view membership, virtual namespace entries, Explorer context-menu registration, native icon presentation, live Group tiles and crash restoration. BGW can load and validate an existing local Groups/layout snapshot, but Manager cannot yet submit edits through IPC.
 - Kept Groups disabled for live presentation until native icon restoration can be demonstrated across BGW crash, Explorer restart, disable, session exit and uninstall.
 
 
@@ -531,3 +531,16 @@ notification before waiting again.
 - Windows documentation notes filesystem variation: FAT IDs can change on certain renames/defragmentation, file IDs may be reused after deletion, remote filesystems can return partial data, and ReFS's 64-bit file index is not guaranteed unique. Creation time reduces accidental reuse but is not a formal guarantee.
 - Focused portable tests cover identity construction and fallback selection. Windows-only tests cover same-volume rename continuity and hard-link disambiguation; hosted Windows CI must execute them.
 - Official sources WLDE-025–026 are recorded in `plan/references/SOURCES.md`. This modern Rust adapter work does not implement legacy C adapters for Windows 95–8.1; those still need generation-specific identity providers.
+
+
+## WLDE local Group/layout persistence foundation — 2026-11-15
+
+- Added `rust/library/wl_bgw_runtime/src/desktop_store.rs` as the BGW-owned machine-local store. Its default Windows location is `%LOCALAPPDATA%/WinLook/WLDE/desktop-state.v1.bin`.
+- The version-1 binary stores Group IDs/labels/member IDs, per-member identity kind and normalized layout entries. It stores no filesystem path, file content, executable path, source artwork or portable-template data.
+- The format has a 4 MiB cap, strict field/count/string bounds, exact-length parsing and CRC32 corruption detection. CRC32 is not an authenticity mechanism.
+- Saves validate against the complete current inventory and monitor topology, write a unique temporary file in the same directory, sync it, and rename it into place. BGW is the single-writer owner.
+- Loads revalidate Groups, inventory identity kinds, complete placements and monitor IDs. Stale fallback IDs, missing/new inventory entries, changed monitor IDs, corrupt data or incompatible format versions are rejected without rewriting the saved file.
+- BGW loads the snapshot after verifying the Explorer host and refreshes the validation after Desktop inventory notifications. This only restores the in-memory configuration model; it does not display Groups or suppress native icons.
+- The Manager-driven edit/save path is not implemented because authenticated Manager/BGW IPC is still open. The store API supports save, but the running Manager does not yet call it.
+- Current GDI monitor IDs are snapshot keys rather than durable physical display identities; a changed key safely rejects layout restoration until WLDM monitor mapping/reconciliation exists.
+- This local configuration store is separate from the crash-safe native icon/Shell restoration journal. Groups remain presentation-gated.
