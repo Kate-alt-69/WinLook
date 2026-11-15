@@ -116,7 +116,8 @@ while icon work is pending, then returns to the normal five-second host check.
   failures; path-fallback items are also retried after inventory refresh.
 
 The cache is process memory only. It does not write paths, pixels or icon
-artwork into the local Group/layout file. This pipeline supplies pixels for a
-future presenter, but it does not display them, hide native Explorer icons,
+artwork into the local Group/layout file. The cache exposes a borrowed WLDE AdaptiveIconImageView over each RGBA
+buffer without copying. This supplies compositor-ready pixels for a future
+presenter, but it does not display them, hide native Explorer icons,
 change Shell registrations or make Groups available. Crash-safe restoration
 remains a separate prerequisite.
