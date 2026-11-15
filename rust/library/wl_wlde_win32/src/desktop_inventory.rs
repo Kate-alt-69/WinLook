@@ -755,9 +755,8 @@ mod desktop_inventory_platform {
             return None;
         }
 
-        let creation_time_100ns =
-            (u64::from(file_information.creation_time.high_date_time) << 32)
-                | u64::from(file_information.creation_time.low_date_time);
+        let creation_time_100ns = (u64::from(file_information.creation_time.high_date_time) << 32)
+            | u64::from(file_information.creation_time.low_date_time);
         if creation_time_100ns == 0 {
             // Without a creation discriminator, deletion/reuse cannot be
             // distinguished safely enough for a persistent Group reference.
@@ -856,16 +855,10 @@ mod desktop_inventory_platform {
             assert!(first.number_of_links > 1);
             assert_eq!(first.number_of_links, second.number_of_links);
 
-            let (first_id, first_kind) = resolve_desktop_item_identity(
-                Some(first),
-                1,
-                path_fallback_desktop_id(&original),
-            );
-            let (second_id, second_kind) = resolve_desktop_item_identity(
-                Some(second),
-                1,
-                path_fallback_desktop_id(&alias),
-            );
+            let (first_id, first_kind) =
+                resolve_desktop_item_identity(Some(first), 1, path_fallback_desktop_id(&original));
+            let (second_id, second_kind) =
+                resolve_desktop_item_identity(Some(second), 1, path_fallback_desktop_id(&alias));
             assert_ne!(first_id, second_id);
             assert_eq!(first_kind, DesktopItemIdentityStability::PathFallback);
             assert_eq!(second_kind, DesktopItemIdentityStability::PathFallback);
@@ -906,8 +899,8 @@ mod tests {
         let identity = DesktopFileIdentity {
             volume_serial_number: 0x0123_4567_89ab_cdef,
             file_id: [
-                0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98,
-                0x76, 0x54, 0x32, 0x10,
+                0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54,
+                0x32, 0x10,
             ],
             creation_time_100ns: 0x0fed_cba9_8765_4321,
             number_of_links: 1,
