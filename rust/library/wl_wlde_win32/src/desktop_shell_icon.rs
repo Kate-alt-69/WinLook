@@ -8,6 +8,8 @@
 use std::fmt;
 use std::ptr::NonNull;
 
+use wl_wlde::{AdaptiveIconImageView, AdaptiveIconRenderError};
+
 use crate::DesktopInventoryItem;
 
 #[cfg(windows)]
@@ -211,6 +213,13 @@ impl DesktopShellIconRgba {
     /// Straight-alpha pixels in row-major RGBA byte order.
     pub fn pixels(&self) -> &[u8] {
         &self.pixels
+    }
+
+    /// Borrows this image directly as WLDE compositor input without copying.
+    pub fn as_adaptive_image_view(
+        &self,
+    ) -> Result<AdaptiveIconImageView<'_>, AdaptiveIconRenderError> {
+        AdaptiveIconImageView::new(self.width, self.height, &self.pixels)
     }
 }
 
@@ -726,6 +735,10 @@ mod pixel_tests {
         );
         let image = DesktopShellIconRgba::from_pixels(1, 1, vec![10, 20, 30, 255]).unwrap();
         assert_eq!(image.pixels(), &[10, 20, 30, 255]);
+        let view = image.as_adaptive_image_view().unwrap();
+        assert_eq!(view.width(), 1);
+        assert_eq!(view.height(), 1);
+        assert_eq!(view.pixels(), &[10, 20, 30, 255]);
     }
 
     #[test]
