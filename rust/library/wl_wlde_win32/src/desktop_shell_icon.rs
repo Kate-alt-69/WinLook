@@ -170,7 +170,6 @@ mod platform {
     }
 
     #[repr(C)]
-    #[derive(Default)]
     struct Bitmap {
         bitmap_type: i32,
         width: i32,
@@ -179,6 +178,20 @@ mod platform {
         planes: u16,
         bits_pixel: u16,
         bits: *mut std::ffi::c_void,
+    }
+
+    impl Default for Bitmap {
+        fn default() -> Self {
+            Self {
+                bitmap_type: 0,
+                width: 0,
+                height: 0,
+                width_bytes: 0,
+                planes: 0,
+                bits_pixel: 0,
+                bits: std::ptr::null_mut(),
+            }
+        }
     }
 
     #[link(name = "shell32")]
