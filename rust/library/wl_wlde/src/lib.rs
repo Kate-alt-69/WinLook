@@ -49,7 +49,8 @@ pub use resource::{
 pub use restore_journal::{
     decode_desktop_restore_ledger, encode_desktop_restore_ledger, encode_desktop_restore_record,
     plan_desktop_restore_recovery, DecodedDesktopRestoreLedger, DesktopRestoreJournalError,
-    DesktopRestoreLedger, DesktopRestoreRecord, DesktopRestoreRecoveryAction, DesktopRestoreState,
+    DesktopRestoreLedger, DesktopRestoreOperation, DesktopRestoreRecord,
+    DesktopRestoreRecoveryAction, DesktopRestoreState,
     DESKTOP_RESTORE_JOURNAL_VERSION, MAX_DESKTOP_RESTORE_JOURNAL_BYTES,
     MAX_DESKTOP_RESTORE_RECORDS,
 };

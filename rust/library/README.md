@@ -107,6 +107,9 @@ Its public surface is grouped around:
   caller-fed `ResourceSample`, `GameModePolicy`, profiles and resolver.
 - Desktop model: `DesktopItemRef`, `DesktopGroups`, `DesktopLayout`,
   validated transactional group/layout changes and typed context actions.
+- Restoration record core: `DesktopRestoreOperation`, `DesktopRestoreLedger`,
+  versioned record encoding/decoding, evidence-checked state transitions and
+  pure recovery planning (no file I/O or native adapter execution).
 - Icon composition: `AdaptiveAppIcon`, `AppIconLayers`, masks and the
   bounded `render_adaptive_app_icon*_into` / monochrome compositor functions.
 - Store and Wallpaper Engine hand-off metadata: provider directory records,

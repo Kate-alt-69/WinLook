@@ -305,8 +305,10 @@ The portable core now provides a **record codec and state-machine validator** fo
 the future Explorer Desktop Bridge write-ahead journal. It is reusable by any
 platform adapter that needs the same conservative transaction model:
 
-- `DesktopRestoreLedger::begin()` validates and records the immutable original
-  value, desired value, adapter key/version, resource key and ownership proof.
+- `DesktopRestoreOperation::new(...)` groups the named start-operation inputs;
+  `DesktopRestoreLedger::begin(operation)` validates and records the immutable
+  original value, desired value, adapter key/version, resource key and ownership
+  proof.
 - `transition()` appends only legal phases: Prepared → Applying → Committed →
   Restoring → Restored, with explicit Aborted and Conflict terminal outcomes.
   Committed and Applying/Committed → Restoring transitions require exact desired
@@ -349,11 +351,12 @@ A minimal Prepared frame can be produced without opening or writing a file:
 ```rust
 use wl_wlde::{
     encode_desktop_restore_record, DesktopRestoreJournalError, DesktopRestoreLedger,
+    DesktopRestoreOperation,
 };
 
 fn encode_prepared_frame() -> Result<Vec<u8>, DesktopRestoreJournalError> {
     let mut ledger = DesktopRestoreLedger::new();
-    ledger.begin(
+    ledger.begin(DesktopRestoreOperation::new(
         [0x41; 16],
         1, // adapter ID from the host's compiled allowlist
         1, // adapter payload schema version
@@ -361,7 +364,7 @@ fn encode_prepared_frame() -> Result<Vec<u8>, DesktopRestoreJournalError> {
         &[0], // captured original value
         &[1], // desired value
         &[0xA5, 0x5A], // adapter-defined ownership token
-    )?;
+    ))?;
     encode_desktop_restore_record(ledger.records().last().expect("Prepared record exists"))
 }
 ```

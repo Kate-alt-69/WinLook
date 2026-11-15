@@ -592,3 +592,9 @@ notification before waiting again.
 - The decoder distinguishes an incomplete final append from a complete corrupt frame and exposes `valid_bytes` for a future storage writer. The pure recovery planner makes no restoration recommendation unless the observed desired value and adapter ownership proof both match.
 - This is a reusable portable codec/state-machine only. It does not open or lock a file, inspect user ACLs, enforce the runtime adapter registry, flush durable storage or call native APIs. The actual BGW journal writer and platform adapters are still required before any desktop mutation can be enabled.
 - Added public exports and library README/catalog guidance. Portable unit tests cover round-trip histories, truncation at every byte position, checksum corruption, transaction/sequence rules, resource bounds and safe recovery decisions; hosted Rust CI must verify them.
+
+
+- Journal API refinement: `DesktopRestoreOperation` packages transaction,
+  adapter, resource and opaque before/desired/ownership inputs for
+  `DesktopRestoreLedger::begin()`. The ledger no longer exposes a seven-argument
+  begin call; public exports and copyable README examples were updated.
