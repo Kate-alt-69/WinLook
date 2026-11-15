@@ -129,6 +129,42 @@ impl DesktopRestoreRecord {
     }
 }
 
+/// Named input for starting one reversible restoration operation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DesktopRestoreOperation<'a> {
+    transaction_id: [u8; 16],
+    adapter_id: u16,
+    adapter_version: u16,
+    resource_id: &'a str,
+    original_value: &'a [u8],
+    applied_value: &'a [u8],
+    ownership_proof: &'a [u8],
+}
+
+impl<'a> DesktopRestoreOperation<'a> {
+    /// Creates operation metadata. Validation is performed by
+    /// DesktopRestoreLedger::begin before it is added to the ledger.
+    pub fn new(
+        transaction_id: [u8; 16],
+        adapter_id: u16,
+        adapter_version: u16,
+        resource_id: &'a str,
+        original_value: &'a [u8],
+        applied_value: &'a [u8],
+        ownership_proof: &'a [u8],
+    ) -> Self {
+        Self {
+            transaction_id,
+            adapter_id,
+            adapter_version,
+            resource_id,
+            original_value,
+            applied_value,
+            ownership_proof,
+        }
+    }
+}
+
 /// In-memory validator for an append-only sequence of restoration records.
 ///
 /// The type does not persist records. The BGW storage implementation must
@@ -162,42 +198,36 @@ impl DesktopRestoreLedger {
     /// calling this method. This method only validates bounded portable data.
     pub fn begin(
         &mut self,
-        transaction_id: [u8; 16],
-        adapter_id: u16,
-        adapter_version: u16,
-        resource_id: impl Into<String>,
-        original_value: &[u8],
-        applied_value: &[u8],
-        ownership_proof: &[u8],
+        operation: DesktopRestoreOperation<'_>,
     ) -> Result<&DesktopRestoreRecord, DesktopRestoreJournalError> {
-        let resource_id = resource_id.into();
+        let resource_id = operation.resource_id.to_owned();
         validate_operation(
-            &transaction_id,
-            adapter_id,
-            adapter_version,
+            &operation.transaction_id,
+            operation.adapter_id,
+            operation.adapter_version,
             &resource_id,
-            original_value,
-            applied_value,
-            ownership_proof,
+            operation.original_value,
+            operation.applied_value,
+            operation.ownership_proof,
         )?;
         if self
             .records
             .iter()
-            .any(|record| record.transaction_id == transaction_id)
+            .any(|record| record.transaction_id == operation.transaction_id)
         {
             return Err(DesktopRestoreJournalError::DuplicateTransaction);
         }
         let sequence = self.next_sequence()?;
         let record = DesktopRestoreRecord {
             sequence,
-            transaction_id,
+            transaction_id: operation.transaction_id,
             state: DesktopRestoreState::Prepared,
-            adapter_id,
-            adapter_version,
+            adapter_id: operation.adapter_id,
+            adapter_version: operation.adapter_version,
             resource_id,
-            original_value: original_value.to_vec(),
-            applied_value: applied_value.to_vec(),
-            ownership_proof: ownership_proof.to_vec(),
+            original_value: operation.original_value.to_vec(),
+            applied_value: operation.applied_value.to_vec(),
+            ownership_proof: operation.ownership_proof.to_vec(),
         };
         self.push_validated(record)?;
         Ok(self.records.last().expect("record was just appended"))
@@ -858,7 +888,7 @@ mod tests {
         let mut ledger = DesktopRestoreLedger::new();
         let transaction_id = [0x41; 16];
         ledger
-            .begin(
+            .begin(DesktopRestoreOperation::new(
                 transaction_id,
                 1,
                 1,
@@ -866,7 +896,7 @@ mod tests {
                 &[0],
                 &[1],
                 &[0xA5, 0x5A],
-            )
+            ))
             .unwrap();
         (ledger, transaction_id)
     }
@@ -961,10 +991,26 @@ mod tests {
         let first = [1; 16];
         let second = [2; 16];
         ledger
-            .begin(first, 1, 1, "desktop.item.one", &[0], &[1], &[1])
+            .begin(DesktopRestoreOperation::new(
+                first,
+                1,
+                1,
+                "desktop.item.one",
+                &[0],
+                &[1],
+                &[1],
+            ))
             .unwrap();
         ledger
-            .begin(second, 1, 1, "desktop.item.two", &[0], &[1], &[2])
+            .begin(DesktopRestoreOperation::new(
+                second,
+                1,
+                1,
+                "desktop.item.two",
+                &[0],
+                &[1],
+                &[2],
+            ))
             .unwrap();
         ledger
             .transition(&first, DesktopRestoreState::Applying, None, false)
@@ -992,7 +1038,7 @@ mod tests {
             Err(DesktopRestoreJournalError::InvalidTransition)
         );
         assert_eq!(
-            ledger.begin(
+            ledger.begin(DesktopRestoreOperation::new(
                 transaction_id,
                 1,
                 1,
@@ -1000,7 +1046,7 @@ mod tests {
                 &[0],
                 &[1],
                 &[1]
-            ),
+            )),
             Err(DesktopRestoreJournalError::DuplicateTransaction)
         );
         ledger
@@ -1092,19 +1138,51 @@ mod tests {
     fn operation_fields_and_resource_ids_are_bounded_and_path_free() {
         let mut ledger = DesktopRestoreLedger::new();
         assert_eq!(
-            ledger.begin([0; 16], 1, 1, "desktop.icon", &[0], &[1], &[1]),
+            ledger.begin(DesktopRestoreOperation::new(
+                [0; 16],
+                1,
+                1,
+                "desktop.icon",
+                &[0],
+                &[1],
+                &[1]
+            )),
             Err(DesktopRestoreJournalError::InvalidTransactionId)
         );
         assert_eq!(
-            ledger.begin([1; 16], 0, 1, "desktop.icon", &[0], &[1], &[1]),
+            ledger.begin(DesktopRestoreOperation::new(
+                [1; 16],
+                0,
+                1,
+                "desktop.icon",
+                &[0],
+                &[1],
+                &[1]
+            )),
             Err(DesktopRestoreJournalError::InvalidAdapterId)
         );
         assert_eq!(
-            ledger.begin([1; 16], 1, 1, "../shell/resource", &[0], &[1], &[1]),
+            ledger.begin(DesktopRestoreOperation::new(
+                [1; 16],
+                1,
+                1,
+                "../shell/resource",
+                &[0],
+                &[1],
+                &[1]
+            )),
             Err(DesktopRestoreJournalError::InvalidResourceId)
         );
         assert_eq!(
-            ledger.begin([1; 16], 1, 1, "desktop.icon", &[0], &[1], &[]),
+            ledger.begin(DesktopRestoreOperation::new(
+                [1; 16],
+                1,
+                1,
+                "desktop.icon",
+                &[0],
+                &[1],
+                &[]
+            )),
             Err(DesktopRestoreJournalError::EmptyOwnershipProof)
         );
     }
