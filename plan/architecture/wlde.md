@@ -496,3 +496,26 @@ is compatible with the portable adaptive icon input. A cache keyed by item ident
 policy plus BGW presentation integration remain the next steps. Virtual Shell namespace items and exact Explorer view
 membership still require PIDL/IFolderView integration. See WLDE-028–030 in
 `plan/references/SOURCES.md`.
+
+
+## BGW memory-only Shell icon worker and cache — 2026-11-15
+
+The BGW runtime owns a single dedicated Shell icon worker and a bounded
+process-memory RGBA cache. The worker initializes an STA COM apartment before
+using SHGetFileInfoW and releases it with a balanced CoUninitialize. The
+Explorer monitor loop only submits requests and polls completed results;
+a slow Shell handler cannot block host-exit detection.
+
+Work/result queues are capped at 16 messages each. The LRU stores at most 256
+icons or 8 MiB, with each RGBA source bounded to 512×512. Keys include the
+opaque item ID, identity stability, icon size, DPI and theme generation. The
+initial host uses 96 DPI and generation 0 until BGW gets explicit DPI/theme
+notifications. Host changes invalidate the whole generation; inventory
+refreshes discard stale results and path-fallback artwork, while still-present
+filesystem-ID entries may remain cached.
+
+The cache stores neither filesystem paths nor persistent icon assets. It is
+not connected to the native desktop presenter: no icon is hidden or replaced,
+no Shell registration changes, and no Group is shown. The crash-safe native
+restoration journal remains a hard gate for presentation. See WLDE-028–035 in
+plan/references/SOURCES.md.
