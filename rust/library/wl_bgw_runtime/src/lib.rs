@@ -17,20 +17,20 @@ pub use desktop_store::{
 };
 
 #[cfg(windows)]
+use wl_wlde::DesktopItemKind;
+#[cfg(windows)]
 use wl_wlde_win32::{
     enumerate_desktop_items, enumerate_monitors, is_same_desktop_host, monitor_desktop_host,
     watch_desktop_folders, DesktopFolder, DesktopInventoryItem, DesktopInventoryWatcher,
 };
-#[cfg(windows)]
-use wl_wlde::DesktopItemKind;
 
 #[cfg(windows)]
 fn load_desktop_state(
     store: &DesktopStateStore,
     inventory: &[DesktopInventoryItem],
 ) -> Result<Option<DesktopStateSnapshot>, String> {
-    let topology = enumerate_monitors()
-        .map_err(|error| format!("monitor topology unavailable: {error}"))?;
+    let topology =
+        enumerate_monitors().map_err(|error| format!("monitor topology unavailable: {error}"))?;
     let identities = DesktopItemIdentityRecord::from_inventory(inventory);
     store
         .load(&identities, &topology)
@@ -158,9 +158,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             }
         };
 
-        let mut _restored_desktop_state = desktop_state_store.as_ref().and_then(|store| {
-            load_committed_desktop_state(store, &desktop_inventory)
-        });
+        let mut _restored_desktop_state = desktop_state_store
+            .as_ref()
+            .and_then(|store| load_committed_desktop_state(store, &desktop_inventory));
 
         let mut inventory_watcher = match watch_desktop_folders() {
             Ok(watcher) => Some(watcher),
