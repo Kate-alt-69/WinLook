@@ -1050,7 +1050,7 @@ mod tests {
                 &transaction_id,
                 DesktopRestoreState::Committed,
                 Some(&[1]),
-                true
+                true,
             )
             .unwrap();
     }
