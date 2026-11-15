@@ -547,6 +547,12 @@ mod tests {
                 1,
             ))
             .is_none());
+        let small_icon_key = DesktopIconCacheKey::for_test(
+            "desktop:file:stable",
+            DesktopItemIdentityStability::FilesystemFileId,
+            DesktopIconContext::new(DesktopShellIconSize::Small, 96, 0).unwrap(),
+        );
+        assert!(cache.get(&small_icon_key).is_none());
         assert!(cache
             .get(&key(
                 "desktop:file:stable",
