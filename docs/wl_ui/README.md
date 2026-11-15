@@ -39,22 +39,35 @@ The application model and style vocabulary are exported from the crate root:
 `UiTypography`, `UiMetrics`, `UiEffects`, `UiStyle`, `UiSelector`,
 `UiStyleSheet`, and related typed values.
 
-Each UiPage keeps its full page heading and description separate from its
-navigation label. Use navigation_title() when a Manager needs a compact,
-visually nested sidebar entry without changing the page heading:
+Each `UiPage` keeps its full page heading and description separate from its
+navigation label. Compatible native renderers display those fields as the page
+heading and supporting description. Use `navigation_title()` when a Manager
+needs a compact, visually nested sidebar entry without changing the page heading.
+
+Applications can also provide optional reusable branding. A brand has a
+visible title, a short text mark such as `WL`, and an optional tagline. The
+mark is renderer-neutral text, not a local image path or executable asset:
 
 ```rust
 UiPage::new("wallpaper-store", "Wallpaper Store", "Discover wallpaper providers")
-    .navigation_title("  Wallpaper Store")
+    .navigation_title("  Wallpaper Store");
+
+use wl_ui::UiBranding;
+
+let branding = UiBranding::new("WinLook")
+    .mark("WL")
+    .tagline("Your desktop, your way.");
 ```
 
 ## WinLook Manager visual baseline
 
-The shared `manager_app()` starts with the **WinLook Graphite** dark theme and
-semantic Window, Navigation, Surface, Card and Button styles. This keeps the
-Manager from falling back to the generic white system palette. The modern
-Windows 11 shell uses bordered status cards and module summaries; the Windows
-10 shell maps the same dark palette to native GDI/Win32 surfaces and controls.
+The shared `manager_app()` starts with the **WinLook Graphite** dark theme,
+optional WinLook branding, and semantic Window, Navigation, Surface, Card,
+Button, BrandMark, PageHeader, PageDescription and Tile styles. Button rules
+declare hover, pressed and focus states plus short typed transitions for
+CSS-capable renderers. Windows 11 displays the brand and separate page heading
+and description; Windows 10 uses native GDI/Win32 controls for the same visual
+hierarchy. Platform-specific rendering limits remain explicit.
 
 The shared navigation includes dedicated WLDE destinations for Wallpaper,
 Wallpaper Store, Wallpaper Engine, Free Catalogues, Wallpaper Library,
