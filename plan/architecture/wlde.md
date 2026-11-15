@@ -485,7 +485,9 @@ dimensions via `GetObjectW`.
 This is read-only icon acquisition. It does not install or replace icon
 registrations, hide native Explorer tiles, intercept context menus or make
 Groups visible. Shell icon acquisition can call item handlers and must run
-on a BGW worker. The output is still a native HICON; a bounded BGRA/RGBA
+on a BGW worker. The `SHGetFileInfoW` path argument is documented as
+MAX_PATH-bounded; longer paths are rejected by this icon stage rather than
+passed through unsupported extended-path handling. The output is still a native HICON; a bounded BGRA/RGBA
 rasterizer, alpha/mask normalization, cache keys (item identity, DPI, theme
 and icon-size policy), and handoff to the existing adaptive icon compositor
 remain the next step. Virtual Shell namespace items and exact Explorer view
