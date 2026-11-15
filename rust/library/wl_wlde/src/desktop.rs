@@ -1245,7 +1245,8 @@ mod tests {
                 7_500,
                 2_000,
                 1,
-            ).unwrap(),
+            )
+            .unwrap(),
         ];
         assert_eq!(
             layout.replace(unknown_monitor, &items, &groups, &topology),
@@ -1271,7 +1272,8 @@ mod tests {
             10_000,
             10_000,
             0,
-        ).is_ok());
+        )
+        .is_ok());
     }
 
     #[test]
