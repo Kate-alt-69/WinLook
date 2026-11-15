@@ -23,6 +23,7 @@ const WORK_QUEUE_CAPACITY: usize = 16;
 const RESULT_QUEUE_CAPACITY: usize = 16;
 const MAX_ICON_CACHE_BYTES: usize = 8 * 1024 * 1024;
 const MAX_ICON_CACHE_ENTRIES: usize = 256;
+#[cfg(windows)]
 const COINIT_APARTMENTTHREADED: u32 = 0x2;
 
 #[cfg(windows)]
