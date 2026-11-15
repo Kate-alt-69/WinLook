@@ -18,7 +18,9 @@ pub use desktop_inventory::{
     MAX_DESKTOP_INVENTORY_ITEMS,
 };
 pub use desktop_shell_icon::{
-    extract_desktop_shell_icon, DesktopShellIcon, DesktopShellIconError, DesktopShellIconSize,
+    extract_desktop_shell_icon, rasterize_desktop_shell_icon_rgba, DesktopShellIcon,
+    DesktopShellIconError, DesktopShellIconRgba, DesktopShellIconSize,
+    MAX_DESKTOP_SHELL_ICON_DIMENSION,
 };
 
 /// Win32 message sent after the display resolution or configuration changes.
