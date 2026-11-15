@@ -97,11 +97,12 @@ impl Drop for OwnedIcon {
     }
 }
 
+#[cfg(windows)]
 struct OwnedGdiObject(*mut std::ffi::c_void);
 
+#[cfg(windows)]
 impl Drop for OwnedGdiObject {
     fn drop(&mut self) {
-        #[cfg(windows)]
         if !self.0.is_null() {
             unsafe {
                 DeleteObject(self.0);
@@ -144,29 +145,29 @@ mod platform {
     #[repr(C)]
     struct ShellFileInfoW {
         icon: *mut std::ffi::c_void,
-        icon_index: i32,
-        attributes: u32,
-        display_name: [u16; 260],
-        type_name: [u16; 80],
+        _icon_index: i32,
+        _attributes: u32,
+        _display_name: [u16; 260],
+        _type_name: [u16; 80],
     }
 
     impl Default for ShellFileInfoW {
         fn default() -> Self {
             Self {
                 icon: std::ptr::null_mut(),
-                icon_index: 0,
-                attributes: 0,
-                display_name: [0; 260],
-                type_name: [0; 80],
+                _icon_index: 0,
+                _attributes: 0,
+                _display_name: [0; 260],
+                _type_name: [0; 80],
             }
         }
     }
 
     #[repr(C)]
     struct IconInfo {
-        is_icon: i32,
-        x_hotspot: u32,
-        y_hotspot: u32,
+        _is_icon: i32,
+        _x_hotspot: u32,
+        _y_hotspot: u32,
         mask_bitmap: *mut std::ffi::c_void,
         color_bitmap: *mut std::ffi::c_void,
     }
@@ -174,9 +175,9 @@ mod platform {
     impl Default for IconInfo {
         fn default() -> Self {
             Self {
-                is_icon: 0,
-                x_hotspot: 0,
-                y_hotspot: 0,
+                _is_icon: 0,
+                _x_hotspot: 0,
+                _y_hotspot: 0,
                 mask_bitmap: std::ptr::null_mut(),
                 color_bitmap: std::ptr::null_mut(),
             }
@@ -185,25 +186,25 @@ mod platform {
 
     #[repr(C)]
     struct Bitmap {
-        bitmap_type: i32,
+        _bitmap_type: i32,
         width: i32,
         height: i32,
-        width_bytes: i32,
-        planes: u16,
-        bits_pixel: u16,
-        bits: *mut std::ffi::c_void,
+        _width_bytes: i32,
+        _planes: u16,
+        _bits_pixel: u16,
+        _bits: *mut std::ffi::c_void,
     }
 
     impl Default for Bitmap {
         fn default() -> Self {
             Self {
-                bitmap_type: 0,
+                _bitmap_type: 0,
                 width: 0,
                 height: 0,
-                width_bytes: 0,
-                planes: 0,
-                bits_pixel: 0,
-                bits: std::ptr::null_mut(),
+                _width_bytes: 0,
+                _planes: 0,
+                _bits_pixel: 0,
+                _bits: std::ptr::null_mut(),
             }
         }
     }
