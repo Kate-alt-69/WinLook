@@ -103,14 +103,25 @@ impl Default for DesktopIconContext {
 struct DesktopIconCacheKey {
     item_id: String,
     identity_stability: DesktopItemIdentityStability,
+    fallback_generation: u64,
     context: DesktopIconContext,
 }
 
 impl DesktopIconCacheKey {
-    fn from_item(item: &DesktopInventoryItem, context: DesktopIconContext) -> Self {
+    fn from_item(
+        item: &DesktopInventoryItem,
+        context: DesktopIconContext,
+        fallback_generation: u64,
+    ) -> Self {
+        let identity_stability = item.identity_stability();
         Self {
             item_id: item.item().id().as_str().to_owned(),
-            identity_stability: item.identity_stability(),
+            identity_stability,
+            fallback_generation: if identity_stability == DesktopItemIdentityStability::PathFallback {
+                fallback_generation
+            } else {
+                0
+            },
             context,
         }
     }
@@ -121,9 +132,24 @@ impl DesktopIconCacheKey {
         identity_stability: DesktopItemIdentityStability,
         context: DesktopIconContext,
     ) -> Self {
+        Self::for_test_with_fallback_generation(item_id, identity_stability, context, 0)
+    }
+
+    #[cfg(test)]
+    fn for_test_with_fallback_generation(
+        item_id: &str,
+        identity_stability: DesktopItemIdentityStability,
+        context: DesktopIconContext,
+        fallback_generation: u64,
+    ) -> Self {
         Self {
             item_id: item_id.to_owned(),
             identity_stability,
+            fallback_generation: if identity_stability == DesktopItemIdentityStability::PathFallback {
+                fallback_generation
+            } else {
+                0
+            },
             context,
         }
     }
@@ -266,6 +292,7 @@ pub struct DesktopIconPollStats {
 pub struct DesktopIconPipeline {
     context: DesktopIconContext,
     generation: u64,
+    fallback_generation: u64,
     current_identities: HashSet<(String, DesktopItemIdentityStability)>,
     failed: HashSet<DesktopIconCacheKey>,
     pending: HashSet<(u64, DesktopIconCacheKey)>,
@@ -326,6 +353,7 @@ impl DesktopIconPipeline {
         Ok(Self {
             context,
             generation: 0,
+            fallback_generation: 0,
             current_identities: HashSet::new(),
             failed: HashSet::new(),
             pending: HashSet::new(),
@@ -343,6 +371,7 @@ impl DesktopIconPipeline {
     /// Old pending keys stay tracked until poll drains their stale results.
     pub fn begin_host_session(&mut self) {
         self.generation = self.generation.wrapping_add(1);
+        self.fallback_generation = 0;
         self.current_identities.clear();
         self.failed.clear();
         self.cache.clear();
@@ -353,10 +382,10 @@ impl DesktopIconPipeline {
     /// Stable single-link filesystem identities may survive a same-volume
     /// rename. Path-derived IDs cannot distinguish replacement at the same
     /// path, so their icons are conservatively reacquired on every refresh.
-    /// The generation also causes any in-flight results to be discarded.
-    /// Pending keys remain until those stale results have been drained.
+    /// A fallback-only epoch invalidates old fallback results without
+    /// discarding valid in-flight filesystem-ID requests.
     pub fn invalidate_path_fallbacks(&mut self) {
-        self.generation = self.generation.wrapping_add(1);
+        self.fallback_generation = self.fallback_generation.wrapping_add(1);
         self.cache.retain_filesystem_backed();
         self.failed.retain(|key| {
             key.identity_stability == DesktopItemIdentityStability::FilesystemFileId
@@ -370,6 +399,7 @@ impl DesktopIconPipeline {
         }
         self.context = context;
         self.generation = self.generation.wrapping_add(1);
+        self.fallback_generation = 0;
         self.failed.clear();
         self.cache.clear();
     }
@@ -402,7 +432,7 @@ impl DesktopIconPipeline {
 
         let mut requested = 0;
         for item in inventory {
-            let key = DesktopIconCacheKey::from_item(item, self.context);
+            let key = DesktopIconCacheKey::from_item(item, self.context, self.fallback_generation);
             let pending_key = (self.generation, key.clone());
             if self.cache.contains(&key)
                 || self.failed.contains(&key)
@@ -438,8 +468,12 @@ impl DesktopIconPipeline {
                 Ok(response) => {
                     self.pending
                         .remove(&(response.generation, response.key.clone()));
+                    let fallback_is_current = response.key.identity_stability
+                        != DesktopItemIdentityStability::PathFallback
+                        || response.key.fallback_generation == self.fallback_generation;
                     let is_current = response.generation == self.generation
                         && response.key.context == self.context
+                        && fallback_is_current
                         && self.current_identities.contains(&(
                             response.key.item_id.clone(),
                             response.key.identity_stability,
@@ -475,7 +509,7 @@ impl DesktopIconPipeline {
 
     /// Returns a cached image for immediate BGW rendering.
     pub fn get(&mut self, item: &DesktopInventoryItem) -> Option<&DesktopShellIconRgba> {
-        let key = DesktopIconCacheKey::from_item(item, self.context);
+        let key = DesktopIconCacheKey::from_item(item, self.context, self.fallback_generation);
         self.cache.get(&key)
     }
 
@@ -648,6 +682,37 @@ mod tests {
         assert!(cache.contains(&file_id));
         assert!(!cache.contains(&old_fallback));
         assert_eq!(cache.len(), 1);
+    }
+
+    #[test]
+    fn path_fallback_epoch_changes_without_changing_filesystem_id_keys() {
+        let fallback_old = DesktopIconCacheKey::for_test_with_fallback_generation(
+            "desktop:path:notes",
+            DesktopItemIdentityStability::PathFallback,
+            context(96, 0),
+            0,
+        );
+        let fallback_new = DesktopIconCacheKey::for_test_with_fallback_generation(
+            "desktop:path:notes",
+            DesktopItemIdentityStability::PathFallback,
+            context(96, 0),
+            1,
+        );
+        let filesystem_old = DesktopIconCacheKey::for_test_with_fallback_generation(
+            "desktop:file:notes",
+            DesktopItemIdentityStability::FilesystemFileId,
+            context(96, 0),
+            0,
+        );
+        let filesystem_new = DesktopIconCacheKey::for_test_with_fallback_generation(
+            "desktop:file:notes",
+            DesktopItemIdentityStability::FilesystemFileId,
+            context(96, 0),
+            1,
+        );
+
+        assert_ne!(fallback_old, fallback_new);
+        assert_eq!(filesystem_old, filesystem_new);
     }
 
     #[test]
