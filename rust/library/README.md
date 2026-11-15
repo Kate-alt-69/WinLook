@@ -52,12 +52,21 @@ they are not replacements for the WLDE-specific layers above.
 | `wl_cpuv` | CPU work admission/accounting governor | [README](wl_cpuv/README.md) |
 | `wl_gpuv` | GPU work admission/accounting governor | [README](wl_gpuv/README.md) |
 | `wl_ui` | Shared UI facade and backend integration | [README](wl_ui/README.md), [UI docs](../../docs/wl_ui/README.md) |
-| `wl_ui::core` and platform backends | Shared UI core plus Win32 / Windows 7 / Windows 10 / Windows 11 implementations | [UI architecture](../../docs/wl_ui/backends.md) |
+| `wl_ui` core and platform backend packages | Shared UI core plus Win32 / Windows 7 / Windows 10 / Windows 11 implementations | [UI architecture](../../docs/wl_ui/backends.md) |
 
-The C companion libraries are under `C/library/`: `wl_Lanimate`,
-`wl_Lcpuv`, `wl_Lgpuv`, `wl_Lwlde` and `wl_Lui`. The root CMake
-aggregator is `C/library/CMakeLists.txt`; each library also has its own
-README and CMake target.
+The C companion libraries are under `C/library/`. Their own README files are
+the function-level reference:
+
+| Library | Role | Documentation |
+| --- | --- | --- |
+| `wl_Lanimate` | C89 shared frame clock and animation primitives | [README](../../C/library/wl_Lanimate/README.md) |
+| `wl_Lcpuv` | C89 CPU work admission/accounting governor | [README](../../C/library/wl_Lcpuv/README.md) |
+| `wl_Lgpuv` | C89 GPU work admission/accounting governor | [README](../../C/library/wl_Lgpuv/README.md) |
+| `wl_Lwlde` | C89 portable WLDE scene and desktop policy core | [README](../../C/library/wl_Lwlde/README.md) |
+| `wl_Lui` | C89 shared UI library | [README](../../C/library/wl_Lui/README.md) |
+
+The root CMake aggregator is `C/library/CMakeLists.txt`; each library also
+has its own CMake target.
 
 ## Reuse from another Rust crate
 
@@ -127,11 +136,16 @@ Use `wl_wlde_win32` only in the Windows process that is allowed to query the
 interactive desktop. A monitor snapshot is finite and owned by the caller:
 
 ```rust
-use wl_wlde_win32::{enumerate_monitors, refresh_topology};
+use std::error::Error;
+use wl_wlde_win32::{enumerate_monitors, refresh_topology, should_refresh_topology};
 
-let mut topology = enumerate_monitors()?;
-refresh_topology(&mut topology)?; // replace only after a complete valid snapshot
-# Ok::<(), Box<dyn std::error::Error>>(())
+fn on_display_message(message: u32, w_param: usize) -> Result<(), Box<dyn Error>> {
+    let mut topology = enumerate_monitors()?;
+    if should_refresh_topology(message, w_param) {
+        refresh_topology(&mut topology)?;
+    }
+    Ok(())
+}
 ```
 
 The host message loop should call `should_refresh_topology(message, w_param)`
@@ -173,15 +187,18 @@ user-private directory and serialize writers.
 Example load:
 
 ```rust
+use std::error::Error;
 use wl_bgw_runtime::{DesktopItemIdentityRecord, DesktopStateStore};
 use wl_wlde_win32::{enumerate_desktop_items, enumerate_monitors};
 
-let inventory = enumerate_desktop_items()?;
-let topology = enumerate_monitors()?;
-let identities = DesktopItemIdentityRecord::from_inventory(&inventory);
-let store = DesktopStateStore::for_current_user()?;
-let restored = store.load(&identities, &topology)?;
-# Ok::<(), Box<dyn std::error::Error>>(())
+fn load_state() -> Result<(), Box<dyn Error>> {
+    let inventory = enumerate_desktop_items()?;
+    let topology = enumerate_monitors()?;
+    let identities = DesktopItemIdentityRecord::from_inventory(&inventory);
+    let store = DesktopStateStore::for_current_user()?;
+    let _restored = store.load(&identities, &topology)?;
+    Ok(())
+}
 ```
 
 The BGW icon pipeline is intentionally not a public library interface yet.
