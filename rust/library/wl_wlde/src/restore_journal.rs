@@ -299,40 +299,52 @@ pub enum DesktopRestoreRecoveryAction {
 /// proof before treating the applied value as WinLook-owned.
 pub fn plan_desktop_restore_recovery(
     record: &DesktopRestoreRecord,
-    observed_value: &[u8],
+    observed_value: Option<&[u8]>,
     ownership_proven: bool,
 ) -> DesktopRestoreRecoveryAction {
     match record.state {
         DesktopRestoreState::Prepared => DesktopRestoreRecoveryAction::DiscardPrepared,
-        DesktopRestoreState::Applying => {
-            if observed_value == record.original_value.as_slice() {
-                DesktopRestoreRecoveryAction::AbortUnapplied
-            } else if observed_value == record.applied_value.as_slice() && ownership_proven {
-                DesktopRestoreRecoveryAction::RestoreOriginal
-            } else {
-                DesktopRestoreRecoveryAction::Conflict
-            }
-        }
-        DesktopRestoreState::Committed => {
-            if observed_value == record.applied_value.as_slice() && ownership_proven {
-                DesktopRestoreRecoveryAction::KeepApplied
-            } else {
-                DesktopRestoreRecoveryAction::Conflict
-            }
-        }
-        DesktopRestoreState::Restoring => {
-            if observed_value == record.original_value.as_slice() {
-                DesktopRestoreRecoveryAction::MarkRestored
-            } else if observed_value == record.applied_value.as_slice() && ownership_proven {
-                DesktopRestoreRecoveryAction::RetryRestore
-            } else {
-                DesktopRestoreRecoveryAction::Conflict
-            }
-        }
         DesktopRestoreState::Restored | DesktopRestoreState::Aborted => {
             DesktopRestoreRecoveryAction::NoAction
         }
         DesktopRestoreState::Conflict => DesktopRestoreRecoveryAction::Conflict,
+        DesktopRestoreState::Applying
+        | DesktopRestoreState::Committed
+        | DesktopRestoreState::Restoring => {
+            let Some(observed_value) = observed_value else {
+                return DesktopRestoreRecoveryAction::Conflict;
+            };
+            match record.state {
+                DesktopRestoreState::Applying => {
+                    if observed_value == record.original_value.as_slice() {
+                        DesktopRestoreRecoveryAction::AbortUnapplied
+                    } else if observed_value == record.applied_value.as_slice() && ownership_proven
+                    {
+                        DesktopRestoreRecoveryAction::RestoreOriginal
+                    } else {
+                        DesktopRestoreRecoveryAction::Conflict
+                    }
+                }
+                DesktopRestoreState::Committed => {
+                    if observed_value == record.applied_value.as_slice() && ownership_proven {
+                        DesktopRestoreRecoveryAction::KeepApplied
+                    } else {
+                        DesktopRestoreRecoveryAction::Conflict
+                    }
+                }
+                DesktopRestoreState::Restoring => {
+                    if observed_value == record.original_value.as_slice() {
+                        DesktopRestoreRecoveryAction::MarkRestored
+                    } else if observed_value == record.applied_value.as_slice() && ownership_proven
+                    {
+                        DesktopRestoreRecoveryAction::RetryRestore
+                    } else {
+                        DesktopRestoreRecoveryAction::Conflict
+                    }
+                }
+                _ => DesktopRestoreRecoveryAction::Conflict,
+            }
+        }
     }
 }
 
@@ -875,7 +887,7 @@ mod tests {
         let (mut ledger, transaction_id) = ledger_with_prepared();
         let prepared = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
-            plan_desktop_restore_recovery(&prepared, &[0], false),
+            plan_desktop_restore_recovery(&prepared, None, false),
             DesktopRestoreRecoveryAction::DiscardPrepared
         );
 
@@ -884,15 +896,15 @@ mod tests {
             .unwrap();
         let applying = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
-            plan_desktop_restore_recovery(&applying, &[0], false),
+            plan_desktop_restore_recovery(&applying, Some(&[0]), false),
             DesktopRestoreRecoveryAction::AbortUnapplied
         );
         assert_eq!(
-            plan_desktop_restore_recovery(&applying, &[1], false),
+            plan_desktop_restore_recovery(&applying, Some(&[1]), false),
             DesktopRestoreRecoveryAction::Conflict
         );
         assert_eq!(
-            plan_desktop_restore_recovery(&applying, &[1], true),
+            plan_desktop_restore_recovery(&applying, Some(&[1]), true),
             DesktopRestoreRecoveryAction::RestoreOriginal
         );
 
@@ -901,11 +913,11 @@ mod tests {
             .unwrap();
         let committed = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
-            plan_desktop_restore_recovery(&committed, &[1], true),
+            plan_desktop_restore_recovery(&committed, Some(&[1]), true),
             DesktopRestoreRecoveryAction::KeepApplied
         );
         assert_eq!(
-            plan_desktop_restore_recovery(&committed, &[1], false),
+            plan_desktop_restore_recovery(&committed, Some(&[1]), false),
             DesktopRestoreRecoveryAction::Conflict
         );
 
@@ -914,15 +926,15 @@ mod tests {
             .unwrap();
         let restoring = ledger.latest_record(&transaction_id).unwrap().clone();
         assert_eq!(
-            plan_desktop_restore_recovery(&restoring, &[0], false),
+            plan_desktop_restore_recovery(&restoring, Some(&[0]), false),
             DesktopRestoreRecoveryAction::MarkRestored
         );
         assert_eq!(
-            plan_desktop_restore_recovery(&restoring, &[1], true),
+            plan_desktop_restore_recovery(&restoring, Some(&[1]), true),
             DesktopRestoreRecoveryAction::RetryRestore
         );
         assert_eq!(
-            plan_desktop_restore_recovery(&restoring, &[2], true),
+            plan_desktop_restore_recovery(&restoring, Some(&[2]), true),
             DesktopRestoreRecoveryAction::Conflict
         );
     }
@@ -935,7 +947,7 @@ mod tests {
             .unwrap();
         let conflict = ledger.latest_record(&transaction_id).unwrap();
         assert_eq!(
-            plan_desktop_restore_recovery(conflict, &[], false),
+            plan_desktop_restore_recovery(conflict, None, false),
             DesktopRestoreRecoveryAction::Conflict
         );
         assert_eq!(
