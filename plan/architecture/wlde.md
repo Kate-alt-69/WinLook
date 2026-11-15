@@ -487,9 +487,11 @@ registrations, hide native Explorer tiles, intercept context menus or make
 Groups visible. Shell icon acquisition can call item handlers and must run
 on a BGW worker. The `SHGetFileInfoW` path argument is documented as
 MAX_PATH-bounded; longer paths are rejected by this icon stage rather than
-passed through unsupported extended-path handling. The output is still a native HICON; a bounded BGRA/RGBA
-rasterizer, alpha/mask normalization, cache keys (item identity, DPI, theme
-and icon-size policy), and handoff to the existing adaptive icon compositor
-remain the next step. Virtual Shell namespace items and exact Explorer view
+passed through unsupported extended-path handling. The adapter now includes a bounded 512×512 HICON-to-RGBA rasterizer. It draws
+the HICON onto opaque black and white top-down DIB probe surfaces, reconstructs
+straight alpha, and rejects screen-dependent inversion pixels that cannot be
+represented by a static RGBA image. The output is compatible with the portable
+adaptive icon input. A cache keyed by item identity, DPI, theme and icon-size
+policy plus BGW presentation integration remain the next steps. Virtual Shell namespace items and exact Explorer view
 membership still require PIDL/IFolderView integration. See WLDE-028–030 in
 `plan/references/SOURCES.md`.
