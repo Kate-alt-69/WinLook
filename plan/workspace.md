@@ -524,13 +524,13 @@ notification before waiting again.
 
 ## WLDE stable Desktop filesystem identities — 2026-11-15
 
-- The modern Win32 inventory now prefers a volume serial + 64-bit file index from a metadata-only handle, with creation FILETIME as an additional key discriminator.
+- The modern Win32 inventory now prefers the 64-bit volume serial + 128-bit `FILE_ID_128` returned by `GetFileInformationByHandleEx(FileIdInfo)`, with creation FILETIME as an additional key discriminator. It deliberately ignores the legacy 64-bit file index because Microsoft does not guarantee uniqueness on ReFS.
 - The handle requests only `FILE_READ_ATTRIBUTES`, permits concurrent read/write/delete sharing, opens directories with `FILE_FLAG_BACKUP_SEMANTICS`, and opens reparse points themselves with `FILE_FLAG_OPEN_REPARSE_POINT`. It does not read file contents or follow a reparse target.
 - `DesktopInventoryItem::identity_stability()` distinguishes `FilesystemFileId` from `PathFallback`; persistent Group storage must not treat path fallbacks as rename-stable.
 - File IDs are used only when the identity is unique in the current inventory and Windows reports exactly one hard link. This keeps hard-link names as separate entries and avoids changing a hard-link's ID between stable and ambiguous states.
-- Windows documentation notes filesystem variation: FAT IDs can change on certain renames/defragmentation, file IDs may be reused after deletion, remote filesystems can return partial data, and ReFS's 64-bit file index is not guaranteed unique. Creation time reduces accidental reuse but is not a formal guarantee.
+- Windows documentation notes filesystem variation: file IDs may be reused after deletion and remote filesystems can return partial data. The 128-bit file ID avoids ReFS's documented legacy 64-bit index limitation; a zero/unsupported ID or missing creation timestamp becomes a path fallback. Creation time reduces accidental reuse but is not a formal guarantee.
 - Focused portable tests cover identity construction and fallback selection. Windows-only tests cover same-volume rename continuity and hard-link disambiguation; hosted Windows CI must execute them.
-- Official sources WLDE-025–026 are recorded in `plan/references/SOURCES.md`. This modern Rust adapter work does not implement legacy C adapters for Windows 95–8.1; those still need generation-specific identity providers.
+- Official sources WLDE-025–027 are recorded in `plan/references/SOURCES.md`. Windows-only tests now exercise same-volume rename continuity and hard-link fallback on CI. This modern Rust adapter work does not implement legacy C adapters for Windows 95–8.1; those still need generation-specific identity providers.
 
 
 ## WLDE local Group/layout persistence foundation — 2026-11-15
