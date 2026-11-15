@@ -323,7 +323,9 @@ Desktop inventory record through `extract_desktop_shell_icon()`. The result
 owns its HICON and reports native dimensions; dropping it releases the icon,
 and temporary HBITMAPs from `GetIconInfo` are released immediately. Callers
 must perform this Shell operation on a BGW worker because Shell icon handlers
-can perform blocking work.
+can perform blocking work. The path-based `SHGetFileInfoW` boundary enforces
+its documented MAX_PATH input limit; inventory can still contain longer
+paths, but their icon extraction returns a typed `PathTooLong` error.
 
 This does not change Explorer's native icon presentation. Pixel rasterization
 to bounded RGBA, mask/alpha normalization and a DPI/theme/identity-aware cache
