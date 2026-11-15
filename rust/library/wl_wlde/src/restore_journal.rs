@@ -137,6 +137,7 @@ impl DesktopRestoreRecord {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DesktopRestoreLedger {
     records: Vec<DesktopRestoreRecord>,
+    encoded_bytes: usize,
 }
 
 impl DesktopRestoreLedger {
@@ -248,7 +249,19 @@ impl DesktopRestoreLedger {
         }
         validate_record(&record)?;
         validate_record_position(&self.records, &record)?;
+        let frame_bytes = encoded_record_len(&record)?;
+        let total_bytes = self
+            .encoded_bytes
+            .checked_add(frame_bytes)
+            .ok_or(DesktopRestoreJournalError::JournalTooLarge)?;
+        if total_bytes > MAX_DESKTOP_RESTORE_JOURNAL_BYTES {
+            return Err(DesktopRestoreJournalError::JournalTooLarge);
+        }
+        self.records
+            .try_reserve(1)
+            .map_err(|_| DesktopRestoreJournalError::AllocationFailed)?;
         self.records.push(record);
+        self.encoded_bytes = total_bytes;
         Ok(())
     }
 }
@@ -364,25 +377,34 @@ pub fn plan_desktop_restore_recovery(
     }
 }
 
+fn encoded_record_len(
+    record: &DesktopRestoreRecord,
+) -> Result<usize, DesktopRestoreJournalError> {
+    validate_record(record)?;
+    let payload_len = 8usize
+        .checked_add(16)
+        .and_then(|value| value.checked_add(1 + 2 + 2 + 1))
+        .and_then(|value| value.checked_add(record.resource_id.len()))
+        .and_then(|value| value.checked_add(2 + record.original_value.len()))
+        .and_then(|value| value.checked_add(2 + record.applied_value.len()))
+        .and_then(|value| value.checked_add(2 + record.ownership_proof.len()))
+        .ok_or(DesktopRestoreJournalError::RecordTooLarge)?;
+    if payload_len > MAX_RECORD_PAYLOAD_BYTES {
+        return Err(DesktopRestoreJournalError::RecordTooLarge);
+    }
+    FRAME_HEADER_BYTES
+        .checked_add(payload_len)
+        .and_then(|value| value.checked_add(FRAME_CHECKSUM_BYTES))
+        .ok_or(DesktopRestoreJournalError::JournalTooLarge)
+}
+
 /// Encodes one record as a versioned length-delimited frame with CRC32.
 pub fn encode_desktop_restore_record(
     record: &DesktopRestoreRecord,
 ) -> Result<Vec<u8>, DesktopRestoreJournalError> {
-    validate_record(record)?;
+    let frame_len = encoded_record_len(record)?;
     let resource = record.resource_id.as_bytes();
-    let payload_len = 8 + 16 + 1 + 2 + 2 + 1
-        + resource.len()
-        + 2 + record.original_value.len()
-        + 2 + record.applied_value.len()
-        + 2 + record.ownership_proof.len();
-    if payload_len > MAX_RECORD_PAYLOAD_BYTES {
-        return Err(DesktopRestoreJournalError::RecordTooLarge);
-    }
-
-    let frame_len = FRAME_HEADER_BYTES + payload_len + FRAME_CHECKSUM_BYTES;
-    if frame_len > MAX_DESKTOP_RESTORE_JOURNAL_BYTES {
-        return Err(DesktopRestoreJournalError::JournalTooLarge);
-    }
+    let payload_len = frame_len - FRAME_HEADER_BYTES - FRAME_CHECKSUM_BYTES;
     let mut output = Vec::new();
     output
         .try_reserve_exact(frame_len)
@@ -1109,6 +1131,22 @@ mod tests {
             ledger.latest_record(&transaction_id).unwrap().state(),
             DesktopRestoreState::Restored
         );
+    }
+
+    #[test]
+    fn ledger_rejects_records_that_would_exceed_the_total_byte_bound() {
+        let (mut ledger, transaction_id) = ledger_with_prepared();
+        ledger.encoded_bytes = MAX_DESKTOP_RESTORE_JOURNAL_BYTES;
+        assert_eq!(
+            ledger.transition(
+                &transaction_id,
+                DesktopRestoreState::Applying,
+                None,
+                false
+            ),
+            Err(DesktopRestoreJournalError::JournalTooLarge)
+        );
+        assert_eq!(ledger.records().len(), 1);
     }
 
     #[test]
