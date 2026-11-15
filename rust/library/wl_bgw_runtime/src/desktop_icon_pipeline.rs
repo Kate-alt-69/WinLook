@@ -9,6 +9,7 @@ use std::io;
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::thread;
 
+use wl_wlde::AdaptiveIconImageView;
 use wl_wlde_win32::{
     extract_desktop_shell_icon, rasterize_desktop_shell_icon_rgba, DesktopInventoryItem,
     DesktopItemIdentityStability, DesktopShellIconError, DesktopShellIconRgba,
@@ -476,6 +477,14 @@ impl DesktopIconPipeline {
     pub fn get(&mut self, item: &DesktopInventoryItem) -> Option<&DesktopShellIconRgba> {
         let key = DesktopIconCacheKey::from_item(item, self.context);
         self.cache.get(&key)
+    }
+
+    /// Borrows a cached icon as WLDE compositor input without a pixel copy.
+    pub fn adaptive_image_view(
+        &mut self,
+        item: &DesktopInventoryItem,
+    ) -> Option<AdaptiveIconImageView<'_>> {
+        self.get(item)?.as_adaptive_image_view().ok()
     }
 
     pub fn cached_entries(&self) -> usize {
