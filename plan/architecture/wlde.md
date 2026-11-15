@@ -443,3 +443,29 @@ renames, IDs can be reused after deletion, ReFS's 64-bit index is not
 guaranteed unique, and remote filesystems can return partial information.
 Legacy C hosts still need generation-specific identity providers. See
 WLDE-025/026 in `plan/references/SOURCES.md`.
+
+
+## Local Desktop Groups and normalized layout persistence — 2026-11-15
+
+The BGW runtime now owns a versioned, bounded binary state store for the
+machine-local Groups and normalized desktop layout. It defaults to
+`%LOCALAPPDATA%/WinLook/WLDE/desktop-state.v1.bin`, stores opaque item IDs
+with identity kind, Group metadata and layout anchors, and deliberately stores
+no filesystem paths or item content. A 4 MiB cap, strict parser bounds and a
+CRC32 checksum detect malformed or accidentally damaged files. The checksum
+is not a cryptographic authenticity check.
+
+Writes use a unique same-directory temporary file and rename after flushing.
+The runtime loads state only after collecting current Desktop inventory and
+monitor topology, and repeats validation after inventory notifications.
+Incomplete/stale inventory, changed monitor keys, unsupported versions and
+checksum failures leave the original file untouched and do not enable native
+presentation. The current monitor device IDs are session snapshot identifiers;
+there is no physical-monitor identity mapping yet.
+
+The store API supports validated saves, but the Manager edit/save flow remains
+blocked on authenticated Manager/BGW IPC. The loaded snapshot is still a
+configuration model only. It does not hide or replace Shell icons, register
+Group proxies, intercept menus or implement crash-safe restoration. The local
+Groups store must not be confused with the separate restoration journal that
+has to be committed before any native icon presentation can be suppressed.
