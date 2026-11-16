@@ -82,15 +82,13 @@ impl std::fmt::Display for PresentationMapError {
                 f.write_str("wallpaper presenter map exceeds the 16-monitor limit")
             }
             Self::EmptyMonitorId => f.write_str("monitor ID cannot be empty"),
-            Self::MonitorIdTooLong => {
-                f.write_str("monitor ID exceeds the 63-byte portable limit")
-            }
+            Self::MonitorIdTooLong => f.write_str("monitor ID exceeds the 63-byte portable limit"),
             Self::DuplicateMonitorAssignment => {
                 f.write_str("each monitor must have exactly one wallpaper presenter")
             }
-            Self::UnknownMonitor => {
-                f.write_str("wallpaper presenter map refers to a monitor outside the current topology")
-            }
+            Self::UnknownMonitor => f.write_str(
+                "wallpaper presenter map refers to a monitor outside the current topology",
+            ),
             Self::MissingMonitorAssignment => {
                 f.write_str("every current monitor must have a wallpaper presenter assignment")
             }
@@ -321,12 +319,8 @@ mod tests {
     fn changing_one_monitor_does_not_change_the_other_monitor() {
         let topology = topology();
         let mut map = MonitorPresentationMap::native_for(&topology);
-        map.set_presenter(
-            &topology,
-            "DISPLAY-B",
-            WallpaperPresenter::Lively,
-        )
-        .unwrap();
+        map.set_presenter(&topology, "DISPLAY-B", WallpaperPresenter::Lively)
+            .unwrap();
 
         assert_eq!(
             map.presenter_for("DISPLAY-A"),
@@ -337,11 +331,7 @@ mod tests {
             Some(WallpaperPresenter::Lively)
         );
         assert_eq!(
-            map.set_presenter(
-                &topology,
-                "DISPLAY-C",
-                WallpaperPresenter::WallpaperEngine
-            ),
+            map.set_presenter(&topology, "DISPLAY-C", WallpaperPresenter::WallpaperEngine),
             Err(PresentationMapError::UnknownMonitor)
         );
     }
