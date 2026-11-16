@@ -762,3 +762,12 @@ The public Lively command reference also documents seekwp (absolute/relative per
 ### Rainmeter release-note refresh — 2026-11-17
 
 Current release data: 4.5.28 is latest stable 4.5 (October 12, 2026); 5.0.0 RC2 is prerelease (November 16, 2026). Rainmeter 5.0 change notes require 64-bit Windows 10 1903+ or Windows 11. The public 4.5.28 OS summary conflicts with the older version-history note around 4.5.27 legacy/32-bit support, so do not add automatic version gating until the installer matrix is directly verified. Evidence WLDE-074/075.
+
+### Per-monitor wallpaper presenter ownership — 2026-11-17
+
+- Added rust/library/wl_wlde/src/presentation.rs and public exports for WallpaperPresenter, MonitorPresentationAssignment, MonitorPresentationMap and PresentationMapError.
+- The map requires exactly one assignment for each monitor in the supplied current MonitorTopology; it is bounded by the existing 16-monitor cap and 63-byte monitor-ID contract.
+- Assignments can mix NativeWlde, WallpaperEngine and Lively across monitors. Replacing an incomplete, duplicate or stale/unknown map leaves the previous valid map untouched. A one-monitor update does not alter other monitors.
+- Rainmeter is intentionally excluded from exclusive wallpaper ownership because its skins are a separate overlay. Overlay z-order/input policy remains future work.
+- This is a portable configuration contract only. It does not launch/stop a process, verify that a command completed, or confirm visible presentation. Do not mark a new owner runtime-active until Manager/BGW command acknowledgement and presenter state observation exist.
+- Tests cover native defaults, mixed multi-monitor ownership, unknown/duplicate assignments, transactional failure and single-monitor updates. CI for the exact commit must still confirm formatting, Clippy and test results.

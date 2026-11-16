@@ -56,6 +56,25 @@ Rainmeter packages may contain custom 32-bit/64-bit plugin DLLs. The Rainmeter p
 
 Version awareness matters. The current release API lists Rainmeter 4.5.28 (October 12, 2026) as the latest stable 4.5 release and 5.0.0 RC2 (November 16, 2026) as a prerelease. The 5.0 change notes require 64-bit Windows 10 version 1903+ or Windows 11. There is a documentation mismatch: the version-history page calls 4.5.27 the last version for older Windows/32-bit systems, while the current home page labels the 4.5.28 download for Windows 7 or later. Do not hard-code a 4.5.28 OS/architecture support assumption from those summaries; verify the actual installer/build matrix before enforcing compatibility. The current adapter does not read an installed Rainmeter version or advertise per-skin compatibility.
 
+## Per-monitor wallpaper presenter ownership
+
+The portable MonitorPresentationMap validates a complete current-topology
+mapping with exactly one exclusive wallpaper presenter per monitor. Supported
+presenter values are native WLDE, Wallpaper Engine and Lively. It supports
+mixed multi-monitor layouts, such as one engine on the primary monitor and a
+different engine on a secondary monitor, while preserving the last valid map
+when a candidate becomes stale or incomplete.
+
+Rainmeter is intentionally not in this exclusive owner enum: a Rainmeter skin
+is a widget overlay, not a full wallpaper presenter. Its own config activation
+can coexist with a selected wallpaper engine, subject to future overlap,
+z-order and input-routing policy.
+
+This portable map is configuration only. It does not start or stop any process,
+reserve a desktop surface, or confirm that a command completed. The future
+Manager/BGW IPC layer must sequence hand-off operations and collect command
+results before committing a runtime-active presenter.
+
 ## Presentation ownership and resource policy
 
 These adapters are explicit hand-off APIs, not an automatic multi-engine compositor. Before Manager automation enables an external wallpaper per monitor, WLDE needs a per-monitor presentation-owner policy so its native presenter and an external player cannot unknowingly paint the same display. That arbitration is not implemented yet.

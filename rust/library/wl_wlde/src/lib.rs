@@ -22,6 +22,7 @@ mod adaptive_icon;
 mod desktop;
 mod game_mode;
 mod lively;
+mod presentation;
 mod rainmeter;
 mod resource;
 mod restore_journal;
@@ -48,6 +49,10 @@ pub use game_mode::{
 pub use lively::{
     LivelyCloseTarget, LivelyInstall, LivelyIntegrationError, LivelySeekPosition, LivelyTarget,
     LivelyTargetKind,
+};
+pub use presentation::{
+    MonitorPresentationAssignment, MonitorPresentationMap, PresentationMapError,
+    WallpaperPresenter,
 };
 pub use rainmeter::{
     RainmeterConfig, RainmeterIni, RainmeterInstall, RainmeterIntegrationError,

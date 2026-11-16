@@ -190,6 +190,26 @@ The Rust core is intended for the modern Win10+ host. The matching
 C/library/wl_Lwlde contract is C89 and keeps caller-owned fixed storage.
 C89 syntax alone is not a statement of Windows 95/legacy OS support.
 
+## Per-monitor wallpaper presenter ownership
+
+MonitorPresentationMap is a portable, bounded selection contract. It stores
+exactly one wallpaper presenter per current monitor: native WLDE, an existing
+Wallpaper Engine instance, or an existing Lively instance. Assignments are
+validated against the latest MonitorTopology and replacement is transactional,
+so a stale monitor ID, duplicate assignment or incomplete map does not discard
+the last valid selection.
+
+This is not a process launcher or an acknowledgement that a wallpaper is
+actually visible. BGW/Manager still need an authenticated request/result path
+and must observe the external command result before switching active presenter
+state. A future presenter host must release the old monitor surface before the
+new one is allowed to present. Rainmeter remains a separate widget overlay,
+not an exclusive wallpaper presenter.
+
+MonitorPresentationMap::native_for(&topology) creates the conservative
+native-WLDE default. set_presenter() changes one monitor without altering
+the others.
+
 ## External runtime integrations
 
 The Rust core now exposes explicit command adapters for existing external
