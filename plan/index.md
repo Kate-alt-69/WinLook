@@ -65,7 +65,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 
 ## Active WLDE bridge handoff — 2026-11-16
 
-- Current implementation: [PR #13 — read-only Shell Desktop namespace inventory](https://github.com/Kate-alt-69/WinLook/pull/13), branch feat/wlde-shell-namespace-inventory, current head 5275e83e15d1019be9d208ffacb908bd27f83988. Implementation head 8abc3b1eb118931cccb0e380345c0d273907ba29 passed the full required CI set; the documentation/milestone follow-up has docs, Rust/C shared libraries, BGW, Win10 and Win11 builds passing so far, while repeated native stress and compiled-language CodeQL were still running at the last poll. Dependency Review was skipped.
+- Active PR: [#13 — read-only Shell Desktop namespace inventory](https://github.com/Kate-alt-69/WinLook/pull/13), branch feat/wlde-shell-namespace-inventory. The M0–M6 workspace checkpoint was added in commit 5275e83e15d1019be9d208ffacb908bd27f83988. Use the live PR page to verify the current branch head and CI before continuing. The implementation head 8abc3b1eb118931cccb0e380345c0d273907ba29 passed the full required CI set; Dependency Review was skipped.
 - Next dependency-ordered milestones (M0–M6): [workspace memory](workspace.md).
 - Read the current bridge scope: [WLDE architecture](architecture/wlde.md), [restoration journal contract](architecture/restoration.md), [technical source ledger](references/SOURCES.md).
 - Agent attribution: every continuing agent records its own Chat Name, date, exact branch/head, PR and verification state in its checkpoint.

@@ -607,7 +607,7 @@ notification before waiting again.
 **Branch:** feat/wlde-shell-namespace-inventory  
 **PR:** [#13 — WLDE: add read-only Shell Desktop namespace inventory](https://github.com/Kate-alt-69/WinLook/pull/13)  
 **Verified implementation head:** 8abc3b1eb118931cccb0e380345c0d273907ba29  
-**PR state:** open, draft, mergeable; 7 commits ahead of main, 0 behind.
+**PR state at milestone checkpoint commit 5275e83:** open, draft, mergeable; 8 commits ahead of main, 0 behind. The PR may advance after this checkpoint; use the live PR page for the current head and checks.
 
 ### Completed in this PR
 
