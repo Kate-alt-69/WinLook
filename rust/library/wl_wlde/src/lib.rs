@@ -51,8 +51,7 @@ pub use lively::{
     LivelyTargetKind,
 };
 pub use presentation::{
-    MonitorPresentationAssignment, MonitorPresentationMap, PresentationMapError,
-    WallpaperPresenter,
+    MonitorPresentationAssignment, MonitorPresentationMap, PresentationMapError, WallpaperPresenter,
 };
 pub use rainmeter::{
     RainmeterConfig, RainmeterIni, RainmeterInstall, RainmeterIntegrationError,
