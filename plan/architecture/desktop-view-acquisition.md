@@ -1,6 +1,6 @@
 # WLDE Explorer Desktop view acquisition — M0
 
-**Status:** API acquisition route identified; runtime ownership and compatibility validation pending  
+**Status:** Read-only BGW probe implemented; interactive runtime ownership and compatibility validation pending  
 **Date:** 2026-11-16  
 **Scope:** Research/design for acquiring the actual Explorer-owned Desktop IFolderView from BGW. This is not an implementation or a permission to mutate Explorer.
 
@@ -86,3 +86,17 @@ For each build, test a normal unelevated interactive user session, Explorer rest
 **M0 is complete only when** the read-only probe acquires the same Desktop view repeatedly, its view HWND owner matches the exact Explorer process generation BGW already trusts, the parent folder is confirmed as the Desktop namespace, and re-acquisition behaves correctly after Explorer/view recreation on every supported build. No user-machine or VM runtime validation has been performed by this research pass.
 
 Until that gate passes, M0 is **partial** and M1 must not be implemented against an unverified interface. Native presentation remains blocked by the separate M3/M4/M6 restoration and ownership gates in [restoration.md](restoration.md).
+
+
+## Runtime probe implementation checkpoint — 2026-11-17
+
+The research design now has a first implementation on the WLDE inventory PR:
+
+- \`rust/library/wl_wlde_win32/src/desktop_view.rs\` exports \`probe_desktop_folder_view()\`. It uses the Shell COM chain above and keeps all interfaces and temporary PIDLs local to the calling STA.
+- \`FindWindowSW\` is attempted with the \`CSIDL_DESKTOP\` VARIANT form from Raymond Chen's Microsoft engineering sample, then with \`VT_EMPTY\` as used by the pinned CorralWindows experiment. The chosen form is returned as a small enum so the BGW diagnostic can show which one worked on that system.
+- The returned \`IShellView\` HWND is checked with \`GetWindowThreadProcessId\`; its owner PID must equal the exact \`DesktopHostIdentity\` passed from BGW. The probe then re-discovers the host after the COM calls and rejects a host change.
+- The view's \`IFolderView::GetFolder(IID_IShellFolder)\` result must expose \`IPersistFolder2\`; its current-folder PIDL is compared with the PIDL returned for \`CSIDL_DESKTOP\`. \`ILIsEqual\` is a binary comparison, so a non-identical encoding is deliberately treated as unavailable rather than guessed equivalent.
+- The existing bounded \`DesktopNamespaceWorker\` carries the host identity with each request and runs both the view probe and namespace inventory on its existing message-aware STA. Only the owner PID, locator enum, counts and error text are returned to BGW; COM pointers, HWNDs and PIDLs are not.
+- A failed view probe does not suppress the independent namespace inventory. The BGW only reports the view as unavailable and keeps native Explorer presentation unchanged.
+
+**M0 remains PARTIAL.** GitHub Windows CI can verify compilation, but this session has not executed the probe in an interactive Windows VM/device. Before M0 can be marked complete, validate both locator forms, actual view-window ownership, Desktop-root PIDL matching, Explorer/view recreation, empty/hidden icon states, multiple monitors, mixed DPI and every supported OS build/UBR. M1 remains gated on that runtime evidence.
