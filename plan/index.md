@@ -63,6 +63,13 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Resource-governor contract: [CPUv/GPUv](architecture/resource-governors.md).
 - UI structure and selection rules: [Manager UI Architecture](architecture/ui-architecture.md).
 
+## Active WLDE bridge handoff — 2026-11-16
+
+- Current implementation: [PR #13 — read-only Shell Desktop namespace inventory](https://github.com/Kate-alt-69/WinLook/pull/13), branch feat/wlde-shell-namespace-inventory, verified head 8abc3b1eb118931cccb0e380345c0d273907ba29. PR is open/draft; all required CI checks passed. Dependency Review was skipped.
+- Next dependency-ordered milestones (M0–M6): [workspace memory](workspace.md).
+- Read the current bridge scope: [WLDE architecture](architecture/wlde.md), [restoration journal contract](architecture/restoration.md), [technical source ledger](references/SOURCES.md).
+- Agent attribution: every continuing agent records its own Chat Name, date, exact branch/head, PR and verification state in its checkpoint.
+
 ## Resume rules
 1. Re-read the current user request and current repository files. This index is navigation, not authority over new instructions.
 2. Distinguish accepted product decisions, proposals, verified platform facts and unresolved research.

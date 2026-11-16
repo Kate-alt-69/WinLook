@@ -598,3 +598,64 @@ notification before waiting again.
   adapter, resource and opaque before/desired/ownership inputs for
   `DesktopRestoreLedger::begin()`. The ledger no longer exposes a seven-argument
   begin call; public exports and copyable README examples were updated.
+
+ 
+## WLDE read-only Explorer desktop-view milestones — 2026-11-16
+
+**Chat Name:** GPT-6 — WinLook WLDE Bridge  
+**Repository:** Kate-alt-69/WinLook  
+**Branch:** feat/wlde-shell-namespace-inventory  
+**PR:** [#13 — WLDE: add read-only Shell Desktop namespace inventory](https://github.com/Kate-alt-69/WinLook/pull/13)  
+**Verified implementation head:** 8abc3b1eb118931cccb0e380345c0d273907ba29  
+**PR state:** open, draft, mergeable; 7 commits ahead of main, 0 behind.
+
+### Completed in this PR
+
+- Added bounded, read-only root Shell Desktop namespace enumeration in rust/library/wl_wlde_win32/src/desktop_namespace.rs using SHGetDesktopFolder, IShellFolder::EnumObjects, attributes and display/parsing names. It validates single-level child PIDLs and bounds item, PIDL, name and retained-text sizes.
+- Added DesktopNamespaceWorker in BGW with one bounded request/result slot, an STA COM apartment, Explorer-generation tagging and a 20-second diagnostic timeout. A blocked Shell call is not terminated or replaced.
+- Added the shared desktop_sta.rs helper: auto-reset wake event plus MsgWaitForMultipleObjects(QS_ALLINPUT) and message draining. Both the namespace worker and existing icon pipeline use this helper on Windows.
+- BGW refreshes on verified Explorer attachment, Desktop filesystem notifications and a 30-second fallback. Stale-generation results are discarded and a refresh is requested for the current generation.
+- PIDL hashes remain session-only diagnostics. No Shell item names/paths are logged or written into Group/layout state. Native desktop presentation remains unchanged.
+- Updated BGW/WLDE docs, architecture notes and the technical source ledger.
+
+### CI result — exact head 8abc3b1eb118931cccb0e380345c0d273907ba29
+
+All required CI checks completed successfully:
+
+- Rust workspace formatting, lint and tests.
+- C89 MSVC and C89 GCC with ASan/UBSan.
+- BGW background runtime build.
+- Windows 10 and Windows 11 application build/package.
+- Repeated Rust/C sanitizer verification.
+- Repeated Win10 and Win11 clean/incremental/final-clean package stress.
+- Documentation validation.
+- GitGuardian, full-history secret scan, and CodeQL for compiled languages and workflows/Python.
+
+Dependency Review itself was skipped by the configured workflow prerequisite path; do not report it as a completed dependency scan. The execution host did not run local Cargo commands; these results are from GitHub Actions for the exact head above.
+
+### Next milestones — dependency-ordered gates
+
+The root namespace inventory is **not** an IFolderView snapshot. It does not identify the view's current filtered/visible membership, item positions/order or selection. These milestones continue the Explorer Desktop Bridge without treating the current PR as a presenter.
+
+| Milestone | Status | Deliverable / acceptance gate |
+|---|---|---|
+| M0 — Discover the actual Desktop view | NOT STARTED | Research and prototype how BGW obtains the IFolderView belonging to the verified Explorer-owned Desktop view, not an arbitrary Explorer folder window. Record OS build/UBR, architecture, COM apartment, interface lifetime and restart behaviour. Unknown or ambiguous view ownership must fail closed. Do not enable hooks or mutate Explorer during discovery. |
+| M1 — Read-only IFolderView snapshot | NOT STARTED | Produce a bounded snapshot of the live view's current items and required view data (membership, position/order, selection and view mode where reliably available). Cross-check PIDL ownership/relative scope, item identity and coordinate/DPI semantics. Treat view PIDLs and positions as ephemeral until a separately validated durable identity mapping exists. Never call selection, repositioning or view-mode setter methods in this phase. |
+| M2 — View lifecycle and invalidation | PARTIAL | The process monitor and host-generation tagging already handle Explorer replacement for current inventory workers. Add view-window/interface recreation and view-change invalidation, stale snapshot rejection, bounded event handling and re-acquisition. Keep enumeration and expensive work out of Explorer callbacks. |
+| M3 — Durable BGW restoration-journal writer | PARTIAL — portable codec only | wl_wlde::DesktopRestoreLedger exists, and plan/architecture/restoration.md defines the protocol. Implement the BGW single-writer storage backend: supported local path, owner/DACL validation, bounded append-only records, locking, sequence/checksum validation, durable FlushFileBuffers boundaries and fail-closed recovery. Do not treat desktop-state.v1.bin as this journal. |
+| M4 — Per-generation adapter and ownership proof | NOT STARTED | Define allowlisted adapter/resource IDs and build/architecture capability checks. Each native operation must implement capture, apply, inspect, ownership proof, verify and restore. Detect user/third-party changes and return Conflict rather than overwriting state that WinLook cannot prove it owns. |
+| M5 — Native presenter and virtual Group integration | BLOCKED BY M3/M4/M6 | Only after the journal, adapter ownership proof and crash tests pass: prototype bounded native presentation, Group proxies and context-menu routing. Keep Shell/file operations Shell-owned. Preserve original native items and fail open to the native-visible desktop on unsupported builds or bridge loss. No production icon suppression or presenter activation before the gates pass. |
+| M6 — Fault-injection and compatibility acceptance | NOT STARTED | Test every append/flush/native-operation boundary; BGW crash, Explorer crash/restart, view recreation, OS restart, disable, upgrade and uninstall; ACL/volume/journal corruption; external state changes; and every supported Windows build/architecture. Confirm recovery is idempotent and never overwrites unowned state. |
+
+### Read-only API research anchors
+
+- Microsoft documents IFolderView::Items as returning an enumeration object based on the folder view's item collection. Its returned interface may be IEnumIDList, IDataObject or IShellItemArray, depending on the requested IID.
+- IFolderView::GetItemPosition returns an item's upper-left point in the folder view; coordinate semantics must be validated for the Desktop host, monitor topology and DPI before persistence/use.
+- IFolderView also exposes mutating operations (selection, positioning and view-mode setters). The first adapter is strictly read-only and must not call those setters.
+- These interface method documents do not specify how BGW obtains the correct live Explorer Desktop IFolderView instance. That acquisition path is M0 and must be separately researched/tested.
+
+Primary source links are in plan/references/SOURCES.md as WLDE-047 and WLDE-048. Restoration requirements remain in plan/architecture/restoration.md.
+
+### Contributor / agent handoff convention
+
+Every agent continuing WinLook should identify the conversation/agent with its own **Chat Name** in the checkpoint it writes. Do not reuse another agent's label. Include the date, repository, branch, exact head SHA, PR/issue and verification state. This checkpoint's Chat Name is **GPT-6 — WinLook WLDE Bridge**. Read plan/index.md first, then only the relevant section in this file and its linked architecture/source documents. Treat current repository files and CI as authoritative over older workspace notes.

@@ -1,6 +1,6 @@
 # WinLook Technical Source Ledger
 
-Last verified: 2026-11-13. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
+Last verified: 2026-11-16. These citations support platform or upstream-project claims; they do not prove that WinLook code has been implemented or tested.
 
 ## Rust / UI runtime / hosted toolchains
 
@@ -322,7 +322,7 @@ operation from the coarse notification.
 
 | ID | Source | Claim supported | Scope / consequence |
 |---|---|---|---|
-| WLDE-036 | [Processes, Threads, and Apartments](https://learn.microsoft.com/en-us/windows/win32/com/processes--threads--and-apartments), [Single-Threaded Apartments](https://learn.microsoft.com/en-us/windows/win32/com/single-threaded-apartments), [PeekMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-peekmessagew), [TranslateMessage](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-translatemessage), [DispatchMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-dispatchmessagew) | STA threads must retrieve and dispatch their Windows message queue to receive cross-apartment COM calls. Microsoft recommends a message-aware wait rather than blocking indefinitely on a synchronization primitive | The BGW Shell worker pumps queued messages between requests and during bounded result-channel backpressure. It uses a short receive timeout while idle; Shell extraction itself remains synchronous on this one worker |
+| WLDE-036 | [Processes, Threads, and Apartments](https://learn.microsoft.com/en-us/windows/win32/com/processes--threads--and-apartments), [Single-Threaded Apartments](https://learn.microsoft.com/en-us/windows/win32/com/single-threaded-apartments), [PeekMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-peekmessagew), [TranslateMessage](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-translatemessage), [DispatchMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-dispatchmessagew) | STA threads must retrieve and dispatch their Windows message queue to receive cross-apartment COM calls. Microsoft recommends a message-aware wait rather than blocking indefinitely on a synchronization primitive | Superseded by WLDE-047: both BGW Shell workers now use a shared request-event/message-aware wait helper and pump the STA queue while idle and during result backpressure |
 
 ## WLDE write-ahead restoration journal durability — 2026-11-15
 
@@ -349,3 +349,18 @@ snapshot to enable Groups or suppress native desktop icons.
 
 
 | WLDE-046 | Repository: rust/library/wl_bgw_runtime/src/desktop_sta.rs, rust/library/wl_bgw_runtime/src/desktop_icon_pipeline.rs, rust/library/wl_bgw_runtime/src/desktop_namespace_worker.rs | Both BGW Shell workers share one message-aware STA wake/event helper, keeping message dispatch consistent between icon acquisition and namespace enumeration | This is an implementation fact verified in the feature branch; it does not make either worker safe to terminate while a Shell provider call is still active |
+
+
+## WLDE read-only Desktop view milestones — 2026-11-16
+
+| ID | Source | Claim supported | Scope / caveat |
+|---|---|---|---|
+| WLDE-047 | [MsgWaitForMultipleObjects](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-msgwaitformultipleobjects), [Wait Functions](https://learn.microsoft.com/en-us/windows/win32/sync/wait-functions), [Processes, Threads, and Apartments](https://learn.microsoft.com/en-us/windows/win32/com/processes--threads--and-apartments) | MsgWaitForMultipleObjects can wait on synchronization handles and the calling thread's selected input queue; the return value distinguishes a signaled handle, queued input, timeout and WAIT_FAILED | BGW's shared STA helper waits on its bounded request event with QS_ALLINPUT, then drains the queue. The helper handles WAIT_FAILED and keeps the event handle alive until all waiters/signallers release it; this does not make a blocked Shell call cancellable |
+| WLDE-048 | [IFolderView](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ifolderview), [IFolderView::Items](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifolderview-items), [IFolderView::GetItemPosition](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifolderview-getitemposition), [IFolderView::ItemCount](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifolderview-itemcount), [IFolderView::GetCurrentViewMode](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifolderview-getcurrentviewmode) | IFolderView exposes folder-view item enumeration/count, item positions, and view mode; Items returns the interface selected by the caller's requested IID | These method references do not specify how to obtain the correct IFolderView instance for the live Explorer Desktop. Acquisition and per-build behaviour are a separate research milestone. The first adapter remains read-only; do not call selection/position/view-mode setters |
+
+These references define research targets for the next WLDE milestone; they do
+not prove that a live Desktop IFolderView acquisition route has been selected
+or implemented. Confirm the owning host, COM apartment/lifetime, item/PIDL
+scope and coordinate semantics on each supported build before coding against
+the interface. Keep all view mutations disabled until the crash-safe journal
+and adapter-specific restore proof satisfy plan/architecture/restoration.md.
