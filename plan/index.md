@@ -24,6 +24,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Documentation standards: [architecture/documentation-standard.md](architecture/documentation-standard.md)
 - Appearance/Icon Engine: [architecture/appearance-engine.md](architecture/appearance-engine.md)
 - File Explorer Customization: [architecture/explorer-customization.md](architecture/explorer-customization.md)
+- Windows Shell Integration and WLHome: [architecture/windows-shell-integration.md](architecture/windows-shell-integration.md)
 - Audio & Media Experience: [architecture/audio-experience.md](architecture/audio-experience.md)
 - Clipboard Experience: [architecture/clipboard-experience.md](architecture/clipboard-experience.md)
 - Profiles and Optimization: [architecture/profiles-and-optimization.md](architecture/profiles-and-optimization.md)
@@ -71,5 +72,6 @@ Read this index first when resuming work, then open only the relevant sections/f
 5. Read the target OS page before proposing APIs, compiler flags, imports or process techniques.
 6. Update the source ledger when a decision depends on new research.
 7. Do not create Final-Plan.md unless explicitly requested.
+8. For undocumented Start/taskbar/Explorer behavior, follow [Windows Shell Integration and WLHome](architecture/windows-shell-integration.md): inspect pinned open-source source snapshots, distinguish observations from supported APIs, record confidence, and keep dynamic experiments in disposable VMs.
 
 - Proposed Explorer Desktop Bridge write-ahead restoration journal, transaction ordering, typed ownership proof and crash/fault-injection acceptance gates: [restoration architecture](architecture/restoration.md) and [WLDE source ledger](references/SOURCES.md).
