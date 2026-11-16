@@ -63,6 +63,21 @@ Last verified: 2026-11-13. These citations support platform or upstream-project 
 | SHELL-008 | [Windhawk File Explorer Styler](https://windhawksoftware.com/mods/windows-11-file-explorer-styler/) | Third-party demonstration of selected Explorer surface styling | Feasibility example only; not a Microsoft API or universal support guarantee |
 | SHELL-009 | [IExplorerCommand](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iexplorercommand) | Explorer command-extension interface | Documented minimum client is Windows Vista; API minimum is separate from Windows 11 package-identity/manifest registration |
 
+## Windows Start, taskbar and shell integration
+
+| ID | Source | Claim supported | Scope / limit |
+|---|---|---|---|
+| SHELL-010 | [Shell Launcher overview](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/) | Windows-managed full-shell replacement and supported Windows editions | Replaces the configured shell at sign-in; not a partial Start-button redirection API |
+| SHELL-011 | [WESL_UserSetting.SetCustomShell](https://learn.microsoft.com/en-us/windows/configuration/shell-launcher/wesl-usersettingsetcustomshell) | Configures the custom shell application and exit behavior | Shell Launcher configuration; edition and policy requirements still apply |
+| SHELL-012 | [RegisterHotKey](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey) | Registers global shortcut combinations and documents Windows-key reservation | Suitable for ordinary shortcuts such as Alt+Space; not a supported Windows-key takeover |
+| SHELL-013 | [LowLevelKeyboardProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc) | Low-level keyboard-hook behavior, callback timeout and possible silent removal | Hook callback constraints; not a durable global Start replacement contract |
+| SHELL-014 | [Raw Input](https://learn.microsoft.com/en-us/windows/win32/inputdev/raw-input) | Receives raw input device data for observation | Observation does not imply suppression or ownership of OS-reserved shortcuts |
+| SHELL-015 | [ITaskbarList3](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itaskbarlist3) | Application taskbar affordances such as progress, overlays and thumbnails | Does not expose taskbar replacement or Start-button routing |
+| SHELL-016 | [Windows 11 Start layout configuration](https://learn.microsoft.com/en-us/windows/configuration/configure-start-layout) | Documents Start pin/layout configuration | Layout customization is not arbitrary Start activation redirection |
+| SHELL-017 | [ExplorerPatcher StartMenu.c](https://github.com/valinet/ExplorerPatcher/blob/cc555ca80678c93f185e555fa4603e16610e3280/ExplorerPatcher/StartMenu.c), [StartExperience.cpp](https://github.com/valinet/ExplorerPatcher/blob/cc555ca80678c93f185e555fa4603e16610e3280/ExplorerPatcher/StartExperience.cpp), [Taskbar10.cpp](https://github.com/valinet/ExplorerPatcher/blob/cc555ca80678c93f185e555fa4603e16610e3280/ExplorerPatcher/Taskbar10.cpp) | Demonstrates private Immersive Shell interfaces, Start host integration, taskbar message paths and build-specific taskbar behavior | Open-source reverse-engineering evidence at commit `cc555ca80678c93f185e555fa4603e16610e3280` (2026-10-29); not a supported Windows API |
+| SHELL-018 | [Open-Shell StartMenu.cpp](https://github.com/Open-Shell/Open-Shell-Menu/blob/729c3686d093da88ac70095aff18d09f4f1352cf/Src/StartMenu/StartMenu.cpp) | Demonstrates Explorer/taskbar discovery, thread-specific message hooking, registered messages and taskbar recreation handling | Open-source implementation evidence at commit `729c3686d093da88ac70095aff18d09f4f1352cf` (2026-11-07); not a universal contract |
+| SHELL-019 | [Windhawk Windows 11 Start Menu Styler source](https://github.com/ramensoftware/windhawk-mods/blob/f6092423955c905d782c17b7c95fd7dca6342fa9/mods/windows-11-start-menu-styler.wh.cpp) | Demonstrates community-maintained, version-specific Start XAML/resource styling | Mod source at commit `f6092423955c905d782c17b7c95fd7dca6342fa9` (2026-11-16); styling evidence, not Start activation replacement |
+
 ## Language and Windows target support
 
 | ID | Source | Claim supported | Scope / caveat |
