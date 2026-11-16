@@ -200,6 +200,11 @@ mod desktop_view_platform {
     const CSIDL_DESKTOP: i32 = 0;
     const SWC_DESKTOP: i32 = 0x8;
     const SWFO_NEEDDISPATCH: i32 = 0x1;
+    // IDispatch occupies slots 0-6; Count/Item/_NewEnum/Register/
+    // RegisterPending/Revoke/OnNavigate/OnActivated precede FindWindowSW.
+    const ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT: usize = 15;
+    // IUnknown + IOleWindow + the first ten IShellBrowser methods.
+    const ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT: usize = 15;
     const CLSCTX_ALL: u32 = 0x17;
     const COINIT_APARTMENTTHREADED: u32 = 0x2;
 
@@ -447,8 +452,8 @@ mod desktop_view_platform {
         shell_windows: &OwnedComPtr,
         location: DesktopViewLocation,
     ) -> Result<OwnedComPtr, DesktopViewError> {
-        // IShellWindows inherits IDispatch. FindWindowSW follows the ten
-        // IShellWindows methods after IDispatch, at vtable slot 16.
+        // IShellWindows inherits IDispatch. The Windows SDK ExDisp.Idl
+        // places FindWindowSW at vtable slot 15.
         type FindWindowSwFn = unsafe extern "system" fn(
             Handle,
             *mut Variant,
@@ -459,7 +464,12 @@ mod desktop_view_platform {
             *mut Handle,
         ) -> HResult;
 
-        let find = unsafe { vtable_method::<FindWindowSwFn>(shell_windows.as_raw(), 16) };
+        let find = unsafe {
+            vtable_method::<FindWindowSwFn>(
+                shell_windows.as_raw(),
+                ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT,
+            )
+        };
         let mut location_variant = match location {
             DesktopViewLocation::CsidlDesktop => Variant::desktop_csidl(),
             DesktopViewLocation::Empty => Variant::empty(),
@@ -530,7 +540,10 @@ mod desktop_view_platform {
         type QueryActiveShellViewFn =
             unsafe extern "system" fn(Handle, *mut Handle) -> HResult;
         let query_active =
-            unsafe { vtable_method::<QueryActiveShellViewFn>(browser.as_raw(), 15) };
+            unsafe { vtable_method::<QueryActiveShellViewFn>(
+                browser.as_raw(),
+                ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT,
+            ) };
         let mut raw_view = ptr::null_mut();
         let result = unsafe { query_active(browser.as_raw(), &mut raw_view) };
         if result != S_OK {
@@ -707,6 +720,8 @@ mod desktop_view_platform {
             assert_eq!(IID_IPERSIST_FOLDER2.data1, 0x1ac3_d9f0);
             assert_eq!(SWC_DESKTOP, 0x8);
             assert_eq!(SWFO_NEEDDISPATCH, 0x1);
+            assert_eq!(ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT, 15);
+            assert_eq!(ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT, 15);
         }
     }
 }
