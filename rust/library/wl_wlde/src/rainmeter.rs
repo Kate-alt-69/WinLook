@@ -50,13 +50,23 @@ impl std::fmt::Display for RainmeterIntegrationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::ExecutableNotFound => f.write_str("Rainmeter executable was not found"),
-            Self::InvalidExecutable => f.write_str("select Rainmeter.exe from an installed Rainmeter folder"),
+            Self::InvalidExecutable => {
+                f.write_str("select Rainmeter.exe from an installed Rainmeter folder")
+            },
             Self::PackageNotFound => f.write_str("the selected Rainmeter package does not exist"),
             Self::UnsupportedPackage => f.write_str("select a .rmskin package"),
-            Self::InvalidConfig => f.write_str("Rainmeter config path is empty or contains an unsafe component"),
-            Self::InvalidIniFile => f.write_str("Rainmeter skin file must be a simple .ini file name"),
-            Self::SkinInstallerNotFound => f.write_str("SkinInstaller.exe was not found beside Rainmeter.exe"),
-            Self::LaunchFailed(error) => write!(f, "Rainmeter command could not be started: {error}"),
+            Self::InvalidConfig => {
+                f.write_str("Rainmeter config path is empty or contains an unsafe component")
+            },
+            Self::InvalidIniFile => {
+                f.write_str("Rainmeter skin file must be a simple .ini file name")
+            },
+            Self::SkinInstallerNotFound => {
+                f.write_str("SkinInstaller.exe was not found beside Rainmeter.exe")
+            },
+            Self::LaunchFailed(error) => {
+                write!(f, "Rainmeter command could not be started: {error}")
+            },
         }
     }
 }
@@ -137,10 +147,7 @@ impl RainmeterSkinPackage {
         if !path.is_file() {
             return Err(RainmeterIntegrationError::PackageNotFound);
         }
-        let extension = path
-            .extension()
-            .and_then(OsStr::to_str)
-            .unwrap_or_default();
+        let extension = path.extension().and_then(OsStr::to_str).unwrap_or_default();
         if !extension.eq_ignore_ascii_case("rmskin") {
             return Err(RainmeterIntegrationError::UnsupportedPackage);
         }
@@ -164,10 +171,7 @@ impl RainmeterInstall {
         if !path.is_file() {
             return Err(RainmeterIntegrationError::ExecutableNotFound);
         }
-        let file_name = path
-            .file_name()
-            .and_then(OsStr::to_str)
-            .unwrap_or_default();
+        let file_name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
         if !file_name.eq_ignore_ascii_case("Rainmeter.exe") {
             return Err(RainmeterIntegrationError::InvalidExecutable);
         }
@@ -345,7 +349,10 @@ mod tests {
             arguments(&install.command_refresh_config(&config)),
             vec!["!Refresh", r"illustro\Clock"]
         );
-        assert_eq!(arguments(&install.command_refresh_all()), vec!["!RefreshApp"]);
+        assert_eq!(
+            arguments(&install.command_refresh_all()),
+            vec!["!RefreshApp"]
+        );
     }
 
     #[test]
