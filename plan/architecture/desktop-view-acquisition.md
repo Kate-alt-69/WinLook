@@ -100,3 +100,15 @@ The research design now has a first implementation on the WLDE inventory PR:
 - A failed view probe does not suppress the independent namespace inventory. The BGW only reports the view as unavailable and keeps native Explorer presentation unchanged.
 
 **M0 remains PARTIAL.** GitHub Windows CI can verify compilation, but this session has not executed the probe in an interactive Windows VM/device. Before M0 can be marked complete, validate both locator forms, actual view-window ownership, Desktop-root PIDL matching, Explorer/view recreation, empty/hidden icon states, multiple monitors, mixed DPI and every supported OS build/UBR. M1 remains gated on that runtime evidence.
+
+
+### Architecture-sensitive VARIANT ABI correction — 2026-11-17
+
+The manual COM binding represents the VARIANT value union with two pointer-sized
+words, matching the native BRECORD arm's two-pointer capacity. Therefore the
+complete VARIANT is 24 bytes on x64 and 16 bytes on x86. The Windows-specific
+test asserts the appropriate size for the compilation target. Although this
+probe only passes VT_EMPTY and VT_I4 values, it must still allocate and align the
+full native VARIANT object because FindWindowSW receives pointers to it.
+
+Source evidence is recorded as WLDE-064 in SOURCES.md.
