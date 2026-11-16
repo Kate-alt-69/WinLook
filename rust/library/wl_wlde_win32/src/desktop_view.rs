@@ -831,8 +831,9 @@ mod tests {
             .expect("an Explorer-owned desktop must be available in this session");
 
         for attempt in 0..3 {
-            let probe = crate::probe_desktop_folder_view(&host)
-                .unwrap_or_else(|error| panic!("Desktop view probe attempt {attempt} failed: {error}"));
+            let probe = crate::probe_desktop_folder_view(&host).unwrap_or_else(|error| {
+                panic!("Desktop view probe attempt {attempt} failed: {error}");
+            });
             assert_eq!(probe.owner_process_id(), host.process_id());
             assert!(matches!(
                 probe.location(),
