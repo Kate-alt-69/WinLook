@@ -639,7 +639,7 @@ The root namespace inventory is **not** an IFolderView snapshot. It does not ide
 
 | Milestone | Status | Deliverable / acceptance gate |
 |---|---|---|
-| M0 — Discover the actual Desktop view | PARTIAL — documented Shell COM acquisition route identified; runtime verification pending | Validate SWC_DESKTOP → top-level browser → active IShellView → IFolderView, exact Explorer process generation, Desktop-root identity, COM lifetime/restart handling and per-build VM matrix. |
+| M0 — Discover the actual Desktop view | PARTIAL — BGW read-only probe implemented; interactive runtime validation pending | Verify both FindWindowSW locator forms, exact Explorer process generation, Desktop-root PIDL identity, COM lifetime/restart handling and the full supported-build VM matrix. |
 | M1 — Read-only IFolderView snapshot | NOT STARTED | Produce a bounded snapshot of the live view's current items and required view data (membership, position/order, selection and view mode where reliably available). Cross-check PIDL ownership/relative scope, item identity and coordinate/DPI semantics. Treat view PIDLs and positions as ephemeral until a separately validated durable identity mapping exists. Never call selection, repositioning or view-mode setter methods in this phase. |
 | M2 — View lifecycle and invalidation | PARTIAL | The process monitor and host-generation tagging already handle Explorer replacement for current inventory workers. Add view-window/interface recreation and view-change invalidation, stale snapshot rejection, bounded event handling and re-acquisition. Keep enumeration and expensive work out of Explorer callbacks. |
 | M3 — Durable BGW restoration-journal writer | PARTIAL — portable codec only | wl_wlde::DesktopRestoreLedger exists, and plan/architecture/restoration.md defines the protocol. Implement the BGW single-writer storage backend: supported local path, owner/DACL validation, bounded append-only records, locking, sequence/checksum validation, durable FlushFileBuffers boundaries and fail-closed recovery. Do not treat desktop-state.v1.bin as this journal. |
@@ -679,3 +679,20 @@ Detailed design and acceptance criteria: [Desktop view acquisition](architecture
 ### Contributor / agent handoff convention
 
 Every agent continuing WinLook should identify the conversation/agent with its own **Chat Name** in the checkpoint it writes. Do not reuse another agent's label. Include the date, repository, branch, exact head SHA, PR/issue and verification state. This checkpoint's Chat Name is **GPT-6 — WinLook WLDE Bridge**. Read plan/index.md first, then only the relevant section in this file and its linked architecture/source documents. Treat current repository files and CI as authoritative over older workspace notes.
+
+
+## WLDE M0 implementation follow-up — 2026-11-17
+
+**Chat Name:** GPT-6 — WinLook WLDE Bridge  
+**Repository:** Kate-alt-69/WinLook  
+**Active PR:** [#13 — Shell Desktop inventory and IFolderView acquisition](https://github.com/Kate-alt-69/WinLook/pull/13)  
+**Branch:** feat/wlde-shell-namespace-inventory
+
+- Added \`rust/library/wl_wlde_win32/src/desktop_view.rs\`, a read-only COM probe that locates the registered Desktop Shell window, obtains its active \`IShellView\` and \`IFolderView\`, verifies the view HWND's owning PID against BGW's expected \`DesktopHostIdentity\`, and verifies the folder PIDL against the virtual Desktop root.
+- The probe tests the \`CSIDL_DESKTOP\` and \`VT_EMPTY\` locator representations independently. It returns the representation that succeeded so actual OS behaviour can be recorded rather than inferred.
+- BGW's existing single-flight, message-aware STA namespace worker now performs the view probe and the namespace inventory as one host-generation-tagged request. Errors remain separate: a view-probe failure does not discard a successful namespace snapshot.
+- Returned view data is deliberately minimal and path-free. No COM interface pointer, HWND, PIDL, icon name or filesystem path is handed to BGW from the probe. No Explorer hook, injection, mutation or icon suppression is performed.
+- **Verification boundary:** code has been committed to the PR branch; GitHub Actions must validate the Windows build. No live interactive Windows VM/device probe has run in this session. M0 stays partial until the required per-build/UBR, host/view-restart, Desktop-root and DPI/multi-monitor checks pass.
+- Binary PIDL equality through \`ILIsEqual\` may reject a semantically equivalent but differently encoded PIDL. That is intentionally fail-closed; a future fallback comparison must itself be verified before loosening this check.
+
+Detailed design: [desktop-view-acquisition.md](architecture/desktop-view-acquisition.md). Evidence: WLDE-049–063 in [SOURCES.md](references/SOURCES.md).
