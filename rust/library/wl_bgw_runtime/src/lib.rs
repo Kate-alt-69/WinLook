@@ -33,7 +33,7 @@ use wl_wlde::DesktopItemKind;
 use wl_wlde_win32::{
     enumerate_desktop_items, enumerate_monitors, is_same_desktop_host, monitor_desktop_host,
     watch_desktop_folders, DesktopFolder, DesktopInventoryItem, DesktopInventoryWatcher,
-    DesktopNamespaceItemKind,
+    DesktopNamespaceItemKind, DesktopViewProbe,
 };
 
 #[cfg(windows)]
@@ -146,7 +146,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         host_generation = host_generation.wrapping_add(1).max(1);
         let current_host_generation = host_generation;
         if let Some(worker) = desktop_namespace_worker.as_mut() {
-            if worker.request_refresh(current_host_generation) {
+            if worker.request_refresh(current_host_generation, identity.clone()) {
                 report_status("WLDE queued a read-only Shell Desktop namespace snapshot");
             }
         }
@@ -252,7 +252,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                         DesktopNamespaceWorkerPoll::Ready {
                             generation,
                             snapshot,
+                            view_result,
                         } if generation == current_host_generation => {
+                            report_desktop_view_probe(view_result);
                             let filesystem_items = snapshot
                                 .items()
                                 .iter()
@@ -283,14 +285,16 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             report_status(
                                 "WLDE discarded a stale Shell namespace snapshot after Explorer host replacement"
                             );
-                            if worker.request_refresh(current_host_generation) {
+                            if worker.request_refresh(current_host_generation, identity.clone()) {
                                 last_namespace_refresh = Instant::now();
                             }
                         }
                         DesktopNamespaceWorkerPoll::Failed {
                             generation,
                             message,
+                            view_result,
                         } if generation == current_host_generation => {
+                            report_desktop_view_probe(view_result);
                             report_status(&format!(
                                 "WLDE Shell namespace snapshot failed; native desktop presentation remains unchanged: {message}"
                             ));
@@ -299,7 +303,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             report_status(
                                 "WLDE discarded an error from a previous Explorer host session",
                             );
-                            if worker.request_refresh(current_host_generation) {
+                            if worker.request_refresh(current_host_generation, identity.clone()) {
                                 last_namespace_refresh = Instant::now();
                             }
                         }
@@ -319,7 +323,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 }
 
                 if last_namespace_refresh.elapsed() >= DESKTOP_NAMESPACE_REFRESH_INTERVAL
-                    && worker.request_refresh(current_host_generation)
+                    && worker.request_refresh(current_host_generation, identity.clone())
                 {
                     last_namespace_refresh = Instant::now();
                 }
@@ -423,7 +427,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             load_committed_desktop_state(store, &desktop_inventory)
                         });
                         if let Some(worker) = desktop_namespace_worker.as_mut() {
-                            if worker.request_refresh(current_host_generation) {
+                            if worker.request_refresh(current_host_generation, identity.clone()) {
                                 last_namespace_refresh = Instant::now();
                             }
                         }
@@ -446,6 +450,20 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         // Dropping the inventory releases its ephemeral path map; dropping the
         // monitor closes the process handle before the next host probe.
         drop(desktop_inventory);
+    }
+}
+
+#[cfg(windows)]
+fn report_desktop_view_probe(result: Result<DesktopViewProbe, String>) {
+    match result {
+        Ok(probe) => report_status(&format!(
+            "WLDE Explorer Desktop IFolderView acquired: owner pid={} Desktop root verified via {}",
+            probe.owner_process_id(),
+            probe.location().as_str()
+        )),
+        Err(error) => report_status(&format!(
+            "WLDE Explorer Desktop IFolderView unavailable; native presentation remains unchanged: {error}"
+        )),
     }
 }
 
