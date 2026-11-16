@@ -112,3 +112,27 @@ probe only passes VT_EMPTY and VT_I4 values, it must still allocate and align th
 full native VARIANT object because FindWindowSW receives pointers to it.
 
 Source evidence is recorded as WLDE-064 in SOURCES.md.
+
+
+### Raw COM vtable slot verification — 2026-11-17
+
+The probe uses explicit absolute COM vtable slots. They were checked against
+the Windows SDK IDL method order and the Microsoft Node.js Tools interop sample:
+
+- \`IShellWindows::FindWindowSW\`: slot 15 (seven inherited \`IDispatch\`
+  entries, then \`Count\`, \`Item\`, \`_NewEnum\`, \`Register\`,
+  \`RegisterPending\`, \`Revoke\`, \`OnNavigate\`, \`OnActivated\`,
+  \`FindWindowSW\`).
+- \`IServiceProvider::QueryService\`: slot 3 after \`IUnknown\`.
+- \`IShellBrowser::QueryActiveShellView\`: slot 15 after \`IUnknown\` and
+  \`IOleWindow\`; the preceding twelve \`IShellBrowser\` methods are in the
+  same order as Microsoft's Node.js Tools VTableGap01 through
+  VTableGap12 declarations.
+- \`IShellView::GetWindow\`: slot 3 after \`IUnknown\`.
+- \`IFolderView::GetFolder\`: slot 5 after \`IUnknown\`
+  (\`GetCurrentViewMode\`, \`SetCurrentViewMode\` precede it).
+- \`IPersistFolder2::GetCurFolder\`: slot 5 after \`IUnknown\`
+  (\`IPersist::GetClassID\` and \`IPersistFolder::Initialize\` precede it).
+
+The code keeps named constants for both slot-15 calls and a regression test.
+Source evidence is WLDE-065 in [SOURCES.md](../references/SOURCES.md).
