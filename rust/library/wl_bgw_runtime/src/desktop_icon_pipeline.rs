@@ -347,7 +347,6 @@ pub struct DesktopIconPipeline {
     worker_available: bool,
 }
 
-
 #[cfg(windows)]
 fn receive_icon_work(receiver: &Receiver<IconWork>, wake_event: &StaWakeEvent) -> Option<IconWork> {
     loop {
