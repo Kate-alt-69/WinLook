@@ -191,11 +191,7 @@ impl DesktopNamespaceWorker {
     /// Queues one refresh for the current verified Explorer-host generation.
     /// Returns false while an older request is still in flight or the worker
     /// has exited. It never creates another worker.
-    pub fn request_refresh(
-        &mut self,
-        generation: u64,
-        host_identity: DesktopHostIdentity,
-    ) -> bool {
+    pub fn request_refresh(&mut self, generation: u64, host_identity: DesktopHostIdentity) -> bool {
         if self.pending_generation.is_some() {
             return false;
         }
