@@ -14,15 +14,18 @@ Shared runtime library for WinLook's BGW process and the current WLDE desktop-in
   desktop-host replacement even when the original Explorer process stays alive.
 - Retries discovery every two seconds only while the Shell desktop is absent,
   belongs to a non-Explorer shell, or cannot be queried.
-- Starts one bounded STA worker for a read-only live Desktop view probe and root Shell namespace snapshot
-  after each verified Explorer-host attachment. It refreshes every 30 seconds
-  and after filesystem Desktop change notifications, and discards results from
-  an older host generation.
+- Starts two separate bounded STA workers after each verified Explorer-host
+  attachment: `DesktopNamespaceWorker` inventories the root Shell namespace,
+  while `DesktopViewWorker` independently probes the live Desktop
+  `IFolderView`. Both refresh every 30 seconds and carry the host generation;
+  namespace refresh also follows Desktop filesystem change notifications.
+  Stale-generation results are discarded.
 - Reports aggregate filesystem/virtual-item counts only; no Shell item names or
   filesystem paths are written to the BGW diagnostic channel. PIDL-derived IDs
   are session-only and are not passed into the persistent Group/layout store.
-- Reports a 20-second Desktop view/namespace-worker timeout without blocking BGW or spawning
-  an unsafe replacement thread. The in-flight Shell call may still complete.
+- Each STA worker reports its own 20-second diagnostic timeout without
+  blocking BGW or the other worker. Neither thread is killed or replaced while
+  a Shell call may still be active.
 - Sends status output through `OutputDebugStringW` on Windows. This is a
   diagnostic channel, not a persistent application log; without a debugger or
   active system debugger, Windows may discard the messages.
@@ -83,15 +86,38 @@ on the notification to identify the changed item.
 
 ## Read-only Shell namespace worker
 
-The BGW host loop owns a separate DesktopNamespaceWorker in addition to the icon-extraction worker. It starts one STA thread, initializes COM before accepting work, and pumps its message queue between requests and while waiting for the result slot. The request and result channels each have capacity one; at most one Desktop view probe plus root namespace inventory request is active. It uses the same message-aware STA helper as the Shell icon worker.
+The BGW host loop owns a dedicated `DesktopNamespaceWorker` for root Shell
+namespace enumeration, separately from the icon-extraction worker and the
+live-view probe worker. It starts one STA thread, initializes COM before
+accepting work, and pumps its message queue between requests and while waiting
+for the result slot. Its request and result channels each have capacity one,
+so at most one namespace request is active. It uses the shared message-aware
+STA helper.
 
-BGW requests a snapshot when a verified Explorer host attaches, every 30 seconds, and after a User/Public Desktop filesystem-change refresh. Each request carries the current host generation. If Explorer is replaced while a Shell call is running, BGW discards the old generation's result instead of treating it as the new desktop snapshot.
+BGW requests a snapshot when a verified Explorer host attaches, every 30
+seconds, and after a User/Public Desktop filesystem-change refresh. Each
+request carries the current host generation. If Explorer is replaced while a
+Shell call is running, BGW discards the old generation's result instead of
+treating it as the new desktop snapshot.
 
-The runtime reports only total entries, filesystem-backed entries, virtual folders, virtual items and skipped records. It does not log individual Shell names or paths. The snapshot is read-only and is dropped after aggregate reporting; the PIDL hashes are not persisted or used as Group member IDs.
+The runtime reports only total entries, filesystem-backed entries, virtual
+folders, virtual items and skipped records. It does not log individual Shell
+names or paths. The snapshot is read-only and is dropped after aggregate
+reporting; the PIDL hashes are not persisted or used as Group member IDs.
 
-If a view probe or namespace provider takes more than 20 seconds, BGW reports the delay and continues its host-monitor loop. The worker is not terminated or replaced: there is no safe way to kill a thread blocked inside an arbitrary Shell provider, and repeatedly spawning workers could leak unbounded threads. If the call eventually returns, that result is handled normally; otherwise the namespace capability remains unavailable for this BGW instance.
+If a namespace provider takes more than 20 seconds, BGW reports the delay and
+continues its host-monitor loop. The namespace worker is not terminated or
+replaced: there is no safe way to kill a thread blocked inside an arbitrary
+Shell provider, and repeatedly spawning workers could leak unbounded threads.
+If the call eventually returns, its generation-tagged result is handled
+normally; otherwise namespace enumeration remains unavailable for this BGW
+instance. The independent Desktop-view worker has the same single-flight and
+timeout policy, so a blocked view probe cannot stall namespace enumeration.
 
-This is a root Shell namespace inventory, not an IFolderView snapshot. It does not yet observe the actual desktop view's filtered/visible entries, positions, ordering, selection or view state. It does not suppress icons, install hooks, render a presenter or enable Groups.
+This is a root Shell namespace inventory, not an IFolderView snapshot. It does
+not yet observe the actual desktop view's filtered/visible entries, positions,
+ordering, selection or view state. It does not suppress icons, install hooks,
+render a presenter or enable Groups.
 
 ## Local Desktop Groups and layout state
 
@@ -209,23 +235,28 @@ See the [shared library catalog](../README.md) before choosing a dependency.
 
 ## Live Desktop view acquisition probe
 
-The existing bounded STA namespace worker now performs two independent
-read-only operations during each host-generation refresh:
+The BGW host loop owns a separate `DesktopViewWorker` for the live Desktop
+view probe. It is not combined with the root namespace worker: each has its
+own STA thread, one bounded request/result slot, host-generation tagging and
+20-second diagnostic timeout. Both use the shared message-aware STA helper.
+A blocked view probe therefore cannot block namespace enumeration, icon
+extraction or BGW's Explorer-monitor loop.
 
-- \`probe_desktop_folder_view(&DesktopHostIdentity)\` attempts to acquire
-  \`SWC_DESKTOP\` → \`IShellBrowser\` → active \`IShellView\` →
-  \`IFolderView\`. It compares the view HWND owner to BGW's exact Explorer
+- `probe_desktop_folder_view(&DesktopHostIdentity)` attempts to acquire
+  `SWC_DESKTOP` → `IShellBrowser` → active `IShellView` →
+  `IFolderView`. It compares the view HWND owner to BGW's exact Explorer
   process identity and verifies the virtual Desktop folder PIDL. Only a small
   owner-PID/locator-form result returns to the host loop.
-- \`enumerate_desktop_namespace_items()\` remains the separate root namespace
-  inventory. It still returns bounded filesystem/virtual item records with
-  session-only PIDL IDs; the two snapshots are not interchangeable.
+- `DesktopNamespaceWorker` independently calls
+  `enumerate_desktop_namespace_items()`. It returns bounded filesystem and
+  virtual-item records with session-only PIDL IDs. The two results are not
+  interchangeable.
 
-The probe result is logged as a path-free status. A failed view probe does not
-discard a successful namespace inventory. Both calls run on the same message-
-aware STA, and a slow Shell provider cannot block BGW's Explorer-monitor loop.
-No Explorer hook/injection, native icon suppression, Group presentation or
-Shell registration change is part of this probe.
+The view-probe result is logged as a path-free status. A failed view probe does
+not discard a successful namespace inventory. Neither worker is killed or
+replaced while a Shell call may still be blocked. No Explorer hook/injection,
+native icon suppression, Group presentation or Shell registration change is
+part of this probe.
 
 The feature is still experimental until the full interactive Windows build/UBR,
 Explorer/view-restart, Desktop-root, multiple-monitor and mixed-DPI test matrix
