@@ -364,9 +364,7 @@ mod desktop_view_platform {
 
     impl ComApartment {
         fn initialize() -> Result<Self, DesktopViewError> {
-            let result = unsafe {
-                CoInitializeEx(ptr::null_mut(), COINIT_APARTMENTTHREADED)
-            };
+            let result = unsafe { CoInitializeEx(ptr::null_mut(), COINIT_APARTMENTTHREADED) };
             if result < 0 {
                 Err(DesktopViewError::ComInitialization(result))
             } else {
@@ -537,13 +535,13 @@ mod desktop_view_platform {
             .ok_or(DesktopViewError::QueryService(result))?;
 
         // IShellBrowser inherits IOleWindow. QueryActiveShellView is slot 15.
-        type QueryActiveShellViewFn =
-            unsafe extern "system" fn(Handle, *mut Handle) -> HResult;
-        let query_active =
-            unsafe { vtable_method::<QueryActiveShellViewFn>(
+        type QueryActiveShellViewFn = unsafe extern "system" fn(Handle, *mut Handle) -> HResult;
+        let query_active = unsafe {
+            vtable_method::<QueryActiveShellViewFn>(
                 browser.as_raw(),
                 ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT,
-            ) };
+            )
+        };
         let mut raw_view = ptr::null_mut();
         let result = unsafe { query_active(browser.as_raw(), &mut raw_view) };
         if result != S_OK {
@@ -555,11 +553,8 @@ mod desktop_view_platform {
         let view = unsafe { OwnedComPtr::from_raw(raw_view) }
             .ok_or(DesktopViewError::QueryActiveShellView(result))?;
 
-        let folder_view = query_interface(
-            &view,
-            &IID_IFOLDER_VIEW,
-            DesktopViewError::QueryFolderView,
-        )?;
+        let folder_view =
+            query_interface(&view, &IID_IFOLDER_VIEW, DesktopViewError::QueryFolderView)?;
 
         // IShellView inherits IOleWindow; GetWindow is vtable slot 3.
         type GetWindowFn = unsafe extern "system" fn(Handle, *mut Handle) -> HResult;
@@ -588,17 +583,11 @@ mod desktop_view_platform {
 
         // IFolderView::GetFolder is vtable slot 5. Query IPersistFolder2 from
         // that folder and compare its absolute PIDL with CSIDL_DESKTOP.
-        type GetFolderFn =
-            unsafe extern "system" fn(Handle, *const Guid, *mut Handle) -> HResult;
+        type GetFolderFn = unsafe extern "system" fn(Handle, *const Guid, *mut Handle) -> HResult;
         let get_folder = unsafe { vtable_method::<GetFolderFn>(folder_view.as_raw(), 5) };
         let mut raw_folder = ptr::null_mut();
-        let result = unsafe {
-            get_folder(
-                folder_view.as_raw(),
-                &IID_ISHELL_FOLDER,
-                &mut raw_folder,
-            )
-        };
+        let result =
+            unsafe { get_folder(folder_view.as_raw(), &IID_ISHELL_FOLDER, &mut raw_folder) };
         if result != S_OK {
             if let Some(unexpected) = unsafe { OwnedComPtr::from_raw(raw_folder) } {
                 drop(unexpected);
@@ -616,8 +605,7 @@ mod desktop_view_platform {
         // IPersistFolder2 inherits IPersistFolder and IPersist; GetCurFolder
         // is vtable slot 5 after IUnknown.
         type GetCurFolderFn = unsafe extern "system" fn(Handle, *mut Handle) -> HResult;
-        let get_current =
-            unsafe { vtable_method::<GetCurFolderFn>(persist_folder.as_raw(), 5) };
+        let get_current = unsafe { vtable_method::<GetCurFolderFn>(persist_folder.as_raw(), 5) };
         let mut current_folder = ptr::null_mut();
         let result = unsafe { get_current(persist_folder.as_raw(), &mut current_folder) };
         if result != S_OK {
@@ -660,9 +648,7 @@ mod desktop_view_platform {
         match is_same_desktop_host(expected_host) {
             Ok(true) => {}
             Ok(false) => return Err(DesktopViewError::HostIdentityChanged),
-            Err(error) => {
-                return Err(DesktopViewError::HostIdentityUnavailable(error.to_string()))
-            }
+            Err(error) => return Err(DesktopViewError::HostIdentityUnavailable(error.to_string())),
         }
 
         Ok(DesktopViewProbe {
