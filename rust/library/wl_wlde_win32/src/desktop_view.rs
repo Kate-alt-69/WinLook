@@ -209,60 +209,60 @@ pub(super) mod com_abi {
     }
 
     pub(super) const CLSID_SHELL_WINDOWS: Guid = Guid {
-        pub(super) data1: 0x9ba0_5972,
-        pub(super) data2: 0xf6a8,
-        pub(super) data3: 0x11cf,
-        pub(super) data4: [0xa4, 0x42, 0x00, 0xa0, 0xc9, 0x0a, 0x8f, 0x39],
+        data1: 0x9ba0_5972,
+        data2: 0xf6a8,
+        data3: 0x11cf,
+        data4: [0xa4, 0x42, 0x00, 0xa0, 0xc9, 0x0a, 0x8f, 0x39],
     };
     pub(super) const IID_ISHELL_WINDOWS: Guid = Guid {
-        pub(super) data1: 0x85cb_6900,
-        pub(super) data2: 0x4d95,
-        pub(super) data3: 0x11cf,
-        pub(super) data4: [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85],
+        data1: 0x85cb_6900,
+        data2: 0x4d95,
+        data3: 0x11cf,
+        data4: [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85],
     };
     pub(super) const IID_ISERVICE_PROVIDER: Guid = Guid {
-        pub(super) data1: 0x6d51_40c1,
-        pub(super) data2: 0x7436,
-        pub(super) data3: 0x11ce,
-        pub(super) data4: [0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa],
+        data1: 0x6d51_40c1,
+        data2: 0x7436,
+        data3: 0x11ce,
+        data4: [0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa],
     };
     pub(super) const SID_STOP_LEVEL_BROWSER: Guid = Guid {
-        pub(super) data1: 0x4c96_be40,
-        pub(super) data2: 0x915c,
-        pub(super) data3: 0x11cf,
-        pub(super) data4: [0x99, 0xd3, 0x00, 0xaa, 0x00, 0x4a, 0xe8, 0x37],
+        data1: 0x4c96_be40,
+        data2: 0x915c,
+        data3: 0x11cf,
+        data4: [0x99, 0xd3, 0x00, 0xaa, 0x00, 0x4a, 0xe8, 0x37],
     };
     pub(super) const IID_ISHELL_BROWSER: Guid = Guid {
-        pub(super) data1: 0x0002_14e2,
-        pub(super) data2: 0x0000,
-        pub(super) data3: 0x0000,
-        pub(super) data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+        data1: 0x0002_14e2,
+        data2: 0x0000,
+        data3: 0x0000,
+        data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
     };
     pub(super) const IID_IFOLDER_VIEW: Guid = Guid {
-        pub(super) data1: 0xcde7_25b0,
-        pub(super) data2: 0xccc9,
-        pub(super) data3: 0x4519,
-        pub(super) data4: [0x91, 0x7e, 0x32, 0x5d, 0x72, 0xfa, 0xb4, 0xce],
+        data1: 0xcde7_25b0,
+        data2: 0xccc9,
+        data3: 0x4519,
+        data4: [0x91, 0x7e, 0x32, 0x5d, 0x72, 0xfa, 0xb4, 0xce],
     };
     pub(super) const IID_ISHELL_FOLDER: Guid = Guid {
-        pub(super) data1: 0x0002_14e6,
-        pub(super) data2: 0x0000,
-        pub(super) data3: 0x0000,
-        pub(super) data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+        data1: 0x0002_14e6,
+        data2: 0x0000,
+        data3: 0x0000,
+        data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
     };
     pub(super) const IID_IPERSIST_FOLDER2: Guid = Guid {
-        pub(super) data1: 0x1ac3_d9f0,
-        pub(super) data2: 0x175c,
-        pub(super) data3: 0x11d1,
-        pub(super) data4: [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f],
+        data1: 0x1ac3_d9f0,
+        data2: 0x175c,
+        data3: 0x11d1,
+        data4: [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f],
     };
 
     #[repr(C)]
     pub(super) union VariantValue {
-        long_value: i32,
+        pub(super) long_value: i32,
         // VARIANT's BRECORD arm is two pointers: 16 bytes on x64, 8 on x86.
         // This gives VARIANT its ABI-correct size of 24 bytes on x64 and 16 on x86.
-        zero: [usize; 2],
+        pub(super) zero: [usize; 2],
     }
 
     #[repr(C)]
@@ -297,7 +297,6 @@ pub(super) mod com_abi {
             }
         }
     }
-
 
 }
 
