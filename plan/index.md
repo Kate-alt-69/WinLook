@@ -32,6 +32,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Vector animation and SVG contract: [architecture/vector-animation.md](architecture/vector-animation.md)
 - CPUv/GPUv resource-governor architecture: [architecture/resource-governors.md](architecture/resource-governors.md)
 - WLDE: [architecture/wlde.md](architecture/wlde.md)
+- Explorer Desktop IFolderView acquisition (M0): [architecture/desktop-view-acquisition.md](architecture/desktop-view-acquisition.md)
 - WLT: [architecture/wlt.md](architecture/wlt.md)
 - WLOSDE / WLDM: [architecture/wlosde-wldm.md](architecture/wlosde-wldm.md)
 - Standby/session security: [architecture/standby-security.md](architecture/standby-security.md)
