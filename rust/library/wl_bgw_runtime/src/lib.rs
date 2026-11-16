@@ -17,10 +17,10 @@ mod desktop_icon_pipeline;
 #[cfg(windows)]
 mod desktop_namespace_worker;
 #[cfg(windows)]
-mod desktop_view_worker;
-#[cfg(windows)]
 mod desktop_sta;
 mod desktop_store;
+#[cfg(windows)]
+mod desktop_view_worker;
 pub use desktop_store::{
     DesktopItemIdentityRecord, DesktopStateSnapshot, DesktopStateStore, DesktopStateStoreError,
 };
@@ -358,8 +358,10 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             );
                             let _ = worker.request_probe(current_host_generation, identity.clone());
                         }
-                        DesktopViewWorkerPoll::Failed { generation, message }
-                            if generation == current_host_generation => {
+                        DesktopViewWorkerPoll::Failed {
+                            generation,
+                            message,
+                        } if generation == current_host_generation => {
                             report_desktop_view_probe(Err(message));
                         }
                         DesktopViewWorkerPoll::Failed { .. } => {
