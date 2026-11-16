@@ -27,6 +27,14 @@ pub struct RainmeterSkinPackage {
     path: PathBuf,
 }
 
+/// Visibility action for a currently loaded Rainmeter config.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RainmeterVisibility {
+    Show,
+    Hide,
+    Toggle,
+}
+
 /// A selected Rainmeter installation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RainmeterInstall {
@@ -251,6 +259,61 @@ impl RainmeterInstall {
             .map_err(|error| RainmeterIntegrationError::LaunchFailed(error.to_string()))
     }
 
+    /// Builds !Show, !Hide, or !Toggle for a currently loaded config.
+    ///
+    /// Rainmeter requires the config argument for command-line invocations,
+    /// even though the bang's in-skin config parameter is optional.
+    pub fn command_set_visibility(
+        &self,
+        config: &RainmeterConfig,
+        visibility: RainmeterVisibility,
+    ) -> Command {
+        let bang = match visibility {
+            RainmeterVisibility::Show => "!Show",
+            RainmeterVisibility::Hide => "!Hide",
+            RainmeterVisibility::Toggle => "!Toggle",
+        };
+        let mut command = Command::new(&self.executable);
+        command.arg(bang).arg(config.as_str());
+        command
+    }
+
+    pub fn set_visibility(
+        &self,
+        config: &RainmeterConfig,
+        visibility: RainmeterVisibility,
+    ) -> Result<Child, RainmeterIntegrationError> {
+        self.command_set_visibility(config, visibility)
+            .spawn()
+            .map_err(|error| RainmeterIntegrationError::LaunchFailed(error.to_string()))
+    }
+
+    /// Builds !Move <x> <y> <config> using integer coordinates.
+    ///
+    /// Negative coordinates are allowed for monitors positioned left/above
+    /// the primary display. Arbitrary formulas, variables and bang strings
+    /// are not accepted by this adapter.
+    pub fn command_move_config(&self, config: &RainmeterConfig, x: i32, y: i32) -> Command {
+        let mut command = Command::new(&self.executable);
+        command
+            .arg("!Move")
+            .arg(x.to_string())
+            .arg(y.to_string())
+            .arg(config.as_str());
+        command
+    }
+
+    pub fn move_config(
+        &self,
+        config: &RainmeterConfig,
+        x: i32,
+        y: i32,
+    ) -> Result<Child, RainmeterIntegrationError> {
+        self.command_move_config(config, x, y)
+            .spawn()
+            .map_err(|error| RainmeterIntegrationError::LaunchFailed(error.to_string()))
+    }
+
     /// Locates the normal SkinInstaller.exe companion for a portable/installed copy.
     ///
     /// The official workflow opens this GUI and asks the user to browse to the
@@ -352,6 +415,22 @@ mod tests {
         assert_eq!(
             arguments(&install.command_refresh_all()),
             vec!["!RefreshApp"]
+        );
+        assert_eq!(
+            arguments(&install.command_set_visibility(&config, RainmeterVisibility::Show)),
+            vec!["!Show", r"illustro\Clock"]
+        );
+        assert_eq!(
+            arguments(&install.command_set_visibility(&config, RainmeterVisibility::Hide)),
+            vec!["!Hide", r"illustro\Clock"]
+        );
+        assert_eq!(
+            arguments(&install.command_set_visibility(&config, RainmeterVisibility::Toggle)),
+            vec!["!Toggle", r"illustro\Clock"]
+        );
+        assert_eq!(
+            arguments(&install.command_move_config(&config, -1920, 120)),
+            vec!["!Move", "-1920", "120", r"illustro\Clock"]
         );
     }
 

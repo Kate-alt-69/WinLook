@@ -45,8 +45,11 @@ Rainmeter's official command-line interface accepts documented bangs as argument
 
 - Activate a config, optionally selecting a simple .ini file.
 - Deactivate a config.
-- Refresh a config.
-- Refresh all Rainmeter configs.
+- Refresh a config or all Rainmeter configs.
+- Show, hide or toggle a currently loaded config.
+- Move a currently loaded config with integer X/Y coordinates.
+
+Command-line bang calls always include an explicit config when a bang requires one. Move coordinates are numeric integers; arbitrary formula strings, variables and caller-supplied bang text are not forwarded. Negative coordinates allow a skin to be positioned on a monitor left of or above the primary display.
 
 RainmeterConfig normalizes relative folder paths and rejects empty components, traversal, drive-qualified paths, quotes and control/invalid filename characters. RainmeterIni accepts only a simple .ini filename. These types prevent the Manager from forwarding an arbitrary bang or filesystem path as a config.
 

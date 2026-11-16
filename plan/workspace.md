@@ -772,3 +772,13 @@ Current release data: 4.5.28 is latest stable 4.5 (October 12, 2026); 5.0.0 RC2 
 - Rainmeter is intentionally excluded from exclusive wallpaper ownership because its skins are a separate overlay. Overlay z-order/input policy remains future work.
 - This is a portable configuration contract only. It does not launch/stop a process, verify that a command completed, or confirm visible presentation. Do not mark a new owner runtime-active until Manager/BGW command acknowledgement and presenter state observation exist.
 - Tests cover native defaults, mixed multi-monitor ownership, unknown/duplicate assignments, transactional failure and single-monitor updates. CI for the exact commit must still confirm formatting, Clippy and test results.
+
+### Rainmeter widget-overlay command follow-up — 2026-11-17
+
+**Chat Name:** GPT-6 — WinLook WLDE Bridge
+
+- Upstream evidence WLDE-076 confirms command-line bangs require the config argument even where an in-skin bang parameter is optional; documented !Show/!Hide/!Toggle and !Move are available.
+- Added RainmeterVisibility with Show, Hide and Toggle, plus RainmeterInstall command builders/launch methods for a named, currently loaded config.
+- Added command_move_config / move_config with integer X/Y only. Negative values are retained for monitors positioned left/above the primary display. Arbitrary bang strings, formula values and variable expansion are deliberately not exposed.
+- Tests verify exact, separately passed command arguments for visibility and move actions. CI for the exact commit must verify formatting, Clippy, and Rust tests.
+- Rainmeter remains a widget overlay separate from exclusive wallpaper presenter ownership. Automatic skin discovery, config availability acknowledgement, z-order/input arbitration and version/architecture compatibility remain unimplemented.

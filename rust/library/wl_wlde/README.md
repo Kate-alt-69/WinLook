@@ -235,8 +235,12 @@ wallpaper has been accepted or presented.
 
 Use RainmeterInstall with a selected Rainmeter.exe. RainmeterConfig validates
 a relative config name, and RainmeterIni validates a single .ini file name.
-The API exposes documented !ActivateConfig, !DeactivateConfig, !Refresh and
-!RefreshApp command builders and launch methods.
+The API exposes documented !ActivateConfig, !DeactivateConfig, !Refresh,
+!RefreshApp, !Show, !Hide, !Toggle and numeric !Move command builders and
+launch methods. Visibility and move commands target an explicitly named,
+currently loaded config; the API accepts integer coordinates (including
+negative coordinates for monitors left/above the primary display), not
+arbitrary bang strings, formulas or variables.
 
 RainmeterSkinPackage validates a selected .rmskin file without reading or
 extracting it. launch_skin_installer starts the installed SkinInstaller.exe

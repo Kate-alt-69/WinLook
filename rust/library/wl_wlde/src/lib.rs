@@ -55,7 +55,7 @@ pub use presentation::{
 };
 pub use rainmeter::{
     RainmeterConfig, RainmeterIni, RainmeterInstall, RainmeterIntegrationError,
-    RainmeterSkinPackage,
+    RainmeterSkinPackage, RainmeterVisibility,
 };
 pub use resource::{
     ResourceGovernor, ResourcePolicy, ResourcePolicyError, ResourcePressure, ResourceSample,
