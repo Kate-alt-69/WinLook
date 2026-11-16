@@ -119,7 +119,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         Ok(worker) => Some(worker),
         Err(error) => {
             report_status(&format!(
-                "WLDE Shell namespace worker unavailable; virtual Desktop items will not be indexed: {error}"
+                "WLDE Shell Desktop worker unavailable; virtual Desktop items and live view status will be unavailable: {error}"
             ));
             None
         }
@@ -147,7 +147,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         let current_host_generation = host_generation;
         if let Some(worker) = desktop_namespace_worker.as_mut() {
             if worker.request_refresh(current_host_generation, identity.clone()) {
-                report_status("WLDE queued a read-only Shell Desktop namespace snapshot");
+                report_status("WLDE queued a read-only Shell Desktop view probe and namespace snapshot");
             }
         }
         report_status(&format!(
@@ -311,12 +311,12 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             if generation == current_host_generation =>
                         {
                             report_status(
-                                "WLDE Shell namespace enumeration exceeded 20 seconds; BGW remains responsive and will not spawn a replacement worker"
+                                "WLDE Shell Desktop view probe/namespace request exceeded 20 seconds; BGW remains responsive and will not spawn a replacement worker"
                             );
                         }
                         DesktopNamespaceWorkerPoll::TimedOut { .. } => {
                             report_status(
-                                "WLDE previous Shell namespace request timed out after Explorer host replacement"
+                                "WLDE previous Shell Desktop view/namespace request timed out after Explorer host replacement"
                             );
                         }
                     }
