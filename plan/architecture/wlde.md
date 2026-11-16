@@ -600,10 +600,13 @@ virtual \`CSIDL_DESKTOP\` root. It also revalidates the Explorer process after
 the COM calls. All COM references and PIDLs remain on the STA; only the owner
 PID and locator-form enum are returned.
 
-BGW's existing bounded namespace worker now runs this probe alongside the
-root Shell namespace inventory and reports a path-free success/failure status.
-A view-probe failure does not stop the namespace inventory and never activates
-native presentation.
+BGW's dedicated DesktopViewWorker runs this probe on its own bounded,
+message-aware STA. The independent DesktopNamespaceWorker continues to
+enumerate the root Shell namespace on a separate STA. Each has one single-flight
+request, host-generation tagging and its own diagnostic timeout, so a blocked
+view probe cannot stall namespace inventory. Both report only bounded,
+path-free results. A view-probe failure does not stop namespace inventory and
+never activates native presentation.
 
 **M0 status is PARTIAL:** this is a compiled-code candidate, not a runtime
 compatibility claim. Interactive Windows VM/device checks for view ownership,
