@@ -205,3 +205,28 @@ not register startup, expose Manager IPC, suppress native icons or display
 Groups. `cargo test -p wl_bgw_runtime` checks portable store/runtime tests;
 the Explorer process and STA Shell path requires Windows CI/device validation.
 See the [shared library catalog](../README.md) before choosing a dependency.
+
+
+## Live Desktop view acquisition probe
+
+The existing bounded STA namespace worker now performs two independent
+read-only operations during each host-generation refresh:
+
+- \`probe_desktop_folder_view(&DesktopHostIdentity)\` attempts to acquire
+  \`SWC_DESKTOP\` → \`IShellBrowser\` → active \`IShellView\` →
+  \`IFolderView\`. It compares the view HWND owner to BGW's exact Explorer
+  process identity and verifies the virtual Desktop folder PIDL. Only a small
+  owner-PID/locator-form result returns to the host loop.
+- \`enumerate_desktop_namespace_items()\` remains the separate root namespace
+  inventory. It still returns bounded filesystem/virtual item records with
+  session-only PIDL IDs; the two snapshots are not interchangeable.
+
+The probe result is logged as a path-free status. A failed view probe does not
+discard a successful namespace inventory. Both calls run on the same message-
+aware STA, and a slow Shell provider cannot block BGW's Explorer-monitor loop.
+No Explorer hook/injection, native icon suppression, Group presentation or
+Shell registration change is part of this probe.
+
+The feature is still experimental until the full interactive Windows build/UBR,
+Explorer/view-restart, Desktop-root, multiple-monitor and mixed-DPI test matrix
+passes. The M0 status remains partial; M1 and native presentation stay gated.
