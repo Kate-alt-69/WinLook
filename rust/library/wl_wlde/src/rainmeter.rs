@@ -52,21 +52,21 @@ impl std::fmt::Display for RainmeterIntegrationError {
             Self::ExecutableNotFound => f.write_str("Rainmeter executable was not found"),
             Self::InvalidExecutable => {
                 f.write_str("select Rainmeter.exe from an installed Rainmeter folder")
-            },
+            }
             Self::PackageNotFound => f.write_str("the selected Rainmeter package does not exist"),
             Self::UnsupportedPackage => f.write_str("select a .rmskin package"),
             Self::InvalidConfig => {
                 f.write_str("Rainmeter config path is empty or contains an unsafe component")
-            },
+            }
             Self::InvalidIniFile => {
                 f.write_str("Rainmeter skin file must be a simple .ini file name")
-            },
+            }
             Self::SkinInstallerNotFound => {
                 f.write_str("SkinInstaller.exe was not found beside Rainmeter.exe")
-            },
+            }
             Self::LaunchFailed(error) => {
                 write!(f, "Rainmeter command could not be started: {error}")
-            },
+            }
         }
     }
 }
