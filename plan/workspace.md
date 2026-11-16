@@ -639,7 +639,7 @@ The root namespace inventory is **not** an IFolderView snapshot. It does not ide
 
 | Milestone | Status | Deliverable / acceptance gate |
 |---|---|---|
-| M0 — Discover the actual Desktop view | NOT STARTED | Research and prototype how BGW obtains the IFolderView belonging to the verified Explorer-owned Desktop view, not an arbitrary Explorer folder window. Record OS build/UBR, architecture, COM apartment, interface lifetime and restart behaviour. Unknown or ambiguous view ownership must fail closed. Do not enable hooks or mutate Explorer during discovery. |
+| M0 — Discover the actual Desktop view | PARTIAL — documented Shell COM acquisition route identified; runtime verification pending | Validate SWC_DESKTOP → top-level browser → active IShellView → IFolderView, exact Explorer process generation, Desktop-root identity, COM lifetime/restart handling and per-build VM matrix. |
 | M1 — Read-only IFolderView snapshot | NOT STARTED | Produce a bounded snapshot of the live view's current items and required view data (membership, position/order, selection and view mode where reliably available). Cross-check PIDL ownership/relative scope, item identity and coordinate/DPI semantics. Treat view PIDLs and positions as ephemeral until a separately validated durable identity mapping exists. Never call selection, repositioning or view-mode setter methods in this phase. |
 | M2 — View lifecycle and invalidation | PARTIAL | The process monitor and host-generation tagging already handle Explorer replacement for current inventory workers. Add view-window/interface recreation and view-change invalidation, stale snapshot rejection, bounded event handling and re-acquisition. Keep enumeration and expensive work out of Explorer callbacks. |
 | M3 — Durable BGW restoration-journal writer | PARTIAL — portable codec only | wl_wlde::DesktopRestoreLedger exists, and plan/architecture/restoration.md defines the protocol. Implement the BGW single-writer storage backend: supported local path, owner/DACL validation, bounded append-only records, locking, sequence/checksum validation, durable FlushFileBuffers boundaries and fail-closed recovery. Do not treat desktop-state.v1.bin as this journal. |
@@ -655,6 +655,26 @@ The root namespace inventory is **not** an IFolderView snapshot. It does not ide
 - These interface method documents do not specify how BGW obtains the correct live Explorer Desktop IFolderView instance. That acquisition path is M0 and must be separately researched/tested.
 
 Primary source links are in plan/references/SOURCES.md as WLDE-047 and WLDE-048. Restoration requirements remain in plan/architecture/restoration.md.
+
+### M0 findings — Desktop IFolderView acquisition research
+
+**Chat Name:** GPT-6 — WinLook WLDE Bridge  
+**Date:** 2026-11-16  
+**Repository:** Kate-alt-69/WinLook  
+**Branch:** research/wlde-desktop-view-acquisition (stacked on feat/wlde-shell-namespace-inventory)  
+**Base:** 5d43f360b9713516348425e595638eaffb2fbaca  
+**Status:** Research/design only; no runtime probe or VM test has run.
+
+- Identified the public Shell COM acquisition chain: CLSID_ShellWindows / IShellWindows::FindWindowSW(SWC_DESKTOP, SWFO_NEEDDISPATCH) → IServiceProvider::QueryService(SID_STopLevelBrowser, IID_IShellBrowser) → IShellBrowser::QueryActiveShellView → IShellView::QueryInterface(IID_IFolderView).
+- Use IOleWindow::GetWindow on the returned IShellView, then GetWindowThreadProcessId, to verify that the view window is owned by the exact Explorer PID/process-generation already tracked by BGW. Do not use generic Explorer-window enumeration, window-title heuristics, or private Progman/WorkerW class assumptions.
+- Query IFolderView::GetFolder(IID_IShellFolder) and inspect IPersistFolder2::GetCurFolder where supported as a secondary Desktop-root check. Keep the distinction between the virtual CSIDL_DESKTOP namespace root and the filesystem CSIDL_DESKTOPDIRECTORY path.
+- The documented FindWindowSW page describes pvarLoc as an absolute PIDL. Raymond Chen's sample passes a CSIDL_DESKTOP variant; the pinned CorralWindows experiment passes VT_EMPTY. The probe must compare the forms on target builds and record which one is valid; do not quietly pick one by assumption.
+- Keep all COM interfaces on the existing dedicated BGW STA worker and release them there. Reacquire after Explorer or view recreation; return bounded copied DTOs tagged with host/view generation. E_ACCESSDENIED, stale PID, a non-Desktop parent, or any ambiguous ownership leaves native presentation unchanged.
+- CorralWindows (MIT, source commit d548e36f8aa1031098166d2076513cc649d8c51f) independently demonstrates read-only SWC_DESKTOP/IFolderView enumeration and reports interactive Windows 10/11 observations, but multi-monitor and DPI behaviour remain unverified in its README.
+- M1 can later use ItemCount(SVGIO_ALLVIEW), Items(SVGIO_ALLVIEW, IID_IEnumIDList) and GetItemPosition. Treat enumerated PIDLs and view indices as transient; the returned POINT is a view-space upper-left point, not yet a persisted monitor coordinate. Detect inconsistent/count-changing reads and reject partial snapshots.
+- **M0 remains PARTIAL.** No interactive Windows VM/device tests were performed. Finish the Windows 10/11 build/UBR matrix, owner-PID and Desktop-root checks, restart/recreation tests, session transitions, empty/hidden icon cases, virtual namespace items, multiple monitors and mixed DPI before claiming M0 complete.
+
+Detailed design and acceptance criteria: [Desktop view acquisition](architecture/desktop-view-acquisition.md). Source references WLDE-049–055 are in [SOURCES.md](references/SOURCES.md).
 
 ### Contributor / agent handoff convention
 
