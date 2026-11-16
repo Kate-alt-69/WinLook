@@ -253,10 +253,11 @@ registration changes. If the process identity, view HWND or Desktop-root
 check fails, it returns an error instead of accepting an arbitrary Explorer
 folder.
 
-Call it from a dedicated STA with a message pump, such as BGW's existing
-\`DesktopNamespaceWorker\`. Runtime acquisition and per-build compatibility
-still require an interactive Windows test; compiling the binding is not proof
-that a target build returns the expected live Desktop view.
+Call it from BGW's dedicated, message-aware STA worker.
+The separate DesktopViewWorker owns this acquisition path. Runtime acquisition
+and per-build compatibility still require an interactive Windows test;
+compiling the binding is not proof that a target build returns the expected
+live Desktop view.
 
 
 ## Interactive Desktop view smoke test
