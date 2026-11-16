@@ -369,9 +369,8 @@ mod desktop_view_platform {
             }
             return Err(failure(result));
         }
-        unsafe { OwnedComPtr::from_raw(raw) }.ok_or(DesktopViewError::UnexpectedNull(
-            "QueryInterface",
-        ))
+        unsafe { OwnedComPtr::from_raw(raw) }
+            .ok_or(DesktopViewError::UnexpectedNull("QueryInterface"))
     }
 
     struct ComApartment;
@@ -456,8 +455,9 @@ mod desktop_view_platform {
             }
             return Err(DesktopViewError::ShellWindowsActivation(result));
         }
-        unsafe { OwnedComPtr::from_raw(raw) }
-            .ok_or(DesktopViewError::UnexpectedNull("CoCreateInstance(CLSID_ShellWindows)"))
+        unsafe { OwnedComPtr::from_raw(raw) }.ok_or(DesktopViewError::UnexpectedNull(
+            "CoCreateInstance(CLSID_ShellWindows)",
+        ))
     }
 
     fn find_desktop_dispatch(
@@ -545,8 +545,9 @@ mod desktop_view_platform {
             }
             return Err(DesktopViewError::QueryService(result));
         }
-        let browser = unsafe { OwnedComPtr::from_raw(raw_browser) }
-            .ok_or(DesktopViewError::UnexpectedNull("QueryService(IShellBrowser)"))?;
+        let browser = unsafe { OwnedComPtr::from_raw(raw_browser) }.ok_or(
+            DesktopViewError::UnexpectedNull("QueryService(IShellBrowser)"),
+        )?;
 
         // IShellBrowser inherits IOleWindow. QueryActiveShellView is slot 15.
         type QueryActiveShellViewFn = unsafe extern "system" fn(Handle, *mut Handle) -> HResult;
@@ -564,8 +565,9 @@ mod desktop_view_platform {
             }
             return Err(DesktopViewError::QueryActiveShellView(result));
         }
-        let view = unsafe { OwnedComPtr::from_raw(raw_view) }
-            .ok_or(DesktopViewError::UnexpectedNull("QueryActiveShellView(IShellView)"))?;
+        let view = unsafe { OwnedComPtr::from_raw(raw_view) }.ok_or(
+            DesktopViewError::UnexpectedNull("QueryActiveShellView(IShellView)"),
+        )?;
 
         let folder_view =
             query_interface(&view, &IID_IFOLDER_VIEW, DesktopViewError::QueryFolderView)?;
