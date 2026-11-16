@@ -140,3 +140,8 @@ No credential, secure-desktop, UAC or protected-process interaction. Do not insp
 - Which deep Explorer surfaces are safely customizable on each tested build.
 - Adapter technology, broker boundary and relationship to BGW health reporting.
 - Theme schema and conditional per-build preset strategy.
+## 11. Relationship to WLHome and Windows Shell integration
+
+The Start/Home experience is a separate user-facing shell surface. WLHome is intended to replace the Start experience on compatible builds without replacing Explorer as the shell process. Start-button click routing and Windows-key activation must be traced independently; prefer a build-specific Start experience adapter over global Windows-key suppression.
+
+Use the [Windows Shell Integration and WLHome architecture](windows-shell-integration.md) for the shared agent research protocol, including open-source implementation study when public contracts are incomplete, version/UBR pinning, confidence labels, and VM-only dynamic experiments. Explorer-specific extensions and presentation adapters remain governed by this document; WLHome does not inherit ownership of filesystem operations or WLWM window management.
