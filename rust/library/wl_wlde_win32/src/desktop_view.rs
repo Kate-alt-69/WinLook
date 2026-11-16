@@ -297,11 +297,10 @@ pub(super) mod com_abi {
             }
         }
     }
-
 }
 
 #[cfg(any(windows, test))]
-pub(super) use com_abi::*;
+use com_abi::*;
 
 #[cfg(windows)]
 mod desktop_view_platform {
