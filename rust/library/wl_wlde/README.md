@@ -205,10 +205,11 @@ be running. LivelyTarget accepts a project directory containing
 LivelyInfo.json, supported media files, or an HTML file. Executable app
 wallpapers are deliberately excluded.
 
-The API exposes set_wallpaper, close_wallpaper, set_playback, set_volume and
-set_property, plus command builders for testing. Values are passed as separate
-process arguments, not as a shell command. A spawned CLI process is not proof
-that the external wallpaper has been accepted or presented.
+The API exposes set_wallpaper, close_wallpaper, set_playback, set_volume,
+seek_wallpaper (absolute or relative percentage), and set_property with an
+optional monitor index. Values are passed as separate process arguments, not
+as a shell command. A spawned CLI process is not proof that the external
+wallpaper has been accepted or presented.
 
 ### Rainmeter
 

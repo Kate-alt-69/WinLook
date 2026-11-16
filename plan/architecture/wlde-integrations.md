@@ -24,13 +24,13 @@ The first API is exposed by the Rust wl_wlde crate. It does not yet provide matc
 
 ## Lively Wallpaper
 
-Lively documents a command-line interface for third-party automation. It supports a main executable and a separate livelycu command utility. The command utility is preferred because the main executable can add roughly one second of dispatch delay. The documented target syntax is setwp --file PATH with an optional monitor index; other documented controls include closewp, app --play, app --volume and setprop.
+Lively documents a command-line interface for third-party automation. Commands can be sent to the running main executable or through the separate livelycu command utility, which includes its own help. The adapter treats both as user-selected executable paths and makes no timing guarantee between them. The documented controls include setwp, closewp, app --play, app --volume, seekwp and setprop.
 
 The Rust adapter exposes:
 
 - LivelyInstall::from_executable for a user-selected lively.exe, livelywpf.exe or livelycu.exe.
 - LivelyTarget::new for a directory containing LivelyInfo.json, supported ordinary media, or an HTML file.
-- set_wallpaper(target, monitor), close_wallpaper(Monitor(index)|All), set_playback(bool), set_volume(0..=100), and set_property(name, value).
+- set_wallpaper(target, monitor), close_wallpaper(Monitor(index)|All), set_playback(bool), set_volume(0..=100), seek_wallpaper(monitor, Absolute(percent)|Relative(delta)), and set_property(name, value, optional monitor).
 - Command builders for inspection/testing; arguments are passed separately, never through a shell.
 
 The initial target whitelist follows Lively's documented media set but deliberately excludes executable wallpapers. This avoids turning an external wallpaper integration into an arbitrary application launcher. Project directories must contain LivelyInfo.json. Web/HTML files are still active content and should be selected only when the user trusts the source.
@@ -54,7 +54,7 @@ For a selected .rmskin package, RainmeterSkinPackage checks that the chosen file
 
 Rainmeter packages may contain custom 32-bit/64-bit plugin DLLs. The Rainmeter plugin API has lifecycle callbacks and executes within the Rainmeter host. WinLook must not load those DLLs into BGW or treat a skin as a passive image. The initial integration is an out-of-process control bridge, not full Rainmeter runtime compatibility.
 
-Version awareness matters. The official history lists Rainmeter 4.5.27 (October 6, 2026) as the last release supporting older Windows versions and 32-bit systems, and describes 5.0 as requiring 64-bit Windows 10 version 1903+ or Windows 11. The current adapter does not yet read a Rainmeter version or advertise per-skin compatibility. Keep version reporting and 5.0 compatibility checks as a separate milestone.
+Version awareness matters. The current release API lists Rainmeter 4.5.28 (October 12, 2026) as the latest stable 4.5 release and 5.0.0 RC2 (November 16, 2026) as a prerelease. The 5.0 change notes require 64-bit Windows 10 version 1903+ or Windows 11. There is a documentation mismatch: the version-history page calls 4.5.27 the last version for older Windows/32-bit systems, while the current home page labels the 4.5.28 download for Windows 7 or later. Do not hard-code a 4.5.28 OS/architecture support assumption from those summaries; verify the actual installer/build matrix before enforcing compatibility. The current adapter does not read an installed Rainmeter version or advertise per-skin compatibility.
 
 ## Presentation ownership and resource policy
 

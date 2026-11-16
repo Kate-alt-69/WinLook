@@ -46,7 +46,8 @@ pub use game_mode::{
     MAX_GAME_MODE_PROFILES,
 };
 pub use lively::{
-    LivelyCloseTarget, LivelyInstall, LivelyIntegrationError, LivelyTarget, LivelyTargetKind,
+    LivelyCloseTarget, LivelyInstall, LivelyIntegrationError, LivelySeekPosition, LivelyTarget,
+    LivelyTargetKind,
 };
 pub use rainmeter::{
     RainmeterConfig, RainmeterIni, RainmeterInstall, RainmeterIntegrationError,

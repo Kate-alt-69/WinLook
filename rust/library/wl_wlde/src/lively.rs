@@ -39,6 +39,15 @@ pub enum LivelyCloseTarget {
     All,
 }
 
+/// Seek request accepted by Lively's documented seekwp command.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LivelySeekPosition {
+    /// Absolute media position from 0 to 100 percent.
+    Absolute(i16),
+    /// Relative seek from the current position, from -100 to +100 percent.
+    Relative(i16),
+}
+
 /// Errors returned by the Lively external-process adapter.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LivelyIntegrationError {
@@ -50,6 +59,7 @@ pub enum LivelyIntegrationError {
     InvalidPropertyName,
     InvalidPropertyValue,
     VolumeOutOfRange,
+    InvalidSeekPosition,
     LaunchFailed(String),
 }
 
@@ -74,6 +84,9 @@ impl std::fmt::Display for LivelyIntegrationError {
                 f.write_str("Lively property value is empty, too long, or contains a line break")
             }
             Self::VolumeOutOfRange => f.write_str("Lively volume must be between 0 and 100"),
+            Self::InvalidSeekPosition => {
+                f.write_str("Lively seek position must be within 0..=100 or -100..=100 percent")
+            }
             Self::LaunchFailed(error) => write!(f, "Lively command could not be started: {error}"),
         }
     }
@@ -234,7 +247,10 @@ impl LivelyInstall {
     }
 
     /// Builds app --volume <0..100>.
-    pub fn command_set_volume(&self, volume: u8) -> Result<Command, LivelyIntegrationError> {
+    pub fn command_set_volume(
+        &self,
+        volume: u8,
+    ) -> Result<Command, LivelyIntegrationError> {
         if volume > 100 {
             return Err(LivelyIntegrationError::VolumeOutOfRange);
         }
@@ -249,11 +265,50 @@ impl LivelyInstall {
             .map_err(|error| LivelyIntegrationError::LaunchFailed(error.to_string()))
     }
 
-    /// Builds setprop --property <name=value> with a bounded, typed key.
-    pub fn command_set_property(
+    /// Builds seekwp [--monitor <index>] --value <percent>.
+    pub fn command_seek_wallpaper(
+        &self,
+        monitor: Option<u32>,
+        position: LivelySeekPosition,
+    ) -> Result<Command, LivelyIntegrationError> {
+        let value = match position {
+            LivelySeekPosition::Absolute(percent) if (0..=100).contains(&percent) => {
+                percent.to_string()
+            }
+            LivelySeekPosition::Relative(percent) if (-100..=100).contains(&percent) => {
+                format!("{percent:+}")
+            }
+            _ => return Err(LivelyIntegrationError::InvalidSeekPosition),
+        };
+
+        let mut command = Command::new(&self.executable);
+        command.arg("seekwp");
+        if let Some(index) = monitor {
+            command.arg("--monitor").arg(index.to_string());
+        }
+        command.arg("--value").arg(value);
+        Ok(command)
+    }
+
+    pub fn seek_wallpaper(
+        &self,
+        monitor: Option<u32>,
+        position: LivelySeekPosition,
+    ) -> Result<Child, LivelyIntegrationError> {
+        self.command_seek_wallpaper(monitor, position)?
+            .spawn()
+            .map_err(|error| LivelyIntegrationError::LaunchFailed(error.to_string()))
+    }
+
+    /// Builds setprop [--monitor <index>] --property <name=value>.
+    ///
+    /// Property keys are restricted to a conservative identifier alphabet and
+    /// values are bounded and cannot contain control-line breaks.
+    pub fn command_set_property_on_monitor(
         &self,
         name: &str,
         value: &str,
+        monitor: Option<u32>,
     ) -> Result<Command, LivelyIntegrationError> {
         if name.is_empty()
             || name.len() > 64
@@ -272,14 +327,36 @@ impl LivelyInstall {
 
         let property = format!("{name}={value}");
         let mut command = Command::new(&self.executable);
-        command.arg("setprop").arg("--property").arg(property);
+        command.arg("setprop");
+        if let Some(index) = monitor {
+            command.arg("--monitor").arg(index.to_string());
+        }
+        command.arg("--property").arg(property);
         Ok(command)
     }
 
-    pub fn set_property(&self, name: &str, value: &str) -> Result<Child, LivelyIntegrationError> {
-        self.command_set_property(name, value)?
+    /// Builds a global setprop command for all wallpapers.
+    pub fn command_set_property(
+        &self,
+        name: &str,
+        value: &str,
+    ) -> Result<Command, LivelyIntegrationError> {
+        self.command_set_property_on_monitor(name, value, None)
+    }
+
+    pub fn set_property_on_monitor(
+        &self,
+        name: &str,
+        value: &str,
+        monitor: Option<u32>,
+    ) -> Result<Child, LivelyIntegrationError> {
+        self.command_set_property_on_monitor(name, value, monitor)?
             .spawn()
             .map_err(|error| LivelyIntegrationError::LaunchFailed(error.to_string()))
+    }
+
+    pub fn set_property(&self, name: &str, value: &str) -> Result<Child, LivelyIntegrationError> {
+        self.set_property_on_monitor(name, value, None)
     }
 }
 
@@ -297,8 +374,10 @@ mod tests {
 
     #[test]
     fn target_accepts_project_media_and_web_but_not_executable_wallpapers() {
-        let root =
-            std::env::temp_dir().join(format!("winlook-wlde-lively-target-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "winlook-wlde-lively-target-{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&root).unwrap();
 
         let project = root.join("Project");
@@ -349,8 +428,10 @@ mod tests {
 
     #[test]
     fn selected_executable_name_is_validated() {
-        let root =
-            std::env::temp_dir().join(format!("winlook-wlde-lively-exe-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "winlook-wlde-lively-exe-{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&root).unwrap();
         let accepted = root.join("LivelyCu.exe");
         fs::write(&accepted, b"fixture").unwrap();
@@ -396,6 +477,42 @@ mod tests {
             arguments(&install.command_set_volume(75).unwrap()),
             vec!["app", "--volume", "75"]
         );
+        assert_eq!(
+            arguments(
+                &install
+                    .command_seek_wallpaper(None, LivelySeekPosition::Absolute(35))
+                    .unwrap()
+            ),
+            vec!["seekwp", "--value", "35"]
+        );
+        assert_eq!(
+            arguments(
+                &install
+                    .command_seek_wallpaper(Some(1), LivelySeekPosition::Relative(10))
+                    .unwrap()
+            ),
+            vec!["seekwp", "--monitor", "1", "--value", "+10"]
+        );
+        assert_eq!(
+            arguments(
+                &install
+                    .command_seek_wallpaper(Some(2), LivelySeekPosition::Relative(-10))
+                    .unwrap()
+            ),
+            vec!["seekwp", "--monitor", "2", "--value", "-10"]
+        );
+        assert_eq!(
+            install
+                .command_seek_wallpaper(None, LivelySeekPosition::Absolute(-1))
+                .err(),
+            Some(LivelyIntegrationError::InvalidSeekPosition)
+        );
+        assert_eq!(
+            install
+                .command_seek_wallpaper(None, LivelySeekPosition::Relative(101))
+                .err(),
+            Some(LivelyIntegrationError::InvalidSeekPosition)
+        );
     }
 
     #[test]
@@ -407,6 +524,14 @@ mod tests {
         assert_eq!(
             arguments(&command),
             vec!["setprop", "--property", "hue=-20"]
+        );
+        assert_eq!(
+            arguments(
+                &install
+                    .command_set_property_on_monitor("hue", "-20", Some(1))
+                    .unwrap()
+            ),
+            vec!["setprop", "--monitor", "1", "--property", "hue=-20"]
         );
         assert_eq!(
             install.command_set_property("bad name", "1").err(),

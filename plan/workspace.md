@@ -755,3 +755,10 @@ CI must check rustfmt, Clippy, Rust tests (including adapter argument-validation
 4. Add install/version discovery and per-monitor presentation ownership.
 5. Keep M0 read-only and incomplete until interactive Windows build/UBR, restart, Desktop-root, DPI and multi-monitor checks pass.
 
+### Lively command-surface follow-up — 2026-11-17
+
+The public Lively command reference also documents seekwp (absolute/relative percentage and optional monitor) and monitor-scoped setprop. WLDE now exposes a typed LivelySeekPosition::Absolute/Relative request with 0–100 / -100–100 bounds, plus set_property_on_monitor. Command builders keep monitor/value arguments separate. This extension is prepared on top of the current PR branch; CI for its exact commit must verify Rust formatting, Clippy and tests. Lively screenshot capture and other app lifecycle controls remain deferred.
+
+### Rainmeter release-note refresh — 2026-11-17
+
+Current release data: 4.5.28 is latest stable 4.5 (October 12, 2026); 5.0.0 RC2 is prerelease (November 16, 2026). Rainmeter 5.0 change notes require 64-bit Windows 10 1903+ or Windows 11. The public 4.5.28 OS summary conflicts with the older version-history note around 4.5.27 legacy/32-bit support, so do not add automatic version gating until the installer matrix is directly verified. Evidence WLDE-074/075.

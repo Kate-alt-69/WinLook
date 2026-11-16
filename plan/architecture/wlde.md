@@ -100,7 +100,7 @@ WLDE now has a documented out-of-process command-adapter layer for Wallpaper Eng
 
 Lively is treated as an existing external player. It must already be running; its official command utility is preferred. Rainmeter is controlled through documented config bangs. The official SkinInstaller remains responsible for .rmskin confirmation/installation.
 
-Rainmeter's plugin API executes native plugin DLLs inside Rainmeter. WinLook does not load those DLLs into BGW. Parsing .rmskin is not full runtime compatibility: measures, meters, variables, bangs/actions, manifests, plugin dependencies, architecture and licensing remain separate compatibility concerns. The first bridge is external control only, not an interpreter or compatible clone.
+Rainmeter's plugin API executes native plugin DLLs inside Rainmeter. WinLook does not load those DLLs into BGW. Parsing .rmskin is not full runtime compatibility: measures, meters, variables, bangs/actions, manifests, plugin dependencies, architecture and licensing remain separate compatibility concerns. The first bridge is external control only, not an interpreter or compatible clone. Rainmeter 4.5.28 is the latest stable 4.5 line; 5.0.0 RC2 is prerelease as of November 16, 2026. The version-history and current homepage summaries disagree on the older Windows/32-bit cutoff around 4.5.28, so WLDE must not gate compatibility from that wording without an installer/build matrix.
 
 ## Detailed runtime design
 
