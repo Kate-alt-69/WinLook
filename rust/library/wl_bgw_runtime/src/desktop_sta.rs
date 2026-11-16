@@ -108,15 +108,8 @@ impl StaWakeEvent {
     pub(crate) fn pump_messages(&self) {
         loop {
             let mut message = std::mem::MaybeUninit::<NativeMessage>::uninit();
-            let available = unsafe {
-                PeekMessageW(
-                    message.as_mut_ptr(),
-                    ptr::null_mut(),
-                    0,
-                    0,
-                    PM_REMOVE,
-                )
-            };
+            let available =
+                unsafe { PeekMessageW(message.as_mut_ptr(), ptr::null_mut(), 0, 0, PM_REMOVE) };
             if available == 0 {
                 break;
             }

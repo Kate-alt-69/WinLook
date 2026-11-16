@@ -147,8 +147,8 @@ pub fn enumerate_desktop_namespace_items() -> Result<DesktopNamespaceSnapshot, D
 
 /// Non-Windows builds expose an explicit unsupported-platform result.
 #[cfg(not(windows))]
-pub fn enumerate_desktop_namespace_items(
-) -> Result<DesktopNamespaceSnapshot, DesktopNamespaceError> {
+pub fn enumerate_desktop_namespace_items() -> Result<DesktopNamespaceSnapshot, DesktopNamespaceError>
+{
     Err(DesktopNamespaceError::UnsupportedPlatform)
 }
 

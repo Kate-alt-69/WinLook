@@ -6,9 +6,9 @@
 
 use std::collections::{HashMap, HashSet};
 use std::io;
-use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 #[cfg(not(windows))]
 use std::sync::mpsc::RecvTimeoutError;
+use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::thread;
 use std::time::Duration;
 
@@ -35,7 +35,6 @@ extern "system" {
     fn CoInitializeEx(reserved: *mut std::ffi::c_void, concurrency_model: u32) -> i32;
     fn CoUninitialize();
 }
-
 
 #[cfg(windows)]
 struct ShellComApartment;
@@ -350,10 +349,7 @@ pub struct DesktopIconPipeline {
 
 
 #[cfg(windows)]
-fn receive_icon_work(
-    receiver: &Receiver<IconWork>,
-    wake_event: &StaWakeEvent,
-) -> Option<IconWork> {
+fn receive_icon_work(receiver: &Receiver<IconWork>, wake_event: &StaWakeEvent) -> Option<IconWork> {
     loop {
         match receiver.try_recv() {
             Ok(work) => return Some(work),
@@ -911,7 +907,6 @@ mod tests {
         );
     }
 }
-
 
 impl Drop for DesktopIconPipeline {
     fn drop(&mut self) {
