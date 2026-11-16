@@ -379,3 +379,23 @@ This is artwork acquisition only. It does not hide native Explorer icons,
 replace Shell registrations, draw Group tiles or turn on presentation. The
 separate crash-safe restoration journal remains mandatory. Microsoft COM
 requirements are in WLDE-035 of plan/references/SOURCES.md.
+
+
+## M0: read-only live Explorer Desktop view acquisition
+
+The Win32 adapter now contains a first read-only probe for the live Desktop
+view. It asks the registered Shell Windows collection for \`SWC_DESKTOP\`,
+resolves the active \`IShellView\` and requires \`IFolderView\`. BGW validates
+the returned view HWND against its exact Explorer process generation and
+checks the view folder PIDL against the virtual Desktop namespace root.
+
+The existing bounded BGW STA worker runs that probe alongside the separate
+root namespace inventory. It returns only aggregate inventory counts and a
+path-free view-probe result. It does not change Explorer presentation or pass
+COM pointers, HWNDs, PIDLs, item names or paths into persistent state.
+
+**M0 is still partial:** the probe has not yet been run in interactive Windows
+VMs across the supported build/UBR matrix. Ownership, locator-form,
+Desktop-root and mixed-DPI/multi-monitor compatibility need live verification
+before M1 proceeds.
+
