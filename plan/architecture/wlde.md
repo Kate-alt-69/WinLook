@@ -94,8 +94,13 @@ Per-app profiles: Normal, Optimize, Suspend. Optimize reduces target frame caden
 ## Store/community
 The Store is integrated into WLDE. Support user-selected/community-operated catalogs, GitHub releases, self-hosted indexes, independent websites and local import. Avoid mandatory dependence on one central WinLook-operated server. Catalog entries should expose publisher, package hash/signature, license, OS/capability compatibility, permissions and resource hints. Local wallpapers work offline.
 
-## Rainmeter
-Parsing .rmskin is not full runtime compatibility. Research measures, meters, variables, bangs/actions, plugins, manifest variations and licensing. See [Rainmeter documentation](https://docs.rainmeter.net/) and [source](https://github.com/rainmeter/rainmeter).
+## External engine integrations
+
+WLDE now has a documented out-of-process command-adapter layer for Wallpaper Engine, Lively Wallpaper and Rainmeter. The Rust wl_wlde crate builds typed commands for Lively's documented CLI and Rainmeter's documented command-line bangs. These adapters do not embed external engines or use their private IPC protocols. See [WLDE external integration architecture](wlde-integrations.md).
+
+Lively is treated as an existing external player. It must already be running; its official command utility is preferred. Rainmeter is controlled through documented config bangs. The official SkinInstaller remains responsible for .rmskin confirmation/installation.
+
+Rainmeter's plugin API executes native plugin DLLs inside Rainmeter. WinLook does not load those DLLs into BGW. Parsing .rmskin is not full runtime compatibility: measures, meters, variables, bangs/actions, manifests, plugin dependencies, architecture and licensing remain separate compatibility concerns. The first bridge is external control only, not an interpreter or compatible clone.
 
 ## Detailed runtime design
 

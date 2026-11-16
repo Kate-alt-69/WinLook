@@ -69,6 +69,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Active PR: [#13 — read-only Shell Desktop namespace inventory](https://github.com/Kate-alt-69/WinLook/pull/13), branch feat/wlde-shell-namespace-inventory. The M0–M6 workspace checkpoint was added in commit 5275e83e15d1019be9d208ffacb908bd27f83988. Use the live PR page to verify the current branch head and CI before continuing. The implementation head 8abc3b1eb118931cccb0e380345c0d273907ba29 passed the full required CI set; Dependency Review was skipped.
 - Next dependency-ordered milestones (M0–M6): [workspace memory](workspace.md).
 - Read the current bridge scope: [WLDE architecture](architecture/wlde.md), [restoration journal contract](architecture/restoration.md), [technical source ledger](references/SOURCES.md).
+- External engine integration design and current Lively/Rainmeter hand-off adapters: [wlde-integrations.md](architecture/wlde-integrations.md). Rust command adapters exist; Manager/BGW IPC, command result tracking, install/version discovery and per-monitor ownership remain open.
 - Agent attribution: every continuing agent records its own Chat Name, date, exact branch/head, PR and verification state in its checkpoint.
 
 ## Resume rules

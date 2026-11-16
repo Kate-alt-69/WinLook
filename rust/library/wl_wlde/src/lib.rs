@@ -21,6 +21,8 @@ pub use wl_gpuv as gpu;
 mod adaptive_icon;
 mod desktop;
 mod game_mode;
+mod lively;
+mod rainmeter;
 mod resource;
 mod restore_journal;
 mod store;
@@ -42,6 +44,13 @@ pub use desktop::{
 pub use game_mode::{
     resolve_game_mode, GameModeError, GameModePolicy, GameModeProfile, GameModeSignals,
     MAX_GAME_MODE_PROFILES,
+};
+pub use lively::{
+    LivelyCloseTarget, LivelyInstall, LivelyIntegrationError, LivelyTarget, LivelyTargetKind,
+};
+pub use rainmeter::{
+    RainmeterConfig, RainmeterIni, RainmeterInstall, RainmeterIntegrationError,
+    RainmeterSkinPackage,
 };
 pub use resource::{
     ResourceGovernor, ResourcePolicy, ResourcePolicyError, ResourcePressure, ResourceSample,

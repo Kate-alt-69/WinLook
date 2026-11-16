@@ -706,3 +706,52 @@ A final x64 ABI review caught that the original manual VARIANT union was undersi
 ### M0 vtable offsets checked against the Windows SDK — 2026-11-17
 
 The manual COM probe's absolute slots are now documented with upstream IDL evidence (WLDE-065): FindWindowSW=15, QueryService=3, QueryActiveShellView=15, IShellView::GetWindow=3, IFolderView::GetFolder=5, and IPersistFolder2::GetCurFolder=5. Keep named slot constants and regression tests for both slot-15 methods. The Microsoft Node.js Tools sample independently models the IShellBrowser method order with twelve vtable gaps before QueryActiveShellView.
+
+
+## WLDE external runtime integrations — 2026-11-17
+
+**Chat Name:** GPT-6 — WinLook WLDE Bridge  
+**Repository:** Kate-alt-69/WinLook  
+**Branch:** feat/wlde-shell-namespace-inventory  
+**PR:** https://github.com/Kate-alt-69/WinLook/pull/13  
+**Parent head inspected:** fee5042a911adf0b8470339702d0e57cdff2a12a  
+**Status:** implementation and docs staged; CI for this exact integration patch has not yet run.
+
+### Open-source implementation research
+
+- Lively Wallpaper: inspected public CLI docs and pinned source 25a0a5f4ed1988ff42117d3a17feb321062237fe. Lively has a public command utility (livelycu), commands for setwp/closewp/playback/volume/properties, and separate player implementations selected by a Core-side factory (WebView2/Cef, MPV, VLC, WMF). Its repository is GPL-3.
+- Rainmeter: inspected official docs and pinned source 96ec0b343e1c576580ca9d2d3eac7f13503bce3c. Its public command-line bangs include ActivateConfig/DeactivateConfig/Refresh/RefreshApp. Skin packages use the official SkinInstaller. Rainmeter plugins are native DLLs with lifecycle/update callbacks loaded by the Rainmeter host, not passive assets. Its core is GPL-2.
+- CorralWindows remains the MIT read-only implementation reference for the Desktop IFolderView acquisition pattern (WLDE-055). It is not reused as a source drop.
+- Reuse principle: integrate external applications through documented, typed, out-of-process interfaces. Do not embed GPL source, call private IPC, or load their plugin DLLs into BGW.
+
+### Implementation added
+
+- rust/library/wl_wlde/src/lively.rs: validates selected Lively executable and project/media/web target; excludes executable wallpapers; constructs separate argv for setwp, closewp, playback, volume and named properties. Lively must already be running.
+- rust/library/wl_wlde/src/rainmeter.rs: validates Rainmeter executable, config and INI names; constructs typed documented bangs; validates .rmskin without unpacking; launches the installed SkinInstaller UI without undocumented arguments so the user selects/confirms the package.
+- rust/library/wl_wlde/src/lib.rs: public Rust exports.
+- rust/library/wl_wlde/README.md: API and boundary docs.
+- plan/architecture/wlde-integrations.md: integration architecture/capability matrix, licensing boundary, safety rules and follow-up.
+- plan/architecture/wlde.md, plan/index.md, plan/references/SOURCES.md: architecture/navigation/evidence updates WLDE-066–073.
+
+### Deliberate limits
+
+- These are Rust command adapters only; Manager/BGW authenticated IPC wiring, command-exit/status observation, install/publisher/version detection and per-monitor external-vs-native presentation arbitration remain follow-up work.
+- No private Lively named-pipe gRPC is used.
+- No Rainmeter skin parser, plugin loader or third-party DLL injection is included.
+- No .rmskin is unpacked or installed silently.
+- No executable wallpaper is accepted by the Lively adapter.
+- The executable validators check file path/basename only, not publisher signature.
+- The official Rainmeter 5.0 compatibility floor is recorded as 64-bit Windows 10 1903+ or Windows 11; installed version detection is not implemented.
+
+### Verification required
+
+CI must check rustfmt, Clippy, Rust tests (including adapter argument-validation tests), Win10/Win11 build, BGW build and security analysis. This authoring environment has GitHub repository write tools but no local Rust toolchain; do not claim local cargo test/build. The current M0 IFolderView work is kept intact; its own ABI, vtable offsets and live-session validation remain separate acceptance gates.
+
+### Next steps
+
+1. Commit adapters/docs on top of the live parent after re-checking the branch head.
+2. Read exact CI logs and fix compile/lint/format failures.
+3. Add authenticated Manager/BGW command requests and result/exit-code tracking.
+4. Add install/version discovery and per-monitor presentation ownership.
+5. Keep M0 read-only and incomplete until interactive Windows build/UBR, restart, Desktop-root, DPI and multi-monitor checks pass.
+

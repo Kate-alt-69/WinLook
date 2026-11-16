@@ -49,10 +49,13 @@ The Group and context-menu APIs remain portable data/validation contracts;
 Groups remain unavailable until a platform adapter proves crash-safe restoration.
 The crate also does not decode wallpaper images/video, parse .wl.wp/.wl.i.wp
 packages, execute widgets, host Rainmeter plugins or run an in-app catalogue
-search/download client. It does expose the integrated Store provider
-directory and a safe hand-off adapter for an already-installed Wallpaper
-Engine. Interactive content is unavailable unless a future restricted host
-reports that capability. Groups remain disabled until the OS adapter proves
+search/download client. It exposes the integrated Store provider directory and explicit
+out-of-process hand-off adapters for installed Wallpaper Engine, Lively
+Wallpaper and Rainmeter. These adapters call documented external command
+interfaces; they do not embed the external runtimes, parse/execute every
+third-party package or load third-party plugin DLLs into BGW. Interactive
+content is unavailable unless a future restricted host reports that
+capability. Groups remain disabled until the OS adapter proves
 crash/disable/uninstall restoration.
 
 ## Game Mode profile resolver
@@ -187,6 +190,47 @@ The Rust core is intended for the modern Win10+ host. The matching
 C/library/wl_Lwlde contract is C89 and keeps caller-owned fixed storage.
 C89 syntax alone is not a statement of Windows 95/legacy OS support.
 
+## External runtime integrations
+
+The Rust core now exposes explicit command adapters for existing external
+engines. Select the installed executable through a future Manager Browse
+workflow; the current validation checks file existence and the expected
+basename, not the executable's publisher signature.
+
+### Lively Wallpaper
+
+Use LivelyInstall with the official livelycu command utility where available,
+or the selected lively.exe / livelywpf.exe main executable. Lively must already
+be running. LivelyTarget accepts a project directory containing
+LivelyInfo.json, supported media files, or an HTML file. Executable app
+wallpapers are deliberately excluded.
+
+The API exposes set_wallpaper, close_wallpaper, set_playback, set_volume and
+set_property, plus command builders for testing. Values are passed as separate
+process arguments, not as a shell command. A spawned CLI process is not proof
+that the external wallpaper has been accepted or presented.
+
+### Rainmeter
+
+Use RainmeterInstall with a selected Rainmeter.exe. RainmeterConfig validates
+a relative config name, and RainmeterIni validates a single .ini file name.
+The API exposes documented !ActivateConfig, !DeactivateConfig, !Refresh and
+!RefreshApp command builders and launch methods.
+
+RainmeterSkinPackage validates a selected .rmskin file without reading or
+extracting it. launch_skin_installer starts the installed SkinInstaller.exe
+with no undocumented arguments; the user then browses to and confirms the
+package in Rainmeter's own installer UI. WinLook does not silently install
+skins or custom plugins.
+
+These are Rust command hand-offs only. Manager/BGW IPC, command completion
+status, version detection, per-monitor engine ownership and full Rainmeter
+skin/plugin compatibility are separate follow-up work. The matching C89
+library does not yet expose process-launch adapters.
+
+See the external integration architecture at
+plan/architecture/wlde-integrations.md.
+
 ## Usage
 
 Use the same scene tick for every animated wallpaper/widget property. Do not
@@ -267,7 +311,7 @@ The main API families are geometry/topology (`Rect`, `Size`, `Monitor`,
 `ResourcePolicy`, `ResourceSample`), Game Mode resolution
 (`resolve_game_mode` and its policy/profile/signal types), virtual desktop
 Groups and normalized layouts, adaptive icon metadata/composition, and
-immutable Store provider / Wallpaper Engine hand-off metadata. The public
+immutable Store provider metadata, Wallpaper Engine hand-off, and the Lively/Rainmeter external command adapters. The public
 re-exports are declared in `src/lib.rs`; start there when selecting a smaller
 API subset.
 
