@@ -696,3 +696,8 @@ Every agent continuing WinLook should identify the conversation/agent with its o
 - Binary PIDL equality through \`ILIsEqual\` may reject a semantically equivalent but differently encoded PIDL. That is intentionally fail-closed; a future fallback comparison must itself be verified before loosening this check.
 
 Detailed design: [desktop-view-acquisition.md](architecture/desktop-view-acquisition.md). Evidence: WLDE-049–063 in [SOURCES.md](references/SOURCES.md).
+
+
+### M0 follow-up — COM VARIANT ABI correction (2026-11-17)
+
+A final x64 ABI review caught that the original manual VARIANT union was undersized. The probe now reserves two pointer-sized words for the native BRECORD-capable union and asserts a total VARIANT size of 24 bytes on x64 and 16 bytes on x86. This is required even though only VT_EMPTY and VT_I4 are passed. The corrected binding is on this PR branch; Windows CI must re-verify it. Evidence: WLDE-064.
