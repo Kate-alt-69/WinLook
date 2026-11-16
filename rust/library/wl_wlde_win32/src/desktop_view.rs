@@ -312,8 +312,7 @@ mod desktop_view_platform {
         vtable: *const *const c_void,
     }
 
-    type QueryInterfaceFn =
-        unsafe extern "system" fn(Handle, *const Guid, *mut Handle) -> HResult;
+    type QueryInterfaceFn = unsafe extern "system" fn(Handle, *const Guid, *mut Handle) -> HResult;
     type ReleaseFn = unsafe extern "system" fn(Handle) -> u32;
 
     unsafe fn vtable_method<T: Copy>(object: Handle, index: usize) -> T {
