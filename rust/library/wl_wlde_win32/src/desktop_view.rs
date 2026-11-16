@@ -697,12 +697,11 @@ mod desktop_view_platform {
         }
 
         Err(DesktopViewError::AcquisitionAttemptsFailed {
-       ssert_eq!(ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT, 15);
-            assert_eq!(ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT, 15);
-        }
+            csidl_error: csidl_result.unwrap_err().to_string(),
+            empty_error: empty_result.unwrap_err().to_string(),
+        })
     }
 }
-
 
 #[cfg(test)]
 mod tests {
