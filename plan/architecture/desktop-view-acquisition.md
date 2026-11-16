@@ -99,7 +99,13 @@ The research design now has a first implementation on the WLDE inventory PR:
 - The bounded DesktopViewWorker carries the exact host identity with each request and runs the IFolderView probe on its own message-aware STA. The independent DesktopNamespaceWorker continues to enumerate the root Shell namespace on a different STA. Each worker is single-flight, generation-tagged and has its own diagnostic timeout; a stuck view probe cannot block namespace enumeration. The view worker returns only the owner PID and locator enum. COM pointers, HWNDs and PIDLs remain on the view worker's STA.
 - A failed view probe does not suppress the independent namespace inventory. The BGW only reports the view as unavailable and keeps native Explorer presentation unchanged.
 
-**M0 remains PARTIAL.** GitHub Windows CI can verify compilation, but this session has not executed the probe in an interactive Windows VM/device. Before M0 can be marked complete, validate both locator forms, actual view-window ownership, Desktop-root PIDL matching, Explorer/view recreation, empty/hidden icon states, multiple monitors, mixed DPI and every supported OS build/UBR. M1 remains gated on that runtime evidence.
+**M0 remains PARTIAL.** GitHub Windows CI can verify compilation, but this session has not executed the probe in an interactive Windows VM/device. An ignored Windows-only smoke test is available for a logged-on user session:
+
+```powershell
+cargo test -p wl_wlde_win32 interactive_desktop_ifolderview_probe_reacquires_stable_desktop -- --ignored --nocapture
+```
+
+It attempts three successive read-only acquisitions and verifies the view HWND owner against the exact Explorer process identity. The ordinary CI suite compiles the test but skips it because the GitHub runner is not being treated as an interactive desktop-validation environment. Before M0 can be marked complete, execute this test and validate both locator forms, actual view-window ownership, Desktop-root PIDL matching, Explorer/view recreation, empty/hidden icon states, multiple monitors, mixed DPI and every supported OS build/UBR. M1 remains gated on that runtime evidence.
 
 
 ### Architecture-sensitive VARIANT ABI correction — 2026-11-17
