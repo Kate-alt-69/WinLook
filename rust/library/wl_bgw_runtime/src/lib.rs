@@ -147,7 +147,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         let current_host_generation = host_generation;
         if let Some(worker) = desktop_namespace_worker.as_mut() {
             if worker.request_refresh(current_host_generation, identity.clone()) {
-                report_status("WLDE queued a read-only Shell Desktop view probe and namespace snapshot");
+                report_status(
+                    "WLDE queued a read-only Shell Desktop view probe and namespace snapshot",
+                );
             }
         }
         report_status(&format!(
