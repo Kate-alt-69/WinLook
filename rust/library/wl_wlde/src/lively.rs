@@ -115,8 +115,8 @@ fn classify_target(path: &Path) -> Result<LivelyTargetKind, LivelyIntegrationErr
 
     match extension.as_str() {
         "wmv" | "avi" | "flv" | "m4v" | "mkv" | "mov" | "mp4" | "mp4v" | "mpeg4" | "mpg"
-        | "webm" | "ogm" | "ogv" | "ogx" | "jpg" | "jpeg" | "png" | "bmp" | "tif"
-        | "tiff" | "webp" | "jfif" | "gif" => Ok(LivelyTargetKind::Media),
+        | "webm" | "ogm" | "ogv" | "ogx" | "jpg" | "jpeg" | "png" | "bmp" | "tif" | "tiff"
+        | "webp" | "jfif" | "gif" => Ok(LivelyTargetKind::Media),
         "html" => Ok(LivelyTargetKind::Web),
         _ => Err(LivelyIntegrationError::UnsupportedTarget),
     }
@@ -160,10 +160,7 @@ impl LivelyInstall {
             return Err(LivelyIntegrationError::ExecutableNotFound);
         }
 
-        let file_name = path
-            .file_name()
-            .and_then(OsStr::to_str)
-            .unwrap_or_default();
+        let file_name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
         if !["lively.exe", "livelywpf.exe", "livelycu.exe"]
             .iter()
             .any(|candidate| file_name.eq_ignore_ascii_case(candidate))
@@ -182,11 +179,7 @@ impl LivelyInstall {
     }
 
     /// Builds setwp --file <path> [--monitor <index>].
-    pub fn command_set_wallpaper(
-        &self,
-        target: &LivelyTarget,
-        monitor: Option<u32>,
-    ) -> Command {
+    pub fn command_set_wallpaper(&self, target: &LivelyTarget, monitor: Option<u32>) -> Command {
         let mut command = Command::new(&self.executable);
         command.arg("setwp").arg("--file").arg(&target.path);
         if let Some(index) = monitor {
@@ -247,10 +240,7 @@ impl LivelyInstall {
     }
 
     /// Builds app --volume <0..100>.
-    pub fn command_set_volume(
-        &self,
-        volume: u8,
-    ) -> Result<Command, LivelyIntegrationError> {
+    pub fn command_set_volume(&self, volume: u8) -> Result<Command, LivelyIntegrationError> {
         if volume > 100 {
             return Err(LivelyIntegrationError::VolumeOutOfRange);
         }
@@ -374,10 +364,8 @@ mod tests {
 
     #[test]
     fn target_accepts_project_media_and_web_but_not_executable_wallpapers() {
-        let root = std::env::temp_dir().join(format!(
-            "winlook-wlde-lively-target-{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("winlook-wlde-lively-target-{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
 
         let project = root.join("Project");
@@ -428,10 +416,8 @@ mod tests {
 
     #[test]
     fn selected_executable_name_is_validated() {
-        let root = std::env::temp_dir().join(format!(
-            "winlook-wlde-lively-exe-{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("winlook-wlde-lively-exe-{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
         let accepted = root.join("LivelyCu.exe");
         fs::write(&accepted, b"fixture").unwrap();
