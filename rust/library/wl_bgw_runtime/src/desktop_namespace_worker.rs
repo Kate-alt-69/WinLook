@@ -1,4 +1,4 @@
-//! Isolated, bounded STA worker for Shell Desktop namespace snapshots.
+//! Isolated, bounded STA worker for live Desktop view probes and Shell namespace snapshots.
 //!
 //! A slow or stuck namespace provider can delay this worker, but never the BGW
 //! Explorer-monitor loop. At most one request is in flight; the host never
