@@ -1,4 +1,4 @@
-//! Isolated, bounded STA worker for live Desktop view probes and Shell namespace snapshots.
+//! Isolated, bounded STA worker for Shell Desktop namespace snapshots.
 //!
 //! A slow or stuck namespace provider can delay this worker, but never the BGW
 //! Explorer-monitor loop. At most one request is in flight; the host never
@@ -11,8 +11,7 @@ use std::time::{Duration, Instant};
 
 use super::desktop_sta::StaWakeEvent;
 use wl_wlde_win32::{
-    enumerate_desktop_namespace_items, probe_desktop_folder_view, DesktopHostIdentity,
-    DesktopNamespaceSnapshot, DesktopViewProbe,
+    enumerate_desktop_namespace_items, DesktopNamespaceSnapshot,
 };
 
 const REQUEST_IDLE_WAIT: Duration = Duration::from_millis(50);
@@ -50,13 +49,11 @@ impl Drop for ShellComApartment {
 
 struct RefreshRequest {
     generation: u64,
-    host_identity: DesktopHostIdentity,
 }
 
 struct RefreshReply {
     generation: u64,
     result: Result<DesktopNamespaceSnapshot, String>,
-    view_result: Result<DesktopViewProbe, String>,
 }
 
 fn send_reply(
@@ -83,12 +80,10 @@ pub enum DesktopNamespaceWorkerPoll {
     Ready {
         generation: u64,
         snapshot: DesktopNamespaceSnapshot,
-        view_result: Result<DesktopViewProbe, String>,
     },
     Failed {
         generation: u64,
         message: String,
-        view_result: Result<DesktopViewProbe, String>,
     },
     TimedOut {
         generation: u64,
@@ -142,10 +137,6 @@ impl DesktopNamespaceWorker {
                         Err(TryRecvError::Disconnected) => break,
                     };
 
-                    // Probe the live Desktop view first. Both Shell operations stay on
-                    // this STA and return only owned, path-free data to BGW.
-                    let view_result = probe_desktop_folder_view(&request.host_identity)
-                        .map_err(|error| error.to_string());
                     let result =
                         enumerate_desktop_namespace_items().map_err(|error| error.to_string());
                     if !send_reply(
@@ -153,7 +144,6 @@ impl DesktopNamespaceWorker {
                         RefreshReply {
                             generation: request.generation,
                             result,
-                            view_result,
                         },
                         &worker_wake_event,
                     ) {
@@ -191,15 +181,12 @@ impl DesktopNamespaceWorker {
     /// Queues one refresh for the current verified Explorer-host generation.
     /// Returns false while an older request is still in flight or the worker
     /// has exited. It never creates another worker.
-    pub fn request_refresh(&mut self, generation: u64, host_identity: DesktopHostIdentity) -> bool {
+    pub fn request_refresh(&mut self, generation: u64) -> bool {
         if self.pending_generation.is_some() {
             return false;
         }
 
-        match self.request_tx.try_send(RefreshRequest {
-            generation,
-            host_identity,
-        }) {
+        match self.request_tx.try_send(RefreshRequest { generation }) {
             Ok(()) => {
                 self.pending_generation = Some(generation);
                 self.requested_at = Some(Instant::now());
@@ -224,12 +211,10 @@ impl DesktopNamespaceWorker {
                     Ok(snapshot) => DesktopNamespaceWorkerPoll::Ready {
                         generation: reply.generation,
                         snapshot,
-                        view_result: reply.view_result,
                     },
                     Err(message) => DesktopNamespaceWorkerPoll::Failed {
                         generation: reply.generation,
                         message,
-                        view_result: reply.view_result,
                     },
                 });
             }
@@ -239,7 +224,6 @@ impl DesktopNamespaceWorker {
                     return Some(DesktopNamespaceWorkerPoll::Failed {
                         generation,
                         message: "Shell namespace worker exited unexpectedly".to_owned(),
-                        view_result: Err("Shell namespace worker exited unexpectedly".to_owned()),
                     });
                 }
                 return None;
