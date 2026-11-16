@@ -266,9 +266,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             let virtual_items = snapshot
                                 .items()
                                 .iter()
-                                .filter(|item| {
-                                    item.kind() == DesktopNamespaceItemKind::VirtualItem
-                                })
+                                .filter(|item| item.kind() == DesktopNamespaceItemKind::VirtualItem)
                                 .count();
                             report_status(&format!(
                                 "WLDE Shell namespace snapshot ready: {} entries (filesystem={} virtual-folders={} virtual-items={} skipped={}); PIDL identities are session-only",
@@ -297,7 +295,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                         }
                         DesktopNamespaceWorkerPoll::Failed { .. } => {
                             report_status(
-                                "WLDE discarded an error from a previous Explorer host session"
+                                "WLDE discarded an error from a previous Explorer host session",
                             );
                             if worker.request_refresh(current_host_generation) {
                                 last_namespace_refresh = Instant::now();

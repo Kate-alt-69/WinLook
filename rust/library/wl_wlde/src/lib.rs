@@ -50,9 +50,8 @@ pub use restore_journal::{
     decode_desktop_restore_ledger, encode_desktop_restore_ledger, encode_desktop_restore_record,
     plan_desktop_restore_recovery, DecodedDesktopRestoreLedger, DesktopRestoreJournalError,
     DesktopRestoreLedger, DesktopRestoreOperation, DesktopRestoreRecord,
-    DesktopRestoreRecoveryAction, DesktopRestoreState,
-    DESKTOP_RESTORE_JOURNAL_VERSION, MAX_DESKTOP_RESTORE_JOURNAL_BYTES,
-    MAX_DESKTOP_RESTORE_RECORDS,
+    DesktopRestoreRecoveryAction, DesktopRestoreState, DESKTOP_RESTORE_JOURNAL_VERSION,
+    MAX_DESKTOP_RESTORE_JOURNAL_BYTES, MAX_DESKTOP_RESTORE_RECORDS,
 };
 pub use store::{
     store_provider, store_providers, StorePriceModel, StoreProvider, StoreProviderAccess,

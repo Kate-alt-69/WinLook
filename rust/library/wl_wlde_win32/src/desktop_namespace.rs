@@ -112,7 +112,10 @@ impl fmt::Display for DesktopNamespaceError {
                 write!(f, "SHGetDesktopFolder failed with HRESULT {code:#x}")
             }
             Self::Enumeration(code) => {
-                write!(f, "Shell Desktop namespace enumeration failed with HRESULT {code:#x}")
+                write!(
+                    f,
+                    "Shell Desktop namespace enumeration failed with HRESULT {code:#x}"
+                )
             }
             Self::TooManyItems => write!(
                 f,
@@ -137,8 +140,8 @@ impl std::error::Error for DesktopNamespaceError {}
 /// namespace providers may be slow or unresponsive. The enumeration uses a
 /// null owner window so providers must not display prompts.
 #[cfg(windows)]
-pub fn enumerate_desktop_namespace_items(
-) -> Result<DesktopNamespaceSnapshot, DesktopNamespaceError> {
+pub fn enumerate_desktop_namespace_items() -> Result<DesktopNamespaceSnapshot, DesktopNamespaceError>
+{
     desktop_namespace_platform::enumerate()
 }
 
@@ -167,21 +170,13 @@ fn classify_namespace_item(
     }
 
     let file_name = parsing_name_or_label
-        .rsplit(|character| character == '\\' || character == '/')
+        .rsplit(['\\', '/'])
         .next()
         .unwrap_or(parsing_name_or_label);
     let extension = file_name.rsplit_once('.').map(|(_, ext)| ext).unwrap_or("");
-    if [
-        "lnk",
-        "url",
-        "appref-ms",
-        "exe",
-        "com",
-        "bat",
-        "cmd",
-    ]
-    .iter()
-    .any(|candidate| extension.eq_ignore_ascii_case(candidate))
+    if ["lnk", "url", "appref-ms", "exe", "com", "bat", "cmd"]
+        .iter()
+        .any(|candidate| extension.eq_ignore_ascii_case(candidate))
     {
         DesktopNamespaceItemKind::Application
     } else {
@@ -574,7 +569,7 @@ mod desktop_namespace_platform {
                     .map(|path_units| {
                         PathBuf::from(OsString::from_wide(&name_buffer[..path_units]))
                     })
-                .filter(|path| path.is_absolute())
+                    .filter(|path| path.is_absolute())
             } else {
                 None
             };

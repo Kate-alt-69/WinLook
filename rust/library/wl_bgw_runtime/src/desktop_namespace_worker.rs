@@ -5,15 +5,11 @@
 //! spawns replacement workers after a timeout.
 
 use std::io::{Error, ErrorKind};
-use std::sync::mpsc::{
-    self, Receiver, RecvTimeoutError, SyncSender, TryRecvError, TrySendError,
-};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SyncSender, TryRecvError, TrySendError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use wl_wlde_win32::{
-    enumerate_desktop_namespace_items, DesktopNamespaceSnapshot,
-};
+use wl_wlde_win32::{enumerate_desktop_namespace_items, DesktopNamespaceSnapshot};
 
 const REQUEST_IDLE_WAIT: Duration = Duration::from_millis(50);
 const RESULT_RETRY_WAIT: Duration = Duration::from_millis(10);
@@ -62,15 +58,8 @@ const PM_REMOVE: u32 = 0x0001;
 fn pump_sta_messages() {
     loop {
         let mut message = std::mem::MaybeUninit::<NativeMessage>::uninit();
-        let available = unsafe {
-            PeekMessageW(
-                message.as_mut_ptr(),
-                std::ptr::null_mut(),
-                0,
-                0,
-                PM_REMOVE,
-            )
-        };
+        let available =
+            unsafe { PeekMessageW(message.as_mut_ptr(), std::ptr::null_mut(), 0, 0, PM_REMOVE) };
         if available == 0 {
             break;
         }
@@ -86,9 +75,7 @@ struct ShellComApartment;
 
 impl ShellComApartment {
     fn initialize() -> Result<Self, i32> {
-        let result = unsafe {
-            CoInitializeEx(std::ptr::null_mut(), COINIT_APARTMENTTHREADED)
-        };
+        let result = unsafe { CoInitializeEx(std::ptr::null_mut(), COINIT_APARTMENTTHREADED) };
         if result < 0 {
             Err(result)
         } else {
@@ -115,10 +102,7 @@ struct RefreshReply {
     result: Result<DesktopNamespaceSnapshot, String>,
 }
 
-fn send_reply(
-    sender: &SyncSender<RefreshReply>,
-    mut reply: RefreshReply,
-) -> bool {
+fn send_reply(sender: &SyncSender<RefreshReply>, mut reply: RefreshReply) -> bool {
     loop {
         pump_sta_messages();
         match sender.try_send(reply) {
@@ -188,8 +172,8 @@ impl DesktopNamespaceWorker {
                     };
 
                     pump_sta_messages();
-                    let result = enumerate_desktop_namespace_items()
-                        .map_err(|error| error.to_string());
+                    let result =
+                        enumerate_desktop_namespace_items().map_err(|error| error.to_string());
                     if !send_reply(
                         &result_tx,
                         RefreshReply {
