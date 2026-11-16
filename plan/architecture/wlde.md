@@ -605,3 +605,9 @@ hidden desktop states, multiple monitors and mixed DPI remain outstanding.
 The full design and gate are in
 [desktop-view-acquisition.md](desktop-view-acquisition.md).
 
+
+
+The manual COM VARIANT representation uses two pointer-sized union words so
+the full native ABI is reserved (24 bytes x64, 16 bytes x86). Architecture-
+specific tests assert these sizes; the probe must not pass an undersized
+VARIANT to FindWindowSW.
