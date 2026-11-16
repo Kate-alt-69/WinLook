@@ -234,3 +234,26 @@ Non-Windows builds retain pure helper tests and return explicit
 `cargo test -p wl_wlde_win32`; the actual Win32 monitor, filesystem inventory, Shell namespace, host
 monitor and HICON smoke checks require Windows CI. See the [shared library
 catalog](../README.md) for dependency selection and the repository-wide gate.
+
+
+## Live Explorer Desktop view probe
+
+\`probe_desktop_folder_view(&DesktopHostIdentity)\` attempts to acquire the
+actual Desktop \`IFolderView\` from the registered \`SWC_DESKTOP\` Shell window.
+It resolves the active Shell view, checks that its HWND owner is the exact
+Explorer process instance supplied by BGW, and verifies that the view folder's
+\`IPersistFolder2::GetCurFolder\` PIDL matches the virtual \`CSIDL_DESKTOP\`
+PIDL. It tries the \`CSIDL_DESKTOP\` VARIANT and \`VT_EMPTY\` locator forms
+independently and reports which one succeeded.
+
+The function returns only a \`DesktopViewProbe\` containing the owner PID and
+locator form. COM pointers, HWNDs and PIDLs stay on the calling STA and are
+released there. It performs no selection, position, view-mode, icon or Shell
+registration changes. If the process identity, view HWND or Desktop-root
+check fails, it returns an error instead of accepting an arbitrary Explorer
+folder.
+
+Call it from a dedicated STA with a message pump, such as BGW's existing
+\`DesktopNamespaceWorker\`. Runtime acquisition and per-build compatibility
+still require an interactive Windows test; compiling the binding is not proof
+that a target build returns the expected live Desktop view.
