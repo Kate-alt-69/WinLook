@@ -234,9 +234,7 @@ impl DesktopViewWorker {
 
         let generation = self.pending_generation?;
         let requested_at = self.requested_at?;
-        if !self.timeout_reported
-            && requested_at.elapsed() >= DESKTOP_VIEW_PROBE_TIMEOUT
-        {
+        if !self.timeout_reported && requested_at.elapsed() >= DESKTOP_VIEW_PROBE_TIMEOUT {
             self.timeout_reported = true;
             return Some(DesktopViewWorkerPoll::TimedOut { generation });
         }
