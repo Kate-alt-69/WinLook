@@ -186,19 +186,9 @@ pub fn probe_desktop_folder_view(
     Err(DesktopViewError::UnsupportedPlatform)
 }
 
-#[cfg(windows)]
-mod desktop_view_platform {
+#[cfg(any(windows, test))]
+mod com_abi {
     use super::*;
-    use std::ffi::c_void;
-    use std::mem::transmute_copy;
-    use std::ptr::{self, NonNull};
-
-    use crate::is_same_desktop_host;
-
-    type HResult = i32;
-    type Handle = *mut c_void;
-
-    const S_OK: HResult = 0;
     const VT_EMPTY: u16 = 0;
     const VT_I4: u16 = 3;
     const CSIDL_DESKTOP: i32 = 0;
@@ -209,9 +199,7 @@ mod desktop_view_platform {
     const ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT: usize = 15;
     // IUnknown + IOleWindow + the first ten IShellBrowser methods.
     const ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT: usize = 15;
-    const CLSCTX_ALL: u32 = 0x17;
-    const COINIT_APARTMENTTHREADED: u32 = 0x2;
-
+    
     #[repr(C)]
     #[derive(Clone, Copy)]
     struct Guid {
@@ -220,7 +208,7 @@ mod desktop_view_platform {
         data3: u16,
         data4: [u8; 8],
     }
-
+    
     const CLSID_SHELL_WINDOWS: Guid = Guid {
         data1: 0x9ba0_5972,
         data2: 0xf6a8,
@@ -269,7 +257,7 @@ mod desktop_view_platform {
         data3: 0x11d1,
         data4: [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f],
     };
-
+    
     #[repr(C)]
     union VariantValue {
         long_value: i32,
@@ -277,7 +265,7 @@ mod desktop_view_platform {
         // This gives VARIANT its ABI-correct size of 24 bytes on x64 and 16 on x86.
         zero: [usize; 2],
     }
-
+    
     #[repr(C)]
     struct Variant {
         vt: u16,
@@ -286,7 +274,7 @@ mod desktop_view_platform {
         reserved3: u16,
         value: VariantValue,
     }
-
+    
     impl Variant {
         fn empty() -> Self {
             Self {
@@ -297,7 +285,7 @@ mod desktop_view_platform {
                 value: VariantValue { zero: [0; 2] },
             }
         }
-
+    
         fn desktop_csidl() -> Self {
             Self {
                 vt: VT_I4,
@@ -310,7 +298,28 @@ mod desktop_view_platform {
             }
         }
     }
+    
+    
+}
 
+#[cfg(any(windows, test))]
+use com_abi::*;
+
+#[cfg(windows)]
+mod desktop_view_platform {
+    use super::*;
+    use std::ffi::c_void;
+    use std::mem::transmute_copy;
+    use std::ptr::{self, NonNull};
+
+    use crate::is_same_desktop_host;
+
+    type HResult = i32;
+    type Handle = *mut c_void;
+
+    const S_OK: HResult = 0;
+    const CLSCTX_ALL: u32 = 0x17;
+    const COINIT_APARTMENTTHREADED: u32 = 0x2;
     #[repr(C)]
     struct ComObject {
         vtable: *const *const c_void,
@@ -688,130 +697,131 @@ mod desktop_view_platform {
         }
 
         Err(DesktopViewError::AcquisitionAttemptsFailed {
-            csidl_error: csidl_result.unwrap_err().to_string(),
-            empty_error: empty_result.unwrap_err().to_string(),
-        })
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use std::mem::{align_of, size_of};
-
-        fn guid_fields(guid: Guid) -> (u32, u16, u16, [u8; 8]) {
-            (guid.data1, guid.data2, guid.data3, guid.data4)
-        }
-
-        #[test]
-        fn com_layouts_match_windows_abi_expectations() {
-            assert_eq!(size_of::<Guid>(), 16);
-            assert_eq!(align_of::<Guid>(), 4);
-            #[cfg(target_pointer_width = "64")]
-            {
-                assert_eq!(size_of::<Variant>(), 24);
-                assert_eq!(align_of::<Variant>(), 8);
-            }
-            #[cfg(target_pointer_width = "32")]
-            {
-                assert_eq!(size_of::<Variant>(), 16);
-                assert_eq!(align_of::<Variant>(), 4);
-            }
-        }
-
-        #[test]
-        fn variants_encode_the_two_find_window_sw_locator_forms() {
-            let empty = Variant::empty();
-            assert_eq!(empty.vt, VT_EMPTY);
-            assert_eq!(empty.reserved1, 0);
-            assert_eq!(empty.reserved2, 0);
-            assert_eq!(empty.reserved3, 0);
-
-            let desktop = Variant::desktop_csidl();
-            assert_eq!(desktop.vt, VT_I4);
-            assert_eq!(desktop.reserved1, 0);
-            assert_eq!(desktop.reserved2, 0);
-            assert_eq!(desktop.reserved3, 0);
-            assert_eq!(unsafe { desktop.value.long_value }, CSIDL_DESKTOP);
-        }
-
-        #[test]
-        fn desktop_and_interface_guids_have_expected_values() {
-            assert_eq!(
-                guid_fields(CLSID_SHELL_WINDOWS),
-                (
-                    0x9ba0_5972,
-                    0xf6a8,
-                    0x11cf,
-                    [0xa4, 0x42, 0x00, 0xa0, 0xc9, 0x0a, 0x8f, 0x39],
-                )
-            );
-            assert_eq!(
-                guid_fields(IID_ISHELL_WINDOWS),
-                (
-                    0x85cb_6900,
-                    0x4d95,
-                    0x11cf,
-                    [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85],
-                )
-            );
-            assert_eq!(
-                guid_fields(IID_ISERVICE_PROVIDER),
-                (
-                    0x6d51_40c1,
-                    0x7436,
-                    0x11ce,
-                    [0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa],
-                )
-            );
-            assert_eq!(
-                guid_fields(SID_STOP_LEVEL_BROWSER),
-                (
-                    0x4c96_be40,
-                    0x915c,
-                    0x11cf,
-                    [0x99, 0xd3, 0x00, 0xaa, 0x00, 0x4a, 0xe8, 0x37],
-                )
-            );
-            assert_eq!(
-                guid_fields(IID_ISHELL_BROWSER),
-                (
-                    0x0002_14e2,
-                    0x0000,
-                    0x0000,
-                    [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
-                )
-            );
-            assert_eq!(
-                guid_fields(IID_IFOLDER_VIEW),
-                (
-                    0xcde7_25b0,
-                    0xccc9,
-                    0x4519,
-                    [0x91, 0x7e, 0x32, 0x5d, 0x72, 0xfa, 0xb4, 0xce],
-                )
-            );
-            assert_eq!(
-                guid_fields(IID_ISHELL_FOLDER),
-                (
-                    0x0002_14e6,
-                    0x0000,
-                    0x0000,
-                    [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
-                )
-            );
-            assert_eq!(
-                guid_fields(IID_IPERSIST_FOLDER2),
-                (
-                    0x1ac3_d9f0,
-                    0x175c,
-                    0x11d1,
-                    [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f],
-                )
-            );
-            assert_eq!(SWC_DESKTOP, 0x8);
-            assert_eq!(SWFO_NEEDDISPATCH, 0x1);
-            assert_eq!(ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT, 15);
+       ssert_eq!(ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT, 15);
             assert_eq!(ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT, 15);
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::{align_of, size_of};
+
+    fn guid_fields(guid: Guid) -> (u32, u16, u16, [u8; 8]) {
+        (guid.data1, guid.data2, guid.data3, guid.data4)
+    }
+
+    #[test]
+    fn com_layouts_match_windows_abi_expectations() {
+        assert_eq!(size_of::<Guid>(), 16);
+        assert_eq!(align_of::<Guid>(), 4);
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(size_of::<Variant>(), 24);
+            assert_eq!(align_of::<Variant>(), 8);
+        }
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(size_of::<Variant>(), 16);
+            assert_eq!(align_of::<Variant>(), 4);
+        }
+    }
+
+    #[test]
+    fn variants_encode_the_two_find_window_sw_locator_forms() {
+        let empty = Variant::empty();
+        assert_eq!(empty.vt, VT_EMPTY);
+        assert_eq!(empty.reserved1, 0);
+        assert_eq!(empty.reserved2, 0);
+        assert_eq!(empty.reserved3, 0);
+
+        let desktop = Variant::desktop_csidl();
+        assert_eq!(desktop.vt, VT_I4);
+        assert_eq!(desktop.reserved1, 0);
+        assert_eq!(desktop.reserved2, 0);
+        assert_eq!(desktop.reserved3, 0);
+        assert_eq!(unsafe { desktop.value.long_value }, CSIDL_DESKTOP);
+    }
+
+    #[test]
+    fn desktop_and_interface_guids_have_expected_values() {
+        assert_eq!(
+            guid_fields(CLSID_SHELL_WINDOWS),
+            (
+                0x9ba0_5972,
+                0xf6a8,
+                0x11cf,
+                [0xa4, 0x42, 0x00, 0xa0, 0xc9, 0x0a, 0x8f, 0x39],
+            )
+        );
+        assert_eq!(
+            guid_fields(IID_ISHELL_WINDOWS),
+            (
+                0x85cb_6900,
+                0x4d95,
+                0x11cf,
+                [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85],
+            )
+        );
+        assert_eq!(
+            guid_fields(IID_ISERVICE_PROVIDER),
+            (
+                0x6d51_40c1,
+                0x7436,
+                0x11ce,
+                [0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa],
+            )
+        );
+        assert_eq!(
+            guid_fields(SID_STOP_LEVEL_BROWSER),
+            (
+                0x4c96_be40,
+                0x915c,
+                0x11cf,
+                [0x99, 0xd3, 0x00, 0xaa, 0x00, 0x4a, 0xe8, 0x37],
+            )
+        );
+        assert_eq!(
+            guid_fields(IID_ISHELL_BROWSER),
+            (
+                0x0002_14e2,
+                0x0000,
+                0x0000,
+                [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+            )
+        );
+        assert_eq!(
+            guid_fields(IID_IFOLDER_VIEW),
+            (
+                0xcde7_25b0,
+                0xccc9,
+                0x4519,
+                [0x91, 0x7e, 0x32, 0x5d, 0x72, 0xfa, 0xb4, 0xce],
+            )
+        );
+        assert_eq!(
+            guid_fields(IID_ISHELL_FOLDER),
+            (
+                0x0002_14e6,
+                0x0000,
+                0x0000,
+                [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+            )
+        );
+        assert_eq!(
+            guid_fields(IID_IPERSIST_FOLDER2),
+            (
+                0x1ac3_d9f0,
+                0x175c,
+                0x11d1,
+                [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f],
+            )
+        );
+        assert_eq!(SWC_DESKTOP, 0x8);
+        assert_eq!(SWFO_NEEDDISPATCH, 0x1);
+        assert_eq!(ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT, 15);
+        assert_eq!(ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT, 15);
     }
 }
