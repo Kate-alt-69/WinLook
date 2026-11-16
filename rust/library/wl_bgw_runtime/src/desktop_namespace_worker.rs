@@ -10,9 +10,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use super::desktop_sta::StaWakeEvent;
-use wl_wlde_win32::{
-    enumerate_desktop_namespace_items, DesktopNamespaceSnapshot,
-};
+use wl_wlde_win32::{enumerate_desktop_namespace_items, DesktopNamespaceSnapshot};
 
 const REQUEST_IDLE_WAIT: Duration = Duration::from_millis(50);
 const RESULT_RETRY_WAIT: Duration = Duration::from_millis(10);
