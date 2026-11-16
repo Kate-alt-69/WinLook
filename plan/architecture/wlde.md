@@ -576,3 +576,32 @@ runtime probe or Windows VM/device test has verified it on the target build
 matrix. Do not treat M0 as complete, implement M1 against an unverified view,
 or enable native desktop presentation. The restoration/ownership gates remain
 independent and mandatory.
+
+
+## Read-only Explorer Desktop IFolderView probe — M0 implementation
+
+The modern Win32 adapter now exposes \`probe_desktop_folder_view(&DesktopHostIdentity)\`.
+It attempts the documented Shell COM route through \`IShellWindows::FindWindowSW\`
+with \`SWC_DESKTOP\`, obtains the top-level \`IShellBrowser\`, queries the active
+\`IShellView\`, and requires \`IFolderView\`.
+
+The adapter checks the HWND returned by \`IShellView::GetWindow\` against the
+exact Explorer process identity already discovered by BGW. It obtains the
+active view folder through \`IFolderView::GetFolder\`, queries
+\`IPersistFolder2::GetCurFolder\`, and compares that absolute PIDL with the
+virtual \`CSIDL_DESKTOP\` root. It also revalidates the Explorer process after
+the COM calls. All COM references and PIDLs remain on the STA; only the owner
+PID and locator-form enum are returned.
+
+BGW's existing bounded namespace worker now runs this probe alongside the
+root Shell namespace inventory and reports a path-free success/failure status.
+A view-probe failure does not stop the namespace inventory and never activates
+native presentation.
+
+**M0 status is PARTIAL:** this is a compiled-code candidate, not a runtime
+compatibility claim. Interactive Windows VM/device checks for view ownership,
+Desktop-root PIDL equality, both locator forms, host/view recreation, empty and
+hidden desktop states, multiple monitors and mixed DPI remain outstanding.
+The full design and gate are in
+[desktop-view-acquisition.md](desktop-view-acquisition.md).
+
