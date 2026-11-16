@@ -553,4 +553,4 @@ replace or draw icons, install an in-process hook, route context menus or enable
 Groups. Native presentation remains disabled until the separate restoration
 journal and per-generation bridge are implemented and tested.
 
-See WLDE-040–043 in the plan/references/SOURCES.md file.
+See WLDE-040–045 in the plan/references/SOURCES.md file.

@@ -84,8 +84,8 @@ The modern Win32 adapter and BGW runtime now perform a bounded read-only
 enumeration of direct children exposed by the root Desktop IShellFolder. This
 supplements the filesystem-only User/Public Desktop inventory with virtual
 namespace records and filesystem-backed Shell items. BGW performs the calls on
-one isolated STA worker and reports aggregate counts without logging item
-names or paths.
+one isolated STA worker using the shared BGW message-aware STA helper and
+reports aggregate counts without logging item names or paths.
 
 PIDL-derived IDs are session-only and are not written into Group/layout
 persistence. The snapshot is not the actual IFolderView desktop view: item

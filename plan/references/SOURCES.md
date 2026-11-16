@@ -346,3 +346,6 @@ The current inventory is read-only and diagnostic. Its PIDL hash is a
 session-scoped opaque key only; it is not a filesystem or durable Shell
 identity. BGW keeps native icon presentation unchanged and does not use this
 snapshot to enable Groups or suppress native desktop icons.
+
+
+| WLDE-046 | Repository: rust/library/wl_bgw_runtime/src/desktop_sta.rs, rust/library/wl_bgw_runtime/src/desktop_icon_pipeline.rs, rust/library/wl_bgw_runtime/src/desktop_namespace_worker.rs | Both BGW Shell workers share one message-aware STA wake/event helper, keeping message dispatch consistent between icon acquisition and namespace enumeration | This is an implementation fact verified in the feature branch; it does not make either worker safe to terminate while a Shell provider call is still active |

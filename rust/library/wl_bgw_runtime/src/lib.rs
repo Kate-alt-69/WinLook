@@ -11,6 +11,8 @@ use std::thread;
 #[cfg(windows)]
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+mod desktop_sta;
 #[cfg(any(windows, test))]
 #[allow(dead_code)]
 mod desktop_icon_pipeline;

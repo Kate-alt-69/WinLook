@@ -5,10 +5,11 @@
 //! spawns replacement workers after a timeout.
 
 use std::io::{Error, ErrorKind};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SyncSender, TryRecvError, TrySendError};
+use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use super::desktop_sta::StaWakeEvent;
 use wl_wlde_win32::{enumerate_desktop_namespace_items, DesktopNamespaceSnapshot};
 
 const REQUEST_IDLE_WAIT: Duration = Duration::from_millis(50);
@@ -16,59 +17,10 @@ const RESULT_RETRY_WAIT: Duration = Duration::from_millis(10);
 const NAMESPACE_WORK_TIMEOUT: Duration = Duration::from_secs(20);
 const COINIT_APARTMENTTHREADED: u32 = 0x2;
 
-#[cfg(windows)]
 #[link(name = "ole32")]
 extern "system" {
     fn CoInitializeEx(reserved: *mut std::ffi::c_void, concurrency_model: u32) -> i32;
     fn CoUninitialize();
-}
-
-#[repr(C)]
-struct NativePoint {
-    x: i32,
-    y: i32,
-}
-
-#[repr(C)]
-struct NativeMessage {
-    hwnd: *mut std::ffi::c_void,
-    message: u32,
-    w_param: usize,
-    l_param: isize,
-    time: u32,
-    point: NativePoint,
-    private: u32,
-}
-
-#[link(name = "user32")]
-extern "system" {
-    fn PeekMessageW(
-        message: *mut NativeMessage,
-        window: *mut std::ffi::c_void,
-        minimum: u32,
-        maximum: u32,
-        remove: u32,
-    ) -> i32;
-    fn TranslateMessage(message: *const NativeMessage) -> i32;
-    fn DispatchMessageW(message: *const NativeMessage) -> isize;
-}
-
-const PM_REMOVE: u32 = 0x0001;
-
-fn pump_sta_messages() {
-    loop {
-        let mut message = std::mem::MaybeUninit::<NativeMessage>::uninit();
-        let available =
-            unsafe { PeekMessageW(message.as_mut_ptr(), std::ptr::null_mut(), 0, 0, PM_REMOVE) };
-        if available == 0 {
-            break;
-        }
-        let message = unsafe { message.assume_init() };
-        unsafe {
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
-        }
-    }
 }
 
 struct ShellComApartment;
@@ -102,14 +54,19 @@ struct RefreshReply {
     result: Result<DesktopNamespaceSnapshot, String>,
 }
 
-fn send_reply(sender: &SyncSender<RefreshReply>, mut reply: RefreshReply) -> bool {
+fn send_reply(
+    sender: &SyncSender<RefreshReply>,
+    mut reply: RefreshReply,
+    wake_event: &StaWakeEvent,
+) -> bool {
     loop {
-        pump_sta_messages();
         match sender.try_send(reply) {
             Ok(()) => return true,
             Err(TrySendError::Full(returned)) => {
                 reply = returned;
-                thread::sleep(RESULT_RETRY_WAIT);
+                if wake_event.wait_and_pump(RESULT_RETRY_WAIT).is_err() {
+                    return false;
+                }
             }
             Err(TrySendError::Disconnected(_)) => return false,
         }
@@ -135,6 +92,7 @@ pub enum DesktopNamespaceWorkerPoll {
 pub struct DesktopNamespaceWorker {
     request_tx: SyncSender<RefreshRequest>,
     result_rx: Receiver<RefreshReply>,
+    wake_event: StaWakeEvent,
     pending_generation: Option<u64>,
     requested_at: Option<Instant>,
     timeout_reported: bool,
@@ -146,32 +104,37 @@ impl DesktopNamespaceWorker {
         let (request_tx, request_rx) = mpsc::sync_channel::<RefreshRequest>(1);
         let (result_tx, result_rx) = mpsc::sync_channel::<RefreshReply>(1);
         let (startup_tx, startup_rx) = mpsc::sync_channel::<Result<(), i32>>(1);
+        let wake_event = StaWakeEvent::new()?;
+        let worker_wake_event = wake_event.clone();
 
         let worker = thread::Builder::new()
             .name("winlook-wlde-shell-namespace".to_owned())
             .spawn(move || {
                 let _apartment = match ShellComApartment::initialize() {
-                    Ok(apartment) => {
-                        if startup_tx.send(Ok(())).is_err() {
-                            return;
-                        }
-                        apartment
-                    }
+                    Ok(apartment) => apartment,
                     Err(code) => {
                         let _ = startup_tx.send(Err(code));
                         return;
                     }
                 };
 
+                if startup_tx.send(Ok(())).is_err() {
+                    return;
+                }
+
+                // Ensure the STA message queue exists before the first wait.
+                worker_wake_event.pump_messages();
                 loop {
-                    pump_sta_messages();
-                    let request = match request_rx.recv_timeout(REQUEST_IDLE_WAIT) {
+                    if worker_wake_event.wait_and_pump(REQUEST_IDLE_WAIT).is_err() {
+                        break;
+                    }
+
+                    let request = match request_rx.try_recv() {
                         Ok(request) => request,
-                        Err(RecvTimeoutError::Timeout) => continue,
-                        Err(RecvTimeoutError::Disconnected) => break,
+                        Err(TryRecvError::Empty) => continue,
+                        Err(TryRecvError::Disconnected) => break,
                     };
 
-                    pump_sta_messages();
                     let result =
                         enumerate_desktop_namespace_items().map_err(|error| error.to_string());
                     if !send_reply(
@@ -180,6 +143,7 @@ impl DesktopNamespaceWorker {
                             generation: request.generation,
                             result,
                         },
+                        &worker_wake_event,
                     ) {
                         break;
                     }
@@ -189,10 +153,9 @@ impl DesktopNamespaceWorker {
         match startup_rx.recv() {
             Ok(Ok(())) => {}
             Ok(Err(code)) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("Shell namespace worker COM initialization failed: {code:#x}"),
-                ));
+                return Err(Error::other(format!(
+                    "Shell namespace worker COM initialization failed: {code:#x}"
+                )));
             }
             Err(_) => {
                 return Err(Error::new(
@@ -205,6 +168,7 @@ impl DesktopNamespaceWorker {
         Ok(Self {
             request_tx,
             result_rx,
+            wake_event,
             pending_generation: None,
             requested_at: None,
             timeout_reported: false,
@@ -225,6 +189,7 @@ impl DesktopNamespaceWorker {
                 self.pending_generation = Some(generation);
                 self.requested_at = Some(Instant::now());
                 self.timeout_reported = false;
+                self.wake_event.signal();
                 true
             }
             Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => false,
@@ -275,5 +240,12 @@ impl DesktopNamespaceWorker {
 
     pub fn has_pending_work(&self) -> bool {
         self.pending_generation.is_some()
+    }
+}
+
+impl Drop for DesktopNamespaceWorker {
+    fn drop(&mut self) {
+        // Wake the STA so it can observe channel disconnection.
+        self.wake_event.signal();
     }
 }

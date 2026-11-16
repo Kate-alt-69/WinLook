@@ -83,7 +83,7 @@ on the notification to identify the changed item.
 
 ## Read-only Shell namespace worker
 
-The BGW host loop owns a separate DesktopNamespaceWorker in addition to the icon-extraction worker. It starts one STA thread, initializes COM before accepting work, and pumps its message queue between requests and while waiting for the result slot. The request and result channels each have capacity one; at most one namespace enumeration is active.
+The BGW host loop owns a separate DesktopNamespaceWorker in addition to the icon-extraction worker. It starts one STA thread, initializes COM before accepting work, and pumps its message queue between requests and while waiting for the result slot. The request and result channels each have capacity one; at most one namespace enumeration is active. It uses the same message-aware STA helper as the Shell icon worker.
 
 BGW requests a snapshot when a verified Explorer host attaches, every 30 seconds, and after a User/Public Desktop filesystem-change refresh. Each request carries the current host generation. If Explorer is replaced while a Shell call is running, BGW discards the old generation's result instead of treating it as the new desktop snapshot.
 
