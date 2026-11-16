@@ -182,7 +182,7 @@ pub fn probe_desktop_folder_view(
 mod desktop_view_platform {
     use super::*;
     use std::ffi::c_void;
-    use std::mem::{size_of, transmute_copy};
+    use std::mem::transmute_copy;
     use std::ptr::{self, NonNull};
 
     use crate::is_same_desktop_host;
@@ -219,12 +219,6 @@ mod desktop_view_platform {
         data2: 0x4d95,
         data3: 0x11cf,
         data4: [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85],
-    };
-    const IID_IUNKNOWN: Guid = Guid {
-        data1: 0,
-        data2: 0,
-        data3: 0,
-        data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
     };
     const IID_ISERVICE_PROVIDER: Guid = Guid {
         data1: 0x6d51_40c1,
@@ -689,6 +683,7 @@ mod desktop_view_platform {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use std::mem::size_of;
 
         #[test]
         fn com_layouts_match_windows_abi_expectations() {
