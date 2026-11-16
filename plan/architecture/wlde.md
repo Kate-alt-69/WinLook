@@ -554,3 +554,25 @@ Groups. Native presentation remains disabled until the separate restoration
 journal and per-generation bridge are implemented and tested.
 
 See WLDE-040–045 in the plan/references/SOURCES.md file.
+
+
+## Read-only Explorer Desktop IFolderView acquisition — M0
+
+The candidate public acquisition path uses IShellWindows::FindWindowSW
+with SWC_DESKTOP, obtains the Desktop's top-level IShellBrowser through
+SID_STopLevelBrowser, calls QueryActiveShellView, and queries the resulting
+IShellView for IFolderView. This is distinct from the existing
+SHGetDesktopFolder()->EnumObjects namespace inventory: it targets the live
+view's collection.
+
+M0 now has a source-backed acquisition design and an Explorer-owner verification
+strategy using IShellView::GetWindow / GetWindowThreadProcessId against BGW's
+exact monitored Explorer process generation. The interface chain, Desktop-root
+check, STA lifetime, failure handling, and M0/M1 validation matrix are specified
+in [desktop-view-acquisition.md](desktop-view-acquisition.md).
+
+**Status remains PARTIAL:** the acquisition path is identified, but no WinLook
+runtime probe or Windows VM/device test has verified it on the target build
+matrix. Do not treat M0 as complete, implement M1 against an unverified view,
+or enable native desktop presentation. The restoration/ownership gates remain
+independent and mandatory.
