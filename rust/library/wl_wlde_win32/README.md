@@ -257,3 +257,25 @@ Call it from a dedicated STA with a message pump, such as BGW's existing
 \`DesktopNamespaceWorker\`. Runtime acquisition and per-build compatibility
 still require an interactive Windows test; compiling the binding is not proof
 that a target build returns the expected live Desktop view.
+
+
+## Interactive Desktop view smoke test
+
+The Win32 adapter contains an ignored, Windows-only smoke test that exercises
+the actual registered Shell Desktop view in the current logon session. Run it
+from an ordinary terminal in a logged-on Explorer desktop session:
+
+```powershell
+cargo test -p wl_wlde_win32 interactive_desktop_ifolderview_probe_reacquires_stable_desktop -- --ignored --nocapture
+```
+
+The test performs three read-only acquisitions, verifies the view HWND owner
+matches the exact Explorer process identity, checks that the Desktop-root
+verification succeeded, and confirms that the same Explorer process instance
+remained current. It does not hide or move icons, change view state, or mutate
+Explorer. Normal `cargo test` and CI skip this test because unattended build
+runners are not a substitute for a logged-on interactive desktop.
+
+A pass is evidence for the tested machine/build only. Record the Windows
+edition, version/build/UBR, architecture, session type and returned locator
+form, then repeat the check across the supported compatibility matrix.
