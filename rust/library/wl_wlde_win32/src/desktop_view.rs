@@ -54,6 +54,7 @@ pub enum DesktopViewError {
         hresult: i32,
     },
     MissingDispatch(DesktopViewLocation),
+    UnexpectedNull(&'static str),
     AcquisitionAttemptsFailed {
         csidl_error: String,
         empty_error: String,
@@ -100,6 +101,9 @@ impl fmt::Display for DesktopViewError {
                 "FindWindowSW returned no IDispatch for {}",
                 location.as_str()
             ),
+            Self::UnexpectedNull(operation) => {
+                write!(f, "{operation} returned S_OK with a null output pointer")
+            }
             Self::AcquisitionAttemptsFailed {
                 csidl_error,
                 empty_error,
@@ -356,7 +360,9 @@ mod desktop_view_platform {
             }
             return Err(failure(result));
         }
-        unsafe { OwnedComPtr::from_raw(raw) }.ok_or_else(|| failure(result))
+        unsafe { OwnedComPtr::from_raw(raw) }.ok_or(DesktopViewError::UnexpectedNull(
+            "QueryInterface",
+        ))
     }
 
     struct ComApartment;
@@ -442,7 +448,7 @@ mod desktop_view_platform {
             return Err(DesktopViewError::ShellWindowsActivation(result));
         }
         unsafe { OwnedComPtr::from_raw(raw) }
-            .ok_or(DesktopViewError::ShellWindowsActivation(result))
+            .ok_or(DesktopViewError::UnexpectedNull("CoCreateInstance(CLSID_ShellWindows)"))
     }
 
     fn find_desktop_dispatch(
@@ -531,7 +537,7 @@ mod desktop_view_platform {
             return Err(DesktopViewError::QueryService(result));
         }
         let browser = unsafe { OwnedComPtr::from_raw(raw_browser) }
-            .ok_or(DesktopViewError::QueryService(result))?;
+            .ok_or(DesktopViewError::UnexpectedNull("QueryService(IShellBrowser)"))?;
 
         // IShellBrowser inherits IOleWindow. QueryActiveShellView is slot 15.
         type QueryActiveShellViewFn = unsafe extern "system" fn(Handle, *mut Handle) -> HResult;
@@ -550,7 +556,7 @@ mod desktop_view_platform {
             return Err(DesktopViewError::QueryActiveShellView(result));
         }
         let view = unsafe { OwnedComPtr::from_raw(raw_view) }
-            .ok_or(DesktopViewError::QueryActiveShellView(result))?;
+            .ok_or(DesktopViewError::UnexpectedNull("QueryActiveShellView(IShellView)"))?;
 
         let folder_view =
             query_interface(&view, &IID_IFOLDER_VIEW, DesktopViewError::QueryFolderView)?;
@@ -594,7 +600,7 @@ mod desktop_view_platform {
             return Err(DesktopViewError::GetViewFolder(result));
         }
         let folder = unsafe { OwnedComPtr::from_raw(raw_folder) }
-            .ok_or(DesktopViewError::GetViewFolder(result))?;
+            .ok_or(DesktopViewError::UnexpectedNull("IFolderView::GetFolder"))?;
         let persist_folder = query_interface(
             &folder,
             &IID_IPERSIST_FOLDER2,
@@ -614,7 +620,9 @@ mod desktop_view_platform {
             return Err(DesktopViewError::GetCurrentFolder(result));
         }
         let Some(current_folder) = NonNull::new(current_folder) else {
-            return Err(DesktopViewError::GetCurrentFolder(result));
+            return Err(DesktopViewError::UnexpectedNull(
+                "IPersistFolder2::GetCurFolder",
+            ));
         };
         let current_folder = OwnedPidl(current_folder);
 
@@ -635,7 +643,9 @@ mod desktop_view_platform {
             return Err(DesktopViewError::GetDesktopFolder(result));
         }
         let Some(desktop_folder) = NonNull::new(desktop_folder) else {
-            return Err(DesktopViewError::GetDesktopFolder(result));
+            return Err(DesktopViewError::UnexpectedNull(
+                "SHGetFolderLocation(CSIDL_DESKTOP)",
+            ));
         };
         let desktop_folder = OwnedPidl(desktop_folder);
 
@@ -686,23 +696,78 @@ mod desktop_view_platform {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use std::mem::size_of;
+        use std::mem::{align_of, size_of};
+
+        fn guid_fields(guid: Guid) -> (u32, u16, u16, [u8; 8]) {
+            (guid.data1, guid.data2, guid.data3, guid.data4)
+        }
 
         #[test]
         fn com_layouts_match_windows_abi_expectations() {
             assert_eq!(size_of::<Guid>(), 16);
+            assert_eq!(align_of::<Guid>(), 4);
             #[cfg(target_pointer_width = "64")]
-            assert_eq!(size_of::<Variant>(), 24);
+            {
+                assert_eq!(size_of::<Variant>(), 24);
+                assert_eq!(align_of::<Variant>(), 8);
+            }
             #[cfg(target_pointer_width = "32")]
-            assert_eq!(size_of::<Variant>(), 16);
+            {
+                assert_eq!(size_of::<Variant>(), 16);
+                assert_eq!(align_of::<Variant>(), 4);
+            }
+        }
+
+        #[test]
+        fn variants_encode_the_two_find_window_sw_locator_forms() {
+            let empty = Variant::empty();
+            assert_eq!(empty.vt, VT_EMPTY);
+            assert_eq!(empty.reserved1, 0);
+            assert_eq!(empty.reserved2, 0);
+            assert_eq!(empty.reserved3, 0);
+
+            let desktop = Variant::desktop_csidl();
+            assert_eq!(desktop.vt, VT_I4);
+            assert_eq!(desktop.reserved1, 0);
+            assert_eq!(desktop.reserved2, 0);
+            assert_eq!(desktop.reserved3, 0);
+            assert_eq!(unsafe { desktop.value.long_value }, CSIDL_DESKTOP);
         }
 
         #[test]
         fn desktop_and_interface_guids_have_expected_values() {
-            assert_eq!(CLSID_SHELL_WINDOWS.data1, 0x9ba0_5972);
-            assert_eq!(IID_ISHELL_WINDOWS.data1, 0x85cb_6900);
-            assert_eq!(IID_IFOLDER_VIEW.data1, 0xcde7_25b0);
-            assert_eq!(IID_IPERSIST_FOLDER2.data1, 0x1ac3_d9f0);
+            assert_eq!(
+                guid_fields(CLSID_SHELL_WINDOWS),
+                (0x9ba0_5972, 0xf6a8, 0x11cf, [0xa4, 0x42, 0x00, 0xa0, 0xc9, 0x0a, 0x8f, 0x39])
+            );
+            assert_eq!(
+                guid_fields(IID_ISHELL_WINDOWS),
+                (0x85cb_6900, 0x4d95, 0x11cf, [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85])
+            );
+            assert_eq!(
+                guid_fields(IID_ISERVICE_PROVIDER),
+                (0x6d51_40c1, 0x7436, 0x11ce, [0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa])
+            );
+            assert_eq!(
+                guid_fields(SID_STOP_LEVEL_BROWSER),
+                (0x4c96_be40, 0x915c, 0x11cf, [0x99, 0xd3, 0x00, 0xaa, 0x00, 0x4a, 0xe8, 0x37])
+            );
+            assert_eq!(
+                guid_fields(IID_ISHELL_BROWSER),
+                (0x0002_14e2, 0x0000, 0x0000, [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46])
+            );
+            assert_eq!(
+                guid_fields(IID_IFOLDER_VIEW),
+                (0xcde7_25b0, 0xccc9, 0x4519, [0x91, 0x7e, 0x32, 0x5d, 0x72, 0xfa, 0xb4, 0xce])
+            );
+            assert_eq!(
+                guid_fields(IID_ISHELL_FOLDER),
+                (0x0002_14e6, 0x0000, 0x0000, [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46])
+            );
+            assert_eq!(
+                guid_fields(IID_IPERSIST_FOLDER2),
+                (0x1ac3_d9f0, 0x175c, 0x11d1, [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f])
+            );
             assert_eq!(SWC_DESKTOP, 0x8);
             assert_eq!(SWFO_NEEDDISPATCH, 0x1);
             assert_eq!(ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT, 15);
