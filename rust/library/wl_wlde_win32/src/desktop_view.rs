@@ -832,17 +832,15 @@ mod tests {
 
         for attempt in 0..3 {
             let probe = crate::probe_desktop_folder_view(&host).unwrap_or_else(|error| {
-                panic!("Desktop view probe attempt {attempt} failed: {error}");
+                panic!("Desktop view probe attempt {attempt} failed: {error}")
             });
             assert_eq!(probe.owner_process_id(), host.process_id());
             assert!(matches!(
                 probe.location(),
                 DesktopViewLocation::CsidlDesktop | DesktopViewLocation::Empty
             ));
-            assert!(
-                crate::is_same_desktop_host(&host)
-                    .expect("the Explorer desktop host must remain queryable")
-            );
+            assert!(crate::is_same_desktop_host(&host)
+                .expect("the Explorer desktop host must remain queryable"));
 
             if attempt < 2 {
                 std::thread::sleep(std::time::Duration::from_millis(250));
