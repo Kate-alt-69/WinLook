@@ -58,6 +58,7 @@ pub enum DesktopViewError {
         csidl_error: String,
         empty_error: String,
     },
+    QueryServiceProvider(i32),
     QueryService(i32),
     QueryActiveShellView(i32),
     QueryFolderView(i32),
@@ -106,6 +107,9 @@ impl fmt::Display for DesktopViewError {
                 f,
                 "Desktop view acquisition failed for both pvarLoc forms (CSIDL_DESKTOP: {csidl_error}; VT_EMPTY: {empty_error})"
             ),
+            Self::QueryServiceProvider(code) => {
+                write!(f, "QueryInterface(IID_IServiceProvider) failed with HRESULT {code:#x}")
+            }
             Self::QueryService(code) => {
                 write!(f, "QueryService(SID_STopLevelBrowser) failed with HRESULT {code:#x}")
             }
@@ -260,7 +264,6 @@ mod desktop_view_platform {
     #[repr(C)]
     union VariantValue {
         long_value: i32,
-        pointer_value: *mut c_void,
         zero: u64,
     }
 
@@ -495,7 +498,7 @@ mod desktop_view_platform {
         let service_provider = query_interface(
             &dispatch,
             &IID_ISERVICE_PROVIDER,
-            DesktopViewError::QueryService,
+            DesktopViewError::QueryServiceProvider,
         )?;
 
         // IServiceProvider::QueryService is its first method after IUnknown.
