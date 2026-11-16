@@ -187,96 +187,95 @@ pub fn probe_desktop_folder_view(
 }
 
 #[cfg(any(windows, test))]
-mod com_abi {
-    use super::*;
-    const VT_EMPTY: u16 = 0;
-    const VT_I4: u16 = 3;
-    const CSIDL_DESKTOP: i32 = 0;
-    const SWC_DESKTOP: i32 = 0x8;
-    const SWFO_NEEDDISPATCH: i32 = 0x1;
+pub(super) mod com_abi {
+    pub(super) const VT_EMPTY: u16 = 0;
+    pub(super) const VT_I4: u16 = 3;
+    pub(super) const CSIDL_DESKTOP: i32 = 0;
+    pub(super) const SWC_DESKTOP: i32 = 0x8;
+    pub(super) const SWFO_NEEDDISPATCH: i32 = 0x1;
     // IDispatch occupies slots 0-6; Count/Item/_NewEnum/Register/
     // RegisterPending/Revoke/OnNavigate/OnActivated precede FindWindowSW.
-    const ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT: usize = 15;
+    pub(super) const ISHELL_WINDOWS_FIND_WINDOW_SW_SLOT: usize = 15;
     // IUnknown + IOleWindow + the first ten IShellBrowser methods.
-    const ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT: usize = 15;
-    
+    pub(super) const ISHELL_BROWSER_QUERY_ACTIVE_SHELL_VIEW_SLOT: usize = 15;
+
     #[repr(C)]
     #[derive(Clone, Copy)]
-    struct Guid {
-        data1: u32,
-        data2: u16,
-        data3: u16,
-        data4: [u8; 8],
+    pub(super) struct Guid {
+        pub(super) data1: u32,
+        pub(super) data2: u16,
+        pub(super) data3: u16,
+        pub(super) data4: [u8; 8],
     }
-    
-    const CLSID_SHELL_WINDOWS: Guid = Guid {
-        data1: 0x9ba0_5972,
-        data2: 0xf6a8,
-        data3: 0x11cf,
-        data4: [0xa4, 0x42, 0x00, 0xa0, 0xc9, 0x0a, 0x8f, 0x39],
+
+    pub(super) const CLSID_SHELL_WINDOWS: Guid = Guid {
+        pub(super) data1: 0x9ba0_5972,
+        pub(super) data2: 0xf6a8,
+        pub(super) data3: 0x11cf,
+        pub(super) data4: [0xa4, 0x42, 0x00, 0xa0, 0xc9, 0x0a, 0x8f, 0x39],
     };
-    const IID_ISHELL_WINDOWS: Guid = Guid {
-        data1: 0x85cb_6900,
-        data2: 0x4d95,
-        data3: 0x11cf,
-        data4: [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85],
+    pub(super) const IID_ISHELL_WINDOWS: Guid = Guid {
+        pub(super) data1: 0x85cb_6900,
+        pub(super) data2: 0x4d95,
+        pub(super) data3: 0x11cf,
+        pub(super) data4: [0x96, 0x0c, 0x00, 0x80, 0xc7, 0xf4, 0xee, 0x85],
     };
-    const IID_ISERVICE_PROVIDER: Guid = Guid {
-        data1: 0x6d51_40c1,
-        data2: 0x7436,
-        data3: 0x11ce,
-        data4: [0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa],
+    pub(super) const IID_ISERVICE_PROVIDER: Guid = Guid {
+        pub(super) data1: 0x6d51_40c1,
+        pub(super) data2: 0x7436,
+        pub(super) data3: 0x11ce,
+        pub(super) data4: [0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa],
     };
-    const SID_STOP_LEVEL_BROWSER: Guid = Guid {
-        data1: 0x4c96_be40,
-        data2: 0x915c,
-        data3: 0x11cf,
-        data4: [0x99, 0xd3, 0x00, 0xaa, 0x00, 0x4a, 0xe8, 0x37],
+    pub(super) const SID_STOP_LEVEL_BROWSER: Guid = Guid {
+        pub(super) data1: 0x4c96_be40,
+        pub(super) data2: 0x915c,
+        pub(super) data3: 0x11cf,
+        pub(super) data4: [0x99, 0xd3, 0x00, 0xaa, 0x00, 0x4a, 0xe8, 0x37],
     };
-    const IID_ISHELL_BROWSER: Guid = Guid {
-        data1: 0x0002_14e2,
-        data2: 0x0000,
-        data3: 0x0000,
-        data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+    pub(super) const IID_ISHELL_BROWSER: Guid = Guid {
+        pub(super) data1: 0x0002_14e2,
+        pub(super) data2: 0x0000,
+        pub(super) data3: 0x0000,
+        pub(super) data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
     };
-    const IID_IFOLDER_VIEW: Guid = Guid {
-        data1: 0xcde7_25b0,
-        data2: 0xccc9,
-        data3: 0x4519,
-        data4: [0x91, 0x7e, 0x32, 0x5d, 0x72, 0xfa, 0xb4, 0xce],
+    pub(super) const IID_IFOLDER_VIEW: Guid = Guid {
+        pub(super) data1: 0xcde7_25b0,
+        pub(super) data2: 0xccc9,
+        pub(super) data3: 0x4519,
+        pub(super) data4: [0x91, 0x7e, 0x32, 0x5d, 0x72, 0xfa, 0xb4, 0xce],
     };
-    const IID_ISHELL_FOLDER: Guid = Guid {
-        data1: 0x0002_14e6,
-        data2: 0x0000,
-        data3: 0x0000,
-        data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
+    pub(super) const IID_ISHELL_FOLDER: Guid = Guid {
+        pub(super) data1: 0x0002_14e6,
+        pub(super) data2: 0x0000,
+        pub(super) data3: 0x0000,
+        pub(super) data4: [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46],
     };
-    const IID_IPERSIST_FOLDER2: Guid = Guid {
-        data1: 0x1ac3_d9f0,
-        data2: 0x175c,
-        data3: 0x11d1,
-        data4: [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f],
+    pub(super) const IID_IPERSIST_FOLDER2: Guid = Guid {
+        pub(super) data1: 0x1ac3_d9f0,
+        pub(super) data2: 0x175c,
+        pub(super) data3: 0x11d1,
+        pub(super) data4: [0x95, 0xbe, 0x00, 0x60, 0x97, 0x97, 0xea, 0x4f],
     };
-    
+
     #[repr(C)]
-    union VariantValue {
+    pub(super) union VariantValue {
         long_value: i32,
         // VARIANT's BRECORD arm is two pointers: 16 bytes on x64, 8 on x86.
         // This gives VARIANT its ABI-correct size of 24 bytes on x64 and 16 on x86.
         zero: [usize; 2],
     }
-    
+
     #[repr(C)]
-    struct Variant {
-        vt: u16,
-        reserved1: u16,
-        reserved2: u16,
-        reserved3: u16,
-        value: VariantValue,
+    pub(super) struct Variant {
+        pub(super) vt: u16,
+        pub(super) reserved1: u16,
+        pub(super) reserved2: u16,
+        pub(super) reserved3: u16,
+        pub(super) value: VariantValue,
     }
-    
+
     impl Variant {
-        fn empty() -> Self {
+        pub(super) fn empty() -> Self {
             Self {
                 vt: VT_EMPTY,
                 reserved1: 0,
@@ -285,8 +284,8 @@ mod com_abi {
                 value: VariantValue { zero: [0; 2] },
             }
         }
-    
-        fn desktop_csidl() -> Self {
+
+        pub(super) fn desktop_csidl() -> Self {
             Self {
                 vt: VT_I4,
                 reserved1: 0,
@@ -298,12 +297,12 @@ mod com_abi {
             }
         }
     }
-    
-    
+
+
 }
 
 #[cfg(any(windows, test))]
-use com_abi::*;
+pub(super) use com_abi::*;
 
 #[cfg(windows)]
 mod desktop_view_platform {
