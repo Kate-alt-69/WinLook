@@ -359,8 +359,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             let _ = worker.request_probe(current_host_generation, identity.clone());
                         }
                         DesktopViewWorkerPoll::Failed { generation, message }
-                            if generation == current_host_generation =>
-                        {
+                            if generation == current_host_generation => {
                             report_desktop_view_probe(Err(message));
                         }
                         DesktopViewWorkerPoll::Failed { .. } => {
