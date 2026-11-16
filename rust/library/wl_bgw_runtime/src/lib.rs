@@ -17,6 +17,8 @@ mod desktop_icon_pipeline;
 #[cfg(windows)]
 mod desktop_namespace_worker;
 #[cfg(windows)]
+mod desktop_view_worker;
+#[cfg(windows)]
 mod desktop_sta;
 mod desktop_store;
 pub use desktop_store::{
@@ -27,6 +29,8 @@ pub use desktop_store::{
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
 use desktop_namespace_worker::{DesktopNamespaceWorker, DesktopNamespaceWorkerPoll};
+#[cfg(windows)]
+use desktop_view_worker::{DesktopViewWorker, DesktopViewWorkerPoll};
 #[cfg(windows)]
 use wl_wlde::DesktopItemKind;
 #[cfg(windows)]
@@ -124,6 +128,15 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             None
         }
     };
+    let mut desktop_view_worker = match DesktopViewWorker::new() {
+        Ok(worker) => Some(worker),
+        Err(error) => {
+            report_status(&format!(
+                "WLDE live Desktop view probe worker unavailable; native presentation remains unchanged: {error}"
+            ));
+            None
+        }
+    };
     let mut host_generation = 0u64;
 
     loop {
@@ -146,10 +159,13 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         host_generation = host_generation.wrapping_add(1).max(1);
         let current_host_generation = host_generation;
         if let Some(worker) = desktop_namespace_worker.as_mut() {
-            if worker.request_refresh(current_host_generation, identity.clone()) {
-                report_status(
-                    "WLDE queued a read-only Shell Desktop view probe and namespace snapshot",
-                );
+            if worker.request_refresh(current_host_generation) {
+                report_status("WLDE queued a read-only Shell Desktop namespace snapshot");
+            }
+        }
+        if let Some(worker) = desktop_view_worker.as_mut() {
+            if worker.request_probe(current_host_generation, identity.clone()) {
+                report_status("WLDE queued a read-only live Desktop view probe");
             }
         }
         report_status(&format!(
@@ -227,6 +243,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         };
         let mut last_fallback_inventory_refresh = Instant::now();
         let mut last_namespace_refresh = Instant::now();
+        let mut last_view_probe_refresh = Instant::now();
 
         loop {
             if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
@@ -254,9 +271,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                         DesktopNamespaceWorkerPoll::Ready {
                             generation,
                             snapshot,
-                            view_result,
                         } if generation == current_host_generation => {
-                            report_desktop_view_probe(view_result);
                             let filesystem_items = snapshot
                                 .items()
                                 .iter()
@@ -287,16 +302,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             report_status(
                                 "WLDE discarded a stale Shell namespace snapshot after Explorer host replacement"
                             );
-                            if worker.request_refresh(current_host_generation, identity.clone()) {
+                            if worker.request_refresh(current_host_generation) {
                                 last_namespace_refresh = Instant::now();
                             }
                         }
                         DesktopNamespaceWorkerPoll::Failed {
                             generation,
                             message,
-                            view_result,
                         } if generation == current_host_generation => {
-                            report_desktop_view_probe(view_result);
                             report_status(&format!(
                                 "WLDE Shell namespace snapshot failed; native desktop presentation remains unchanged: {message}"
                             ));
@@ -305,7 +318,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             report_status(
                                 "WLDE discarded an error from a previous Explorer host session",
                             );
-                            if worker.request_refresh(current_host_generation, identity.clone()) {
+                            if worker.request_refresh(current_host_generation) {
                                 last_namespace_refresh = Instant::now();
                             }
                         }
@@ -313,21 +326,68 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             if generation == current_host_generation =>
                         {
                             report_status(
-                                "WLDE Shell Desktop view probe/namespace request exceeded 20 seconds; BGW remains responsive and will not spawn a replacement worker"
+                                "WLDE Shell namespace enumeration exceeded 20 seconds; BGW remains responsive and will not spawn a replacement worker"
                             );
                         }
                         DesktopNamespaceWorkerPoll::TimedOut { .. } => {
                             report_status(
-                                "WLDE previous Shell Desktop view/namespace request timed out after Explorer host replacement"
+                                "WLDE previous Shell namespace request timed out after Explorer host replacement"
                             );
                         }
                     }
                 }
 
                 if last_namespace_refresh.elapsed() >= DESKTOP_NAMESPACE_REFRESH_INTERVAL
-                    && worker.request_refresh(current_host_generation, identity.clone())
+                    && worker.request_refresh(current_host_generation)
                 {
                     last_namespace_refresh = Instant::now();
+                }
+            }
+
+            if let Some(worker) = desktop_view_worker.as_mut() {
+                while let Some(update) = worker.poll() {
+                    match update {
+                        DesktopViewWorkerPoll::Ready { generation, probe }
+                            if generation == current_host_generation =>
+                        {
+                            report_desktop_view_probe(Ok(probe));
+                        }
+                        DesktopViewWorkerPoll::Ready { .. } => {
+                            report_status(
+                                "WLDE discarded a stale Desktop view probe after Explorer host replacement"
+                            );
+                            let _ = worker.request_probe(current_host_generation, identity.clone());
+                        }
+                        DesktopViewWorkerPoll::Failed { generation, message }
+                            if generation == current_host_generation =>
+                        {
+                            report_desktop_view_probe(Err(message));
+                        }
+                        DesktopViewWorkerPoll::Failed { .. } => {
+                            report_status(
+                                "WLDE discarded a Desktop view probe error from a previous Explorer host session"
+                            );
+                            let _ = worker.request_probe(current_host_generation, identity.clone());
+                        }
+                        DesktopViewWorkerPoll::TimedOut { generation }
+                            if generation == current_host_generation =>
+                        {
+                            report_status(
+                                "WLDE live Desktop view probe exceeded 20 seconds; BGW and the independent namespace worker remain responsive"
+                            );
+                        }
+                        DesktopViewWorkerPoll::TimedOut { .. } => {
+                            report_status(
+                                "WLDE previous Explorer Desktop view probe timed out; the worker remains single-flight and will not be replaced"
+                            );
+                        }
+                    }
+                }
+
+                if last_view_probe_refresh.elapsed() >= DESKTOP_NAMESPACE_REFRESH_INTERVAL
+                    && worker.request_probe(current_host_generation, identity.clone())
+                {
+                    last_view_probe_refresh = Instant::now();
                 }
             }
 
@@ -429,8 +489,13 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             load_committed_desktop_state(store, &desktop_inventory)
                         });
                         if let Some(worker) = desktop_namespace_worker.as_mut() {
-                            if worker.request_refresh(current_host_generation, identity.clone()) {
+                            if worker.request_refresh(current_host_generation) {
                                 last_namespace_refresh = Instant::now();
+                            }
+                        }
+                        if let Some(worker) = desktop_view_worker.as_mut() {
+                            if worker.request_probe(current_host_generation, identity.clone()) {
+                                last_view_probe_refresh = Instant::now();
                             }
                         }
                         if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
