@@ -14,14 +14,14 @@ Shared runtime library for WinLook's BGW process and the current WLDE desktop-in
   desktop-host replacement even when the original Explorer process stays alive.
 - Retries discovery every two seconds only while the Shell desktop is absent,
   belongs to a non-Explorer shell, or cannot be queried.
-- Starts one bounded STA worker for a read-only root Shell namespace snapshot
+- Starts one bounded STA worker for a read-only live Desktop view probe and root Shell namespace snapshot
   after each verified Explorer-host attachment. It refreshes every 30 seconds
   and after filesystem Desktop change notifications, and discards results from
   an older host generation.
 - Reports aggregate filesystem/virtual-item counts only; no Shell item names or
   filesystem paths are written to the BGW diagnostic channel. PIDL-derived IDs
   are session-only and are not passed into the persistent Group/layout store.
-- Reports a 20-second namespace-worker timeout without blocking BGW or spawning
+- Reports a 20-second Desktop view/namespace-worker timeout without blocking BGW or spawning
   an unsafe replacement thread. The in-flight Shell call may still complete.
 - Sends status output through `OutputDebugStringW` on Windows. This is a
   diagnostic channel, not a persistent application log; without a debugger or
@@ -83,13 +83,13 @@ on the notification to identify the changed item.
 
 ## Read-only Shell namespace worker
 
-The BGW host loop owns a separate DesktopNamespaceWorker in addition to the icon-extraction worker. It starts one STA thread, initializes COM before accepting work, and pumps its message queue between requests and while waiting for the result slot. The request and result channels each have capacity one; at most one namespace enumeration is active. It uses the same message-aware STA helper as the Shell icon worker.
+The BGW host loop owns a separate DesktopNamespaceWorker in addition to the icon-extraction worker. It starts one STA thread, initializes COM before accepting work, and pumps its message queue between requests and while waiting for the result slot. The request and result channels each have capacity one; at most one Desktop view probe plus root namespace inventory request is active. It uses the same message-aware STA helper as the Shell icon worker.
 
 BGW requests a snapshot when a verified Explorer host attaches, every 30 seconds, and after a User/Public Desktop filesystem-change refresh. Each request carries the current host generation. If Explorer is replaced while a Shell call is running, BGW discards the old generation's result instead of treating it as the new desktop snapshot.
 
 The runtime reports only total entries, filesystem-backed entries, virtual folders, virtual items and skipped records. It does not log individual Shell names or paths. The snapshot is read-only and is dropped after aggregate reporting; the PIDL hashes are not persisted or used as Group member IDs.
 
-If a namespace provider takes more than 20 seconds, BGW reports the delay and continues its host-monitor loop. The worker is not terminated or replaced: there is no safe way to kill a thread blocked inside an arbitrary Shell provider, and repeatedly spawning workers could leak unbounded threads. If the call eventually returns, that result is handled normally; otherwise the namespace capability remains unavailable for this BGW instance.
+If a view probe or namespace provider takes more than 20 seconds, BGW reports the delay and continues its host-monitor loop. The worker is not terminated or replaced: there is no safe way to kill a thread blocked inside an arbitrary Shell provider, and repeatedly spawning workers could leak unbounded threads. If the call eventually returns, that result is handled normally; otherwise the namespace capability remains unavailable for this BGW instance.
 
 This is a root Shell namespace inventory, not an IFolderView snapshot. It does not yet observe the actual desktop view's filtered/visible entries, positions, ordering, selection or view state. It does not suppress icons, install hooks, render a presenter or enable Groups.
 
