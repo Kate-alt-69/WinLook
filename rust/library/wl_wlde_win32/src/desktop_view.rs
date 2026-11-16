@@ -264,7 +264,9 @@ mod desktop_view_platform {
     #[repr(C)]
     union VariantValue {
         long_value: i32,
-        zero: u64,
+        // VARIANT's BRECORD arm is two pointers: 16 bytes on x64, 8 on x86.
+        // This gives VARIANT its ABI-correct size of 24 bytes on x64 and 16 on x86.
+        zero: [usize; 2],
     }
 
     #[repr(C)]
@@ -283,7 +285,7 @@ mod desktop_view_platform {
                 reserved1: 0,
                 reserved2: 0,
                 reserved3: 0,
-                value: VariantValue { zero: 0 },
+                value: VariantValue { zero: [0; 2] },
             }
         }
 
@@ -691,6 +693,9 @@ mod desktop_view_platform {
         #[test]
         fn com_layouts_match_windows_abi_expectations() {
             assert_eq!(size_of::<Guid>(), 16);
+            #[cfg(target_pointer_width = "64")]
+            assert_eq!(size_of::<Variant>(), 24);
+            #[cfg(target_pointer_width = "32")]
             assert_eq!(size_of::<Variant>(), 16);
         }
 
