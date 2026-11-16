@@ -187,14 +187,20 @@ The Appearance Engine manages cohesive themes and the user-facing Windows appear
 
 - [x] Design taskbar appearance integrations.
 - [x] Design Start Menu customization.
+- [x] Set WLHome as the intended replacement for the user-facing Start experience on compatible builds, without replacing Explorer as the shell process.
 - [ ] Research stable, OS-specific ways to change taskbar colors, transparency, sizing, and supported layout properties.
 - [ ] Design pinned shortcut icon customization.
 - [ ] Research the limits of changing icons for already-running applications.
 - [ ] Design Start Menu layout and app-icon customization per Windows generation.
-- [ ] Define optional replacement UI behaviour where native customization is not available.
-- [ ] Ensure any replacement is independently hosted and does not replace or patch Explorer.
-- [ ] Define how the original taskbar and Start Menu can be restored immediately.
-- [ ] Test shell restart, display changes, multiple monitors, and Windows updates.
+- [ ] Trace the taskbar Start-button click and Windows-key activation paths independently on each supported build; determine whether they converge on the same replaceable Start experience.
+- [ ] Design the least-invasive per-build WLHome Start activation/hosting adapter; prefer replacing the Start experience endpoint over globally suppressing the Windows key.
+- [ ] Keep a configurable supported shortcut (initial candidate: Alt+Space) as the independent WLHome fallback.
+- [ ] Ensure WLHome remains a separate UI experience and never patches or replaces Explorer on disk.
+- [ ] Define immediate restoration of the stock Start experience and an independent recovery/disable path.
+- [ ] Test Start host/Explorer restarts, display changes, multiple monitors, unrelated Win-key shortcuts, adapter crashes, and Windows updates.
+- [ ] Define the Windows Integration Manager area and provider capability/compatibility/consent/rollback declarations.
+
+Detailed architecture and agent research procedure: [Windows Shell Integration and WLHome](architecture/windows-shell-integration.md).
 
 ---
 
