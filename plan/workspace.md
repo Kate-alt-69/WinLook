@@ -701,3 +701,8 @@ Detailed design: [desktop-view-acquisition.md](architecture/desktop-view-acquisi
 ### M0 follow-up — COM VARIANT ABI correction (2026-11-17)
 
 A final x64 ABI review caught that the original manual VARIANT union was undersized. The probe now reserves two pointer-sized words for the native BRECORD-capable union and asserts a total VARIANT size of 24 bytes on x64 and 16 bytes on x86. This is required even though only VT_EMPTY and VT_I4 are passed. The corrected binding is on this PR branch; Windows CI must re-verify it. Evidence: WLDE-064.
+
+
+### M0 vtable offsets checked against the Windows SDK — 2026-11-17
+
+The manual COM probe's absolute slots are now documented with upstream IDL evidence (WLDE-065): FindWindowSW=15, QueryService=3, QueryActiveShellView=15, IShellView::GetWindow=3, IFolderView::GetFolder=5, and IPersistFolder2::GetCurFolder=5. Keep named slot constants and regression tests for both slot-15 methods. The Microsoft Node.js Tools sample independently models the IShellBrowser method order with twelve vtable gaps before QueryActiveShellView.
