@@ -125,6 +125,14 @@ mod tests {
             invalid.validate(),
             Err(UiError::InvalidBranding(_))
         ));
+
+        let multiline_title = UiApplication::new("WinLook")
+            .page(UiPage::new("home", "Home", "Overview"))
+            .branding(UiBranding::new("Win\nLook"));
+        assert!(matches!(
+            multiline_title.validate(),
+            Err(UiError::InvalidBranding(_))
+        ));
     }
 
     #[test]
