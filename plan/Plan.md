@@ -34,6 +34,7 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - **WLDM — WinLook Display Manager:** monitor/display discovery, profiles and settings.
 - **WLOSDE — WinLook On-Screen Display Engine:** customizable WinLook notifications, popups and OSD.
 - **wl_animate:** reusable Rust animation crate/API for modern WinLook modules and third-party integrations.
+- **wl_translation:** modern Rust platform-translation layer for versioned Windows Shell/Win32/DWM objects, native event normalization, capability-selected operations and reversible compatibility adapters.
 - **wl_Lanimate:** corresponding legacy C animation library.
 - **WLT — WinLook Template:** portable settings/assets package using the proposed .wl.t archive.
 - **Audio & Media Experience:** global/per-app audio controls plus provider-backed Now Playing; final module name remains open.
@@ -95,6 +96,28 @@ state. Unknown or incompatible builds retain the native desktop presentation
 and mark only the unavailable WLDE features degraded. This automatic fallback
 is a safety mechanism, not an optional product mode.
 
+## Windows Native Translation — approved architectural direction
+
+`wl_translation` is the planned modern Rust layer for addressing Windows Shell,
+Explorer desktop, taskbar, Win32 application windows and DWM through typed,
+version-aware object paths. It normalizes native events for BGW/WLDE and exposes
+capability-checked, reversible operations. Its full design, XML contract,
+Quirks model and implementation backlog are in
+[architecture/wl-translation.md](architecture/wl-translation.md).
+
+The namespace follows `windows.<release>.<subsystem>.<object>`, with build/UBR
+and capability checks behind each resolved target. WLDE-owned taskbar surfaces
+may be positioned independently; the stock Explorer taskbar is not promised
+arbitrary free positioning through a documented API. Pinned shortcut icons and
+running-window buttons are separate object categories with independent
+visibility and event rules. The Start affordance uses the Windows logo, not
+WinLook branding.
+
+The XML profile/parser path compiles declarative references and editable
+properties into typed operation plans. XML is data, never a raw native-call or
+script execution surface. `wl_animate` stays platform-neutral and consumes
+generic normalized event triggers supplied through BGW/WLDE.
+
 # 2. Core architecture — hybrid Windows implementations
 
 The intended architecture uses Rust for current Windows 10+ builds and a separate C implementation for older Windows generations. They share conceptual APIs and data contracts where feasible, but not one executable or identical runtime capabilities. The current official Rust/MSVC target documentation requires Windows 10 or later for client installs; the planned C implementation is therefore the default route for Windows 95 through 8.1 unless a separately pinned older Rust toolchain is proven on the exact OS. The Rust GNU target documentation is currently a stub and is not an older-Windows support guarantee. BGW is the startup-launched background runtime (`winlook.bg.exe`) that hosts/co-ordinates WinLook's background subsystems, including WLDE, WLWM, WLDM and WLOSDE. WLWM process detection, compatibility evaluation/cache and optional integration health are responsibilities within this broader runtime.
@@ -127,7 +150,10 @@ The intended architecture uses Rust for current Windows 10+ builds and a separat
 - [x] Define Windows version detection as a core responsibility.
 - [x] Design a capability-detection system.
 - [x] Design the per-user BGW background runtime and optional privileged Service.
+- [x] Capture the initial `wl_translation` architecture and its relationship to WLDE, BGW and `wl_animate` in [wl-translation.md](architecture/wl-translation.md).
 - [ ] Define the shared configuration format and schema.
+- [ ] Implement the versioned Windows object/property/event registry and capability-selected native providers.
+- [ ] Define and implement the declarative XML profile schema/compiler for typed Windows translation paths.
 - [ ] Define schema versioning, validation, defaults, and migration rules.
 - [ ] Decide which settings use JSON, TOML, or INI and where legacy constraints require a simpler format.
 - [ ] Define shared identifiers for themes, wallpapers, widgets, extensions, and profiles.
@@ -188,6 +214,10 @@ The Appearance Engine manages cohesive themes and the user-facing Windows appear
 - [x] Design taskbar appearance integrations.
 - [x] Design Start Menu customization.
 - [ ] Research stable, OS-specific ways to change taskbar colors, transparency, sizing, and supported layout properties.
+- [x] Specify independent taskbar models for pinned shortcuts, running-window buttons, system controls and notification-area icons.
+- [x] Specify the Windows-logo Start affordance and WLDE-owned taskbar placement/offset model.
+- [ ] Implement independent visibility and event-driven animation rules for pinned shortcuts and running-window buttons.
+- [ ] Verify which stock Explorer taskbar operations are supported versus requiring a WLDE-owned surface or a build-specific Quirk.
 - [ ] Design pinned shortcut icon customization.
 - [ ] Research the limits of changing icons for already-running applications.
 - [ ] Design Start Menu layout and app-icon customization per Windows generation.
