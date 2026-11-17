@@ -45,9 +45,12 @@ impl UiBranding {
     }
 
     pub(crate) fn validate(&self) -> Result<(), UiError> {
-        if self.title.trim().is_empty() || self.title.chars().count() > 128 {
+        if self.title.trim().is_empty()
+            || self.title.chars().count() > 128
+            || self.title.chars().any(char::is_control)
+        {
             return Err(UiError::InvalidBranding(
-                "brand title must contain 1 to 128 characters".to_string(),
+                "brand title must contain 1 to 128 non-control characters".to_string(),
             ));
         }
         if self.mark.chars().count() > 8 || self.mark.chars().any(char::is_control) {
