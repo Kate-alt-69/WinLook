@@ -49,6 +49,7 @@ const BRAND_TAGLINE_CONTROL_ID: usize = 1005;
 const PAGE_TITLE_CONTROL_ID: usize = 1006;
 const PAGE_DESCRIPTION_CONTROL_ID: usize = 1007;
 const SS_CENTER: u32 = 0x00000001;
+const SS_CENTERIMAGE: u32 = 0x00000200;
 const LOCATE_ENGINE_BUTTON_ID: usize = 1101;
 const BROWSE_WALLPAPER_BUTTON_ID: usize = 1102;
 const WORKSHOP_BUTTON_ID: usize = 1103;
@@ -827,7 +828,7 @@ unsafe extern "system" fn window_proc(
                 instance,
                 BRAND_MARK_CONTROL_ID,
                 brand_mark_text,
-                SS_CENTER,
+                SS_CENTER | SS_CENTERIMAGE,
             );
             let brand_title =
                 create_static_label(hwnd, instance, BRAND_TITLE_CONTROL_ID, brand_title_text, 0);
