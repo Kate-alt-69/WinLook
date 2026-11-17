@@ -1,6 +1,6 @@
 # WinLook Workspace Memory
 
-> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-09. Current user instructions and repository source take precedence.
+> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-17. Current user instructions and repository source take precedence.
 
 ## Project identity
 WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
@@ -13,6 +13,9 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Explorer.exe must never be patched/replaced on disk. Deep Explorer customization is accepted scope: documented Shell extensions plus a separate opt-in, per-build presentation adapter for UI surfaces without public APIs. This is not general WLWM injection; Windows retains native Shell/filesystem operations. DWM and authentication/security-critical processes are excluded.
 - WLWM Settings are in WinLook Manager and can be included in WLT; no standalone WLWM config language required.
 - wl_animate is the reusable Rust animation crate/API for modern WinLook and third-party integrations. wl_Lanimate is its C counterpart. The current implementation baseline for both libraries is Windows 10; C89 is a source-language constraint, not evidence of pre-Windows-10 runtime support. The intended vector/SVG and alpha contract is specified in [vector-animation.md](architecture/vector-animation.md); it is not yet a complete public API.
+- `wl_translation` is the planned modern Rust Windows platform-translation layer. It owns versioned Windows Shell/Explorer/Taskbar/Win32/DWM object resolution, native event normalization, capability-selected providers, Quirks and reversible operation contracts; it is not human-language translation. See [wl-translation.md](architecture/wl-translation.md). The crate and parser are not implemented by this planning update.
+- WLDE taskbar presentation distinguishes pinned shortcuts from running-window buttons, system controls and notification-area icons. A WLDE-owned taskbar can support independently positioned/offset surfaces; arbitrary free positioning of the stock Explorer taskbar is not promised by a documented Windows API. The Start affordance uses the Windows logo, not WinLook branding.
+- Versioned names such as `windows.10.22h2.shell.taskbar` and readiness/event paths are intended to be callable from code and a future declarative XML parser. XML compiles to a typed, allow-listed operation plan; it must never execute raw native calls, scripts or dynamic code.
 - CPUv/GPUv are planned as shared WinLook-owned resource governors: Rust wl_cpuv/wl_gpuv and C wl_Lcpuv/wl_Lgpuv. They coordinate only WinLook-managed CPU tasks and GPU allocations/submissions; Windows/driver remains authoritative for process scheduling and GPU memory. See [resource-governors.md](architecture/resource-governors.md).
 - WLDE (WinLook Desktop Engine, WALDE) owns wallpaper playback, library/community Store, widgets, Rainmeter compatibility, desktop icon presentation, virtual Groups, occlusion-aware rendering, adaptive resource control and Game Mode.
 - WLDE Groups are virtual visual objects, never filesystem folders. Original Shell items remain in place and launch normally. A custom Group icon opens a borderless popup with original items. Grouping is disabled by default. Local Groups are machine-specific and never exported in WLT. Fancy Groups are separate and not yet specified.
@@ -43,6 +46,9 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Exact legacy compiler/linker/runtime and SDK combinations.
 - Shared settings schema/versioning.
 - wl_animate public API and wl_Lanimate C ABI.
+- `wl_translation` canonical namespace aliases, object catalogue, XML grammar, Quirks trust/update model and exact Windows 10 build/UBR support matrix.
+- Stock Explorer taskbar operations that can be safely controlled versus properties that require a WLDE-owned surface.
+- Exact semantics and parser grammar for the proposed `windows.<version/name>.shell.isready(true[])` callable, distinct from Shell readiness events.
 - Injection target policy, compatibility scoring and cache invalidation.
 - Per-OS workspace strategy.
 - Desktop icon suppression/recovery adapter per OS.
