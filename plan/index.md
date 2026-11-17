@@ -29,6 +29,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Profiles and Optimization: [architecture/profiles-and-optimization.md](architecture/profiles-and-optimization.md)
 - WLWM: [architecture/wlwm.md](architecture/wlwm.md)
 - Animation libraries: [architecture/animation-suite.md](architecture/animation-suite.md)
+- Windows native translation — versioned Shell/Win32/DWM objects, events, XML profiles and Quirks: [architecture/wl-translation.md](architecture/wl-translation.md)
 - Vector animation and SVG contract: [architecture/vector-animation.md](architecture/vector-animation.md)
 - CPUv/GPUv resource-governor architecture: [architecture/resource-governors.md](architecture/resource-governors.md)
 - WLDE: [architecture/wlde.md](architecture/wlde.md)
@@ -53,7 +54,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Shared libraries now live under `rust/library/` and `C/library/`; historical `crates/` and `legacy/` prototype copies are scheduled for removal as part of this migration.
 
 ## Shared library implementation
-- Rust: [`wl_animate`](../rust/library/wl_animate/README.md), [`wl_cpuv`](../rust/library/wl_cpuv/README.md), [`wl_gpuv`](../rust/library/wl_gpuv/README.md), [`wl_wlde`](../rust/library/wl_wlde/README.md), modern [`wl_wlde_win32`](../rust/library/wl_wlde_win32/README.md) platform adapter, [`wl_bgw_runtime`](../rust/library/wl_bgw_runtime/README.md), and public [`wl_ui`](../rust/library/wl_ui/README.md).
+- Rust: [`wl_animate`](../rust/library/wl_animate/README.md), planned [`wl_translation`](architecture/wl-translation.md), [`wl_cpuv`](../rust/library/wl_cpuv/README.md), [`wl_gpuv`](../rust/library/wl_gpuv/README.md), [`wl_wlde`](../rust/library/wl_wlde/README.md), modern [`wl_wlde_win32`](../rust/library/wl_wlde_win32/README.md) platform adapter, [`wl_bgw_runtime`](../rust/library/wl_bgw_runtime/README.md), and public [`wl_ui`](../rust/library/wl_ui/README.md).
 - C: [`wl_Lanimate`](../C/library/wl_Lanimate/README.md), [`wl_Lcpuv`](../C/library/wl_Lcpuv/README.md), [`wl_Lgpuv`](../C/library/wl_Lgpuv/README.md), [`wl_Lwlde`](../C/library/wl_Lwlde/README.md), and legacy Win32 [`wl_Lui`](../C/library/wl_Lui/README.md).
 - UI backend paths: `wl_ui::windows10`, `wl_ui::windows11`, `wl_ui::tauri2`, and experimental `wl_ui::windows7` / `windows8` / `windows81`.
 - Vector/SVG contract: [Vector Animation](architecture/vector-animation.md).
@@ -64,12 +65,14 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Resource-governor contract: [CPUv/GPUv](architecture/resource-governors.md).
 - UI structure and selection rules: [Manager UI Architecture](architecture/ui-architecture.md).
 
-## Active WLDE bridge handoff — 2026-11-16
+## Active WLDE bridge handoff — 2026-11-17
 
-- Active PR: [#13 — read-only Shell Desktop namespace inventory](https://github.com/Kate-alt-69/WinLook/pull/13), branch feat/wlde-shell-namespace-inventory. The M0–M6 workspace checkpoint was added in commit 5275e83e15d1019be9d208ffacb908bd27f83988. Use the live PR page to verify the current branch head and CI before continuing. The implementation head 8abc3b1eb118931cccb0e380345c0d273907ba29 passed the full required CI set; Dependency Review was skipped.
-- Next dependency-ordered milestones (M0–M6): [workspace memory](workspace.md).
-- Read the current bridge scope: [WLDE architecture](architecture/wlde.md), [restoration journal contract](architecture/restoration.md), [technical source ledger](references/SOURCES.md).
-- External engine integration design and current Lively/Rainmeter hand-off adapters: [wlde-integrations.md](architecture/wlde-integrations.md). Rust command adapters exist; Manager/BGW IPC, command result tracking, install/version discovery and per-monitor ownership remain open.
+- Active PR: [#13 — read-only Explorer Desktop bridge and external engine adapters](https://github.com/Kate-alt-69/WinLook/pull/13), branch `feat/wlde-shell-namespace-inventory`. The implementation parent reviewed for this checkpoint is `0083a4ee35e7d34a3c26606310818013d5e0df5b`; the branch is synchronized with `main` at `a3b258bd77c5b915547b527117c20ee3d4c0de8c`. Always verify the live PR head and checks before continuing.
+- Current implementation scope, status and dependency-ordered M0–M6 gates: [workspace memory](workspace.md).
+- Explorer acquisition evidence and manual validation procedure: [desktop-view-acquisition.md](architecture/desktop-view-acquisition.md). M0 remains PARTIAL until the interactive Windows probe and supported-build matrix pass.
+- External Lively/Rainmeter/Wallpaper Engine contract, capability matrix and follow-up: [wlde-integrations.md](architecture/wlde-integrations.md). Lively and Rainmeter have typed public-CLI adapters; authenticated Manager/BGW IPC, process completion acknowledgement, install/publisher/version discovery and runtime presenter arbitration are not implemented.
+- The current main branch also contains the approved `wl_translation` architecture direction: [wl-translation.md](architecture/wl-translation.md). The crate/parser are still planned, not implemented; do not claim PR #13 wires through it.
+- CI on the reviewed implementation parent: Security analysis, Documentation validation, Shared library verification, Windows 10 build, Windows 11 build, BGW build, and repeated build stress all succeeded. Dependency Review was skipped by its configured prerequisite path. A documentation-only sync triggers fresh checks on the resulting merge commit.
 - Agent attribution: every continuing agent records its own Chat Name, date, exact branch/head, PR and verification state in its checkpoint.
 
 ## Resume rules

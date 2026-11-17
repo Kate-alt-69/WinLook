@@ -427,3 +427,5 @@ WinLook.
 
 
 | WLDE-076 | [Rainmeter Bangs — Command Line Arguments and Skin bangs](https://docs.rainmeter.net/manual/bangs/) | Rainmeter allows bangs from the command line. The Config argument is mandatory from the command line even where it is optional inside a skin; documented skin controls include !Show, !Hide, !Toggle and !Move X,Y | WLDE exposes typed visibility actions for an explicit loaded config and numeric integer coordinates only; it does not pass arbitrary bang strings, formulas or variables |
+
+| WLDE-077 | [Lively Wallpaper — Command Line Controls](https://github.com/lively-community/lively/wiki/Command-Line-Controls) | The current Lively command reference says commands can be sent through the main executable or the separate command utility; it documents the `app --play` / `app --volume` family alongside `setwp`, `closewp`, `seekwp` and `setprop` | The WLDE adapter exposes a typed subset only. This does not prove an installed-version matrix, command acknowledgement or runtime presentation state |

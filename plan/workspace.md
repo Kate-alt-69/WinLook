@@ -1,6 +1,6 @@
 # WinLook Workspace Memory
 
-> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-09. Current user instructions and repository source take precedence.
+> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-17. Current user instructions and repository source take precedence.
 
 ## Project identity
 WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
@@ -13,6 +13,9 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Explorer.exe must never be patched/replaced on disk. Deep Explorer customization is accepted scope: documented Shell extensions plus a separate opt-in, per-build presentation adapter for UI surfaces without public APIs. This is not general WLWM injection; Windows retains native Shell/filesystem operations. DWM and authentication/security-critical processes are excluded.
 - WLWM Settings are in WinLook Manager and can be included in WLT; no standalone WLWM config language required.
 - wl_animate is the reusable Rust animation crate/API for modern WinLook and third-party integrations. wl_Lanimate is its C counterpart. The current implementation baseline for both libraries is Windows 10; C89 is a source-language constraint, not evidence of pre-Windows-10 runtime support. The intended vector/SVG and alpha contract is specified in [vector-animation.md](architecture/vector-animation.md); it is not yet a complete public API.
+- `wl_translation` is the planned modern Rust Windows platform-translation layer. It owns versioned Windows Shell/Explorer/Taskbar/Win32/DWM object resolution, native event normalization, capability-selected providers, Quirks and reversible operation contracts; it is not human-language translation. See [wl-translation.md](architecture/wl-translation.md). The crate and parser are not implemented by this planning update.
+- WLDE taskbar presentation distinguishes pinned shortcuts from running-window buttons, system controls and notification-area icons. A WLDE-owned taskbar can support independently positioned/offset surfaces; arbitrary free positioning of the stock Explorer taskbar is not promised by a documented Windows API. The Start affordance uses the Windows logo, not WinLook branding.
+- Versioned names such as `windows.10.22h2.shell.taskbar` and readiness/event paths are intended to be callable from code and a future declarative XML parser. XML compiles to a typed, allow-listed operation plan; it must never execute raw native calls, scripts or dynamic code.
 - CPUv/GPUv are planned as shared WinLook-owned resource governors: Rust wl_cpuv/wl_gpuv and C wl_Lcpuv/wl_Lgpuv. They coordinate only WinLook-managed CPU tasks and GPU allocations/submissions; Windows/driver remains authoritative for process scheduling and GPU memory. See [resource-governors.md](architecture/resource-governors.md).
 - WLDE (WinLook Desktop Engine, WALDE) owns wallpaper playback, library/community Store, widgets, Rainmeter compatibility, desktop icon presentation, virtual Groups, occlusion-aware rendering, adaptive resource control and Game Mode.
 - WLDE Groups are virtual visual objects, never filesystem folders. Original Shell items remain in place and launch normally. A custom Group icon opens a borderless popup with original items. Grouping is disabled by default. Local Groups are machine-specific and never exported in WLT. Fancy Groups are separate and not yet specified.
@@ -782,3 +785,49 @@ Current release data: 4.5.28 is latest stable 4.5 (October 12, 2026); 5.0.0 RC2 
 - Added command_move_config / move_config with integer X/Y only. Negative values are retained for monitors positioned left/above the primary display. Arbitrary bang strings, formula values and variable expansion are deliberately not exposed.
 - Tests verify exact, separately passed command arguments for visibility and move actions. CI for the exact commit must verify formatting, Clippy, and Rust tests.
 - Rainmeter remains a widget overlay separate from exclusive wallpaper presenter ownership. Automatic skin discovery, config availability acknowledgement, z-order/input arbitration and version/architecture compatibility remain unimplemented.
+
+
+## WLDE PR #13 integration checkpoint — 2026-11-17
+
+**Chat Name:** GPT-6 — WinLook PR13 Defuse  
+**Repository:** Kate-alt-69/WinLook  
+**Branch:** feat/wlde-shell-namespace-inventory  
+**PR:** [#13 — read-only Explorer Desktop bridge and external engine adapters](https://github.com/Kate-alt-69/WinLook/pull/13)  
+**Implementation parent reviewed:** 0083a4ee35e7d34a3c26606310818013d5e0df5b  
+**Main synchronized:** a3b258bd77c5b915547b527117c20ee3d4c0de8c
+
+### Delivered in the reviewed implementation
+
+- The Shell namespace inventory and live Explorer Desktop `IFolderView` acquisition remain read-only, bounded and generation-scoped. The view probe verifies the current Explorer owner and virtual Desktop namespace root on a dedicated STA worker. It does not enumerate M1 view membership/positions/selection and does not mutate Explorer.
+- The portable `wl_wlde` crate exposes typed external-process adapters for Lively and Rainmeter. Lively supports selected project/media/HTML targets, wallpaper set/close, playback, volume, bounded seek and validated monitor-scoped properties. Rainmeter supports documented config actions, refresh, visibility and integer-coordinate move commands, plus the official SkinInstaller hand-off for selected `.rmskin` packages.
+- The per-monitor `MonitorPresentationMap` validates one presenter per current monitor and supports mixed native/Wallpaper Engine/Lively assignments. It is a configuration contract only; it does not apply or observe runtime ownership. Rainmeter stays a separate widget overlay.
+- The branch now also carries the current `wl_translation` planning documents from `main`. The translation crate and XML parser remain planned, not implemented, and are not a dependency of the code in this PR.
+
+### Verification — exact implementation parent 0083a4ee35e7d34a3c26606310818013d5e0df5b
+
+All seven GitHub Actions runs attached to that commit completed successfully:
+- Security analysis.
+- Documentation validation.
+- Shared library verification.
+- Windows 10 application build.
+- Windows 11 application build.
+- BGW background runtime build.
+- Repeated build stress test.
+
+Dependency Review was skipped by the configured workflow prerequisite path. No local Cargo run or interactive Windows VM/device probe was performed in this authoring session. The main-sync commit is documentation/planning only and must receive its own fresh CI run.
+
+### Remaining gates — do not mark as complete
+
+- **M0 PARTIAL:** run the ignored `interactive_desktop_ifolderview_probe_reacquires_stable_desktop` smoke test in an interactive Explorer session, then complete the exact supported Windows build/UBR, restart/recreation, session, empty/hidden/virtual-item, multi-monitor and mixed-DPI matrix.
+- **M1 NOT STARTED:** bounded read-only `IFolderView` snapshot, membership/order/position and safe coordinate semantics.
+- **M2 PARTIAL:** add view recreation/change invalidation and re-acquisition; existing Explorer process-generation handling is not full view lifecycle tracking.
+- **M3 PARTIAL:** implement the BGW single-writer durable restoration journal with ACL/owner validation, locking, append/checksum/flush boundaries and fail-closed recovery. The portable codec is not this writer.
+- **M4 NOT STARTED:** per-build allowlisted adapter capabilities and capture/apply/inspect/ownership/verify/restore proof.
+- **M5 BLOCKED by M3/M4/M6:** no icon suppression, Group proxy presentation, Explorer hooks or native presenter activation.
+- **M6 NOT STARTED:** crash/restart/upgrade/uninstall and external-state fault injection across supported builds.
+- External-engine product wiring is still a separate stage: authenticated Manager/BGW IPC and typed request dispatch, process exit/acknowledgement and runtime state observation, executable publisher/install/version discovery, and safe per-monitor presenter hand-off are not implemented. Do not replace this with generic shell execution or private Lively/Rainmeter protocols.
+
+### Upstream command-contract refresh
+
+The current official Lively command reference confirms the selected executable/command-utility model and the typed command families used here; the current Rainmeter bangs reference confirms that command-line bang invocations require explicit config arguments and documents the integer X/Y/config `!Move` form. Source ledger entries WLDE-066, WLDE-069, WLDE-075 and WLDE-076 track these boundaries.
+
