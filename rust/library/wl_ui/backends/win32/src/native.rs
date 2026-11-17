@@ -1290,7 +1290,6 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::brand_control_visibility;
@@ -1309,7 +1308,9 @@ mod tests {
         );
         assert_eq!(
             brand_control_visibility(Some(
-                &UiBranding::new("WinLook").mark("WL").tagline("Your desktop, your way."),
+                &UiBranding::new("WinLook")
+                    .mark("WL")
+                    .tagline("Your desktop, your way."),
             )),
             [true, true, true]
         );
