@@ -29,6 +29,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Profiles and Optimization: [architecture/profiles-and-optimization.md](architecture/profiles-and-optimization.md)
 - WLWM: [architecture/wlwm.md](architecture/wlwm.md)
 - Animation libraries: [architecture/animation-suite.md](architecture/animation-suite.md)
+- Windows native translation — versioned Shell/Win32/DWM objects, events, XML profiles and Quirks: [architecture/wl-translation.md](architecture/wl-translation.md)
 - Vector animation and SVG contract: [architecture/vector-animation.md](architecture/vector-animation.md)
 - CPUv/GPUv resource-governor architecture: [architecture/resource-governors.md](architecture/resource-governors.md)
 - WLDE: [architecture/wlde.md](architecture/wlde.md)
@@ -52,7 +53,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Shared libraries now live under `rust/library/` and `C/library/`; historical `crates/` and `legacy/` prototype copies are scheduled for removal as part of this migration.
 
 ## Shared library implementation
-- Rust: [`wl_animate`](../rust/library/wl_animate/README.md), [`wl_cpuv`](../rust/library/wl_cpuv/README.md), [`wl_gpuv`](../rust/library/wl_gpuv/README.md), [`wl_wlde`](../rust/library/wl_wlde/README.md), modern [`wl_wlde_win32`](../rust/library/wl_wlde_win32/README.md) platform adapter, [`wl_bgw_runtime`](../rust/library/wl_bgw_runtime/README.md), and public [`wl_ui`](../rust/library/wl_ui/README.md).
+- Rust: [`wl_animate`](../rust/library/wl_animate/README.md), planned [`wl_translation`](architecture/wl-translation.md), [`wl_cpuv`](../rust/library/wl_cpuv/README.md), [`wl_gpuv`](../rust/library/wl_gpuv/README.md), [`wl_wlde`](../rust/library/wl_wlde/README.md), modern [`wl_wlde_win32`](../rust/library/wl_wlde_win32/README.md) platform adapter, [`wl_bgw_runtime`](../rust/library/wl_bgw_runtime/README.md), and public [`wl_ui`](../rust/library/wl_ui/README.md).
 - C: [`wl_Lanimate`](../C/library/wl_Lanimate/README.md), [`wl_Lcpuv`](../C/library/wl_Lcpuv/README.md), [`wl_Lgpuv`](../C/library/wl_Lgpuv/README.md), [`wl_Lwlde`](../C/library/wl_Lwlde/README.md), and legacy Win32 [`wl_Lui`](../C/library/wl_Lui/README.md).
 - UI backend paths: `wl_ui::windows10`, `wl_ui::windows11`, `wl_ui::tauri2`, and experimental `wl_ui::windows7` / `windows8` / `windows81`.
 - Vector/SVG contract: [Vector Animation](architecture/vector-animation.md).
