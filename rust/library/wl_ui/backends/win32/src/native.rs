@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use std::mem::size_of;
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
-use wl_ui_core::{UiApplication, UiColor, UiComponent, UiError, UiPage, UiPalette};
+use wl_ui_core::{UiApplication, UiBranding, UiColor, UiComponent, UiError, UiPage, UiPalette};
 use wl_wlde::{store_provider, StoreProviderId, WallpaperEngineInstall, WallpaperTarget};
 
 type Handle = *mut c_void;
@@ -393,6 +393,17 @@ fn monitor_snapshot_status() -> String {
 
 fn colorref(color: UiColor) -> u32 {
     u32::from(color.red) | (u32::from(color.green) << 8) | (u32::from(color.blue) << 16)
+}
+
+fn brand_control_visibility(branding: Option<&UiBranding>) -> [bool; 3] {
+    let Some(branding) = branding else {
+        return [false; 3];
+    };
+    [
+        !branding.mark_text().is_empty(),
+        true,
+        !branding.tagline_text().is_empty(),
+    ]
 }
 
 fn create_static_label(
@@ -812,17 +823,10 @@ unsafe extern "system" fn window_proc(
                 )
             };
             let branding = application.branding_ref();
-            let brand_mark_text = branding
-                .map(|brand| brand.mark_text())
-                .filter(|mark| !mark.is_empty())
-                .unwrap_or("UI");
-            let brand_title_text = branding
-                .map(|brand| brand.title())
-                .unwrap_or_else(|| application.window_config().title());
-            let brand_tagline_text = branding
-                .map(|brand| brand.tagline_text())
-                .filter(|tagline| !tagline.is_empty())
-                .unwrap_or("Application workspace");
+            let brand_visibility = brand_control_visibility(branding);
+            let brand_mark_text = branding.map_or("", UiBranding::mark_text);
+            let brand_title_text = branding.map_or("", UiBranding::title);
+            let brand_tagline_text = branding.map_or("", UiBranding::tagline_text);
             let brand_mark = create_static_label(
                 hwnd,
                 instance,
@@ -891,6 +895,15 @@ unsafe extern "system" fn window_proc(
                 (*state).page_title = page_title;
                 (*state).page_description = page_description;
                 (*state).action_buttons = action_buttons;
+                for (control, visible) in [
+                    (brand_mark, brand_visibility[0]),
+                    (brand_title, brand_visibility[1]),
+                    (brand_tagline, brand_visibility[2]),
+                ] {
+                    if !visible {
+                        ShowWindow(control, SW_HIDE);
+                    }
+                }
                 if !(*state).font.is_null() {
                     SendMessageW(navigation, WM_SETFONT, (*state).font as usize, 1);
                     SendMessageW(content, WM_SETFONT, (*state).font as usize, 1);
@@ -1274,5 +1287,31 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
         Err(error)
     } else {
         Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::brand_control_visibility;
+    use wl_ui_core::UiBranding;
+
+    #[test]
+    fn absent_branding_does_not_render_generic_brand_controls() {
+        assert_eq!(brand_control_visibility(None), [false, false, false]);
+    }
+
+    #[test]
+    fn empty_optional_brand_fields_are_hidden_independently() {
+        assert_eq!(
+            brand_control_visibility(Some(&UiBranding::new("WinLook"))),
+            [false, true, false]
+        );
+        assert_eq!(
+            brand_control_visibility(Some(
+                &UiBranding::new("WinLook").mark("WL").tagline("Your desktop, your way."),
+            )),
+            [true, true, true]
+        );
     }
 }
