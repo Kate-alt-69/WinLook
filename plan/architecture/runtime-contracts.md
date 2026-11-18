@@ -35,6 +35,7 @@ The following are logical modules/ownership roles inside BGW, not a mandate to l
 | Module/role | Responsibility | Context | Failure expectation |
 |---|---|---|---|
 | BGW runtime | Startup, session lifecycle, subsystem hosting/co-ordination, event/policy loop and health | Interactive user session; ordinary privilege by default | Windows remains usable; relaunch/recovery restores last valid committed configuration |
+| Traton (`wl_traton`) shared library | Canonical Windows target/object paths, typed registry and capability/provider contracts; progressively hosts native discovery and event adapters | Called by BGW-hosted modules; BGW owns long-lived event-pump scheduling, routing and subsystem policy | Unknown/unsupported targets return typed degraded status; feature owners retain their own policy and state |
 | WLDE | Wallpapers, widgets, desktop presentation, Groups and resource-aware rendering | Hosted/co-ordinated by BGW | Quarantine/restart module where safe; retain native/static desktop fallback |
 | WLWM | Window policies/layouts/rules/workspaces, compatibility analysis and optional integrations | Hosted/co-ordinated by BGW; target integrations separately gated | Disable unsafe integration; native window management continues |
 | WLDM | Monitor discovery/topology and approved display changes | Hosted/co-ordinated by BGW | Retain or restore safe display configuration |
@@ -55,7 +56,9 @@ The Manager is not a hosted BGW module: it is the separate `winlook.exe` UI proc
 |---|---|
 | User preferences and profile selection | Manager configuration service |
 | Session lifecycle | BGW runtime |
-| Target policy and compatibility cache | BGW |
+| Target policy and compatibility cache | BGW (using Traton's version/build/capability evidence) |
+| Native namespace parsing, target resolution and provider capability evidence | Traton (`wl_traton`) |
+| Native event-source adapters and normalized event envelopes | Traton (`wl_traton`); BGW owns event-pump lifecycle, routing and backpressure |
 | Window observations, rules and layout decisions | WLWM |
 | Desktop presentation and wallpaper playback | WLDE |
 | Monitor topology and display-profile state | WLDM |
