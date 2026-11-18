@@ -24,7 +24,7 @@ This is not a production-readiness checklist; each example is judged against its
 
 | Example | Assessment | Why |
 |---|---|---|
-| `wl_traton` dispatcher ([v9 §8](research-v9.md#L2583)) | **Valid architectural example; not production-ready** | Path parsing and subsystem dispatch communicate the architecture. Foreground-window lookup is a simplified target demonstration, not generic namespace resolution; build 22000 as a detection fallback is incorrect; UxTheme/GDI success stubs should be labelled. |
+| Historical `wl_translation` dispatcher ([v9 §8](research-v9.md#L2583); informs Traton) | **Valid architectural example; not production-ready** | Path parsing and subsystem dispatch communicate the architecture. Foreground-window lookup is a simplified target demonstration, not generic namespace resolution; build 22000 as a detection fallback is incorrect; UxTheme/GDI success stubs should be labelled. |
 | Bézier helper ([v9 §10.2](research-v9.md#L3016)) | **Valid parametric-curve illustration; incomplete easing solver** | It computes Y for parameter `t`; a timing function must solve X for the input time. The later root-finding example addresses that missing concept. |
 | Journal ([v9 §10.5](research-v9.md#L3174)) | **Useful architecture sketch; claims exceed implementation** | The sample does not establish a lock-free algorithm. It needs cross-process synchronization, clean-run marker lifecycle, durability policy, property coverage, and conflict-safe restoration. |
 | Watchdog ([v9 §20](research-v9.md#L4485)) | **Useful architecture; lifecycle bug/risk** | It opens the named mapping only after the parent exits. The watchdog should open/receive and hold it before waiting. |
