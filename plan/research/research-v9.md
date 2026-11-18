@@ -997,7 +997,8 @@ Animated wallpapers must never degrade gaming or application performance:
   3. Cache the resulting `HBITMAP` in `WinLook` memory indexed by application path.
   4. Always destroy intermediate icon handles with `DestroyIcon(sfi.hIcon)` to prevent GDI object leaks.
 
-#### Tactic 102: Dynamic Window Icon Overriding via `WM_SETICON`* **Target Versions**: Windows 95 through Windows 11.
+#### Tactic 102: Dynamic Window Icon Overriding via `WM_SETICON`
+* **Target Versions**: Windows 95 through Windows 11.
 * **APIs / Drivers**: `USER32.DLL` (`SendMessageW`, `WM_SETICON`, `ICON_SMALL`, `ICON_BIG`, `GetClassLongPtrW`).
 * **Subsystem Architecture**: Top-level windows query their visual icon representation from two sources: the window instance icon (`tagWND.hIcon`) set via `WM_SETICON`, and the class fallback icon (`WNDCLASSEX.hIcon`). The taskbar and Alt+Tab switchers display the `ICON_BIG` handle, whereas caption bars and notification icons display `ICON_SMALL`.
 * **How-To & Safe Implementation**:
@@ -1996,7 +1997,8 @@ Animated wallpapers must never degrade gaming or application performance:
   2. All top-level windows refresh their theme brushes and visual style handles immediately.
 
 #### Tactic 197: Dynamic Custom Cursor Scheme Loading via `SystemParametersInfoW`
-* **Target Versions**: Windows 95 through Windows 11.* **APIs / Drivers**: Registry (`HKEY_CURRENT_USER\Control Panel\Cursors`), `USER32.DLL` (`SystemParametersInfoW`, `SPI_SETCURSORS`).
+* **Target Versions**: Windows 95 through Windows 11.
+* **APIs / Drivers**: Registry (`HKEY_CURRENT_USER\Control Panel\Cursors`), `USER32.DLL` (`SystemParametersInfoW`, `SPI_SETCURSORS`).
 * **Subsystem Architecture**: Allows switching cursor themes (e.g. minimalist Nord or retro Win95 pointers) dynamically without restarting the system.
 * **Open-Source Reference**: `cairoshell/cairoshell`.
 * **How-To & Safe Implementation**:
@@ -2995,7 +2997,8 @@ impl WinTranslationProvider {
     }
 }
 
-#[repr(C)]struct OSVERSIONINFOEXW {
+#[repr(C)]
+struct OSVERSIONINFOEXW {
     dwOSVersionInfoSize: u32,
     dwMajorVersion: u32,
     dwMinorVersion: u32,
