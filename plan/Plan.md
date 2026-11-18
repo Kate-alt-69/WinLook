@@ -34,7 +34,7 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - **WLDM — WinLook Display Manager:** monitor/display discovery, profiles and settings.
 - **WLOSDE — WinLook On-Screen Display Engine:** customizable WinLook notifications, popups and OSD.
 - **wl_animate:** reusable Rust animation crate/API for modern WinLook modules and third-party integrations.
-- **wl_traton:** modern Rust platform-translation layer for versioned Windows Shell/Win32/DWM objects, native event normalization, capability-selected operations and reversible compatibility adapters.
+- **Traton (`wl_traton`):** modern Rust platform-translation layer for versioned Windows Shell/Win32/DWM objects, native event normalization, capability-selected operations and reversible compatibility adapters.
 - **wl_Lanimate:** corresponding legacy C animation library.
 - **WLT — WinLook Template:** portable settings/assets package using the proposed .wl.t archive.
 - **Audio & Media Experience:** global/per-app audio controls plus provider-backed Now Playing; final module name remains open.
@@ -98,11 +98,12 @@ is a safety mechanism, not an optional product mode.
 
 ## Traton — approved architectural direction
 
-`wl_traton` is the planned modern Rust layer for addressing Windows Shell,
-Explorer desktop, taskbar, Win32 application windows and DWM through typed,
-version-aware object paths. It normalizes native events for BGW/WLDE and exposes
-capability-checked, reversible operations. Its full design, XML contract,
-Quirks model and implementation backlog are in
+`wl_traton` is the modern Rust layer for addressing Windows Shell, Explorer
+desktop, taskbar, Win32 application windows and DWM through typed,
+version-aware object paths. Its initial crate and namespace parser are in the
+workspace; native discovery, providers, normalized event sources and reversible
+operations are built incrementally. Its full design, XML contract, Quirks model
+and implementation backlog are in
 [architecture/traton.md](architecture/traton.md).
 
 The canonical namespace follows `windows.<release>.<subsystem>.<object>[.<sub-property>...][(<typed-argument>)]`, for example `windows.10-22h2.shell.taskbar.items.visibility(pinned-shortcut:item-42)`. Dotted suffixes select sub-properties; the optional argument identifies a typed item and is not a property value. Runtime build/UBR and capability checks still gate every resolved target. WLDE-owned taskbar surfaces
