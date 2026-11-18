@@ -8,12 +8,13 @@ The project aims to cover Windows 95 and later, but that ambition is not a relea
 
 ## Project status
 
-**Early implementation; shared libraries, the first WLDE scene core and its initial Wallpaper Store provider hub are in place, alongside the Win10/Win11 Manager UI prototype.**
+**Early implementation; shared libraries (including Traton's initial namespace parser), the first WLDE scene core and its initial Wallpaper Store provider hub are in place, alongside the Win10/Win11 Manager UI prototype.**
 
 This repository is not yet a complete Windows application. It contains the living architecture/compatibility plan, portable shared-library cores, the WLDE scene/policy core and provider metadata in Rust and C, the initial Wallpaper Engine hand-off, and native Manager UI shells. An initial BGW background executable now monitors the Explorer desktop host; startup registration, Manager IPC, the in-process Shell bridge and the remaining OS-specific system integrations are still future work. It does **not** yet contain a complete WinLook Manager, desktop runtime, Explorer integration, installer or supported Windows release.
 
 The shared foundations and first WLDE scene layer use **Windows 10 as the modern implementation baseline**:
 - [`wl_animate`](rust/library/wl_animate/README.md) / [`wl_Lanimate`](C/library/wl_Lanimate/README.md) — paired animation, vector math and shared host-driven frame clocks.
+- [`wl_traton` (Traton)](rust/library/wl_traton/README.md) — versioned Windows object paths and typed item arguments; native discovery/providers/events remain under development.
 - [`wl_cpuv`](rust/library/wl_cpuv/README.md) / [`wl_Lcpuv`](C/library/wl_Lcpuv/README.md) — CPU work admission/accounting.
 - [`wl_gpuv`](rust/library/wl_gpuv/README.md) / [`wl_Lgpuv`](C/library/wl_Lgpuv/README.md) — GPU memory/submission admission.
 - [`wl_wlde`](rust/library/wl_wlde/README.md) / [`wl_Lwlde`](C/library/wl_Lwlde/README.md) — portable Desktop Engine scene policy, monitor topology, placement, visibility scheduling and matching Wallpaper Store provider metadata; Rust also bridges to an existing Wallpaper Engine install.
