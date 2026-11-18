@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-\`wl_traton\` is WinLook's native Windows translation layer. It translates stable, version-aware WinLook intents and object references into the native Windows operations that are actually available on the current machine. It also observes native Windows/Shell state and publishes normalized events so WinLook subsystems can react to real desktop activity.
+`wl_traton` is WinLook's native Windows translation layer. It translates stable, version-aware WinLook intents and object references into the native Windows operations that are actually available on the current machine. It also observes native Windows/Shell state and publishes normalized events so WinLook subsystems can react to real desktop activity.
 
 "Translation" here means **platform/API translation**, not human-language localization.
 
@@ -24,15 +24,15 @@ The goal is broad extensibility across Windows—not a promise that every visual
 
 ## 2. Relationship to the other libraries
 
-- **\`wl_traton\`** discovers Windows targets and capabilities, exposes versioned Shell/window objects, normalizes platform events, translates intents, applies supported native changes and manages reversible state.
-- **\`wl_animate\`** remains the portable motion engine. It owns keyframes, property tracks, timelines, sequences, parallel/staggered playback, event/interaction triggers, cancellation and playback state. It must not contain Win32, DWM or Explorer-specific code.
-- **WLDE** owns the desktop experience and its own rendered surfaces, taskbar-like surfaces, widgets, desktop transitions and presentation policy. It consumes the Windows objects/events supplied by \`wl_traton\` and uses \`wl_animate\` to calculate motion.
+- **`wl_traton`** discovers Windows targets and capabilities, exposes versioned Shell/window objects, normalizes platform events, translates intents, applies supported native changes and manages reversible state.
+- **`wl_animate`** remains the portable motion engine. It owns keyframes, property tracks, timelines, sequences, parallel/staggered playback, event/interaction triggers, cancellation and playback state. It must not contain Win32, DWM or Explorer-specific code.
+- **WLDE** owns the desktop experience and its own rendered surfaces, taskbar-like surfaces, widgets, desktop transitions and presentation policy. It consumes the Windows objects/events supplied by `wl_traton` and uses `wl_animate` to calculate motion.
 - **BGW** owns long-running subsystem lifecycle, event coordination, adapter health, persistence and recovery. Native callbacks must not become a second general-purpose application runtime.
-- **WLWM** remains responsible for its own window-management policy and any separately approved target-specific application integration. \`wl_traton\` can expose supported window objects and capabilities without taking over WLWM's ownership.
+- **WLWM** remains responsible for its own window-management policy and any separately approved target-specific application integration. `wl_traton` can expose supported window objects and capabilities without taking over WLWM's ownership.
 
 The intended event/data flow is:
 
-\`\`\`text
+```text
 Windows USER / Shell / Explorer / DWM
                  |
                  v
@@ -51,9 +51,9 @@ Windows USER / Shell / Explorer / DWM
        sampled property values
                  v
        WLDE / native presenter
-\`\`\`
+```
 
-The libraries should remain independently reusable. A third-party app may use \`wl_animate\` without \`wl_traton\`; a diagnostic or appearance tool may use \`wl_traton\` without starting an animation.
+The libraries should remain independently reusable. A third-party app may use `wl_animate` without `wl_traton`; a diagnostic or appearance tool may use `wl_traton` without starting an animation.
 
 ## 3. Windows target identity and versioned namespaces
 
@@ -70,7 +70,7 @@ A runtime target identity must contain enough information to avoid treating all 
 - Relevant Shell host identity/restart generation.
 - Detected API, renderer and policy capabilities.
 
-The first fixed reference target is Windows 10 22H2, build 19045. The actual UBR must still be read at runtime and included in diagnostics/compatibility matching. A target alias such as \`windows.10\` is a query that resolves to the installed release; it is not permission to run an adapter whose tested build range does not match.
+The first fixed reference target is Windows 10 22H2, build 19045. The actual UBR must still be read at runtime and included in diagnostics/compatibility matching. A target alias such as `windows.10` is a query that resolves to the installed release; it is not permission to run an adapter whose tested build range does not match.
 
 ### 3.2 Namespace and callable path shape
 
@@ -171,7 +171,7 @@ Taskbar presentation is a set of independent properties, not one monolithic "tas
 - Per-monitor layout and DPI scaling.
 - Visibility policy and event-driven visibility rules for each item category.
 
-**Full arbitrary placement belongs first to a WLDE-owned taskbar surface.** The Windows AppBar contract is a documented candidate for an independent edge-anchored bar and work-area negotiation. \`SHAppBarMessage\` supports registration, edge selection, querying and setting an appbar rectangle; Windows can adjust the requested rectangle to avoid the native taskbar and other appbars. It is not a documented promise that WinLook can freely move the stock Explorer taskbar to any arbitrary coordinate. A free-positioned WLDE surface is therefore a separate presentation path, not a claim about the native taskbar.
+**Full arbitrary placement belongs first to a WLDE-owned taskbar surface.** The Windows AppBar contract is a documented candidate for an independent edge-anchored bar and work-area negotiation. `SHAppBarMessage` supports registration, edge selection, querying and setting an appbar rectangle; Windows can adjust the requested rectangle to avoid the native taskbar and other appbars. It is not a documented promise that WinLook can freely move the stock Explorer taskbar to any arbitrary coordinate. A free-positioned WLDE surface is therefore a separate presentation path, not a claim about the native taskbar.
 
 When a WLDE-owned taskbar is active, the policy for the stock Explorer taskbar—coexist, auto-hide, minimize overlap or use a verified build-specific integration—must be explicit. If the requested native operation is unavailable, do not fake success: retain the native taskbar or use the independent WLDE surface with a clear status.
 
@@ -188,7 +188,7 @@ These categories need independent ordering, icon, animation and visibility polic
 
 On Windows 7 and later, the old Quick Launch function is integrated into taskbar buttons; the Windows 10 model should call these **pinned shortcuts**, not pretend that the legacy Quick Launch bar is a distinct native object.
 
-WLDE-owned taskbar surfaces can fully control their own pinned shortcut collection and running-window representation. Manipulating the contents/visibility of the stock Explorer taskbar is only supported where a documented interface or an explicitly verified, reversible build adapter provides that exact operation. Do not infer a universal API from \`ITaskbarList\`, which exposes only its documented taskbar-button operations.
+WLDE-owned taskbar surfaces can fully control their own pinned shortcut collection and running-window representation. Manipulating the contents/visibility of the stock Explorer taskbar is only supported where a documented interface or an explicitly verified, reversible build adapter provides that exact operation. Do not infer a universal API from `ITaskbarList`, which exposes only its documented taskbar-button operations.
 
 ### 4.4 Windows Start button identity
 
@@ -208,7 +208,7 @@ The object catalogue should cover application windows and their supported visual
 
 A high-level request such as "change this window's border" is not a guarantee that Windows permits a third-party process to rewrite every target application's frame. Each provider must declare whether it can safely modify a WinLook-owned HWND, a cooperating application's HWND, or a third-party window through a documented cross-process contract. If the capability is not present, return an explicit unsupported/partial result.
 
-DWM attributes are version-specific. The current Microsoft attribute documentation, for example, lists border/caption color support beginning with Windows 11 build 22000 and system backdrop support beginning with Windows 11 build 22621. These must not be advertised as Windows 10 capabilities. \`DwmExtendFrameIntoClientArea\` is a documented custom-frame technique for an application's own window; it is not a universal third-party application skinning interface.
+DWM attributes are version-specific. The current Microsoft attribute documentation, for example, lists border/caption color support beginning with Windows 11 build 22000 and system backdrop support beginning with Windows 11 build 22621. These must not be advertised as Windows 10 capabilities. `DwmExtendFrameIntoClientArea` is a documented custom-frame technique for an application's own window; it is not a universal third-party application skinning interface.
 
 No operation in this library may replace DWM or assume that DWM exposes arbitrary controls over every application's window. Unsupported third-party custom frames require a target-specific quirk or remain unsupported.
 
@@ -216,7 +216,7 @@ No operation in this library may replace DWM or assume that DWM exposes arbitrar
 
 ### 6.1 Normalized event stream
 
-\`wl_traton\` should convert native observations into stable semantic event envelopes. Candidate event families include:
+`wl_traton` should convert native observations into stable semantic event envelopes. Candidate event families include:
 
 - Shell/Explorer process started, restarted, stopped and health changed.
 - Desktop view and taskbar discovered, created, ready or unavailable.
@@ -259,8 +259,8 @@ not encoded as ad-hoc path arguments.
 
 Candidate documented sources include:
 
-- \`SetWinEventHook\` for selected USER/accessibility window events.
-- \`SHChangeNotifyRegister\` for relevant Shell/filesystem change notifications.
+- `SetWinEventHook` for selected USER/accessibility window events.
+- `SHChangeNotifyRegister` for relevant Shell/filesystem change notifications.
 - Window messages and Shell/COM callbacks for the exact objects that own them.
 - AppBar notifications for position/state changes affecting a registered WLDE AppBar.
 
@@ -270,13 +270,13 @@ Use narrowly selected event ranges and process/thread filters. Do not install a 
 
 ### 6.4 wl_animate trigger contract
 
-The generic trigger model belongs in \`wl_animate\`; Windows event production belongs in \`wl_traton\`. The adapter publishes normalized events, while BGW/WLDE forwards matching event envelopes to the animation controller.
+The generic trigger model belongs in `wl_animate`; Windows event production belongs in `wl_traton`. The adapter publishes normalized events, while BGW/WLDE forwards matching event envelopes to the animation controller.
 
 The intended declarative vocabulary includes:
 
-- \`@keyframe\` — define typed property samples and their timing/easing.
-- \`@event\` — bind a timeline or animation to a semantic event path.
-- \`@interact\` — bind to a typed interaction such as hover, click, focus, drag or activation.
+- `@keyframe` — define typed property samples and their timing/easing.
+- `@event` — bind a timeline or animation to a semantic event path.
+- `@interact` — bind to a typed interaction such as hover, click, focus, drag or activation.
 
 The syntax shown here is conceptual; it is not a committed Rust macro grammar. The public API must also support construction through normal Rust types so a parser is not mandatory.
 
@@ -423,7 +423,7 @@ Read-only operations may be available without a write transaction. Irreversible 
 
 ## 11. Explorer, DWM and security boundaries
 
-- Never patch, replace, binary-modify or redistribute a modified \`explorer.exe\` on disk.
+- Never patch, replace, binary-modify or redistribute a modified `explorer.exe` on disk.
 - Never replace or disable DWM.
 - Windows keeps filesystem, Shell namespace, file-operation, activation and security authority.
 - Do not modify Winlogon, credential UI, authentication controls or secure desktop.
@@ -452,7 +452,7 @@ See [Windows 10 lifecycle](https://learn.microsoft.com/en-us/lifecycle/announcem
 - No busy polling for Shell readiness; combine event subscriptions with bounded, explicit state reconciliation.
 - Coalesce repeated layout/display/Shell notifications and discard stale events from an old Explorer generation.
 - Use bounded queues and explicit overflow policy; never let a Shell callback block waiting for a consumer.
-- Avoid per-frame Shell queries. Resolve native object state on change and let \`wl_animate\` sample cached properties on the shared frame clock.
+- Avoid per-frame Shell queries. Resolve native object state on change and let `wl_animate` sample cached properties on the shared frame clock.
 - Keep native event observation, presentation, animation sampling and rendering costs independently measurable.
 - Pause/resume adapters across session lock/unlock, Explorer restart, monitor changes and resource-pressure states.
 - Respect reduced motion, accessibility, keyboard navigation, UI Automation/accessible names and high-contrast/forced-colour policy.
@@ -464,12 +464,13 @@ The initial crate/parser slice is implemented. The remaining work below covers n
 
 ### Public contract and core model
 
-- [ ] Create the Rust \`wl_traton\` crate in the approved \`rust/library/\` layout and add it to the workspace.
-- [ ] Define \`WindowsTarget\`, release/build/UBR identity, edition, architecture, session and adapter-generation models.
-- [ ] Define canonical namespace parsing, aliases, typed object paths and lifetime-safe object references.
+- [x] Create the Rust `wl_traton` crate in `rust/library/` and add it to the workspace.
+- [x] Implement and test the initial canonical path parser for release selectors, subsystem/object/member paths and one optional typed opaque argument.
+- [ ] Define runtime `WindowsTarget` identity, including release/build/UBR, edition, architecture, session and Shell-host generation.
+- [ ] Resolve parsed paths through aliases and a typed object registry into lifetime-safe object references.
 - [ ] Define the object/property/event/capability registry and structured operation/result/error types.
 - [ ] Define the provider interface and capability negotiation/fallback rules.
-- [ ] Define a generic normalized event envelope that can be consumed by BGW/WLDE and forwarded to \`wl_animate\` without making \`wl_animate\` depend on Windows.
+- [ ] Define a generic normalized event envelope that can be consumed by BGW/WLDE and forwarded to `wl_animate` without making `wl_animate` depend on Windows.
 
 ### Windows 10 native adapters
 
@@ -485,16 +486,16 @@ The initial crate/parser slice is implemented. The remaining work below covers n
 ### Quirks, XML and transaction support
 
 - [ ] Define the Quirks rule schema, matcher, trust model, test metadata and quarantine mechanism.
-- [ ] Define the XML schema/namespace and the exact callable grammar for versioned object/event paths.
-- [ ] Resolve the proposed \`shell.isready(true[])\` notation into a typed query/event contract with parser tests.
+- [ ] Define the XML schema/namespace and compile validated Traton paths into typed operation plans.
+- [ ] Finalize typed readiness-query and event-payload contracts, with parser/registry tests.
 - [ ] Compile XML into a typed AST and validated operation plan; reject script/native-code escape hatches.
 - [ ] Add source-location diagnostics, schema migration, capability-aware validation and Manager-editable metadata.
 - [ ] Connect write-capable providers to the existing restoration journal and compare-before-restore conflict logic.
 
 ### WLDE, wl_animate and verification
 
-- [ ] Define and test the event handoff from \`wl_traton\` through BGW/WLDE to \`wl_animate\`.
-- [ ] Extend \`wl_animate\` with generic \`@keyframe\`, \`@event\` and \`@interact\` concepts, timelines, sequences, parallel groups, staggering and interruption policies.
+- [ ] Define and test the event handoff from `wl_traton` through BGW/WLDE to `wl_animate`.
+- [ ] Extend `wl_animate` with generic `@keyframe`, `@event` and `@interact` concepts, timelines, sequences, parallel groups, staggering and interruption policies.
 - [ ] Implement the Windows-logo/Start-button and taskbar startup choreography as a WLDE-owned presentation example, not a Winlogon/secure-desktop modification.
 - [ ] Add deterministic tests for parser, event ordering, duplicate/coalesced events, stale generations, transaction rollback, user-change conflicts and unknown builds.
 - [ ] Add Windows 10 22H2/build 19045 test coverage and record exact UBR/edition/architecture for every native result.
