@@ -465,7 +465,7 @@ The initial crate/parser slice is implemented. The remaining work below covers n
 ### Public contract and core model
 
 - [x] Create the Rust `wl_traton` crate in `rust/library/` and add it to the workspace.
-- [x] Implement and test the initial canonical path parser for release selectors, subsystem/object/member paths and one optional typed opaque argument.
+- [x] Implement the initial canonical path parser for release selectors, subsystem/object/member paths and one optional typed opaque argument; add focused unit tests (execution remains a CI verification item).
 - [ ] Define runtime `WindowsTarget` identity, including release/build/UBR, edition, architecture, session and Shell-host generation.
 - [ ] Resolve parsed paths through aliases and a typed object registry into lifetime-safe object references.
 - [ ] Define the object/property/event/capability registry and structured operation/result/error types.
