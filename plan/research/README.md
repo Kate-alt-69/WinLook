@@ -8,7 +8,7 @@ This directory stores substantial Windows-integration research so future agents 
 - [research-v9-review.md](research-v9-review.md) — first-pass architecture/example review and official API references.
 - [Root agent instructions](../../AGENTS.md) — required research preflight and example-evaluation guidance.
 
-The original v9 document is preserved as supplied. It contains **250 tactics across 25 categories (A–Y)**, plus architecture diagrams, compatibility notes, Rust/C examples, animation mathematics, XML presets, IPC, watchdog/recovery sketches, and a technical source ledger. Topics span native windows and DWM, UxTheme, Shell/Explorer, desktop and wallpaper surfaces, animation, session/power, DPI/accessibility, taskbars, tiling, AppBars, global input, OSDs, theming, virtual desktops, launchers, hardware monitoring, and compositor effects.
+The original v9 document is preserved as supplied. It uses the former conceptual library name `wl_translation`; the current accepted name is **Traton** (`wl_traton`). Do not create a second crate to match the historical research label. It contains **250 tactics across 25 categories (A–Y)**, plus architecture diagrams, compatibility notes, Rust/C examples, animation mathematics, XML presets, IPC, watchdog/recovery sketches, and a technical source ledger. Topics span native windows and DWM, UxTheme, Shell/Explorer, desktop and wallpaper surfaces, animation, session/power, DPI/accessibility, taskbars, tiling, AppBars, global input, OSDs, theming, virtual desktops, launchers, hardware monitoring, and compositor effects.
 
 ## How agents should use it
 
