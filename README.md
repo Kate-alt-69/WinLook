@@ -76,6 +76,7 @@ Start with these canonical documents:
 - [Compatibility matrix](plan/compatibility/matrix.md) — OS-specific capability baseline.
 - [Compatibility test strategy](plan/compatibility/test-strategy.md) — evidence labels and test requirements.
 - [Technical source ledger](plan/references/SOURCES.md) — primary API/toolchain sources and their limits.
+- [Windows integration research catalogue](plan/research/research-v9.md) — 250 tactics and technical sketches; see the [agent usage guide](plan/research/README.md) before relying on them.
 
 Detailed specifications live in [`plan/architecture/`](plan/architecture/overview.md); per-version research lives in [`plan/compatibility/`](plan/compatibility/README.md).
 

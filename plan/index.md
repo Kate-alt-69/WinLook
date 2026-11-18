@@ -40,6 +40,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Restoration/uninstaller: [architecture/restoration.md](architecture/restoration.md)
 - Compatibility test strategy: [compatibility/test-strategy.md](compatibility/test-strategy.md)
 - Source ledger: [references/SOURCES.md](references/SOURCES.md)
+- Windows integration research catalogue (reference only): [research-v9.md](research/research-v9.md), [agent usage guide](research/README.md), and [first-pass review](research/research-v9-review.md)
 - Durable workspace notes: [workspace.md](workspace.md)
 
 
