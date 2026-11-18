@@ -34,7 +34,7 @@ The ambition is to cover Windows 95 and later generations, but feature availabil
 - **WLDM — WinLook Display Manager:** monitor/display discovery, profiles and settings.
 - **WLOSDE — WinLook On-Screen Display Engine:** customizable WinLook notifications, popups and OSD.
 - **wl_animate:** reusable Rust animation crate/API for modern WinLook modules and third-party integrations.
-- **wl_translation:** modern Rust platform-translation layer for versioned Windows Shell/Win32/DWM objects, native event normalization, capability-selected operations and reversible compatibility adapters.
+- **wl_traton:** modern Rust platform-translation layer for versioned Windows Shell/Win32/DWM objects, native event normalization, capability-selected operations and reversible compatibility adapters.
 - **wl_Lanimate:** corresponding legacy C animation library.
 - **WLT — WinLook Template:** portable settings/assets package using the proposed .wl.t archive.
 - **Audio & Media Experience:** global/per-app audio controls plus provider-backed Now Playing; final module name remains open.
@@ -96,17 +96,16 @@ state. Unknown or incompatible builds retain the native desktop presentation
 and mark only the unavailable WLDE features degraded. This automatic fallback
 is a safety mechanism, not an optional product mode.
 
-## Windows Native Translation — approved architectural direction
+## Traton — approved architectural direction
 
-`wl_translation` is the planned modern Rust layer for addressing Windows Shell,
+`wl_traton` is the planned modern Rust layer for addressing Windows Shell,
 Explorer desktop, taskbar, Win32 application windows and DWM through typed,
 version-aware object paths. It normalizes native events for BGW/WLDE and exposes
 capability-checked, reversible operations. Its full design, XML contract,
 Quirks model and implementation backlog are in
-[architecture/wl-translation.md](architecture/wl-translation.md).
+[architecture/traton.md](architecture/traton.md).
 
-The namespace follows `windows.<release>.<subsystem>.<object>`, with build/UBR
-and capability checks behind each resolved target. WLDE-owned taskbar surfaces
+The canonical namespace follows `windows.<release>.<subsystem>.<object>[.<sub-property>...][(<typed-argument>)]`, for example `windows.10-22h2.shell.taskbar.items.visibility(pinned-shortcut:item-42)`. Dotted suffixes select sub-properties; the optional argument identifies a typed item and is not a property value. Runtime build/UBR and capability checks still gate every resolved target. WLDE-owned taskbar surfaces
 may be positioned independently; the stock Explorer taskbar is not promised
 arbitrary free positioning through a documented API. Pinned shortcut icons and
 running-window buttons are separate object categories with independent
@@ -150,7 +149,8 @@ The intended architecture uses Rust for current Windows 10+ builds and a separat
 - [x] Define Windows version detection as a core responsibility.
 - [x] Design a capability-detection system.
 - [x] Design the per-user BGW background runtime and optional privileged Service.
-- [x] Capture the initial `wl_translation` architecture and its relationship to WLDE, BGW and `wl_animate` in [wl-translation.md](architecture/wl-translation.md).
+- [x] Capture the Traton architecture and its relationship to WLDE, BGW and `wl_animate` in [traton.md](architecture/traton.md).
+- [x] Add the `wl_traton` Rust crate to the workspace with the initial canonical namespace parser and typed item-argument grammar.
 - [ ] Define the shared configuration format and schema.
 - [ ] Implement the versioned Windows object/property/event registry and capability-selected native providers.
 - [ ] Define and implement the declarative XML profile schema/compiler for typed Windows translation paths.
