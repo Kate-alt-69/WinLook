@@ -168,9 +168,7 @@ impl fmt::Display for NamespacePathError {
             Self::InvalidRoot => "namespace path must start with windows",
             Self::MissingTarget => "namespace path is missing its Windows release selector",
             Self::InvalidTarget => "Windows release selector contains invalid characters",
-            Self::MissingObjectPath => {
-                "namespace path must include a subsystem and an object"
-            }
+            Self::MissingObjectPath => "namespace path must include a subsystem and an object",
             Self::EmptyMember => "namespace path contains an empty dotted member",
             Self::InvalidMember => {
                 "namespace members must be lowercase identifiers separated by dots"
@@ -179,16 +177,12 @@ impl fmt::Display for NamespacePathError {
                 "namespace path contains an unexpected closing parenthesis"
             }
             Self::UnclosedArgument => "namespace path has an unclosed argument",
-            Self::NestedArgument => {
-                "namespace path arguments cannot contain nested parentheses"
-            }
+            Self::NestedArgument => "namespace path arguments cannot contain nested parentheses",
             Self::EmptyArgument => "namespace path argument is empty",
             Self::InvalidArgument => {
                 "namespace argument must be a non-empty opaque identifier token"
             }
-            Self::WhitespaceNotAllowed => {
-                "whitespace is not allowed in a canonical namespace path"
-            }
+            Self::WhitespaceNotAllowed => "whitespace is not allowed in a canonical namespace path",
         };
 
         formatter.write_str(message)
@@ -220,9 +214,7 @@ fn split_argument(input: &str) -> Result<(&str, Option<String>), NamespacePathEr
 
             Ok((&input[..open_index], Some(argument.to_owned())))
         }
-        None if input.contains(')') => {
-            Err(NamespacePathError::UnexpectedClosingParenthesis)
-        }
+        None if input.contains(')') => Err(NamespacePathError::UnexpectedClosingParenthesis),
         None => Ok((input, None)),
     }
 }
@@ -245,10 +237,8 @@ fn is_valid_argument(value: &str) -> bool {
     let mut bytes = value.bytes();
 
     matches!(bytes.next(), Some(byte) if byte.is_ascii_alphanumeric())
-        && bytes.all(|byte| {
-            byte.is_ascii_alphanumeric()
-                || matches!(byte, b'-' | b'_' | b'.' | b':')
-        })
+        && bytes
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
 }
 
 #[cfg(test)]
@@ -286,8 +276,7 @@ mod tests {
 
     #[test]
     fn parses_a_surface_property_without_an_item_argument() {
-        let path =
-            NamespacePath::parse("windows.10-22h2.shell.taskbar.surface.anchor").unwrap();
+        let path = NamespacePath::parse("windows.10-22h2.shell.taskbar.surface.anchor").unwrap();
 
         assert_eq!(
             path.sub_properties()
