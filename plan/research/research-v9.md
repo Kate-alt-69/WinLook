@@ -3997,6 +3997,7 @@ HWND Wl_AcquireDesktopCanvasHwnd(void) {
 
     g_workerw_hwnd = NULL;
     EnumWindows(EnumWindowsSeekWorkerW, 0);
+
     /* Fallback to Progman if WorkerW is not spawned (e.g., Windows XP / 2000) */
     if (!g_workerw_hwnd) {
         g_workerw_hwnd = hProgman;
