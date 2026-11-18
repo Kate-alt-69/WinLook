@@ -23,6 +23,7 @@ WinLook is an additive Windows customization platform. It extends the user-facin
 | WLWM | Window policy/layouts/rules/workspaces, compatibility analysis and injection |
 | WLDM | Monitor enumeration, display profiles and configuration |
 | WLOSDE | WinLook notifications, popups and OSD |
+| Traton (`wl_traton`) | Versioned Windows target/object paths, capability-aware providers and normalized native events | 
 | wl_animate | Modern Rust animation crate/API |
 | wl_Lanimate | Legacy C animation library |
 | Accessibility | Reduced motion, contrast, scaling, keyboard support and other accommodations |
