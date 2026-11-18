@@ -14,6 +14,25 @@ Before researching, planning, or implementing Windows-native behaviour—includi
 
 The research catalogue is a starting reference, not a guarantee that every tactic is supported, safe, universally available, or approved for implementation. Do not turn a research candidate into a product requirement without checking the current plan and compatibility record.
 
+## Traton naming and namespace contract
+
+The modern Windows translation layer is named **Traton** and its Rust crate is
+`wl_traton`. The canonical architecture is
+[plan/architecture/traton.md](plan/architecture/traton.md). The unmodified
+research-v9 source uses the former conceptual name `wl_translation`; treat
+those mentions as historical references, not as a second crate or current API.
+
+Canonical paths use:
+
+```text
+windows.<release>.<subsystem>.<object>[.<sub-property>...][(<typed-argument>)]
+```
+
+For example:
+`windows.10-22h2.shell.taskbar.items.visibility(pinned-shortcut:item-42)`.
+Dotted suffixes select members; the optional argument identifies an opaque,
+typed item. It is not a property value, command, raw handle or script.
+
 ## How to evaluate examples
 
 Do not reject an illustrative example merely because it omits production scaffolding, comprehensive error handling, lifecycle management, tests, or a complete integration. First identify what it claims to demonstrate:
