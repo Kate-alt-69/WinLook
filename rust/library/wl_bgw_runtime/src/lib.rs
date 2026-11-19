@@ -31,7 +31,7 @@ use wl_wlde::DesktopItemKind;
 #[cfg(windows)]
 use wl_wlde_win32::{
     enumerate_desktop_items, enumerate_monitors, is_same_desktop_host, monitor_desktop_host,
-    watch_desktop_folders, DesktopFolder, DesktopInventoryItem, DesktopInventoryWatcher,
+    watch_desktop_folders, DesktopFolder, DesktopInventoryItem,
 };
 
 #[cfg(windows)]
@@ -112,7 +112,6 @@ fn verify_current_desktop_host(
     Ok(())
 }
 
-
 #[cfg(windows)]
 fn poll_native_foreground_events(
     pump: Option<&NativeEventPump>,
@@ -128,10 +127,8 @@ fn poll_native_foreground_events(
                 kind: wl_traton::TratonEventKind::WindowActivated,
                 target_selector: target.release_selector().to_owned(),
                 provider_id: "traton.winevent.foreground".to_owned(),
-                monotonic_timestamp_ns: event_clock
-                    .elapsed()
-                    .as_nanos()
-                    .min(u128::from(u64::MAX)) as u64,
+                monotonic_timestamp_ns: event_clock.elapsed().as_nanos().min(u128::from(u64::MAX))
+                    as u64,
                 generation: 1,
                 object: None,
                 payload: wl_traton::TratonEventPayload::None,

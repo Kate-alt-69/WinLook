@@ -5,18 +5,15 @@
 //! an atomic store, which is safe if WinEvent delivery re-enters the callback.
 //! The hook is always removed on the thread that installed it.
 
-use std::fmt;
-
+#[cfg(any(windows, test))]
 const EVENT_SYSTEM_FOREGROUND: u32 = 0x0003;
+#[cfg(any(windows, test))]
 const OBJID_WINDOW: i32 = 0;
+#[cfg(any(windows, test))]
 const CHILDID_SELF: i32 = 0;
 
-fn is_foreground_window_event(
-    event: u32,
-    has_window: bool,
-    object_id: i32,
-    child_id: i32,
-) -> bool {
+#[cfg(any(windows, test))]
+fn is_foreground_window_event(event: u32, has_window: bool, object_id: i32, child_id: i32) -> bool {
     event == EVENT_SYSTEM_FOREGROUND
         && has_window
         && object_id == OBJID_WINDOW
@@ -25,7 +22,8 @@ fn is_foreground_window_event(
 
 #[cfg(windows)]
 mod platform {
-    use super::is_foreground_window_event;
+    use super::{is_foreground_window_event, EVENT_SYSTEM_FOREGROUND};
+    use std::fmt;
     use std::mem::zeroed;
     use std::ptr::{null, null_mut};
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -53,7 +51,7 @@ mod platform {
     static FOREGROUND_CHANGE_PENDING: AtomicBool = AtomicBool::new(false);
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub(super) enum NativeEventPumpError {
+    pub(crate) enum NativeEventPumpError {
         AlreadyRunning,
         StopSignalCreation(u32),
         ThreadSpawn,
@@ -70,9 +68,14 @@ mod platform {
                 Self::StopSignalCreation(code) => {
                     write!(formatter, "CreateEventW failed with Win32 error {code:#x}")
                 }
-                Self::ThreadSpawn => formatter.write_str("the WinEvent pump thread could not start"),
+                Self::ThreadSpawn => {
+                    formatter.write_str("the WinEvent pump thread could not start")
+                }
                 Self::HookRegistration(code) => {
-                    write!(formatter, "SetWinEventHook failed with Win32 error {code:#x}")
+                    write!(
+                        formatter,
+                        "SetWinEventHook failed with Win32 error {code:#x}"
+                    )
                 }
                 Self::StartupChannelClosed => {
                     formatter.write_str("the WinEvent pump exited before reporting startup")
@@ -82,7 +85,7 @@ mod platform {
     }
 
     /// RAII owner for the foreground WinEvent hook and its message-pump thread.
-    pub(super) struct NativeEventPump {
+    pub(crate) struct NativeEventPump {
         stop_signal: HANDLE,
         worker: Option<JoinHandle<()>>,
     }
@@ -172,10 +175,7 @@ mod platform {
         }
     }
 
-    fn pump_thread(
-        stop_signal: usize,
-        startup_sender: mpsc::SyncSender<Result<(), u32>>,
-    ) {
+    fn pump_thread(stop_signal: usize, startup_sender: mpsc::SyncSender<Result<(), u32>>) {
         let stop_signal = stop_signal as HANDLE;
         let mut message: MSG = unsafe { zeroed() };
 
@@ -226,9 +226,8 @@ mod platform {
             }
             if wait_result == WAIT_OBJECT_0 + 1 {
                 loop {
-                    let has_message = unsafe {
-                        PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE)
-                    };
+                    let has_message =
+                        unsafe { PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) };
                     if has_message == 0 {
                         break;
                     }
@@ -270,7 +269,7 @@ mod platform {
 }
 
 #[cfg(windows)]
-pub(super) use platform::{NativeEventPump, NativeEventPumpError};
+pub(super) use platform::NativeEventPump;
 
 #[cfg(test)]
 mod tests {
