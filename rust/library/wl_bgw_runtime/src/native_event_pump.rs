@@ -2,7 +2,7 @@
 //!
 //! The first subscription is deliberately limited to a global foreground-change
 //! signal. The callback never exports or retains HWND/PID data and performs only
-//! an atomic store, which is safe if WinEvent delivery re-enters the callback.
+//! atomic stores, which are safe if WinEvent delivery re-enters the callback.
 //! The hook is always removed on the thread that installed it.
 
 #[cfg(any(windows, test))]
@@ -165,9 +165,11 @@ mod platform {
 
         /// Whether the native message-pump thread is still alive.
         pub(crate) fn is_running(&self) -> bool {
-            self.worker
-                .as_ref()
-                .is_some_and(|worker| !worker.is_finished())
+            !PUMP_FAILED.load(Ordering::Acquire)
+                && self
+                    .worker
+                    .as_ref()
+                    .is_some_and(|worker| !worker.is_finished())
         }
 
         /// Error or wait result recorded when the pump exits unexpectedly.
