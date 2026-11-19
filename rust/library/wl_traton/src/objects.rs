@@ -92,9 +92,16 @@ fn validate_stable_id(value: &str) -> Result<(), ObjectReferenceError> {
     if value.len() > 128 {
         return Err(ObjectReferenceError::IdTooLong);
     }
-    if !value
-        .bytes()
-        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+
+    let bytes = value.as_bytes();
+    let looks_like_hex_handle = bytes.len() > 2
+        && bytes[0] == b'0'
+        && matches!(bytes[1], b'x' | b'X')
+        && bytes[2..].iter().all(u8::is_ascii_hexdigit);
+    if looks_like_hex_handle
+        || !bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
     {
         return Err(ObjectReferenceError::InvalidId);
     }
@@ -141,6 +148,10 @@ mod tests {
     fn rejects_handle_like_or_path_like_identifiers() {
         assert_eq!(
             ObjectReference::parse("window:0x1234"),
+            Err(ObjectReferenceError::InvalidId)
+        );
+        assert_eq!(
+            ObjectReference::parse("window:0XABCDEF"),
             Err(ObjectReferenceError::InvalidId)
         );
         assert_eq!(
