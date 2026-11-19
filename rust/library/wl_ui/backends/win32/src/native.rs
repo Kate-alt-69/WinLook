@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use std::mem::size_of;
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
-use wl_ui_core::{UiApplication, UiColor, UiComponent, UiError, UiPage, UiPalette};
+use wl_ui_core::{UiApplication, UiBranding, UiColor, UiComponent, UiError, UiPage, UiPalette};
 use wl_wlde::{store_provider, StoreProviderId, WallpaperEngineInstall, WallpaperTarget};
 
 type Handle = *mut c_void;
@@ -43,6 +43,13 @@ const CW_USEDEFAULT: i32 = 0x80000000u32 as i32;
 const ERROR_CLASS_ALREADY_EXISTS: u32 = 1410;
 const NAVIGATION_CONTROL_ID: usize = 1001;
 const CONTENT_CONTROL_ID: usize = 1002;
+const BRAND_MARK_CONTROL_ID: usize = 1003;
+const BRAND_TITLE_CONTROL_ID: usize = 1004;
+const BRAND_TAGLINE_CONTROL_ID: usize = 1005;
+const PAGE_TITLE_CONTROL_ID: usize = 1006;
+const PAGE_DESCRIPTION_CONTROL_ID: usize = 1007;
+const SS_CENTER: u32 = 0x00000001;
+const SS_CENTERIMAGE: u32 = 0x00000200;
 const LOCATE_ENGINE_BUTTON_ID: usize = 1101;
 const BROWSE_WALLPAPER_BUTTON_ID: usize = 1102;
 const WORKSHOP_BUTTON_ID: usize = 1103;
@@ -113,13 +120,24 @@ struct WindowState {
     application: UiApplication,
     navigation: Handle,
     content: Handle,
+    brand_mark: Handle,
+    brand_title: Handle,
+    brand_tagline: Handle,
+    page_title: Handle,
+    page_description: Handle,
     window_brush: Handle,
     navigation_brush: Handle,
     content_brush: Handle,
+    brand_brush: Handle,
     font: Handle,
+    brand_font: Handle,
+    heading_font: Handle,
     navigation_color: UiColor,
     content_color: UiColor,
+    brand_color: UiColor,
+    brand_text_color: UiColor,
     text_color: UiColor,
+    secondary_text_color: UiColor,
     action_buttons: [Handle; BUTTON_COUNT],
     wallpaper_engine: Option<WallpaperEngineInstall>,
     display_status: String,
@@ -377,6 +395,44 @@ fn colorref(color: UiColor) -> u32 {
     u32::from(color.red) | (u32::from(color.green) << 8) | (u32::from(color.blue) << 16)
 }
 
+fn brand_control_visibility(branding: Option<&UiBranding>) -> [bool; 3] {
+    let Some(branding) = branding else {
+        return [false; 3];
+    };
+    [
+        !branding.mark_text().is_empty(),
+        true,
+        !branding.tagline_text().is_empty(),
+    ]
+}
+
+fn create_static_label(
+    parent: Handle,
+    instance: Handle,
+    id: usize,
+    label: &str,
+    extra_style: u32,
+) -> Handle {
+    let class_name = wide("STATIC");
+    let title = wide(label);
+    unsafe {
+        CreateWindowExW(
+            0,
+            class_name.as_ptr(),
+            title.as_ptr(),
+            WS_CHILD | WS_VISIBLE | extra_style,
+            0,
+            0,
+            160,
+            28,
+            parent,
+            id as Handle,
+            instance,
+            std::ptr::null_mut(),
+        )
+    }
+}
+
 fn create_action_button(parent: Handle, instance: Handle, id: usize, label: &str) -> Handle {
     let class_name = wide("BUTTON");
     let title = wide(label);
@@ -419,12 +475,7 @@ fn refresh_current_page(state: &WindowState) {
     if selected >= 0 {
         if let Some(page) = state.application.pages().get(selected as usize) {
             unsafe {
-                set_page_content(
-                    state.content,
-                    page,
-                    state.wallpaper_engine.as_ref(),
-                    &state.display_status,
-                );
+                set_page_content(state, page);
             }
             update_action_buttons(state, page);
         }
@@ -558,7 +609,7 @@ fn component_foreground(application: &UiApplication, component: UiComponent) -> 
         .and_then(|rule| rule.style().foreground_color())
 }
 
-fn create_font(application: &UiApplication) -> Handle {
+fn create_font_at(application: &UiApplication, size: f32, weight: u16) -> Handle {
     let typography = application.theme_ref().typography_tokens();
     let family = match typography.font_family.as_str() {
         "system-ui" | "sans-serif" => "Segoe UI",
@@ -568,11 +619,11 @@ fn create_font(application: &UiApplication) -> Handle {
     let face = wide(family);
     unsafe {
         CreateFontW(
-            -(typography.size_md.round() as i32),
+            -(size.round() as i32),
             0,
             0,
             0,
-            typography.weight_regular as i32,
+            weight as i32,
             0,
             0,
             0,
@@ -586,6 +637,11 @@ fn create_font(application: &UiApplication) -> Handle {
     }
 }
 
+fn create_font(application: &UiApplication) -> Handle {
+    let typography = application.theme_ref().typography_tokens();
+    create_font_at(application, typography.size_md, typography.weight_regular)
+}
+
 fn delete_state_resources(state: &WindowState) {
     unsafe {
         if !state.window_brush.is_null() {
@@ -597,8 +653,13 @@ fn delete_state_resources(state: &WindowState) {
         if !state.content_brush.is_null() {
             DeleteObject(state.content_brush);
         }
-        if !state.font.is_null() {
-            DeleteObject(state.font);
+        if !state.brand_brush.is_null() {
+            DeleteObject(state.brand_brush);
+        }
+        for font in [state.font, state.brand_font, state.heading_font] {
+            if !font.is_null() {
+                DeleteObject(font);
+            }
         }
     }
 }
@@ -658,18 +719,49 @@ unsafe extern "system" fn window_proc(
             || message == WM_CTLCOLORSTATIC
             || message == WM_CTLCOLORBTN)
     {
-        let (brush, background) = unsafe {
+        let control = l_param as Handle;
+        let (brush, background, foreground) = unsafe {
             match message {
-                WM_CTLCOLORLISTBOX => ((*state).navigation_brush, (*state).navigation_color),
-                WM_CTLCOLOREDIT | WM_CTLCOLORSTATIC => {
-                    ((*state).content_brush, (*state).content_color)
+                WM_CTLCOLORLISTBOX => (
+                    (*state).navigation_brush,
+                    (*state).navigation_color,
+                    (*state).text_color,
+                ),
+                WM_CTLCOLOREDIT => (
+                    (*state).content_brush,
+                    (*state).content_color,
+                    (*state).text_color,
+                ),
+                WM_CTLCOLORSTATIC if control == (*state).brand_mark => (
+                    (*state).brand_brush,
+                    (*state).brand_color,
+                    (*state).brand_text_color,
+                ),
+                WM_CTLCOLORSTATIC
+                    if control == (*state).brand_tagline
+                        || control == (*state).page_description =>
+                {
+                    (
+                        (*state).content_brush,
+                        (*state).content_color,
+                        (*state).secondary_text_color,
+                    )
                 }
-                _ => ((*state).navigation_brush, (*state).navigation_color),
+                WM_CTLCOLORSTATIC => (
+                    (*state).content_brush,
+                    (*state).content_color,
+                    (*state).text_color,
+                ),
+                _ => (
+                    (*state).navigation_brush,
+                    (*state).navigation_color,
+                    (*state).text_color,
+                ),
             }
         };
         let dc = w_param as Handle;
         unsafe {
-            SetTextColor(dc, colorref((*state).text_color));
+            SetTextColor(dc, colorref(foreground));
             SetBkColor(dc, colorref(background));
             SetBkMode(dc, OPAQUE);
         }
@@ -721,17 +813,48 @@ unsafe extern "system" fn window_proc(
                         | ES_AUTOVSCROLL
                         | ES_READONLY,
                     280,
-                    64,
+                    144,
                     900,
-                    600,
+                    520,
                     hwnd,
                     CONTENT_CONTROL_ID as Handle,
                     instance,
                     std::ptr::null_mut(),
                 )
             };
+            let branding = application.branding_ref();
+            let brand_visibility = brand_control_visibility(branding);
+            let brand_mark_text = branding.map_or("", UiBranding::mark_text);
+            let brand_title_text = branding.map_or("", UiBranding::title);
+            let brand_tagline_text = branding.map_or("", UiBranding::tagline_text);
+            let brand_mark = create_static_label(
+                hwnd,
+                instance,
+                BRAND_MARK_CONTROL_ID,
+                brand_mark_text,
+                SS_CENTER | SS_CENTERIMAGE,
+            );
+            let brand_title =
+                create_static_label(hwnd, instance, BRAND_TITLE_CONTROL_ID, brand_title_text, 0);
+            let brand_tagline = create_static_label(
+                hwnd,
+                instance,
+                BRAND_TAGLINE_CONTROL_ID,
+                brand_tagline_text,
+                0,
+            );
+            let page_title = create_static_label(hwnd, instance, PAGE_TITLE_CONTROL_ID, "", 0);
+            let page_description =
+                create_static_label(hwnd, instance, PAGE_DESCRIPTION_CONTROL_ID, "", 0);
 
-            if navigation.is_null() || content.is_null() {
+            if navigation.is_null()
+                || content.is_null()
+                || brand_mark.is_null()
+                || brand_title.is_null()
+                || brand_tagline.is_null()
+                || page_title.is_null()
+                || page_description.is_null()
+            {
                 return -1;
             }
 
@@ -766,10 +889,33 @@ unsafe extern "system" fn window_proc(
             unsafe {
                 (*state).navigation = navigation;
                 (*state).content = content;
+                (*state).brand_mark = brand_mark;
+                (*state).brand_title = brand_title;
+                (*state).brand_tagline = brand_tagline;
+                (*state).page_title = page_title;
+                (*state).page_description = page_description;
                 (*state).action_buttons = action_buttons;
+                for (control, visible) in [
+                    (brand_mark, brand_visibility[0]),
+                    (brand_title, brand_visibility[1]),
+                    (brand_tagline, brand_visibility[2]),
+                ] {
+                    if !visible {
+                        ShowWindow(control, SW_HIDE);
+                    }
+                }
                 if !(*state).font.is_null() {
                     SendMessageW(navigation, WM_SETFONT, (*state).font as usize, 1);
                     SendMessageW(content, WM_SETFONT, (*state).font as usize, 1);
+                    SendMessageW(brand_tagline, WM_SETFONT, (*state).font as usize, 1);
+                    SendMessageW(page_description, WM_SETFONT, (*state).font as usize, 1);
+                    if !(*state).brand_font.is_null() {
+                        SendMessageW(brand_mark, WM_SETFONT, (*state).brand_font as usize, 1);
+                        SendMessageW(brand_title, WM_SETFONT, (*state).brand_font as usize, 1);
+                    }
+                    if !(*state).heading_font.is_null() {
+                        SendMessageW(page_title, WM_SETFONT, (*state).heading_font as usize, 1);
+                    }
                     for button in (*state).action_buttons.iter() {
                         SendMessageW(*button, WM_SETFONT, (*state).font as usize, 1);
                     }
@@ -794,12 +940,7 @@ unsafe extern "system" fn window_proc(
 
             unsafe {
                 SendMessageW(navigation, LB_SETCURSEL, initial_index, 0);
-                set_page_content(
-                    content,
-                    &application.pages()[initial_index],
-                    (*state).wallpaper_engine.as_ref(),
-                    &(*state).display_status,
-                );
+                set_page_content(&*state, &application.pages()[initial_index]);
                 update_action_buttons(&*state, &application.pages()[initial_index]);
             }
 
@@ -818,6 +959,11 @@ unsafe extern "system" fn window_proc(
                     let height = rect.bottom - rect.top;
                     let navigation_width = 248.min(width.saturating_sub(24));
                     unsafe {
+                        let content_x = navigation_width + 32;
+                        let content_width = width.saturating_sub(navigation_width + 48);
+                        MoveWindow((*state).brand_mark, 16, 12, 40, 40, 1);
+                        MoveWindow((*state).brand_title, 64, 10, 200, 26, 1);
+                        MoveWindow((*state).brand_tagline, 64, 36, 200, 18, 1);
                         MoveWindow(
                             (*state).navigation,
                             16,
@@ -826,16 +972,23 @@ unsafe extern "system" fn window_proc(
                             height.saturating_sub(80),
                             1,
                         );
+                        MoveWindow((*state).page_title, content_x, 64, content_width, 34, 1);
                         MoveWindow(
-                            (*state).content,
-                            navigation_width + 32,
-                            64,
-                            width.saturating_sub(navigation_width + 48),
-                            height.saturating_sub(80),
+                            (*state).page_description,
+                            content_x,
+                            99,
+                            content_width,
+                            34,
                             1,
                         );
-                        let content_x = navigation_width + 32;
-                        let content_width = width.saturating_sub(navigation_width + 48);
+                        MoveWindow(
+                            (*state).content,
+                            content_x,
+                            140,
+                            content_width,
+                            height.saturating_sub(156),
+                            1,
+                        );
                         let action_width = ((content_width.saturating_sub(16)) / 3).max(120);
                         for (index, button) in (*state).action_buttons.iter().enumerate() {
                             MoveWindow(
@@ -864,12 +1017,7 @@ unsafe extern "system" fn window_proc(
                 if selected >= 0 {
                     if let Some(page) = application.pages().get(selected as usize) {
                         unsafe {
-                            set_page_content(
-                                (*state).content,
-                                page,
-                                (*state).wallpaper_engine.as_ref(),
-                                &(*state).display_status,
-                            );
+                            set_page_content(&*state, page);
                             update_action_buttons(&*state, page);
                         }
                     }
@@ -894,13 +1042,16 @@ unsafe extern "system" fn window_proc(
     }
 }
 
-unsafe fn set_page_content(
-    hwnd: Handle,
-    page: &UiPage,
-    engine: Option<&WallpaperEngineInstall>,
-    display_status: &str,
-) {
-    let mut body = format!("{}\r\n\r\n{}", page.title(), page.description());
+unsafe fn set_page_content(state: &WindowState, page: &UiPage) {
+    let title = wide(page.title());
+    let description = wide(page.description());
+    unsafe {
+        SetWindowTextW(state.page_title, title.as_ptr());
+        SetWindowTextW(state.page_description, description.as_ptr());
+    }
+    let mut body = String::new();
+    let engine = state.wallpaper_engine.as_ref();
+    let display_status = state.display_status.as_str();
     match page.id() {
         "home" => body.push_str(
             "\r\n\r\nWINLOOK DESKTOP ENGINE\r\nA unified workspace for wallpapers, displays and desktop modules.\r\n\r\nWLDE modules: Store provider hub, monitor snapshot API and resource-pressure policy are available. Native rendering, decoding and widget execution are still in progress.",
@@ -928,7 +1079,7 @@ unsafe fn set_page_content(
             "\r\n\r\nOpenverse: confirm the item's exact license, creator, source and attribution.\r\nWikimedia Commons: licenses vary by file; follow the file page.\r\nNASA: check third-party notices and credits; NASA endorsement is not implied.",
         ),
         "wallpaper-library" => body.push_str(
-            "\r\n\r\nLOCAL LIBRARY\r\nOffline import, previews, collections and backup are not implemented yet. Use the Store/Wallpaper Engine provider to browse available sources.",
+            "\r\n\r\nYOUR WALLPAPER COLLECTION\r\nA home for wallpapers you choose to keep offline. Local import, previews and collection persistence are not connected yet.\r\n\r\nCOLLECTIONS\r\nGroup wallpapers into named collections and retain source/license details with each item.\r\n\r\nRECENTLY ADDED\r\nThis area will show newly imported items when the local index is connected. No item counts or placeholder files are shown.\r\n\r\nSTORAGE & BACKUP\r\nThe future library store will preserve original media and keep generated thumbnails separate from source files.",
         ),
         "displays" => body.push_str(&format!(
             "\r\n\r\nDISPLAY SNAPSHOT\r\n{}\r\n\r\nA manual snapshot can be refreshed with the button above. Display-change hot-plug events, per-monitor DPI/orientation and wallpaper assignment are still being integrated.",
@@ -957,7 +1108,7 @@ unsafe fn set_page_content(
     }
     let text = wide(&body);
     unsafe {
-        SetWindowTextW(hwnd, text.as_ptr());
+        SetWindowTextW(state.content, text.as_ptr());
     }
 }
 
@@ -1016,13 +1167,32 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
         application: application.clone(),
         navigation: std::ptr::null_mut(),
         content: std::ptr::null_mut(),
+        brand_mark: std::ptr::null_mut(),
+        brand_title: std::ptr::null_mut(),
+        brand_tagline: std::ptr::null_mut(),
+        page_title: std::ptr::null_mut(),
+        page_description: std::ptr::null_mut(),
         window_brush: unsafe { CreateSolidBrush(colorref(window_color)) },
         navigation_brush: unsafe { CreateSolidBrush(colorref(navigation_color)) },
         content_brush: unsafe { CreateSolidBrush(colorref(content_color)) },
+        brand_brush: unsafe { CreateSolidBrush(colorref(palette.accent)) },
         font: create_font(&application),
+        brand_font: create_font_at(
+            &application,
+            application.theme_ref().typography_tokens().size_lg,
+            application.theme_ref().typography_tokens().weight_semibold,
+        ),
+        heading_font: create_font_at(
+            &application,
+            application.theme_ref().typography_tokens().size_xl,
+            application.theme_ref().typography_tokens().weight_semibold,
+        ),
         navigation_color,
         content_color,
+        brand_color: palette.accent,
+        brand_text_color: palette.accent_text,
         text_color,
+        secondary_text_color: palette.text_secondary,
         action_buttons: [std::ptr::null_mut(); BUTTON_COUNT],
         wallpaper_engine: WallpaperEngineInstall::discover(),
         display_status: monitor_snapshot_status(),
@@ -1030,6 +1200,10 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
     if state.window_brush.is_null()
         || state.navigation_brush.is_null()
         || state.content_brush.is_null()
+        || state.brand_brush.is_null()
+        || state.font.is_null()
+        || state.brand_font.is_null()
+        || state.heading_font.is_null()
     {
         delete_state_resources(&state);
         return Err(UiError::Backend(
@@ -1113,5 +1287,32 @@ pub fn run(application: UiApplication) -> Result<(), UiError> {
         Err(error)
     } else {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::brand_control_visibility;
+    use wl_ui_core::UiBranding;
+
+    #[test]
+    fn absent_branding_does_not_render_generic_brand_controls() {
+        assert_eq!(brand_control_visibility(None), [false, false, false]);
+    }
+
+    #[test]
+    fn empty_optional_brand_fields_are_hidden_independently() {
+        assert_eq!(
+            brand_control_visibility(Some(&UiBranding::new("WinLook"))),
+            [false, true, false]
+        );
+        assert_eq!(
+            brand_control_visibility(Some(
+                &UiBranding::new("WinLook")
+                    .mark("WL")
+                    .tagline("Your desktop, your way."),
+            )),
+            [true, true, true]
+        );
     }
 }

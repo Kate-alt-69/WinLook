@@ -17,7 +17,7 @@ The shared application and styling types are imported from the crate root.
 The portable `UiBackend` trait and `run_with_backend` entry point allow
 application-owned renderers on platforms without a built-in adapter.
 `wl_ui::animate` re-exports the portable `wl_animate` engine.
-`UiApplication`, `UiPage`, `UiWindowConfig`, `UiError`, `UiTheme`,
+`UiApplication`, `UiPage`, `UiBranding`, `UiWindowConfig`, `UiError`,
 `UiPalette`, `UiTypography`, `UiMetrics`, `UiEffects`, `UiColor`,
 `UiStyle`, `UiSelector`, `UiStyleSheet` and typed layout/motion values.
 
@@ -40,6 +40,7 @@ src/main.rs:
 
     fn main() -> Result<(), wl_ui::UiError> {
         let app = UiApplication::new("Example")
+            .branding(wl_ui::UiBranding::new("Example").mark("EX").tagline("A sample workspace."))
             .page(UiPage::new("home", "Home", "Application overview"))
             .page(UiPage::new("settings", "Settings", "Application preferences"))
             .initial_page("home");

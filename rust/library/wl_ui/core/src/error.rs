@@ -8,6 +8,7 @@ pub enum UiError {
     NoPages,
     EmptyPageId,
     EmptyPageTitle,
+    InvalidBranding(String),
     DuplicatePageId(String),
     UnknownInitialPage(String),
     InvalidStyle(String),
@@ -22,6 +23,7 @@ impl fmt::Display for UiError {
             Self::NoPages => formatter.write_str("an application must register at least one page"),
             Self::EmptyPageId => formatter.write_str("page IDs cannot be empty"),
             Self::EmptyPageTitle => formatter.write_str("page titles cannot be empty"),
+            Self::InvalidBranding(message) => write!(formatter, "invalid UI branding: {message}"),
             Self::DuplicatePageId(id) => write!(formatter, "duplicate page ID: {id}"),
             Self::UnknownInitialPage(id) => {
                 write!(formatter, "initial page ID does not exist: {id}")
