@@ -12,9 +12,7 @@ use windows_sys::Win32::System::Threading::{
     GetCurrentProcess, GetCurrentProcessId, IsWow64Process2, ProcessIdToSessionId,
 };
 
-use crate::target::{
-    Architecture, TargetDetectionError, WindowsTargetInfo,
-};
+use crate::target::{Architecture, TargetDetectionError, WindowsTargetInfo};
 
 const ERROR_SUCCESS: u32 = 0;
 const ERROR_FILE_NOT_FOUND: u32 = 2;
@@ -57,14 +55,16 @@ pub(super) fn detect_target_info() -> Result<WindowsTargetInfo, TargetDetectionE
 
     let build_text = query_string(key.0, "CurrentBuildNumber")?
         .or(query_string(key.0, "CurrentBuild")?)
-        .ok_or(TargetDetectionError::MissingRegistryValue("CurrentBuildNumber"))?;
+        .ok_or(TargetDetectionError::MissingRegistryValue(
+            "CurrentBuildNumber",
+        ))?;
     let build_number = build_text
         .trim()
         .parse::<u32>()
         .map_err(|_| TargetDetectionError::InvalidRegistryValue("CurrentBuildNumber"))?;
 
-    let display_version = query_string(key.0, "DisplayVersion")?
-        .or(query_string(key.0, "ReleaseId")?);
+    let display_version =
+        query_string(key.0, "DisplayVersion")?.or(query_string(key.0, "ReleaseId")?);
     let product_name = query_string(key.0, "ProductName")?;
     let edition = query_string(key.0, "EditionID")?;
     let installation_type = query_string(key.0, "InstallationType")?;
@@ -73,13 +73,8 @@ pub(super) fn detect_target_info() -> Result<WindowsTargetInfo, TargetDetectionE
     let current_process = unsafe { GetCurrentProcess() };
     let mut process_machine = IMAGE_FILE_MACHINE_UNKNOWN;
     let mut native_machine = IMAGE_FILE_MACHINE_UNKNOWN;
-    let detected = unsafe {
-        IsWow64Process2(
-            current_process,
-            &mut process_machine,
-            &mut native_machine,
-        )
-    };
+    let detected =
+        unsafe { IsWow64Process2(current_process, &mut process_machine, &mut native_machine) };
     if detected == 0 {
         return Err(TargetDetectionError::NativeCallFailed(
             "IsWow64Process2",
@@ -88,13 +83,12 @@ pub(super) fn detect_target_info() -> Result<WindowsTargetInfo, TargetDetectionE
     }
 
     let system_architecture = Architecture::from_image_machine(native_machine);
-    let process_architecture = Architecture::from_image_machine(if process_machine
-        == IMAGE_FILE_MACHINE_UNKNOWN
-    {
-        native_machine
-    } else {
-        process_machine
-    });
+    let process_architecture =
+        Architecture::from_image_machine(if process_machine == IMAGE_FILE_MACHINE_UNKNOWN {
+            native_machine
+        } else {
+            process_machine
+        });
 
     let process_id = unsafe { GetCurrentProcessId() };
     let mut session_id = 0u32;

@@ -262,7 +262,9 @@ impl std::error::Error for TargetDetectionError {}
 
 #[cfg(test)]
 mod tests {
-    use super::{Architecture, TargetDetectionError, WindowsFamily, WindowsTarget, WindowsTargetInfo};
+    use super::{
+        Architecture, TargetDetectionError, WindowsFamily, WindowsTarget, WindowsTargetInfo,
+    };
 
     fn info(build: u32, display_version: &str) -> WindowsTargetInfo {
         WindowsTargetInfo {
