@@ -39,7 +39,6 @@ pub use target::{
 };
 pub use taskbar::{
     TaskbarDiscoveryError, TaskbarRect, TaskbarSnapshot, TaskbarWindow, TaskbarWindowRole,
-    Win10_22H2TaskbarDiscoveryProvider, MAX_TASKBAR_WINDOWS,
-    TASKBAR_WINDOW_COUNT_MEMBER, TASKBAR_WINDOW_DISCOVERY_CAPABILITY_ID,
-    TASKBAR_WINDOW_DISCOVERY_PROVIDER_ID,
+    Win10_22H2TaskbarDiscoveryProvider, MAX_TASKBAR_WINDOWS, TASKBAR_WINDOW_COUNT_MEMBER,
+    TASKBAR_WINDOW_DISCOVERY_CAPABILITY_ID, TASKBAR_WINDOW_DISCOVERY_PROVIDER_ID,
 };

@@ -260,9 +260,7 @@ impl ObjectRegistry {
                 ownership: ObjectOwnership::Windows,
                 minimum_build: Some(19_045),
                 maximum_build: Some(19_045),
-                provider_ids: vec![
-                    crate::taskbar::TASKBAR_WINDOW_DISCOVERY_PROVIDER_ID.to_owned(),
-                ],
+                provider_ids: vec![crate::taskbar::TASKBAR_WINDOW_DISCOVERY_PROVIDER_ID.to_owned()],
                 experimental: false,
             })
             .expect("static member");

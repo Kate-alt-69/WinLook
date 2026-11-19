@@ -209,7 +209,6 @@ fn query_dword(key: HKEY, name: &'static str) -> Result<Option<u32>, TargetDetec
     Ok(Some(value))
 }
 
-
 const PRIMARY_TASKBAR_CLASS: &str = "Shell_TrayWnd";
 const SECONDARY_TASKBAR_CLASS: &str = "Shell_SecondaryTrayWnd";
 

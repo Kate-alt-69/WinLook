@@ -3,9 +3,7 @@
 use std::fmt;
 
 use crate::capability::CapabilityStatus;
-use crate::provider::{
-    ProviderDescriptor, ProviderError, ProviderKind, TranslationProvider,
-};
+use crate::provider::{ProviderDescriptor, ProviderError, ProviderKind, TranslationProvider};
 use crate::registry::{ObjectOwnership, OperationAction, PropertyValue, ValidatedOperation};
 use crate::target::{WindowsFamily, WindowsTarget};
 
@@ -266,19 +264,19 @@ impl TranslationProvider for Win10_22H2TaskbarDiscoveryProvider {
             return Err(ProviderError::Unsupported);
         }
 
-        let snapshot = self.discover_snapshot().map_err(|error| ProviderError::Failed {
-            code: "TRATON_TASKBAR_DISCOVERY".to_owned(),
-            message: error.to_string(),
-        })?;
+        let snapshot = self
+            .discover_snapshot()
+            .map_err(|error| ProviderError::Failed {
+                code: "TRATON_TASKBAR_DISCOVERY".to_owned(),
+                message: error.to_string(),
+            })?;
         Ok(PropertyValue::Integer(snapshot.windows().len() as i64))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        TaskbarDiscoveryError, TaskbarSnapshot, Win10_22H2TaskbarDiscoveryProvider,
-    };
+    use super::{TaskbarDiscoveryError, TaskbarSnapshot, Win10_22H2TaskbarDiscoveryProvider};
     use crate::provider::ProviderKind;
     use crate::registry::OperationAction;
     use crate::target::{Architecture, WindowsTarget, WindowsTargetInfo};

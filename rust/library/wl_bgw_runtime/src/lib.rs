@@ -210,7 +210,10 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                         .map_err(|error| error.to_string())?
                     {
                         wl_traton::PropertyValue::Integer(count) => Ok(count),
-                        _ => Err("Traton taskbar provider returned an unexpected value type".to_owned()),
+                        _ => {
+                            Err("Traton taskbar provider returned an unexpected value type"
+                                .to_owned())
+                        }
                     }
                 })();
                 match discovery_result {
