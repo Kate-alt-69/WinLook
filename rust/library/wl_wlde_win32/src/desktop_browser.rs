@@ -70,7 +70,7 @@ impl DesktopBrowserWindow {
     pub unsafe fn from_raw(handle: *mut c_void) -> Result<Self, DesktopBrowserError> {
         #[cfg(windows)]
         {
-            unsafe { platform::validate_parent_window(handle) }
+            platform::validate_parent_window(handle)
         }
         #[cfg(not(windows))]
         {
@@ -181,19 +181,31 @@ impl fmt::Display for DesktopBrowserError {
                 write!(f, "ExplorerBrowser STA initialization failed with HRESULT {code:#x}")
             }
             Self::BrowserActivation(code) => {
-                write!(f, "CoCreateInstance(CLSID_ExplorerBrowser) failed with HRESULT {code:#x}")
+                write!(
+                    f,
+                    "CoCreateInstance(CLSID_ExplorerBrowser) failed with HRESULT {code:#x}"
+                )
             }
             Self::BrowserInitialize(code) => {
-                write!(f, "IExplorerBrowser::Initialize failed with HRESULT {code:#x}")
+                write!(
+                    f,
+                    "IExplorerBrowser::Initialize failed with HRESULT {code:#x}"
+                )
             }
             Self::DesktopFolderLocation(code) => {
-                write!(f, "SHGetFolderLocation(CSIDL_DESKTOP) failed with HRESULT {code:#x}")
+                write!(
+                    f,
+                    "SHGetFolderLocation(CSIDL_DESKTOP) failed with HRESULT {code:#x}"
+                )
             }
             Self::UnexpectedNull(operation) => {
                 write!(f, "{operation} returned success with a null output pointer")
             }
             Self::BrowseToDesktop(code) => {
-                write!(f, "IExplorerBrowser::BrowseToIDList(Desktop) failed with HRESULT {code:#x}")
+                write!(
+                    f,
+                    "IExplorerBrowser::BrowseToIDList(Desktop) failed with HRESULT {code:#x}"
+                )
             }
             Self::GetCurrentView(code) => {
                 write!(f, "IExplorerBrowser::GetCurrentView(IID_IFolderView) failed with HRESULT {code:#x}")
@@ -207,18 +219,16 @@ impl fmt::Display for DesktopBrowserError {
             Self::ViewWindowNotOwned => {
                 f.write_str("the ExplorerBrowser view HWND is not owned by this process")
             }
-            Self::ViewWindowOutsideParent => {
-                f.write_str("the ExplorerBrowser view HWND is not a child of the supplied WinLook host")
-            }
+            Self::ViewWindowOutsideParent => f.write_str(
+                "the ExplorerBrowser view HWND is not a child of the supplied WinLook host",
+            ),
             Self::SetRect(code) => {
                 write!(f, "IExplorerBrowser::SetRect failed with HRESULT {code:#x}")
             }
             Self::ItemCount(code) => {
                 write!(f, "IFolderView::ItemCount failed with HRESULT {code:#x}")
             }
-            Self::InvalidItemCount => {
-                f.write_str("IFolderView returned a negative item count")
-            }
+            Self::InvalidItemCount => f.write_str("IFolderView returned a negative item count"),
             Self::TooManyItems(count) => {
                 write!(f, "Shell view item count {count} exceeds the fixed limit of {MAX_DESKTOP_BROWSER_ITEMS}")
             }
@@ -232,11 +242,14 @@ impl fmt::Display for DesktopBrowserError {
                 f.write_str("IEnumIDList returned an invalid fetched count or null PIDL")
             }
             Self::UnstableItemCount { before, after } => {
-                write!(f, "Shell view item count changed during snapshot ({before} to {after})")
+                write!(
+                    f,
+                    "Shell view item count changed during snapshot ({before} to {after})"
+                )
             }
-            Self::ViewChangedDuringSnapshot => {
-                f.write_str("ExplorerBrowser replaced its view while a snapshot was being enumerated")
-            }
+            Self::ViewChangedDuringSnapshot => f.write_str(
+                "ExplorerBrowser replaced its view while a snapshot was being enumerated",
+            ),
             Self::ViewGenerationOverflow => {
                 f.write_str("ExplorerBrowser view generation counter overflowed")
             }
@@ -312,7 +325,7 @@ impl OwnedDesktopBrowser {
     pub fn view_generation(&self) -> u64 {
         #[cfg(windows)]
         {
-            self.inner.view_generation
+            self.inner.view_generation()
         }
         #[cfg(not(windows))]
         {
@@ -422,6 +435,7 @@ mod platform {
 
     type QueryInterfaceFn = unsafe extern "system" fn(Handle, *const Guid, *mut Handle) -> HResult;
     type ReleaseFn = unsafe extern "system" fn(Handle) -> u32;
+    type DestroyFn = unsafe extern "system" fn(Handle) -> HResult;
 
     unsafe fn vtable_method<T: Copy>(object: Handle, index: usize) -> T {
         let vtable = unsafe { (*object.cast::<ComObject>()).vtable };
@@ -432,7 +446,10 @@ mod platform {
     struct OwnedComPtr(NonNull<c_void>);
 
     impl OwnedComPtr {
-        unsafe fn from_raw(raw: Handle, operation: &'static str) -> Result<Self, DesktopBrowserError> {
+        unsafe fn from_raw(
+            raw: Handle,
+            operation: &'static str,
+        ) -> Result<Self, DesktopBrowserError> {
             NonNull::new(raw)
                 .map(Self)
                 .ok_or(DesktopBrowserError::UnexpectedNull(operation))
@@ -474,9 +491,7 @@ mod platform {
 
     impl ComApartment {
         fn initialize() -> Result<Self, DesktopBrowserError> {
-            let result = unsafe {
-                CoInitializeEx(ptr::null_mut(), COINIT_APARTMENTTHREADED)
-            };
+            let result = unsafe { CoInitializeEx(ptr::null_mut(), COINIT_APARTMENTTHREADED) };
             if result < 0 {
                 Err(DesktopBrowserError::ComInitialization(result))
             } else {
@@ -677,6 +692,10 @@ mod platform {
             Ok(owned)
         }
 
+        pub(super) fn view_generation(&self) -> u64 {
+            self.view_generation
+        }
+
         pub(super) fn resize(
             &mut self,
             bounds: DesktopBrowserBounds,
@@ -742,11 +761,9 @@ mod platform {
                         after: enumeration_index,
                     });
                 }
-                let pidl = unsafe {
-                    OwnedPidl(
-                        NonNull::new(raw_pidl).ok_or(DesktopBrowserError::EnumeratorContract)?,
-                    )
-                };
+                let pidl = OwnedPidl(
+                    NonNull::new(raw_pidl).ok_or(DesktopBrowserError::EnumeratorContract)?,
+                );
 
                 let mut point = Point { x: 0, y: 0 };
                 let position_result =
@@ -820,7 +837,6 @@ mod platform {
             if !self.initialized {
                 return Ok(());
             }
-            type DestroyFn = unsafe extern "system" fn(Handle) -> HResult;
             let destroy = unsafe { vtable_method::<DestroyFn>(self.browser.as_raw(), 4) };
             let result = unsafe { destroy(self.browser.as_raw()) };
             self.initialized = false;
