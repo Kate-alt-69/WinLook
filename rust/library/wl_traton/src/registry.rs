@@ -437,9 +437,9 @@ impl std::error::Error for RegistryError {}
 fn validate_segment(value: &str) -> Result<(), RegistryError> {
     if value.is_empty()
         || !value.as_bytes()[0].is_ascii_lowercase()
-        || !value
-            .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-' || byte == b'_')
+        || !value.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-' || byte == b'_'
+        })
     {
         return Err(RegistryError::InvalidObjectSegment);
     }
@@ -460,9 +460,7 @@ fn validate_identifier(value: &str) -> Result<(), ()> {
     if value.is_empty()
         || value.len() > 128
         || !value.bytes().all(|byte| {
-            byte.is_ascii_lowercase()
-                || byte.is_ascii_digit()
-                || matches!(byte, b'.' | b'-' | b'_')
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'-' | b'_')
         })
     {
         return Err(());
@@ -542,8 +540,7 @@ mod tests {
     #[test]
     fn unknown_or_other_release_selectors_do_not_resolve() {
         let registry = ObjectRegistry::standard();
-        let path =
-            NamespacePath::parse("windows.11.shell.taskbar.surface.anchor").unwrap();
+        let path = NamespacePath::parse("windows.11.shell.taskbar.surface.anchor").unwrap();
         assert_eq!(
             registry.validate(
                 &path,

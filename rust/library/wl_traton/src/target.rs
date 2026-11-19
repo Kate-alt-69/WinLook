@@ -224,7 +224,9 @@ fn normalise_release_token(value: Option<&str>) -> Option<String> {
     if token.is_empty()
         || !token.as_bytes()[0].is_ascii_digit()
         || token.len() > 24
-        || !token.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
+        || !token
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
     {
         return None;
     }
@@ -247,13 +249,33 @@ pub enum TargetDetectionError {
 impl fmt::Display for TargetDetectionError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnsupportedPlatform => formatter.write_str("Windows target detection is only available on Windows"),
-            Self::UnsupportedBuild(build) => write!(formatter, "Windows build {build} is below the Windows 10 version 1709 target-probe baseline"),
-            Self::RegistryOpenFailed(code) => write!(formatter, "could not open the read-only Windows version registry key (error {code})"),
-            Self::RegistryQueryFailed(name, code) => write!(formatter, "could not read Windows registry value {name} (error {code})"),
-            Self::MissingRegistryValue(name) => write!(formatter, "required Windows registry value {name} is missing"),
-            Self::InvalidRegistryValue(name) => write!(formatter, "Windows registry value {name} has an unexpected type or value"),
-            Self::NativeCallFailed(name, code) => write!(formatter, "{name} failed while detecting the current Windows target (error {code})"),
+            Self::UnsupportedPlatform => {
+                formatter.write_str("Windows target detection is only available on Windows")
+            }
+            Self::UnsupportedBuild(build) => write!(
+                formatter,
+                "Windows build {build} is below the Windows 10 version 1709 target-probe baseline"
+            ),
+            Self::RegistryOpenFailed(code) => write!(
+                formatter,
+                "could not open the read-only Windows version registry key (error {code})"
+            ),
+            Self::RegistryQueryFailed(name, code) => write!(
+                formatter,
+                "could not read Windows registry value {name} (error {code})"
+            ),
+            Self::MissingRegistryValue(name) => write!(
+                formatter,
+                "required Windows registry value {name} is missing"
+            ),
+            Self::InvalidRegistryValue(name) => write!(
+                formatter,
+                "Windows registry value {name} has an unexpected type or value"
+            ),
+            Self::NativeCallFailed(name, code) => write!(
+                formatter,
+                "{name} failed while detecting the current Windows target (error {code})"
+            ),
         }
     }
 }
