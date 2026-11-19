@@ -195,6 +195,9 @@ Public API families:
 - `discover_desktop_host`, `monitor_desktop_host`,
   `is_same_desktop_host`, `DesktopHostIdentity` and the process-monitor
   contract.
+- `DesktopBrowserWindow`, `OwnedDesktopBrowser`, `DesktopBrowserSnapshot`,
+  `DesktopBrowserItemPosition`, `DesktopBrowserBounds` and the bounded owned
+  ExplorerBrowser Shell-view host.
 - `extract_desktop_shell_icon`, `DesktopShellIcon`,
   `rasterize_desktop_shell_icon_rgba` and the RGBA/icon-size/error types.
 
@@ -216,3 +219,15 @@ Non-Windows builds retain pure helper tests and return explicit
 `cargo test -p wl_wlde_win32`; the actual Win32 monitor, inventory, host
 monitor and HICON smoke checks require Windows CI. See the [shared library
 catalog](../README.md) for dependency selection and the repository-wide gate.
+
+## Plan B: WinLook-owned Shell desktop view
+
+The Plan B adapter hosts the virtual Desktop namespace through the documented ExplorerBrowser control instead of acquiring Explorer's live desktop view with IShellWindows. The caller must create a native parent window in the WinLook process and on the current STA thread, then wrap that HWND with the unsafe DesktopBrowserWindow::from_raw constructor. The adapter verifies the HWND owner process and thread before creating ExplorerBrowser.
+
+OwnedDesktopBrowser initializes IExplorerBrowser, browses to the Desktop namespace root, and retrieves its own IFolderView through GetCurrentView. Each snapshot reacquires that view, enumerates at most 4,096 entries, records the per-view enumeration ordinal and GetItemPosition coordinates, then checks the count and view identity again. COM pointers and PIDLs remain private to the adapter and are released on the creating STA thread.
+
+The returned ordinals are transient snapshot positions, not Shell item IDs. The coordinates are relative to the ExplorerBrowser view client area, not absolute screen or monitor coordinates. GetItemPosition failures are retained per item instead of fabricating a coordinate. A monotonically increasing view generation changes when the IFolderView identity or view HWND changes.
+
+This is the owned-view acquisition layer only. It does not create the parent window, position it behind the native desktop, hide the existing Explorer desktop, suppress native icons, modify Shell state or enable Groups. The parent window must outlive OwnedDesktopBrowser and the browser must be created, used, resized and dropped on the same STA thread. Native icon replacement remains blocked by the separate durable restoration, adapter ownership and fault-injection gates.
+
+Microsoft documents IExplorerBrowser as an application-hosted Shell browser whose view can be retrieved with GetCurrentView. Initialize requires the caller to invoke Destroy to release its windowed resources. See [the Plan B architecture](../../../plan/architecture/desktop-browser-hosting.md) and the [source ledger](../../../plan/references/SOURCES.md) for the API scope and remaining gates.

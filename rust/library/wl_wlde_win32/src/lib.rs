@@ -10,8 +10,13 @@ use std::time::Duration;
 
 use wl_wlde::{MonitorTopology, TopologyError};
 
+mod desktop_browser;
 mod desktop_inventory;
 mod desktop_shell_icon;
+pub use desktop_browser::{
+    DesktopBrowserBounds, DesktopBrowserError, DesktopBrowserItemPosition, DesktopBrowserPoint,
+    DesktopBrowserSnapshot, DesktopBrowserWindow, OwnedDesktopBrowser, MAX_DESKTOP_BROWSER_ITEMS,
+};
 pub use desktop_inventory::{
     enumerate_desktop_items, watch_desktop_folders, DesktopFolder, DesktopInventoryError,
     DesktopInventoryItem, DesktopInventoryWatcher, DesktopItemIdentityStability,

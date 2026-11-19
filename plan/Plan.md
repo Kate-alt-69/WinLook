@@ -96,6 +96,13 @@ state. Unknown or incompatible builds retain the native desktop presentation
 and mark only the unavailable WLDE features degraded. This automatic fallback
 is a safety mechanism, not an optional product mode.
 
+### WLDE Plan B — WinLook-owned Shell view hosting
+
+The current Plan B acquisition route hosts the documented IExplorerBrowser control inside a native parent HWND owned by WinLook. WLDE requests the control's own IFolderView through IExplorerBrowser::GetCurrentView rather than acquiring Explorer's live desktop view with IShellWindows. This gives WLDE an independently owned Shell view without cross-process subclassing or Explorer injection. The Shell continues to own namespace enumeration, activation, filesystem operations and security.
+
+The first adapter stage requires a WinLook-created parent HWND on the same STA thread as the COM control. It performs bounded read-only enumeration and returns only transient ordinals plus view-relative item positions. It does not yet create the parent host window, place a surface behind the native desktop, hide Explorer icons, replace the native desktop or enable Groups. GetItemPosition coordinates must not be interpreted as virtual-screen or monitor-relative positions; stable item identity and explicit coordinate conversion remain separate work.
+
+This route supersedes live-Explorer IShellWindows::FindWindowSW / IFolderView acquisition as the primary path for WLDE-owned view presentation. The required Desktop Bridge and BGW recovery responsibilities remain. M3 durable journaling, M4 adapter ownership proof and M6 crash/fault-injection acceptance still gate any native icon suppression or Shell mutation. See architecture/desktop-browser-hosting.md.
 ## Traton — approved architectural direction
 
 `wl_traton` is the modern Rust layer for addressing Windows Shell, Explorer

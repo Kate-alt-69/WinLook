@@ -604,3 +604,13 @@ notification before waiting again.
   adapter, resource and opaque before/desired/ownership inputs for
   `DesktopRestoreLedger::begin()`. The ledger no longer exposes a seven-argument
   begin call; public exports and copyable README examples were updated.
+
+## WLDE Plan B — WinLook-owned ExplorerBrowser host — 2026-11-19
+
+- Replaced the live-Explorer IShellWindows::FindWindowSW(SWC_DESKTOP) acquisition route as the primary WLDE view-host direction with a documented IExplorerBrowser control embedded in a WinLook-owned native parent HWND.
+- Added rust/library/wl_wlde_win32/src/desktop_browser.rs: same-process/same-thread parent HWND validation; STA COM lifetime; ExplorerBrowser initialization and Desktop-root navigation; owned IFolderView acquisition; a 4,096-item-bounded read-only enumeration; transient per-snapshot ordinals; GetItemPosition points; count/enumerator stability checks; and view-generation changes when canonical IUnknown identity or child view HWND changes.
+- The adapter returns no PIDLs, COM pointers, HWNDs, source paths or stable item IDs. GetItemPosition coordinates are in the folder view's coordinate space, not virtual-screen/monitor coordinates. Enumeration ordinals are transient and must never be persisted.
+- The current adapter consumes a parent HWND supplied by its caller; creating/hosting that HWND in BGW and integrating its message pump remain outstanding. The adapter does not hide the stock desktop, replace native icons, create Group tiles, or mutate Shell state.
+- M1 advances only for the owned view's bounded count/enumeration/position snapshot. Stable Shell item identity, selection, ordering semantics and interactive behavior still need validation. M2 advances only for per-snapshot view reacquisition and identity/HWND generation tracking; event-driven invalidation and bounded recovery from a blocked STA call remain outstanding.
+- M3 remains partial: the portable journal codec exists, but the durable BGW writer, security descriptor/ACL validation, locking, append/FlushFileBuffers boundaries and startup recovery are not implemented. M4 adapter ownership proof and M6 fault-injection tests remain required before native Shell changes.
+- Microsoft API sources WLDE-040–044 are recorded in plan/references/SOURCES.md. Hosted CI and an interactive Windows ExplorerBrowser smoke test are pending for this implementation checkpoint.

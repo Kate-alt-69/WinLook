@@ -33,6 +33,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - Vector animation and SVG contract: [architecture/vector-animation.md](architecture/vector-animation.md)
 - CPUv/GPUv resource-governor architecture: [architecture/resource-governors.md](architecture/resource-governors.md)
 - WLDE: [architecture/wlde.md](architecture/wlde.md)
+- WLDE Plan B — WinLook-owned ExplorerBrowser view host: [architecture/desktop-browser-hosting.md](architecture/desktop-browser-hosting.md)
 - WLT: [architecture/wlt.md](architecture/wlt.md)
 - WLOSDE / WLDM: [architecture/wlosde-wldm.md](architecture/wlosde-wldm.md)
 - Standby/session security: [architecture/standby-security.md](architecture/standby-security.md)
@@ -58,6 +59,7 @@ Read this index first when resuming work, then open only the relevant sections/f
 - C: [`wl_Lanimate`](../C/library/wl_Lanimate/README.md), [`wl_Lcpuv`](../C/library/wl_Lcpuv/README.md), [`wl_Lgpuv`](../C/library/wl_Lgpuv/README.md), [`wl_Lwlde`](../C/library/wl_Lwlde/README.md), and legacy Win32 [`wl_Lui`](../C/library/wl_Lui/README.md).
 - UI backend paths: `wl_ui::windows10`, `wl_ui::windows11`, `wl_ui::tauri2`, and experimental `wl_ui::windows7` / `windows8` / `windows81`.
 - Vector/SVG contract: [Vector Animation](architecture/vector-animation.md).
+- Plan B owned Shell-view host, bounded IFolderView snapshots and transient coordinate semantics: [desktop-browser-hosting.md](architecture/desktop-browser-hosting.md), [wl_wlde_win32 adapter](../rust/library/wl_wlde_win32/README.md) and [source ledger](references/SOURCES.md).
 - Desktop inventory, filesystem identity/rename semantics and Explorer bridge constraints: [WLDE architecture](architecture/wlde.md), [Explorer customization](architecture/explorer-customization.md), and [wl_wlde_win32 adapter](../rust/library/wl_wlde_win32/README.md).
 - Read-only Shell icon acquisition, bounded black/white-probe RGBA rasterization, GDI synchronization and ownership/alpha rules: [wl_wlde_win32 adapter](../rust/library/wl_wlde_win32/README.md), [WLDE architecture](architecture/wlde.md) and [source ledger](references/SOURCES.md).
 - BGW memory-only Shell icon worker, STA COM message pump and bounded LRU cache: [BGW runtime](../rust/library/wl_bgw_runtime/README.md), [WLDE architecture](architecture/wlde.md) and [source ledger](references/SOURCES.md).
