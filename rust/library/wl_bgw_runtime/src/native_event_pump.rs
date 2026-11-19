@@ -26,10 +26,11 @@ mod platform {
     use std::fmt;
     use std::mem::zeroed;
     use std::ptr::{null, null_mut};
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
     use std::sync::mpsc;
     use std::thread::{self, JoinHandle};
 
+    use wl_wlde_win32::{DesktopInventoryError, DesktopInventoryWakeSignal};
     use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, HWND};
     use windows_sys::Win32::System::Threading::{CreateEventW, SetEvent};
     use windows_sys::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
@@ -46,7 +47,10 @@ mod platform {
     const INFINITE: u32 = u32::MAX;
 
     static PUMP_ACTIVE: AtomicBool = AtomicBool::new(false);
+    static PUMP_FAILED: AtomicBool = AtomicBool::new(false);
+    static PUMP_FAILURE_CODE: AtomicU32 = AtomicU32::new(0);
     static FOREGROUND_CHANGE_PENDING: AtomicBool = AtomicBool::new(false);
+    static FOREGROUND_WAKE_PENDING: AtomicBool = AtomicBool::new(false);
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub(crate) enum NativeEventPumpError {
@@ -89,7 +93,9 @@ mod platform {
     }
 
     impl NativeEventPump {
-        pub(crate) fn start() -> Result<Self, NativeEventPumpError> {
+        pub(crate) fn start(
+            wake_signal: Option<DesktopInventoryWakeSignal>,
+        ) -> Result<Self, NativeEventPumpError> {
             if PUMP_ACTIVE
                 .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
                 .is_err()
@@ -97,7 +103,10 @@ mod platform {
                 return Err(NativeEventPumpError::AlreadyRunning);
             }
 
+            PUMP_FAILED.store(false, Ordering::Release);
+            PUMP_FAILURE_CODE.store(0, Ordering::Release);
             FOREGROUND_CHANGE_PENDING.store(false, Ordering::Release);
+            FOREGROUND_WAKE_PENDING.store(false, Ordering::Release);
             let stop_signal = unsafe { CreateEventW(null(), 0, 0, null()) };
             if stop_signal.is_null() {
                 PUMP_ACTIVE.store(false, Ordering::Release);
@@ -110,7 +119,7 @@ mod platform {
             let stop_signal_for_thread = stop_signal as usize;
             let worker = match thread::Builder::new()
                 .name("winlook-bgw-winevent".to_owned())
-                .spawn(move || pump_thread(stop_signal_for_thread, startup_sender))
+                .spawn(move || pump_thread(stop_signal_for_thread, wake_signal, startup_sender))
             {
                 Ok(worker) => worker,
                 Err(_) => {
@@ -153,6 +162,18 @@ mod platform {
         pub(crate) fn take_foreground_changed(&self) -> bool {
             FOREGROUND_CHANGE_PENDING.swap(false, Ordering::AcqRel)
         }
+
+        /// Whether the native message-pump thread is still alive.
+        pub(crate) fn is_running(&self) -> bool {
+            self.worker.as_ref().is_some_and(|worker| !worker.is_finished())
+        }
+
+        /// Error or wait result recorded when the pump exits unexpectedly.
+        pub(crate) fn failure_code(&self) -> Option<u32> {
+            PUMP_FAILED
+                .load(Ordering::Acquire)
+                .then(|| PUMP_FAILURE_CODE.load(Ordering::Acquire))
+        }
     }
 
     impl Drop for NativeEventPump {
@@ -169,11 +190,18 @@ mod platform {
                 CloseHandle(self.stop_signal);
             }
             FOREGROUND_CHANGE_PENDING.store(false, Ordering::Release);
+            FOREGROUND_WAKE_PENDING.store(false, Ordering::Release);
+            PUMP_FAILED.store(false, Ordering::Release);
+            PUMP_FAILURE_CODE.store(0, Ordering::Release);
             PUMP_ACTIVE.store(false, Ordering::Release);
         }
     }
 
-    fn pump_thread(stop_signal: usize, startup_sender: mpsc::SyncSender<Result<(), u32>>) {
+    fn pump_thread(
+        stop_signal: usize,
+        wake_signal: Option<DesktopInventoryWakeSignal>,
+        startup_sender: mpsc::SyncSender<Result<(), u32>>,
+    ) {
         let stop_signal = stop_signal as HANDLE;
         let mut message: MSG = unsafe { zeroed() };
 
@@ -237,10 +265,31 @@ mod platform {
                         DispatchMessageW(&message);
                     }
                 }
+                if FOREGROUND_WAKE_PENDING.swap(false, Ordering::AcqRel) {
+                    if let Some(wake_signal) = wake_signal.as_ref() {
+                        if let Err(error) = wake_signal.signal() {
+                            let code = match error {
+                                DesktopInventoryError::SignalWake { code } => code,
+                                _ => 0,
+                            };
+                            PUMP_FAILURE_CODE.store(code, Ordering::Release);
+                            PUMP_FAILED.store(true, Ordering::Release);
+                            break;
+                        }
+                    }
+                }
                 continue;
             }
-            if wait_result == WAIT_FAILED {
-                break;
+
+            let failure_code = if wait_result == WAIT_FAILED {
+                unsafe { GetLastError() }
+            } else {
+                wait_result
+            };
+            PUMP_FAILURE_CODE.store(failure_code, Ordering::Release);
+            PUMP_FAILED.store(true, Ordering::Release);
+            if let Some(wake_signal) = wake_signal.as_ref() {
+                let _ = wake_signal.signal();
             }
             break;
         }
@@ -262,6 +311,7 @@ mod platform {
         if is_foreground_window_event(event, !hwnd.is_null(), object_id, child_id) {
             // No allocation, lock, COM call, HWND retention or cross-thread wait.
             FOREGROUND_CHANGE_PENDING.store(true, Ordering::Release);
+            FOREGROUND_WAKE_PENDING.store(true, Ordering::Release);
         }
     }
 }

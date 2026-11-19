@@ -19,8 +19,8 @@ pub use desktop_browser::{
 };
 pub use desktop_inventory::{
     enumerate_desktop_items, watch_desktop_folders, DesktopFolder, DesktopInventoryError,
-    DesktopInventoryItem, DesktopInventoryWatcher, DesktopItemIdentityStability,
-    MAX_DESKTOP_INVENTORY_ITEMS,
+    DesktopInventoryItem, DesktopInventoryWaitResult, DesktopInventoryWakeSignal,
+    DesktopInventoryWatcher, DesktopItemIdentityStability, MAX_DESKTOP_INVENTORY_ITEMS,
 };
 pub use desktop_shell_icon::{
     extract_desktop_shell_icon, rasterize_desktop_shell_icon_rgba, DesktopShellIcon,

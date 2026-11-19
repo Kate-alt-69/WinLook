@@ -102,6 +102,12 @@ pub enum DesktopInventoryError {
     WatchDirectory { folder: DesktopFolder, code: u32 },
     /// Waiting for a Desktop folder change notification failed.
     WaitForChange { code: u32 },
+    /// The shared BGW wake event could not be created.
+    CreateWakeSignal { code: u32 },
+    /// The shared BGW wake event could not be signaled.
+    SignalWake { code: u32 },
+    /// Waiting for the shared BGW wake event failed.
+    WaitForWake { code: u32 },
     /// A signaled Desktop folder notification could not be re-armed.
     RearmDirectoryWatch { folder: DesktopFolder, code: u32 },
     /// The entry label or generated identity failed portable validation.
@@ -157,6 +163,15 @@ impl fmt::Display for DesktopInventoryError {
                     "waiting for Desktop folder changes failed (error {code:#x})"
                 )
             }
+            Self::CreateWakeSignal { code } => {
+                write!(f, "could not create the BGW wake event (error {code:#x})")
+            }
+            Self::SignalWake { code } => {
+                write!(f, "could not signal the BGW wake event (error {code:#x})")
+            }
+            Self::WaitForWake { code } => {
+                write!(f, "waiting for the BGW wake event failed (error {code:#x})")
+            }
             Self::RearmDirectoryWatch { folder, code } => {
                 write!(
                     f,
@@ -169,6 +184,60 @@ impl fmt::Display for DesktopInventoryError {
 }
 
 impl std::error::Error for DesktopInventoryError {}
+
+/// Result of waiting for either a Desktop directory change or a BGW wake signal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DesktopInventoryWaitResult {
+    DirectoryChanged,
+    ForegroundEvent,
+    TimedOut,
+}
+
+/// Shareable auto-reset event used to interrupt BGW's maintenance wait.
+#[derive(Clone)]
+pub struct DesktopInventoryWakeSignal {
+    #[cfg(windows)]
+    inner: desktop_inventory_platform::WakeSignal,
+}
+
+impl DesktopInventoryWakeSignal {
+    pub fn new() -> Result<Self, DesktopInventoryError> {
+        #[cfg(windows)]
+        {
+            Ok(Self {
+                inner: desktop_inventory_platform::WakeSignal::new()?,
+            })
+        }
+        #[cfg(not(windows))]
+        {
+            Err(DesktopInventoryError::UnsupportedPlatform)
+        }
+    }
+
+    pub fn signal(&self) -> Result<(), DesktopInventoryError> {
+        #[cfg(windows)]
+        {
+            self.inner.signal()
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = self;
+            Err(DesktopInventoryError::UnsupportedPlatform)
+        }
+    }
+
+    pub fn wait_timeout(&self, timeout: Duration) -> Result<bool, DesktopInventoryError> {
+        #[cfg(windows)]
+        {
+            self.inner.wait_timeout(timeout)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (self, timeout);
+            Err(DesktopInventoryError::UnsupportedPlatform)
+        }
+    }
+}
 
 /// Read-only snapshot of the current user's Desktop plus Public Desktop.
 ///
@@ -217,6 +286,23 @@ impl DesktopInventoryWatcher {
         #[cfg(not(windows))]
         {
             let _ = timeout;
+            Err(DesktopInventoryError::UnsupportedPlatform)
+        }
+    }
+
+    /// Waits for either a User/Public Desktop directory change or the BGW wake.
+    pub fn wait_for_change_or_wake(
+        &self,
+        timeout: Duration,
+        wake_signal: &DesktopInventoryWakeSignal,
+    ) -> Result<DesktopInventoryWaitResult, DesktopInventoryError> {
+        #[cfg(windows)]
+        {
+            self.inner.wait_for_change_or_wake(timeout, &wake_signal.inner)
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (timeout, wake_signal);
             Err(DesktopInventoryError::UnsupportedPlatform)
         }
     }
@@ -297,6 +383,7 @@ mod desktop_inventory_platform {
     use std::collections::{HashMap, HashSet};
     use std::ffi::{c_void, OsString};
     use std::io::ErrorKind;
+    use std::sync::Arc;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::ptr;
 
@@ -400,6 +487,14 @@ mod desktop_inventory_platform {
         ) -> Handle;
         fn FindNextChangeNotification(change_handle: Handle) -> i32;
         fn FindCloseChangeNotification(change_handle: Handle) -> i32;
+        fn CreateEventW(
+            attributes: *mut c_void,
+            manual_reset: i32,
+            initial_state: i32,
+            name: *const u16,
+        ) -> Handle;
+        fn SetEvent(event: Handle) -> i32;
+        fn WaitForSingleObject(handle: Handle, milliseconds: u32) -> u32;
         fn WaitForMultipleObjects(
             count: u32,
             handles: *const Handle,
@@ -410,6 +505,69 @@ mod desktop_inventory_platform {
     }
 
     type Handle = *mut c_void;
+
+    #[derive(Clone)]
+    pub(super) struct WakeSignal {
+        inner: Arc<WakeSignalInner>,
+    }
+
+    struct WakeSignalInner {
+        handle: usize,
+    }
+
+    impl Drop for WakeSignalInner {
+        fn drop(&mut self) {
+            if self.handle != 0 {
+                unsafe {
+                    CloseHandle(self.handle as Handle);
+                }
+            }
+        }
+    }
+
+    impl WakeSignal {
+        pub(super) fn new() -> Result<Self, DesktopInventoryError> {
+            let handle = unsafe { CreateEventW(ptr::null_mut(), 0, 0, ptr::null()) };
+            if handle.is_null() {
+                return Err(DesktopInventoryError::CreateWakeSignal {
+                    code: unsafe { GetLastError() },
+                });
+            }
+            Ok(Self {
+                inner: Arc::new(WakeSignalInner {
+                    handle: handle as usize,
+                }),
+            })
+        }
+
+        pub(super) fn signal(&self) -> Result<(), DesktopInventoryError> {
+            if unsafe { SetEvent(self.raw_handle()) } == 0 {
+                return Err(DesktopInventoryError::SignalWake {
+                    code: unsafe { GetLastError() },
+                });
+            }
+            Ok(())
+        }
+
+        pub(super) fn wait_timeout(
+            &self,
+            timeout: Duration,
+        ) -> Result<bool, DesktopInventoryError> {
+            let milliseconds = timeout.as_millis().min(u128::from(u32::MAX - 1)) as u32;
+            match unsafe { WaitForSingleObject(self.raw_handle(), milliseconds) } {
+                WAIT_OBJECT_0 => Ok(true),
+                WAIT_TIMEOUT => Ok(false),
+                WAIT_FAILED => Err(DesktopInventoryError::WaitForWake {
+                    code: unsafe { GetLastError() },
+                }),
+                code => Err(DesktopInventoryError::WaitForWake { code }),
+            }
+        }
+
+        fn raw_handle(&self) -> Handle {
+            self.inner.handle as Handle
+        }
+    }
 
     #[repr(C)]
     #[derive(Clone, Copy, Default)]
@@ -577,6 +735,63 @@ mod desktop_inventory_platform {
                 });
             }
             Ok(true)
+        }
+
+        pub(super) fn wait_for_change_or_wake(
+            &self,
+            timeout: Duration,
+            wake_signal: &WakeSignal,
+        ) -> Result<DesktopInventoryWaitResult, DesktopInventoryError> {
+            let timeout_ms = timeout.as_millis().min(u128::from(u32::MAX - 1)) as u32;
+            if self.notifications.is_empty() {
+                if wake_signal.wait_timeout(timeout)? {
+                    return Ok(DesktopInventoryWaitResult::ForegroundEvent);
+                }
+                return Ok(if self.refresh_on_timeout {
+                    DesktopInventoryWaitResult::DirectoryChanged
+                } else {
+                    DesktopInventoryWaitResult::TimedOut
+                });
+            }
+
+            let mut handles = self
+                .notifications
+                .iter()
+                .map(|notification| notification.handle)
+                .collect::<Vec<_>>();
+            let wake_index = handles.len();
+            handles.push(wake_signal.raw_handle());
+            let result = unsafe {
+                WaitForMultipleObjects(handles.len() as u32, handles.as_ptr(), 0, timeout_ms)
+            };
+            if result == WAIT_TIMEOUT {
+                return Ok(if self.refresh_on_timeout {
+                    DesktopInventoryWaitResult::DirectoryChanged
+                } else {
+                    DesktopInventoryWaitResult::TimedOut
+                });
+            }
+            if result == WAIT_FAILED {
+                return Err(DesktopInventoryError::WaitForChange {
+                    code: unsafe { GetLastError() },
+                });
+            }
+
+            let index = result.wrapping_sub(WAIT_OBJECT_0) as usize;
+            if index == wake_index {
+                return Ok(DesktopInventoryWaitResult::ForegroundEvent);
+            }
+            if index >= self.notifications.len() {
+                return Err(DesktopInventoryError::WaitForChange { code: result });
+            }
+            let notification = &self.notifications[index];
+            if unsafe { FindNextChangeNotification(notification.handle) } == 0 {
+                return Err(DesktopInventoryError::RearmDirectoryWatch {
+                    folder: notification.folder,
+                    code: unsafe { GetLastError() },
+                });
+            }
+            Ok(DesktopInventoryWaitResult::DirectoryChanged)
         }
     }
 
