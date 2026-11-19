@@ -57,8 +57,7 @@ impl CapabilitySet {
         record: CapabilityRecord,
     ) -> Result<(), CapabilityError> {
         let id = id.into();
-        validate_token(&id, 128)
-            .map_err(|_| CapabilityError::InvalidId)?;
+        validate_token(&id, 128).map_err(|_| CapabilityError::InvalidId)?;
         if record
             .reason
             .as_ref()
