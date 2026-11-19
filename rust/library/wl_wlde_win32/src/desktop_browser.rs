@@ -8,6 +8,7 @@
 use std::ffi::c_void;
 use std::fmt;
 use std::marker::PhantomData;
+#[cfg(windows)]
 use std::ptr::NonNull;
 use std::rc::Rc;
 
