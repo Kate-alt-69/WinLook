@@ -53,8 +53,11 @@ impl DesktopBrowserBounds {
 
 /// A same-process, same-thread HWND supplied by a WinLook-owned native host.
 pub struct DesktopBrowserWindow {
+    #[cfg(windows)]
     handle: NonNull<c_void>,
+    #[cfg(windows)]
     process_id: u32,
+    #[cfg(windows)]
     thread_id: u32,
     _thread_bound: PhantomData<Rc<()>>,
 }
