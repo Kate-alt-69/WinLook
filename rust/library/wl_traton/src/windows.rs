@@ -8,8 +8,9 @@ use windows_sys::Win32::System::Registry::{
     RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_LOCAL_MACHINE, KEY_QUERY_VALUE,
     KEY_WOW64_64KEY, REG_DWORD, REG_EXPAND_SZ, REG_SZ,
 };
+use windows_sys::Win32::System::RemoteDesktop::ProcessIdToSessionId;
 use windows_sys::Win32::System::Threading::{
-    GetCurrentProcess, GetCurrentProcessId, IsWow64Process2, ProcessIdToSessionId,
+    GetCurrentProcess, GetCurrentProcessId, IsWow64Process2,
 };
 
 use crate::target::{Architecture, TargetDetectionError, WindowsTargetInfo};

@@ -117,8 +117,12 @@ pub enum EventQueueError {
 impl fmt::Display for EventQueueError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidCapacity => formatter.write_str("event queue capacity must be between 1 and 4096"),
-            Self::InvalidIdentifier => formatter.write_str("event envelope contains an invalid or oversized identifier"),
+            Self::InvalidCapacity => {
+                formatter.write_str("event queue capacity must be between 1 and 4096")
+            }
+            Self::InvalidIdentifier => {
+                formatter.write_str("event envelope contains an invalid or oversized identifier")
+            }
         }
     }
 }
@@ -232,9 +236,7 @@ fn validate_identifier(value: &str, max_len: usize) -> Result<(), EventQueueErro
     if value.is_empty()
         || value.len() > max_len
         || !value.bytes().all(|byte| {
-            byte.is_ascii_lowercase()
-                || byte.is_ascii_digit()
-                || matches!(byte, b'.' | b'-' | b'_')
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'-' | b'_')
         })
     {
         return Err(EventQueueError::InvalidIdentifier);

@@ -57,11 +57,20 @@ impl CapabilitySet {
         record: CapabilityRecord,
     ) -> Result<(), CapabilityError> {
         let id = id.into();
-        validate_token(&id, 128).map_err(|_| CapabilityError::InvalidId)?;
-        if record.reason.as_ref().is_some_and(|reason| reason.len() > 512) {
+        validate_token(&id, 128)
+            .map_err(|_| CapabilityError::InvalidId)?;
+        if record
+            .reason
+            .as_ref()
+            .is_some_and(|reason| reason.len() > 512)
+        {
             return Err(CapabilityError::ReasonTooLong);
         }
-        if record.provider_id.as_ref().is_some_and(|provider| validate_token(provider, 64).is_err()) {
+        if record
+            .provider_id
+            .as_ref()
+            .is_some_and(|provider| validate_token(provider, 64).is_err())
+        {
             return Err(CapabilityError::InvalidProviderId);
         }
         self.records.insert(id, record);
@@ -83,7 +92,9 @@ impl CapabilitySet {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&str, &CapabilityRecord)> {
-        self.records.iter().map(|(id, record)| (id.as_str(), record))
+        self.records
+            .iter()
+            .map(|(id, record)| (id.as_str(), record))
     }
 }
 
@@ -126,8 +137,13 @@ mod tests {
     #[test]
     fn missing_capabilities_are_unknown_not_available() {
         let capabilities = CapabilitySet::new();
-        assert_eq!(capabilities.status("shell.taskbar.visibility"), CapabilityStatus::Unknown);
-        assert!(!capabilities.status("shell.taskbar.visibility").permits(false));
+        assert_eq!(
+            capabilities.status("shell.taskbar.visibility"),
+            CapabilityStatus::Unknown
+        );
+        assert!(!capabilities
+            .status("shell.taskbar.visibility")
+            .permits(false));
     }
 
     #[test]
@@ -149,6 +165,9 @@ mod tests {
                 },
             )
             .unwrap();
-        assert_eq!(capabilities.status("display.monitor.topology"), CapabilityStatus::Available);
+        assert_eq!(
+            capabilities.status("display.monitor.topology"),
+            CapabilityStatus::Available
+        );
     }
 }
