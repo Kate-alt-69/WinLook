@@ -1,9 +1,9 @@
 //! Initial BGW runtime host loop.
 //!
 //! The current runtime slice owns Explorer host monitoring, bounded Desktop
-//! inventory refresh and validated local WLDE Group/layout state loading.
-//! Wallpaper rendering, Shell hooks, Manager IPC and startup registration are
-//! separate implementation stages.
+//! inventory refresh, validated local WLDE state loading and a dedicated
+//! out-of-context WinEvent foreground observer. WLDE's ExplorerBrowser STA
+//! remains separate from BGW's native event-pump thread.
 
 use std::fmt;
 #[cfg(windows)]
@@ -15,12 +15,15 @@ use std::time::{Duration, Instant};
 #[allow(dead_code)]
 mod desktop_icon_pipeline;
 mod desktop_store;
+mod native_event_pump;
 pub use desktop_store::{
     DesktopItemIdentityRecord, DesktopStateSnapshot, DesktopStateStore, DesktopStateStoreError,
 };
 
 #[cfg(windows)]
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
+#[cfg(windows)]
+use native_event_pump::NativeEventPump;
 #[cfg(windows)]
 use wl_traton::TranslationProvider;
 #[cfg(windows)]
@@ -109,6 +112,61 @@ fn verify_current_desktop_host(
     Ok(())
 }
 
+
+#[cfg(windows)]
+fn poll_native_foreground_events(
+    pump: Option<&NativeEventPump>,
+    target: Option<&wl_traton::WindowsTarget>,
+    event_clock: &Instant,
+    queue: &mut wl_traton::BoundedEventQueue,
+    pending_batches: &mut u64,
+    last_report: &mut Instant,
+) {
+    if let (Some(pump), Some(target)) = (pump, target) {
+        if pump.take_foreground_changed() {
+            let event = wl_traton::TratonEvent {
+                kind: wl_traton::TratonEventKind::WindowActivated,
+                target_selector: target.release_selector().to_owned(),
+                provider_id: "traton.winevent.foreground".to_owned(),
+                monotonic_timestamp_ns: event_clock
+                    .elapsed()
+                    .as_nanos()
+                    .min(u128::from(u64::MAX)) as u64,
+                generation: 1,
+                object: None,
+                payload: wl_traton::TratonEventPayload::None,
+            };
+            match queue.push(event) {
+                Ok(wl_traton::EventQueuePushResult::Queued) => {
+                    if matches!(
+                        queue.pop(),
+                        Some(event) if event.kind == wl_traton::TratonEventKind::WindowActivated
+                    ) {
+                        *pending_batches = pending_batches.saturating_add(1);
+                    }
+                }
+                Ok(result) => report_status(&format!(
+                    "Traton foreground event was not queued: {result:?}"
+                )),
+                Err(error) => report_status(&format!(
+                    "Traton foreground event validation failed: {error}"
+                )),
+            }
+        }
+    }
+
+    if last_report.elapsed() >= Duration::from_secs(30) {
+        if *pending_batches != 0 {
+            report_status(&format!(
+                "Traton foreground-change notifications: {} coalesced batch(es); window identity is not exposed by this observer",
+                *pending_batches
+            ));
+            *pending_batches = 0;
+        }
+        *last_report = Instant::now();
+    }
+}
+
 #[cfg(windows)]
 fn run_windows() -> Result<(), BgwRuntimeError> {
     let windows_target = match wl_traton::WindowsTarget::detect() {
@@ -138,6 +196,32 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         }
     };
 
+    let event_pump = if windows_target.is_some() {
+        match NativeEventPump::start() {
+            Ok(pump) => {
+                report_status(
+                    "Traton foreground WinEvent observer started on a dedicated BGW message-pump thread",
+                );
+                Some(pump)
+            }
+            Err(error) => {
+                report_status(&format!(
+                    "Traton foreground WinEvent observer unavailable; continuing without focus events: {error}"
+                ));
+                None
+            }
+        }
+    } else {
+        report_status(
+            "Traton foreground WinEvent observer skipped because the Windows target could not be verified",
+        );
+        None
+    };
+    let mut traton_events = wl_traton::BoundedEventQueue::standard(1);
+    let event_clock = Instant::now();
+    let mut foreground_change_batches = 0_u64;
+    let mut last_foreground_event_report = Instant::now();
+
     let mut waiting_for_shell_logged = false;
     let desktop_state_store = match DesktopStateStore::for_current_user() {
         Ok(store) => Some(store),
@@ -160,6 +244,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
     };
 
     loop {
+        poll_native_foreground_events(
+            event_pump.as_ref(),
+            windows_target.as_ref(),
+            &event_clock,
+            &mut traton_events,
+            &mut foreground_change_batches,
+            &mut last_foreground_event_report,
+        );
         let monitor = match monitor_desktop_host() {
             Ok(monitor) => monitor,
             Err(error) => {
@@ -170,6 +262,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     waiting_for_shell_logged = true;
                 }
                 thread::sleep(SHELL_UNAVAILABLE_RETRY_INTERVAL);
+                poll_native_foreground_events(
+                    event_pump.as_ref(),
+                    windows_target.as_ref(),
+                    &event_clock,
+                    &mut traton_events,
+                    &mut foreground_change_batches,
+                    &mut last_foreground_event_report,
+                );
                 continue;
             }
         };
@@ -325,6 +425,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         let mut last_fallback_inventory_refresh = Instant::now();
 
         loop {
+            poll_native_foreground_events(
+                event_pump.as_ref(),
+                windows_target.as_ref(),
+                &event_clock,
+                &mut traton_events,
+                &mut foreground_change_batches,
+                &mut last_foreground_event_report,
+            );
             if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
                 let stats = pipeline.poll();
                 if stats.completed != 0 || stats.failed != 0 || stats.stale_discarded != 0 {
@@ -374,6 +482,15 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     }
                 }
             };
+
+            poll_native_foreground_events(
+                event_pump.as_ref(),
+                windows_target.as_ref(),
+                &event_clock,
+                &mut traton_events,
+                &mut foreground_change_batches,
+                &mut last_foreground_event_report,
+            );
 
             match monitor.wait_for_exit(Duration::ZERO) {
                 Ok(true) => {

@@ -28,6 +28,26 @@ Shared runtime library for WinLook's BGW process and the current WLDE desktop-in
   diagnostic channel, not a persistent application log; without a debugger or
   active system debugger, Windows may discard the messages.
 
+## Native foreground-change observation
+
+BGW now owns one dedicated WinEvent message-pump thread, separate from the
+WLDE ExplorerBrowser COM/STA thread. It registers one out-of-context
+`EVENT_SYSTEM_FOREGROUND` hook and unregisters that hook on the same thread
+before the pump exits.
+
+The callback validates the top-level window event shape and only sets an
+atomic pending flag. It does not retain or export HWND/PID values, query
+window metadata, allocate, call COM, perform I/O, or wait on BGW. Repeated
+foreground changes are coalesced while BGW is inside its existing maintenance
+wait. BGW turns each observed batch into a handle-free Traton
+`WindowActivated` event and reports aggregate diagnostics.
+
+This is the first observation slice, not a finished window-event service:
+the event contains no target-window identity, BGW consumes it on its existing
+2-second/5-second maintenance cadence, and no WLDE or `wl_animate` feature
+owner is subscribed yet. Do not use it for latency-sensitive animation until
+the central event wake/dispatch path is implemented and measured.
+
 ## Deliberately not implemented yet
 
 This is not the finished BGW runtime or the full Explorer Desktop Bridge. It

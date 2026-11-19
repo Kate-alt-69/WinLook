@@ -1,6 +1,6 @@
 # Traton (`wl_traton`) — Native Windows Translation, Shell Integration and Quirks
 
-> **Status:** The Rust crate implements canonical paths, read-only Windows target discovery, typed object/member validation, capability/provider contracts and a bounded normalized-event queue. A read-only Windows 10 22H2/build 19045 taskbar-window snapshot is now integrated through BGW. Native event subscriptions, taskbar item enumeration/mutation, Quirks execution and the XML compiler remain unimplemented.
+> **Status:** The Rust crate implements canonical paths, read-only Windows target discovery, typed object/member validation, capability/provider contracts and a bounded normalized-event queue. BGW now owns a dedicated WinEvent message-pump thread and one out-of-context foreground-change observer; the callback emits only a coalesced signal, and BGW normalizes it as a handle-free `WindowActivated` event. A read-only Windows 10 22H2/build 19045 taskbar-window snapshot is also integrated. Window identity, broader subscriptions, feature-owner routing, taskbar item enumeration/mutation, Quirks execution and the XML compiler remain unimplemented.
 >
 > **Library name:** `wl_traton` (public name: **Traton**; modern Rust implementation).
 >
@@ -467,6 +467,8 @@ See [Windows 10 lifecycle](https://learn.microsoft.com/en-us/lifecycle/announcem
 - Coalesce repeated layout/display/Shell notifications and discard stale events from an old Explorer generation.
 - Use bounded queues and explicit overflow policy; never let a Shell callback block waiting for a consumer.
 - Avoid per-frame Shell queries. Resolve native object state on change and let `wl_animate` sample cached properties on the shared frame clock.
+- The first BGW WinEvent source observes only `EVENT_SYSTEM_FOREGROUND` on a dedicated thread. The out-of-context callback performs a top-level event-shape check and one atomic store; it never retains/exposes HWND or PID, performs COM or I/O, or blocks. BGW owns the hook's registration and same-thread unregistration.
+- BGW converts the coalesced signal into a handle-free `WindowActivated` event through the bounded Traton queue. The current host loop consumes it only after its existing 2-second/5-second maintenance wait and reports aggregate diagnostics; no WLDE/`wl_animate` subscriber or low-latency wake path exists yet. This is not an interactive animation trigger.
 - Keep native event observation, presentation, animation sampling and rendering costs independently measurable.
 - Pause/resume adapters across session lock/unlock, Explorer restart, monitor changes and resource-pressure states.
 - Respect reduced motion, accessibility, keyboard navigation, UI Automation/accessible names and high-contrast/forced-colour policy.
@@ -485,12 +487,14 @@ The Traton core now implements namespace parsing, target discovery, typed regist
 - [x] Define capability states, structured operation results, build-scoped member metadata and explicit experimental-consent gates.
 - [x] Define provider descriptors, compatibility selection order and the read/capture/apply/inspect/ownership/verify/restore provider contract.
 - [x] Define normalized event envelopes and a bounded generation-aware queue for BGW/WLDE and `wl_animate`.
-- [ ] Define the BGW message-pump lifecycle and route native events to feature owners.
+- [x] Define a dedicated BGW-owned native message-pump lifecycle and normalize the first foreground-change signal through the bounded Traton queue.
+- [ ] Add low-latency BGW event wake/dispatch and route normalized events to WLDE/`wl_animate` feature owners.
 
 ### Windows 10 native adapters
 
 - [x] Implement read-only OS/build/UBR/edition/architecture/session discovery and capability reporting.
-- [ ] Implement carefully selected WinEvent observation after BGW owns a message pump, with correct unhook lifecycle, callback reentrancy handling and bounded delivery.
+- [x] Implement the first narrowly scoped `EVENT_SYSTEM_FOREGROUND` WinEvent observer on the dedicated BGW pump, with out-of-context delivery, same-thread unhook, reentrancy-safe atomic coalescing and handle-free normalization.
+- [ ] Add object-specific WinEvent subscriptions only after stable, generation-scoped window identity and bounded event routing are available.
 - [ ] Implement relevant Shell change notifications with correct registration, lock/unlock and deregistration.
 - [x] Implement read-only Windows 10 22H2/build 19045 taskbar-window discovery, verifying every window belongs to BGW's current Explorer host; expose only role, bounds and WS_VISIBLE state.
 - [ ] Extend taskbar discovery to item-level pinned shortcuts, running-window buttons, system buttons and notification-area icons only through separately verified providers.
