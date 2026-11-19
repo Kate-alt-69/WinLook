@@ -752,19 +752,23 @@ mod platform {
                 }
                 let pidl = unsafe {
                     OwnedPidl(
-                        NonNull::new(raw_pidl)
-                            .ok_or(DesktopBrowserError::EnumeratorContract)?,
+                        NonNull::new(raw_pidl).ok_or(DesktopBrowserError::EnumeratorContract)?,
                     )
                 };
 
                 let mut point = Point { x: 0, y: 0 };
-                let position_result = unsafe {
-                    get_position(view.as_raw(), pidl.0.as_ptr(), &mut point)
-                };
+                let position_result =
+                    unsafe { get_position(view.as_raw(), pidl.0.as_ptr(), &mut point) };
                 let (position, position_error) = if position_result < 0 {
                     (None, Some(position_result))
                 } else {
-                    (Some(DesktopBrowserPoint { x: point.x, y: point.y }), None)
+                    (
+                        Some(DesktopBrowserPoint {
+                            x: point.x,
+                            y: point.y,
+                        }),
+                        None,
+                    )
                 };
                 items.push(DesktopBrowserItemPosition {
                     enumeration_index: enumeration_index as u32,
@@ -777,14 +781,8 @@ mod platform {
             // A final extra read catches a same-count/enumerator disagreement.
             let mut extra_pidl = ptr::null_mut();
             let mut extra_fetched = 0u32;
-            let result = unsafe {
-                next(
-                    enumerator.as_raw(),
-                    1,
-                    &mut extra_pidl,
-                    &mut extra_fetched,
-                )
-            };
+            let result =
+                unsafe { next(enumerator.as_raw(), 1, &mut extra_pidl, &mut extra_fetched) };
             if result < 0 {
                 if let Some(unexpected) = NonNull::new(extra_pidl) {
                     drop(OwnedPidl(unexpected));
@@ -845,7 +843,9 @@ mod platform {
             if self.initialized {
                 Ok(())
             } else {
-                Err(DesktopBrowserError::UnexpectedNull("destroyed IExplorerBrowser"))
+                Err(DesktopBrowserError::UnexpectedNull(
+                    "destroyed IExplorerBrowser",
+                ))
             }
         }
 
@@ -866,26 +866,21 @@ mod platform {
             Ok(())
         }
 
-        fn acquire_current_view(
-            &self,
-        ) -> Result<(OwnedComPtr, usize, usize), DesktopBrowserError> {
+        fn acquire_current_view(&self) -> Result<(OwnedComPtr, usize, usize), DesktopBrowserError> {
             type GetCurrentViewFn =
                 unsafe extern "system" fn(Handle, *const Guid, *mut Handle) -> HResult;
-            let get_view =
-                unsafe { vtable_method::<GetCurrentViewFn>(self.browser.as_raw(), 17) };
+            let get_view = unsafe { vtable_method::<GetCurrentViewFn>(self.browser.as_raw(), 17) };
             let mut raw_view = ptr::null_mut();
-            let result = unsafe {
-                get_view(self.browser.as_raw(), &IID_IFOLDER_VIEW, &mut raw_view)
-            };
+            let result =
+                unsafe { get_view(self.browser.as_raw(), &IID_IFOLDER_VIEW, &mut raw_view) };
             if result < 0 {
                 if let Some(unexpected) = NonNull::new(raw_view) {
                     drop(OwnedComPtr(unexpected));
                 }
                 return Err(DesktopBrowserError::GetCurrentView(result));
             }
-            let view = unsafe {
-                OwnedComPtr::from_raw(raw_view, "IExplorerBrowser::GetCurrentView")
-            }?;
+            let view =
+                unsafe { OwnedComPtr::from_raw(raw_view, "IExplorerBrowser::GetCurrentView") }?;
 
             let identity = query_interface(&view, &IID_IUNKNOWN, "IFolderView IUnknown")?;
             let identity_address = identity.as_raw() as usize;
@@ -955,8 +950,7 @@ mod platform {
     }
 
     fn create_item_enumerator(view: &OwnedComPtr) -> Result<OwnedComPtr, DesktopBrowserError> {
-        type ItemsFn =
-            unsafe extern "system" fn(Handle, u32, *const Guid, *mut Handle) -> HResult;
+        type ItemsFn = unsafe extern "system" fn(Handle, u32, *const Guid, *mut Handle) -> HResult;
         let items = unsafe { vtable_method::<ItemsFn>(view.as_raw(), 7) };
         let mut raw_enumerator = ptr::null_mut();
         let result = unsafe {
@@ -986,7 +980,6 @@ mod platform {
             }
         }
     }
-
 }
 
 #[cfg(test)]
