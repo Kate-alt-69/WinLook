@@ -32,9 +32,7 @@ mod platform {
 
     use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, HWND};
     use windows_sys::Win32::System::Threading::{CreateEventW, SetEvent};
-    use windows_sys::Win32::UI::Accessibility::{
-        SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK,
-    };
+    use windows_sys::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         DispatchMessageW, MsgWaitForMultipleObjects, PeekMessageW, TranslateMessage, MSG,
     };
