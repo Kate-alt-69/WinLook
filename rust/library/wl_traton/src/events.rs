@@ -292,7 +292,9 @@ mod tests {
     fn coalesces_window_geometry_change_signals() {
         let mut queue = BoundedEventQueue::new(1, 4).unwrap();
         assert_eq!(
-            queue.push(event(TratonEventKind::WindowGeometryChanged, 4, None)).unwrap(),
+            queue
+                .push(event(TratonEventKind::WindowGeometryChanged, 4, None))
+                .unwrap(),
             EventQueuePushResult::Queued
         );
         let mut newest = event(TratonEventKind::WindowGeometryChanged, 4, None);

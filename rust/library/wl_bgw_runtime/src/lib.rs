@@ -536,8 +536,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             let inventory_changed = match watcher_result {
                 Some(Ok(DesktopInventoryWaitResult::DirectoryChanged)) => true,
                 Some(Ok(
-                    DesktopInventoryWaitResult::NativeEvent
-                    | DesktopInventoryWaitResult::TimedOut,
+                    DesktopInventoryWaitResult::NativeEvent | DesktopInventoryWaitResult::TimedOut,
                 )) => false,
                 Some(Err(error)) => {
                     report_status(&format!(

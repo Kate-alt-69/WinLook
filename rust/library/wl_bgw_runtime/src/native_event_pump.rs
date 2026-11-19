@@ -54,10 +54,10 @@ fn native_window_event_bit(event: u32, has_window: bool, object_id: i32, child_i
 mod platform {
     use super::{
         native_window_event_bit, EVENT_BIT_FOREGROUND_CHANGED, EVENT_BIT_WINDOW_CREATED,
-        EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED,
-        EVENT_BIT_WINDOW_MINIMIZED, EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN,
-        EVENT_OBJECT_CREATE, EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_SHOW,
-        EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART,
+        EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED, EVENT_BIT_WINDOW_MINIMIZED,
+        EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN, EVENT_OBJECT_CREATE,
+        EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_SHOW, EVENT_SYSTEM_FOREGROUND,
+        EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART,
     };
     use std::fmt;
     use std::mem::zeroed;
@@ -386,19 +386,40 @@ pub(super) use platform::NativeEventPump;
 mod tests {
     use super::{
         native_window_event_bit, EVENT_BIT_FOREGROUND_CHANGED, EVENT_BIT_WINDOW_CREATED,
-        EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED,
-        EVENT_BIT_WINDOW_MINIMIZED, EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN,
+        EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED, EVENT_BIT_WINDOW_MINIMIZED,
+        EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN,
     };
 
     #[test]
     fn maps_only_supported_top_level_window_event_categories() {
-        assert_eq!(native_window_event_bit(0x0003, true, 0, 0), EVENT_BIT_FOREGROUND_CHANGED);
-        assert_eq!(native_window_event_bit(0x8000, true, 0, 0), EVENT_BIT_WINDOW_CREATED);
-        assert_eq!(native_window_event_bit(0x8001, true, 0, 0), EVENT_BIT_WINDOW_DESTROYED);
-        assert_eq!(native_window_event_bit(0x8002, true, 0, 0), EVENT_BIT_WINDOW_SHOWN);
-        assert_eq!(native_window_event_bit(0x800B, true, 0, 0), EVENT_BIT_WINDOW_GEOMETRY_CHANGED);
-        assert_eq!(native_window_event_bit(0x0016, true, 0, 0), EVENT_BIT_WINDOW_MINIMIZED);
-        assert_eq!(native_window_event_bit(0x0017, true, 0, 0), EVENT_BIT_WINDOW_RESTORED);
+        assert_eq!(
+            native_window_event_bit(0x0003, true, 0, 0),
+            EVENT_BIT_FOREGROUND_CHANGED
+        );
+        assert_eq!(
+            native_window_event_bit(0x8000, true, 0, 0),
+            EVENT_BIT_WINDOW_CREATED
+        );
+        assert_eq!(
+            native_window_event_bit(0x8001, true, 0, 0),
+            EVENT_BIT_WINDOW_DESTROYED
+        );
+        assert_eq!(
+            native_window_event_bit(0x8002, true, 0, 0),
+            EVENT_BIT_WINDOW_SHOWN
+        );
+        assert_eq!(
+            native_window_event_bit(0x800B, true, 0, 0),
+            EVENT_BIT_WINDOW_GEOMETRY_CHANGED
+        );
+        assert_eq!(
+            native_window_event_bit(0x0016, true, 0, 0),
+            EVENT_BIT_WINDOW_MINIMIZED
+        );
+        assert_eq!(
+            native_window_event_bit(0x0017, true, 0, 0),
+            EVENT_BIT_WINDOW_RESTORED
+        );
     }
 
     #[test]
