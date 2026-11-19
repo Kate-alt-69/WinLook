@@ -600,8 +600,12 @@ mod platform {
                 OwnedComPtr::from_raw(raw_browser, "CoCreateInstance(CLSID_ExplorerBrowser)")?
             };
 
-            type InitializeFn =
-                unsafe extern "system" fn(Handle, Handle, *const WinRect, *const FolderSettings) -> HResult;
+            type InitializeFn = unsafe extern "system" fn(
+                Handle,
+                Handle,
+                *const WinRect,
+                *const FolderSettings,
+            ) -> HResult;
             let initialize = unsafe { vtable_method::<InitializeFn>(browser.as_raw(), 3) };
             let rect = bounds.as_win_rect();
             let folder_settings = FolderSettings {
@@ -647,12 +651,10 @@ mod platform {
             };
             let desktop_pidl = OwnedPidl(desktop_pidl_raw);
 
-            type BrowseToIdListFn =
-                unsafe extern "system" fn(Handle, Handle, u32) -> HResult;
+            type BrowseToIdListFn = unsafe extern "system" fn(Handle, Handle, u32) -> HResult;
             let browse = unsafe { vtable_method::<BrowseToIdListFn>(browser.as_raw(), 13) };
-            let result = unsafe {
-                browse(browser.as_raw(), desktop_pidl.0.as_ptr(), SBSP_ABSOLUTE)
-            };
+            let result =
+                unsafe { browse(browser.as_raw(), desktop_pidl.0.as_ptr(), SBSP_ABSOLUTE) };
             drop(desktop_pidl);
             if result < 0 {
                 let destroy = unsafe { vtable_method::<DestroyFn>(browser.as_raw(), 4) };
@@ -680,8 +682,7 @@ mod platform {
             bounds: DesktopBrowserBounds,
         ) -> Result<(), DesktopBrowserError> {
             self.ensure_initialized()?;
-            type SetRectFn =
-                unsafe extern "system" fn(Handle, *mut Handle, WinRect) -> HResult;
+            type SetRectFn = unsafe extern "system" fn(Handle, *mut Handle, WinRect) -> HResult;
             let set_rect = unsafe { vtable_method::<SetRectFn>(self.browser.as_raw(), 5) };
             let mut defer_window_pos = ptr::null_mut();
             let result = unsafe {
@@ -698,15 +699,14 @@ mod platform {
             }
         }
 
-        pub(super) fn snapshot(
-            &mut self,
-        ) -> Result<DesktopBrowserSnapshot, DesktopBrowserError> {
+        pub(super) fn snapshot(&mut self) -> Result<DesktopBrowserSnapshot, DesktopBrowserError> {
             self.ensure_initialized()?;
             let (view, identity, window) = self.acquire_current_view()?;
             self.update_view_identity(identity, window)?;
 
             let before = item_count(&view)?;
-            let count = usize::try_from(before).map_err(|_| DesktopBrowserError::InvalidItemCount)?;
+            let count =
+                usize::try_from(before).map_err(|_| DesktopBrowserError::InvalidItemCount)?;
             if count > MAX_DESKTOP_BROWSER_ITEMS {
                 return Err(DesktopBrowserError::TooManyItems(count));
             }
@@ -721,20 +721,12 @@ mod platform {
             let next = unsafe { vtable_method::<NextFn>(enumerator.as_raw(), 3) };
             type GetItemPositionFn =
                 unsafe extern "system" fn(Handle, Handle, *mut Point) -> HResult;
-            let get_position =
-                unsafe { vtable_method::<GetItemPositionFn>(view.as_raw(), 10) };
+            let get_position = unsafe { vtable_method::<GetItemPositionFn>(view.as_raw(), 10) };
 
             for enumeration_index in 0..count {
                 let mut raw_pidl = ptr::null_mut();
                 let mut fetched = 0u32;
-                let result = unsafe {
-                    next(
-                        enumerator.as_raw(),
-                        1,
-                        &mut raw_pidl,
-                        &mut fetched,
-                    )
-                };
+                let result = unsafe { next(enumerator.as_raw(), 1, &mut raw_pidl, &mut fetched) };
                 if result < 0 {
                     if let Some(unexpected) = NonNull::new(raw_pidl) {
                         drop(OwnedPidl(unexpected));
