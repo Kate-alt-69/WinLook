@@ -6,3 +6,6 @@ rust-version = "1.77"
 description = "Versioned Windows object paths and native translation contracts for WinLook"
 license = "MIT"
 readme = "README.md"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Registry", "Win32_System_Threading"] }

@@ -10,3 +10,4 @@ readme = "README.md"
 [dependencies]
 wl_wlde = { version = "0.1.0-alpha.1", path = "../wl_wlde" }
 wl_wlde_win32 = { version = "0.1.0-alpha.1", path = "../wl_wlde_win32" }
+wl_traton = { version = "0.1.0-alpha.1", path = "../wl_traton" }

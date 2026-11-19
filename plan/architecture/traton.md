@@ -1,6 +1,6 @@
 # Traton (`wl_traton`) — Native Windows Translation, Shell Integration and Quirks
 
-> **Status:** Architecture specification and implementation backlog. The initial Rust crate and canonical namespace parser are now in the workspace. Live Windows target discovery, native providers, normalized event sources, Quirks execution and the XML compiler are not implemented yet.
+> **Status:** The Rust crate now implements canonical paths, read-only Windows target discovery, typed object/member validation, capability/provider contracts and a bounded normalized-event queue. Native Shell/window event subscriptions, concrete taskbar providers, Quirks execution and the XML compiler remain unimplemented.
 >
 > **Library name:** `wl_traton` (public name: **Traton**; modern Rust implementation).
 >
@@ -264,7 +264,7 @@ Candidate documented sources include:
 - Window messages and Shell/COM callbacks for the exact objects that own them.
 - AppBar notifications for position/state changes affecting a registered WLDE AppBar.
 
-The host thread requirements, message-loop ownership, callback reentrancy, event coalescing and event loss/backpressure must be handled explicitly. Native callbacks should copy the minimum data needed, enqueue a bounded normalized event and return. They must not render, decode media, parse XML, perform network/file-heavy work, block on BGW or run animation timelines inside Explorer.
+The host thread requirements, message-loop ownership, callback reentrancy, event coalescing and event loss/backpressure must be handled explicitly. Native callbacks should copy the minimum data needed, enqueue a bounded normalized event and return. The initial Traton core now provides the normalized envelope and generation-aware bounded queue; it does not yet install native hooks. Microsoft requires the thread calling `SetWinEventHook` to own a message loop, while BGW's current host loop only waits/revalidates the Explorer host. Hook registration therefore remains disabled until BGW's event-pump lifecycle is implemented. They must not render, decode media, parse XML, perform network/file-heavy work, block on BGW or run animation timelines inside Explorer.
 
 Use narrowly selected event ranges and process/thread filters. Do not install a global in-context hook by default. Any in-process Explorer adapter must follow the separate build-specific Explorer integration and recovery rules.
 
@@ -460,26 +460,27 @@ See [Windows 10 lifecycle](https://learn.microsoft.com/en-us/lifecycle/announcem
 
 ## 14. Implementation backlog for the next agent
 
-The initial crate/parser slice is implemented. The remaining work below covers native discovery, registry resolution, providers, events, Quirks and declarative profiles; the checklist is not a claim that those systems already exist.
+The Traton core now implements namespace parsing, target discovery, typed registry validation, capability records, provider contracts and bounded normalized events. The remaining work below is concrete native provider/event integration, BGW event-pump routing, Quirks execution and declarative profiles; checked items describe implemented contracts, not a claim that stock Explorer taskbar mutations are available.
 
 ### Public contract and core model
 
 - [x] Create the Rust `wl_traton` crate in `rust/library/` and add it to the workspace.
 - [x] Implement the initial canonical path parser for release selectors, subsystem/object/member paths and one optional typed opaque argument; add focused unit tests (execution remains a CI verification item).
-- [ ] Define runtime `WindowsTarget` identity, including release/build/UBR, edition, architecture, session and Shell-host generation.
-- [ ] Resolve parsed paths through aliases and a typed object registry into lifetime-safe object references.
-- [ ] Define the object/property/event/capability registry and structured operation/result/error types.
-- [ ] Define the provider interface and capability negotiation/fallback rules.
-- [ ] Define a generic normalized event envelope that can be consumed by BGW/WLDE and forwarded to `wl_animate` without making `wl_animate` depend on Windows.
+- [x] Define and detect `WindowsTarget` release/build/UBR, product/edition, process/native architecture and interactive session identity on Windows.
+- [x] Resolve parsed object/member paths through the typed registry, including typed item references and value-schema validation.
+- [x] Define capability states, structured operation results, build-scoped member metadata and explicit experimental-consent gates.
+- [x] Define provider descriptors, compatibility selection order and the read/capture/apply/inspect/ownership/verify/restore provider contract.
+- [x] Define normalized event envelopes and a bounded generation-aware queue for BGW/WLDE and `wl_animate`.
+- [ ] Define the BGW message-pump lifecycle and route native events to feature owners.
 
 ### Windows 10 native adapters
 
-- [ ] Implement read-only OS/build/UBR/edition/architecture/session discovery and capability reporting.
-- [ ] Implement carefully selected WinEvent observation with correct message-loop ownership, unhook lifecycle, callback reentrancy handling and bounded delivery.
+- [x] Implement read-only OS/build/UBR/edition/architecture/session discovery and capability reporting.
+- [ ] Implement carefully selected WinEvent observation after BGW owns a message pump, with correct unhook lifecycle, callback reentrancy handling and bounded delivery.
 - [ ] Implement relevant Shell change notifications with correct registration, lock/unlock and deregistration.
 - [ ] Implement taskbar/Start/Shell object discovery and document which properties are truly readable/writable.
 - [ ] Implement AppBar registration/position/work-area negotiation for a WLDE-owned taskbar surface; preserve coexistence with the native taskbar.
-- [ ] Implement taskbar item-role models for pinned shortcuts, running-window buttons, system buttons and notification-area icons.
+- [x] Implement typed taskbar item-role references for pinned shortcuts, running-window buttons, system buttons and notification-area icons.
 - [ ] Implement supported Win32/DWM window-frame inspection and operations with per-attribute version gating.
 - [ ] Keep third-party app window operations behind per-target capability/consent and explicit rollback contracts.
 

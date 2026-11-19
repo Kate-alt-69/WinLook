@@ -100,9 +100,10 @@ is a safety mechanism, not an optional product mode.
 
 `wl_traton` is the modern Rust layer for addressing Windows Shell, Explorer
 desktop, taskbar, Win32 application windows and DWM through typed,
-version-aware object paths. Its initial crate and namespace parser are in the
-workspace; native discovery, providers, normalized event sources and reversible
-operations are built incrementally. Its full design, XML contract, Quirks model
+version-aware object paths. Its core now includes read-only Windows target
+detection, object/member validation, capabilities, provider contracts and a
+bounded normalized-event queue. Concrete native event subscriptions and
+write-capable providers are gated on BGW message-pump and restoration work. Its full design, XML contract, Quirks model
 and implementation backlog are in
 [architecture/traton.md](architecture/traton.md).
 
@@ -151,7 +152,7 @@ The intended architecture uses Rust for current Windows 10+ builds and a separat
 - [x] Design a capability-detection system.
 - [x] Design the per-user BGW background runtime and optional privileged Service.
 - [x] Capture the Traton architecture and its relationship to WLDE, BGW and `wl_animate` in [traton.md](architecture/traton.md).
-- [x] Add the `wl_traton` Rust crate to the workspace with the initial canonical namespace parser and typed item-argument grammar.
+- [x] Add the `wl_traton` Rust crate with canonical paths, read-only Windows target detection, typed object/member validation, capability/provider contracts and a bounded normalized-event queue.
 - [ ] Define the shared configuration format and schema.
 - [ ] Implement the versioned Windows object/property/event registry and capability-selected native providers.
 - [ ] Define and implement the declarative XML profile schema/compiler for typed Windows translation paths.

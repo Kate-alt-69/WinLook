@@ -86,6 +86,29 @@ pub fn run() -> Result<(), BgwRuntimeError> {
 
 #[cfg(windows)]
 fn run_windows() -> Result<(), BgwRuntimeError> {
+    match wl_traton::WindowsTarget::detect() {
+        Ok(target) => {
+            let ubr = target
+                .update_build_revision()
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "unknown".to_owned());
+            let edition = target.edition().unwrap_or("unknown");
+            report_status(&format!(
+                "Traton target: release={} build={}.{} edition={} process-arch={} native-arch={} session={}",
+                target.release_selector(),
+                target.build_number(),
+                ubr,
+                edition,
+                target.process_architecture(),
+                target.system_architecture(),
+                target.session_id()
+            ));
+        }
+        Err(error) => report_status(&format!(
+            "Traton target discovery unavailable; native integrations remain gated: {error}"
+        )),
+    }
+
     let mut waiting_for_shell_logged = false;
     let desktop_state_store = match DesktopStateStore::for_current_user() {
         Ok(store) => Some(store),

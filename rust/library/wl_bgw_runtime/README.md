@@ -14,6 +14,10 @@ Shared runtime library for WinLook's BGW process and the current WLDE desktop-in
   desktop-host replacement even when the original Explorer process stays alive.
 - Retries discovery every two seconds only while the Shell desktop is absent,
   belongs to a non-Explorer shell, or cannot be queried.
+- Detects the current Windows release selector, exact build/UBR, edition,
+  installation type, process/native architecture and interactive session
+  through Traton's read-only target probe. Unknown metadata is reported as
+  unavailable, not guessed.
 - Sends status output through `OutputDebugStringW` on Windows. This is a
   diagnostic channel, not a persistent application log; without a debugger or
   active system debugger, Windows may discard the messages.
