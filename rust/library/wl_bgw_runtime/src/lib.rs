@@ -2,7 +2,7 @@
 //!
 //! The current runtime slice owns Explorer host monitoring, bounded Desktop
 //! inventory refresh, validated local WLDE state loading and a dedicated
-//! out-of-context WinEvent foreground observer. WLDE's ExplorerBrowser STA
+//! out-of-context WinEvent native window-event observer. WLDE's ExplorerBrowser STA
 //! remains separate from BGW's native event-pump thread.
 
 use std::fmt;
@@ -23,7 +23,11 @@ pub use desktop_store::{
 #[cfg(windows)]
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
-use native_event_pump::NativeEventPump;
+use native_event_pump::{
+    NativeEventPump, EVENT_BIT_FOREGROUND_CHANGED, EVENT_BIT_WINDOW_CREATED,
+    EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED,
+    EVENT_BIT_WINDOW_MINIMIZED, EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN,
+};
 #[cfg(windows)]
 use wl_traton::TranslationProvider;
 #[cfg(windows)]
@@ -114,7 +118,7 @@ fn verify_current_desktop_host(
 }
 
 #[cfg(windows)]
-fn poll_native_foreground_events(
+fn poll_native_window_events(
     pump: &mut Option<NativeEventPump>,
     wake_signal: Option<&DesktopInventoryWakeSignal>,
     target: Option<&wl_traton::WindowsTarget>,
@@ -124,11 +128,24 @@ fn poll_native_foreground_events(
     last_report: &mut Instant,
 ) {
     if let (Some(pump), Some(target)) = (pump.as_ref(), target) {
-        if pump.take_foreground_changed() {
+        let pending = pump.take_pending_events();
+        let event_kinds = [
+            (EVENT_BIT_FOREGROUND_CHANGED, wl_traton::TratonEventKind::WindowActivated),
+            (EVENT_BIT_WINDOW_CREATED, wl_traton::TratonEventKind::WindowCreated),
+            (EVENT_BIT_WINDOW_DESTROYED, wl_traton::TratonEventKind::WindowDestroyed),
+            (EVENT_BIT_WINDOW_SHOWN, wl_traton::TratonEventKind::WindowShown),
+            (EVENT_BIT_WINDOW_GEOMETRY_CHANGED, wl_traton::TratonEventKind::WindowGeometryChanged),
+            (EVENT_BIT_WINDOW_MINIMIZED, wl_traton::TratonEventKind::WindowMinimized),
+            (EVENT_BIT_WINDOW_RESTORED, wl_traton::TratonEventKind::WindowRestored),
+        ];
+        for (event_bit, kind) in event_kinds {
+            if pending & event_bit == 0 {
+                continue;
+            }
             let event = wl_traton::TratonEvent {
-                kind: wl_traton::TratonEventKind::WindowActivated,
+                kind,
                 target_selector: target.release_selector().to_owned(),
-                provider_id: "traton.winevent.foreground".to_owned(),
+                provider_id: "traton.winevent.desktop".to_owned(),
                 monotonic_timestamp_ns: event_clock.elapsed().as_nanos().min(u128::from(u64::MAX))
                     as u64,
                 generation: 1,
@@ -137,18 +154,15 @@ fn poll_native_foreground_events(
             };
             match queue.push(event) {
                 Ok(wl_traton::EventQueuePushResult::Queued) => {
-                    if matches!(
-                        queue.pop(),
-                        Some(event) if event.kind == wl_traton::TratonEventKind::WindowActivated
-                    ) {
+                    if matches!(queue.pop(), Some(event) if event.kind == kind) {
                         *pending_batches = pending_batches.saturating_add(1);
                     }
                 }
                 Ok(result) => report_status(&format!(
-                    "Traton foreground event was not queued: {result:?}"
+                    "Traton native window event was not queued: {result:?}"
                 )),
                 Err(error) => report_status(&format!(
-                    "Traton foreground event validation failed: {error}"
+                    "Traton native window event validation failed: {error}"
                 )),
             }
         }
@@ -158,17 +172,17 @@ fn poll_native_foreground_events(
         let failure_code = pump.as_ref().and_then(NativeEventPump::failure_code);
         pump.take();
         report_status(&format!(
-            "Traton foreground WinEvent pump exited unexpectedly (wait/error={}); attempting restart",
+            "Traton native WinEvent pump exited unexpectedly (wait/error={}); attempting restart",
             failure_code.map_or_else(|| "unknown".to_owned(), |code| format!("{code:#x}"))
         ));
         *pump = Some(match NativeEventPump::start(wake_signal.cloned()) {
             Ok(pump) => {
-                report_status("Traton foreground WinEvent pump restarted");
+                report_status("Traton native WinEvent pump restarted");
                 pump
             }
             Err(error) => {
                 report_status(&format!(
-                    "Traton foreground WinEvent pump restart failed: {error}"
+                    "Traton native WinEvent pump restart failed: {error}"
                 ));
                 return;
             }
@@ -178,7 +192,7 @@ fn poll_native_foreground_events(
     if last_report.elapsed() >= Duration::from_secs(30) {
         if *pending_batches != 0 {
             report_status(&format!(
-                "Traton foreground-change notifications: {} coalesced batch(es); window identity is not exposed by this observer",
+                "Traton native window-event category signals: {} coalesced signal(s); window identity is not exposed by this observer",
                 *pending_batches
             ));
             *pending_batches = 0;
@@ -216,12 +230,12 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         }
     };
 
-    let foreground_wake_signal = if windows_target.is_some() {
+    let native_event_wake_signal = if windows_target.is_some() {
         match DesktopInventoryWakeSignal::new() {
             Ok(signal) => Some(signal),
             Err(error) => {
                 report_status(&format!(
-                    "BGW foreground-event wake signal unavailable; using the regular maintenance wait: {error}"
+                    "BGW native-event wake signal unavailable; using the regular maintenance wait: {error}"
                 ));
                 None
             }
@@ -230,30 +244,30 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         None
     };
     let mut event_pump = if windows_target.is_some() {
-        match NativeEventPump::start(foreground_wake_signal.clone()) {
+        match NativeEventPump::start(native_event_wake_signal.clone()) {
             Ok(pump) => {
                 report_status(
-                    "Traton foreground WinEvent observer started on a dedicated BGW message-pump thread",
+                    "Traton native window-event observer started on a dedicated BGW message-pump thread",
                 );
                 Some(pump)
             }
             Err(error) => {
                 report_status(&format!(
-                    "Traton foreground WinEvent observer unavailable; continuing without focus events: {error}"
+                    "Traton native window-event observer unavailable; continuing without native window events: {error}"
                 ));
                 None
             }
         }
     } else {
         report_status(
-            "Traton foreground WinEvent observer skipped because the Windows target could not be verified",
+            "Traton native window-event observer skipped because the Windows target could not be verified",
         );
         None
     };
     let mut traton_events = wl_traton::BoundedEventQueue::standard(1);
     let event_clock = Instant::now();
-    let mut foreground_change_batches = 0_u64;
-    let mut last_foreground_event_report = Instant::now();
+    let mut native_window_event_batches = 0_u64;
+    let mut last_native_event_report = Instant::now();
 
     let mut waiting_for_shell_logged = false;
     let desktop_state_store = match DesktopStateStore::for_current_user() {
@@ -277,14 +291,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
     };
 
     loop {
-        poll_native_foreground_events(
+        poll_native_window_events(
             &mut event_pump,
-            foreground_wake_signal.as_ref(),
+            native_event_wake_signal.as_ref(),
             windows_target.as_ref(),
             &event_clock,
             &mut traton_events,
-            &mut foreground_change_batches,
-            &mut last_foreground_event_report,
+            &mut native_window_event_batches,
+            &mut last_native_event_report,
         );
         let monitor = match monitor_desktop_host() {
             Ok(monitor) => monitor,
@@ -295,25 +309,25 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     ));
                     waiting_for_shell_logged = true;
                 }
-                match foreground_wake_signal.as_ref() {
+                match native_event_wake_signal.as_ref() {
                     Some(signal) => {
                         if let Err(error) = signal.wait_timeout(SHELL_UNAVAILABLE_RETRY_INTERVAL) {
                             report_status(&format!(
-                                "BGW foreground-event wake wait failed; falling back to sleep: {error}"
+                                "BGW native-event wake wait failed; falling back to sleep: {error}"
                             ));
                             thread::sleep(SHELL_UNAVAILABLE_RETRY_INTERVAL);
                         }
                     }
                     None => thread::sleep(SHELL_UNAVAILABLE_RETRY_INTERVAL),
                 }
-                poll_native_foreground_events(
+                poll_native_window_events(
                     &mut event_pump,
-                    foreground_wake_signal.as_ref(),
+                    native_event_wake_signal.as_ref(),
                     windows_target.as_ref(),
                     &event_clock,
                     &mut traton_events,
-                    &mut foreground_change_batches,
-                    &mut last_foreground_event_report,
+                    &mut native_window_event_batches,
+                    &mut last_native_event_report,
                 );
                 continue;
             }
@@ -470,14 +484,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         let mut last_fallback_inventory_refresh = Instant::now();
 
         loop {
-            poll_native_foreground_events(
+            poll_native_window_events(
                 &mut event_pump,
-                foreground_wake_signal.as_ref(),
+                native_event_wake_signal.as_ref(),
                 windows_target.as_ref(),
                 &event_clock,
                 &mut traton_events,
-                &mut foreground_change_batches,
-                &mut last_foreground_event_report,
+                &mut native_window_event_batches,
+                &mut last_native_event_report,
             );
             if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
                 let stats = pipeline.poll();
@@ -509,7 +523,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             let watcher_result =
                 inventory_watcher
                     .as_ref()
-                    .map(|watcher| match foreground_wake_signal.as_ref() {
+                    .map(|watcher| match native_event_wake_signal.as_ref() {
                         Some(signal) => watcher.wait_for_change_or_wake(wait_interval, signal),
                         None => watcher.wait_for_change(wait_interval).map(|changed| {
                             if changed {
@@ -522,7 +536,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             let inventory_changed = match watcher_result {
                 Some(Ok(DesktopInventoryWaitResult::DirectoryChanged)) => true,
                 Some(Ok(
-                    DesktopInventoryWaitResult::ForegroundEvent
+                    DesktopInventoryWaitResult::NativeEvent
                     | DesktopInventoryWaitResult::TimedOut,
                 )) => false,
                 Some(Err(error)) => {
@@ -533,12 +547,12 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     false
                 }
                 None => {
-                    let foreground_woken = match foreground_wake_signal.as_ref() {
+                    let native_event_woken = match native_event_wake_signal.as_ref() {
                         Some(signal) => match signal.wait_timeout(wait_interval) {
                             Ok(woken) => woken,
                             Err(error) => {
                                 report_status(&format!(
-                                    "BGW foreground-event wake wait failed; falling back to sleep: {error}"
+                                    "BGW native-event wake wait failed; falling back to sleep: {error}"
                                 ));
                                 thread::sleep(wait_interval);
                                 false
@@ -549,7 +563,7 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                             false
                         }
                     };
-                    if !foreground_woken
+                    if !native_event_woken
                         && last_fallback_inventory_refresh.elapsed()
                             >= DESKTOP_HOST_RECHECK_INTERVAL
                     {
@@ -561,14 +575,14 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 }
             };
 
-            poll_native_foreground_events(
+            poll_native_window_events(
                 &mut event_pump,
-                foreground_wake_signal.as_ref(),
+                native_event_wake_signal.as_ref(),
                 windows_target.as_ref(),
                 &event_clock,
                 &mut traton_events,
-                &mut foreground_change_batches,
-                &mut last_foreground_event_report,
+                &mut native_window_event_batches,
+                &mut last_native_event_report,
             );
 
             match monitor.wait_for_exit(Duration::ZERO) {

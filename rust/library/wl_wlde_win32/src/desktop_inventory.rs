@@ -185,11 +185,11 @@ impl fmt::Display for DesktopInventoryError {
 
 impl std::error::Error for DesktopInventoryError {}
 
-/// Result of waiting for either a Desktop directory change or a BGW wake signal.
+/// Result of waiting for either a Desktop directory change or a BGW native-event wake signal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DesktopInventoryWaitResult {
     DirectoryChanged,
-    ForegroundEvent,
+    NativeEvent,
     TimedOut,
 }
 
@@ -746,7 +746,7 @@ mod desktop_inventory_platform {
             let timeout_ms = timeout.as_millis().min(u128::from(u32::MAX - 1)) as u32;
             if self.notifications.is_empty() {
                 if wake_signal.wait_timeout(timeout)? {
-                    return Ok(DesktopInventoryWaitResult::ForegroundEvent);
+                    return Ok(DesktopInventoryWaitResult::NativeEvent);
                 }
                 return Ok(if self.refresh_on_timeout {
                     DesktopInventoryWaitResult::DirectoryChanged
@@ -780,7 +780,7 @@ mod desktop_inventory_platform {
 
             let index = result.wrapping_sub(WAIT_OBJECT_0) as usize;
             if index == wake_index {
-                return Ok(DesktopInventoryWaitResult::ForegroundEvent);
+                return Ok(DesktopInventoryWaitResult::NativeEvent);
             }
             if index >= self.notifications.len() {
                 return Err(DesktopInventoryError::WaitForChange { code: result });

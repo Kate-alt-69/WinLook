@@ -25,6 +25,7 @@ pub enum TratonEventKind {
     WindowDeactivated,
     WindowMoved,
     WindowResized,
+    WindowGeometryChanged,
     WindowMinimized,
     WindowRestored,
     MonitorTopologyChanged,
@@ -39,6 +40,7 @@ impl TratonEventKind {
             self,
             Self::WindowMoved
                 | Self::WindowResized
+                | Self::WindowGeometryChanged
                 | Self::MonitorTopologyChanged
                 | Self::DesktopInventoryInvalidated
         )
@@ -284,6 +286,19 @@ mod tests {
         assert_eq!(queue.push(newest).unwrap(), EventQueuePushResult::Coalesced);
         assert_eq!(queue.len(), 1);
         assert_eq!(queue.pop().unwrap().monotonic_timestamp_ns, 99);
+    }
+
+    #[test]
+    fn coalesces_window_geometry_change_signals() {
+        let mut queue = BoundedEventQueue::new(1, 4).unwrap();
+        assert_eq!(
+            queue.push(event(TratonEventKind::WindowGeometryChanged, 4, None)).unwrap(),
+            EventQueuePushResult::Queued
+        );
+        let mut newest = event(TratonEventKind::WindowGeometryChanged, 4, None);
+        newest.monotonic_timestamp_ns = 77;
+        assert_eq!(queue.push(newest).unwrap(), EventQueuePushResult::Coalesced);
+        assert_eq!(queue.pop().unwrap().monotonic_timestamp_ns, 77);
     }
 
     #[test]

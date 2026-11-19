@@ -52,18 +52,20 @@ process-architecture and session queries. The probe requires Windows 10 version
 the explicit 64-bit view only; the flag is ignored on 32-bit Windows. It never
 writes registry values.
 
-BGW now installs one narrow `SetWinEventHook` observer for
-`EVENT_SYSTEM_FOREGROUND` on its own dedicated message-pump thread. It uses
-out-of-context delivery; the callback validates the top-level event shape and
-only sets an atomic pending flag. HWND/PID values are not retained or exported,
-and the callback does not query window metadata, call COM, perform I/O or
-block. The same thread removes the hook during shutdown.
+BGW now installs a narrow set of out-of-context `SetWinEventHook` subscriptions
+on its own dedicated message-pump thread. The observer covers foreground
+activation, top-level create/destroy/show, geometry-change and minimize/restore
+events. It filters to top-level window objects, excludes BGW's own process, and
+uses an atomic category mask; HWND/PID values are not retained or exported.
+The callback does not query window metadata, call COM, perform I/O or block.
+The installing thread removes every hook during shutdown.
 
-BGW converts a coalesced notification into a handle-free `WindowActivated`
-Traton event through the bounded queue. The current host loop consumes it on
-its existing maintenance cadence and reports aggregate diagnostics only.
-Stable window identity, low-latency dispatch and WLDE/`wl_animate` subscribers
-are not implemented yet. No Shell ChangeNotify source is installed.
+BGW converts coalesced event categories into handle-free Traton events through
+the bounded queue. The shared auto-reset wake interrupts BGW's maintenance
+wait, but the current host loop consumes the normalized signals for aggregate
+diagnostics only; it does not route per-window state to WLDE or wl_animate.
+Stable window identity, feature-owner dispatch and Shell ChangeNotify
+subscriptions are not implemented yet.
 
 ## Read-only Windows 10 22H2 taskbar snapshot
 
