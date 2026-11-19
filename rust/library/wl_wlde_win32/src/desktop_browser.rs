@@ -178,7 +178,10 @@ impl fmt::Display for DesktopBrowserError {
                 f.write_str("ExplorerBrowser bounds must have positive, non-overflowing dimensions")
             }
             Self::ComInitialization(code) => {
-                write!(f, "ExplorerBrowser STA initialization failed with HRESULT {code:#x}")
+                write!(
+                    f,
+                    "ExplorerBrowser STA initialization failed with HRESULT {code:#x}"
+                )
             }
             Self::BrowserActivation(code) => {
                 write!(
