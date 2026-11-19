@@ -96,6 +96,7 @@ impl TaskbarSnapshot {
         Ok(())
     }
 
+    #[cfg(windows)]
     pub(super) fn from_native(
         target: &WindowsTarget,
         explorer_process_id: u32,
