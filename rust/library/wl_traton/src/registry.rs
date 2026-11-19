@@ -409,24 +409,57 @@ impl fmt::Display for RegistryError {
             Self::InvalidBuildRange => formatter.write_str("member build range is inverted"),
             Self::DuplicateObject => formatter.write_str("object definition is already registered"),
             Self::DuplicateMember => formatter.write_str("member definition is already registered"),
-            Self::MemberHasNoProviderCandidates => formatter.write_str("member definition has no provider candidates"),
-            Self::TargetMismatch => formatter.write_str("path release selector does not match the detected Windows target"),
+            Self::MemberHasNoProviderCandidates => {
+                formatter.write_str("member definition has no provider candidates")
+            }
+            Self::TargetMismatch => formatter
+                .write_str("path release selector does not match the detected Windows target"),
             Self::UnknownObject => formatter.write_str("object is not registered"),
-            Self::MissingMember => formatter.write_str("path does not select a property or callable member"),
-            Self::UnknownMember => formatter.write_str("property or callable member is not registered"),
-            Self::ActionNotAllowed => formatter.write_str("requested action is not allowed for this member"),
-            Self::BuildNotSupported => formatter.write_str("member is outside its declared Windows build range"),
-            Self::ExperimentalConsentRequired => formatter.write_str("this member requires explicit experimental consent"),
-            Self::ArgumentPolicyMismatch => formatter.write_str("member argument does not match its required/forbidden policy"),
-            Self::ArgumentKindNotAllowed => formatter.write_str("object argument kind is not allowed for this member"),
-            Self::InvalidArgument(error) => write!(formatter, "invalid typed object argument: {error}"),
+            Self::MissingMember => {
+                formatter.write_str("path does not select a property or callable member")
+            }
+            Self::UnknownMember => {
+                formatter.write_str("property or callable member is not registered")
+            }
+            Self::ActionNotAllowed => {
+                formatter.write_str("requested action is not allowed for this member")
+            }
+            Self::BuildNotSupported => {
+                formatter.write_str("member is outside its declared Windows build range")
+            }
+            Self::ExperimentalConsentRequired => {
+                formatter.write_str("this member requires explicit experimental consent")
+            }
+            Self::ArgumentPolicyMismatch => {
+                formatter.write_str("member argument does not match its required/forbidden policy")
+            }
+            Self::ArgumentKindNotAllowed => {
+                formatter.write_str("object argument kind is not allowed for this member")
+            }
+            Self::InvalidArgument(error) => {
+                write!(formatter, "invalid typed object argument: {error}")
+            }
             Self::MissingValue => formatter.write_str("write operation is missing its typed value"),
-            Self::UnexpectedValue => formatter.write_str("this operation does not accept a property value"),
-            Self::WrongValueType => formatter.write_str("property value does not match the member schema"),
-            Self::ValueOutOfRange => formatter.write_str("property value is outside the member's declared range"),
-            Self::UnknownEnumValue => formatter.write_str("enumeration value is not registered for this member"),
-            Self::CapabilityUnavailable { capability_id, status } => {
-                write!(formatter, "capability {capability_id} is not available ({status:?})")
+            Self::UnexpectedValue => {
+                formatter.write_str("this operation does not accept a property value")
+            }
+            Self::WrongValueType => {
+                formatter.write_str("property value does not match the member schema")
+            }
+            Self::ValueOutOfRange => {
+                formatter.write_str("property value is outside the member's declared range")
+            }
+            Self::UnknownEnumValue => {
+                formatter.write_str("enumeration value is not registered for this member")
+            }
+            Self::CapabilityUnavailable {
+                capability_id,
+                status,
+            } => {
+                write!(
+                    formatter,
+                    "capability {capability_id} is not available ({status:?})"
+                )
             }
         }
     }
