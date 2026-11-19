@@ -23,6 +23,7 @@ pub enum Architecture {
 }
 
 impl Architecture {
+    #[cfg(windows)]
     pub(crate) fn from_image_machine(machine: u16) -> Self {
         match machine {
             0x014c => Self::X86,
