@@ -343,8 +343,7 @@ mod tests {
             Err(TaskbarDiscoveryError::UnsupportedReleaseSelector)
         );
         assert_eq!(
-            Win10_22H2TaskbarDiscoveryProvider::new(mismatched.clone(), 200)
-                .probe(&mismatched),
+            Win10_22H2TaskbarDiscoveryProvider::new(mismatched.clone(), 200).probe(&mismatched),
             CapabilityStatus::Unsupported
         );
     }

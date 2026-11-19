@@ -98,9 +98,9 @@ fn verify_current_desktop_host(
         return Err("the Explorer desktop process exited during taskbar discovery".to_owned());
     }
 
-    if !is_same_desktop_host(identity).map_err(|error| {
-        format!("the Explorer desktop host could not be revalidated: {error}")
-    })? {
+    if !is_same_desktop_host(identity)
+        .map_err(|error| format!("the Explorer desktop host could not be revalidated: {error}"))?
+    {
         return Err(
             "the Explorer desktop host generation changed during taskbar discovery".to_owned(),
         );
