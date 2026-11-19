@@ -52,10 +52,18 @@ process-architecture and session queries. The probe requires Windows 10 version
 the explicit 64-bit view only; the flag is ignored on 32-bit Windows. It never
 writes registry values.
 
-Native event observation is not enabled yet. In particular, Traton does not
-install `SetWinEventHook`: its calling thread must own a message loop, and
-BGW's current host loop has not yet been extended with that pump. BGW remains
-the owner of lifecycle, future event-pump scheduling, routing and backpressure.
+BGW now installs one narrow `SetWinEventHook` observer for
+`EVENT_SYSTEM_FOREGROUND` on its own dedicated message-pump thread. It uses
+out-of-context delivery; the callback validates the top-level event shape and
+only sets an atomic pending flag. HWND/PID values are not retained or exported,
+and the callback does not query window metadata, call COM, perform I/O or
+block. The same thread removes the hook during shutdown.
+
+BGW converts a coalesced notification into a handle-free `WindowActivated`
+Traton event through the bounded queue. The current host loop consumes it on
+its existing maintenance cadence and reports aggregate diagnostics only.
+Stable window identity, low-latency dispatch and WLDE/`wl_animate` subscribers
+are not implemented yet. No Shell ChangeNotify source is installed.
 
 ## Read-only Windows 10 22H2 taskbar snapshot
 
