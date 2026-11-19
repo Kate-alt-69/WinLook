@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use crate::capability::CapabilityStatus;
-use crate::registry::{OperationAction, ObjectOwnership, PropertyValue, ValidatedOperation};
+use crate::registry::{ObjectOwnership, OperationAction, PropertyValue, ValidatedOperation};
 use crate::target::WindowsTarget;
 
 pub const MAX_RESTORE_PAYLOAD_BYTES: usize = 4096;
@@ -143,10 +143,18 @@ impl fmt::Display for ProviderError {
             Self::InvalidBuildRange => formatter.write_str("provider build range is inverted"),
             Self::DuplicateProvider => formatter.write_str("provider ID is already registered"),
             Self::Unsupported => formatter.write_str("provider does not implement this operation"),
-            Self::Failed { code, message } => write!(formatter, "provider failed ({code}): {message}"),
-            Self::OwnershipNotProven => formatter.write_str("provider cannot prove it still owns the applied state"),
-            Self::VerificationFailed => formatter.write_str("provider readback did not verify the requested state"),
-            Self::RestorePayloadTooLarge => formatter.write_str("provider restore payload exceeds the bounded limit"),
+            Self::Failed { code, message } => {
+                write!(formatter, "provider failed ({code}): {message}")
+            }
+            Self::OwnershipNotProven => {
+                formatter.write_str("provider cannot prove it still owns the applied state")
+            }
+            Self::VerificationFailed => {
+                formatter.write_str("provider readback did not verify the requested state")
+            }
+            Self::RestorePayloadTooLarge => {
+                formatter.write_str("provider restore payload exceeds the bounded limit")
+            }
         }
     }
 }
@@ -226,7 +234,11 @@ pub struct OperationResult {
 }
 
 impl OperationResult {
-    pub fn unsupported(path: impl Into<String>, target: &WindowsTarget, message: impl Into<String>) -> Self {
+    pub fn unsupported(
+        path: impl Into<String>,
+        target: &WindowsTarget,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             requested_path: path.into(),
             resolved_target: target.release_selector().to_owned(),

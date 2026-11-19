@@ -245,8 +245,7 @@ fn validate_identifier(value: &str, max_len: usize) -> Result<(), EventQueueErro
 #[cfg(test)]
 mod tests {
     use super::{
-        BoundedEventQueue, EventQueuePushResult, TratonEvent, TratonEventKind,
-        TratonEventPayload,
+        BoundedEventQueue, EventQueuePushResult, TratonEvent, TratonEventKind, TratonEventPayload,
     };
 
     fn event(kind: TratonEventKind, generation: u64, object: Option<&str>) -> TratonEvent {
@@ -265,12 +264,13 @@ mod tests {
     fn coalesces_only_matching_high_frequency_events() {
         let mut queue = BoundedEventQueue::new(2, 7).unwrap();
         assert_eq!(
-            queue.push(event(
-                TratonEventKind::WindowMoved,
-                7,
-                Some("running-window:window-1")
-            ))
-            .unwrap(),
+            queue
+                .push(event(
+                    TratonEventKind::WindowMoved,
+                    7,
+                    Some("running-window:window-1")
+                ))
+                .unwrap(),
             EventQueuePushResult::Queued
         );
         let mut newest = event(

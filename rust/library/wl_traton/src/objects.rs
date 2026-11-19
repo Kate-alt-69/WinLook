@@ -92,9 +92,10 @@ fn validate_stable_id(value: &str) -> Result<(), ObjectReferenceError> {
     if value.len() > 128 {
         return Err(ObjectReferenceError::IdTooLong);
     }
-    if !value.bytes().all(|byte| {
-        byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')
-    }) {
+    if !value
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+    {
         return Err(ObjectReferenceError::InvalidId);
     }
     Ok(())

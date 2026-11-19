@@ -31,8 +31,7 @@ pub use provider::{
 };
 pub use registry::{
     ArgumentPolicy, MemberDefinition, ObjectDefinition, ObjectKind, ObjectOwnership,
-    ObjectRegistry, OperationAction, PropertyValue, RegistryError, ValidatedOperation,
-    ValueSchema,
+    ObjectRegistry, OperationAction, PropertyValue, RegistryError, ValidatedOperation, ValueSchema,
 };
 pub use target::{
     Architecture, TargetDetectionError, WindowsFamily, WindowsTarget, WindowsTargetInfo,
