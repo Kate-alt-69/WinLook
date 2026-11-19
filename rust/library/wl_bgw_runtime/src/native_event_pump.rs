@@ -89,7 +89,7 @@ mod platform {
     }
 
     impl NativeEventPump {
-        pub(super) fn start() -> Result<Self, NativeEventPumpError> {
+        pub(crate) fn start() -> Result<Self, NativeEventPumpError> {
             if PUMP_ACTIVE
                 .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
                 .is_err()
@@ -150,7 +150,7 @@ mod platform {
         }
 
         /// Returns and clears the coalesced foreground-change signal.
-        pub(super) fn take_foreground_changed(&self) -> bool {
+        pub(crate) fn take_foreground_changed(&self) -> bool {
             FOREGROUND_CHANGE_PENDING.swap(false, Ordering::AcqRel)
         }
     }
@@ -194,7 +194,7 @@ mod platform {
                 WINEVENT_OUTOFCONTEXT,
             )
         };
-        if hook == 0 {
+        if hook.is_null() {
             let code = unsafe { GetLastError() };
             let _ = startup_sender.send(Err(code));
             return;
