@@ -246,6 +246,26 @@ impl ObjectRegistry {
                 experimental: true,
             })
             .expect("static member");
+        taskbar
+            .register_member(MemberDefinition {
+                path: crate::taskbar::TASKBAR_WINDOW_COUNT_MEMBER.to_owned(),
+                actions: [OperationAction::Read].into_iter().collect(),
+                value_schema: ValueSchema::Integer {
+                    minimum: 1,
+                    maximum: crate::taskbar::MAX_TASKBAR_WINDOWS as i64,
+                },
+                argument_policy: ArgumentPolicy::Forbidden,
+                argument_kinds: BTreeSet::new(),
+                capability_id: crate::taskbar::TASKBAR_WINDOW_DISCOVERY_CAPABILITY_ID.to_owned(),
+                ownership: ObjectOwnership::Windows,
+                minimum_build: Some(19_045),
+                maximum_build: Some(19_045),
+                provider_ids: vec![
+                    crate::taskbar::TASKBAR_WINDOW_DISCOVERY_PROVIDER_ID.to_owned(),
+                ],
+                experimental: false,
+            })
+            .expect("static member");
         registry.register_object(taskbar).expect("static object");
 
         let mut display = ObjectDefinition::new("display", "monitor", ObjectKind::DisplayMonitor)

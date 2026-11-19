@@ -14,7 +14,7 @@ This repository is not yet a complete Windows application. It contains the livin
 
 The shared foundations and first WLDE scene layer use **Windows 10 as the modern implementation baseline**:
 - [`wl_animate`](rust/library/wl_animate/README.md) / [`wl_Lanimate`](C/library/wl_Lanimate/README.md) — paired animation, vector math and shared host-driven frame clocks.
-- [`wl_traton` (Traton)](rust/library/wl_traton/README.md) — versioned Windows object paths, read-only target discovery, typed capability/provider contracts and normalized event queue; native Shell hooks and write providers remain gated.
+- [`wl_traton` (Traton)](rust/library/wl_traton/README.md) — versioned Windows object paths, read-only target discovery, typed capability/provider contracts, normalized event queue and a build-scoped Win10 22H2 taskbar-window snapshot; native Shell hooks and write providers remain gated.
 - [`wl_cpuv`](rust/library/wl_cpuv/README.md) / [`wl_Lcpuv`](C/library/wl_Lcpuv/README.md) — CPU work admission/accounting.
 - [`wl_gpuv`](rust/library/wl_gpuv/README.md) / [`wl_Lgpuv`](C/library/wl_Lgpuv/README.md) — GPU memory/submission admission.
 - [`wl_wlde`](rust/library/wl_wlde/README.md) / [`wl_Lwlde`](C/library/wl_Lwlde/README.md) — portable Desktop Engine scene policy, monitor topology, placement, visibility scheduling and matching Wallpaper Store provider metadata; Rust also bridges to an existing Wallpaper Engine install.

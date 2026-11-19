@@ -1,6 +1,6 @@
 # Traton (`wl_traton`) — Native Windows Translation, Shell Integration and Quirks
 
-> **Status:** The Rust crate now implements canonical paths, read-only Windows target discovery, typed object/member validation, capability/provider contracts and a bounded normalized-event queue. Native Shell/window event subscriptions, concrete taskbar providers, Quirks execution and the XML compiler remain unimplemented.
+> **Status:** The Rust crate implements canonical paths, read-only Windows target discovery, typed object/member validation, capability/provider contracts and a bounded normalized-event queue. A read-only Windows 10 22H2/build 19045 taskbar-window snapshot is now integrated through BGW. Native event subscriptions, taskbar item enumeration/mutation, Quirks execution and the XML compiler remain unimplemented.
 >
 > **Library name:** `wl_traton` (public name: **Traton**; modern Rust implementation).
 >
@@ -174,6 +174,17 @@ Taskbar presentation is a set of independent properties, not one monolithic "tas
 **Full arbitrary placement belongs first to a WLDE-owned taskbar surface.** The Windows AppBar contract is a documented candidate for an independent edge-anchored bar and work-area negotiation. `SHAppBarMessage` supports registration, edge selection, querying and setting an appbar rectangle; Windows can adjust the requested rectangle to avoid the native taskbar and other appbars. It is not a documented promise that WinLook can freely move the stock Explorer taskbar to any arbitrary coordinate. A free-positioned WLDE surface is therefore a separate presentation path, not a claim about the native taskbar.
 
 When a WLDE-owned taskbar is active, the policy for the stock Explorer taskbar—coexist, auto-hide, minimize overlap or use a verified build-specific integration—must be explicit. If the requested native operation is unavailable, do not fake success: retain the native taskbar or use the independent WLDE surface with a clear status.
+
+#### Read-only Windows 10 22H2 taskbar window discovery
+
+Traton's first Shell taskbar provider is deliberately limited to Windows 10
+22H2/build 19045. After BGW verifies the current Explorer desktop-host PID and
+session, the provider finds the primary `Shell_TrayWnd` and secondary
+`Shell_SecondaryTrayWnd` windows, rechecks each owner PID, then captures only
+window role, `GetWindowRect` bounds and `IsWindowVisible` state. The snapshot
+contains no raw HWND and does not enumerate taskbar item content. Shell class
+names are implementation details, so this is an explicitly build-scoped,
+partial-coverage observation adapter—not a universal Windows API contract.
 
 ### 4.3 Shortcut icons versus running application buttons
 
@@ -478,7 +489,8 @@ The Traton core now implements namespace parsing, target discovery, typed regist
 - [x] Implement read-only OS/build/UBR/edition/architecture/session discovery and capability reporting.
 - [ ] Implement carefully selected WinEvent observation after BGW owns a message pump, with correct unhook lifecycle, callback reentrancy handling and bounded delivery.
 - [ ] Implement relevant Shell change notifications with correct registration, lock/unlock and deregistration.
-- [ ] Implement taskbar/Start/Shell object discovery and document which properties are truly readable/writable.
+- [x] Implement read-only Windows 10 22H2/build 19045 taskbar-window discovery, verifying every window belongs to BGW's current Explorer host; expose only role, bounds and WS_VISIBLE state.
+- [ ] Extend taskbar discovery to item-level pinned shortcuts, running-window buttons, system buttons and notification-area icons only through separately verified providers.
 - [ ] Implement AppBar registration/position/work-area negotiation for a WLDE-owned taskbar surface; preserve coexistence with the native taskbar.
 - [x] Implement typed taskbar item-role references for pinned shortcuts, running-window buttons, system buttons and notification-area icons.
 - [ ] Implement supported Win32/DWM window-frame inspection and operations with per-attribute version gating.

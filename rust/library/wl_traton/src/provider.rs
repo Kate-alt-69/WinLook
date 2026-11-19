@@ -14,6 +14,7 @@ pub enum ProviderKind {
     DocumentedApi,
     VerifiedAdapter,
     WinLookSurface,
+    ExperimentalAdapter,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,6 +46,14 @@ pub struct ProviderCatalog {
 }
 
 impl ProviderCatalog {
+    pub fn standard() -> Self {
+        let mut catalog = Self::default();
+        catalog
+            .register(crate::taskbar::Win10_22H2TaskbarDiscoveryProvider::descriptor())
+            .expect("the built-in Traton provider descriptor is valid");
+        catalog
+    }
+
     pub fn register(&mut self, descriptor: ProviderDescriptor) -> Result<(), ProviderError> {
         if descriptor.id.is_empty()
             || descriptor.id.len() > 64
@@ -70,8 +79,8 @@ impl ProviderCatalog {
         Ok(())
     }
 
-    /// Candidate order is documented API, verified build adapter, then a
-    /// semantically equivalent WinLook-owned surface.
+    /// Candidate order prefers documented APIs, verified adapters and
+    /// WinLook-owned equivalents before experimental native adapters.
     pub fn candidates(
         &self,
         operation: &ValidatedOperation,
@@ -284,6 +293,7 @@ mod tests {
             ("surface", ProviderKind::WinLookSurface),
             ("verified", ProviderKind::VerifiedAdapter),
             ("documented", ProviderKind::DocumentedApi),
+            ("experimental", ProviderKind::ExperimentalAdapter),
         ] {
             catalog
                 .register(ProviderDescriptor {
@@ -311,6 +321,7 @@ mod tests {
                 "surface".to_owned(),
                 "verified".to_owned(),
                 "documented".to_owned(),
+                "experimental".to_owned(),
             ],
             target_build: 19_045,
         };
@@ -318,5 +329,6 @@ mod tests {
         assert_eq!(ordered[0].kind, ProviderKind::DocumentedApi);
         assert_eq!(ordered[1].kind, ProviderKind::VerifiedAdapter);
         assert_eq!(ordered[2].kind, ProviderKind::WinLookSurface);
+        assert_eq!(ordered[3].kind, ProviderKind::ExperimentalAdapter);
     }
 }

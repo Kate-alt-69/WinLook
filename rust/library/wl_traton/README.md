@@ -37,9 +37,12 @@ or command. A property value is supplied separately in a typed operation.
   events where capacity permits.
 
 The first registry catalogue is deliberately small: taskbar surface anchor,
-item visibility and monitor topology. The stock taskbar item-visibility member
-is marked experimental and cannot validate unless capability evidence and
-explicit consent are supplied. No native taskbar mutation provider is shipped.
+item visibility, read-only taskbar window count and monitor topology. The
+Windows 10 22H2 taskbar window-count provider enumerates only Shell taskbar
+windows owned by BGW's verified Explorer process. It reports bounds and
+WS_VISIBLE style state only; it does not identify taskbar items or mutate
+Explorer. The stock taskbar item-visibility member remains experimental and
+has no native mutation provider.
 
 ## Native Windows boundary
 
@@ -53,6 +56,17 @@ Native event observation is not enabled yet. In particular, Traton does not
 install `SetWinEventHook`: its calling thread must own a message loop, and
 BGW's current host loop has not yet been extended with that pump. BGW remains
 the owner of lifecycle, future event-pump scheduling, routing and backpressure.
+
+## Read-only Windows 10 22H2 taskbar snapshot
+
+On exact build 19045, BGW can query the primary `Shell_TrayWnd` and secondary
+`Shell_SecondaryTrayWnd` top-level windows after it has verified the Explorer
+process/session. Traton rechecks each returned HWND's owner PID against that
+verified Explorer PID before taking a snapshot. The public result contains only
+role, screen-space bounds and `WS_VISIBLE` style state; HWNDs never leave the
+Win32 adapter. The class names are Shell implementation details, so the
+adapter is build-scoped and reports partial capability coverage. This does not
+enumerate pinned shortcuts, running-window buttons or notification-area icons.
 
 ## Safety and ownership
 

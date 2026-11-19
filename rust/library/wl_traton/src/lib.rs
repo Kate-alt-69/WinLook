@@ -14,6 +14,7 @@ mod objects;
 mod provider;
 mod registry;
 mod target;
+mod taskbar;
 
 #[cfg(windows)]
 mod windows;
@@ -35,4 +36,10 @@ pub use registry::{
 };
 pub use target::{
     Architecture, TargetDetectionError, WindowsFamily, WindowsTarget, WindowsTargetInfo,
+};
+pub use taskbar::{
+    TaskbarDiscoveryError, TaskbarRect, TaskbarSnapshot, TaskbarWindow, TaskbarWindowRole,
+    Win10_22H2TaskbarDiscoveryProvider, MAX_TASKBAR_WINDOWS,
+    TASKBAR_WINDOW_COUNT_MEMBER, TASKBAR_WINDOW_DISCOVERY_CAPABILITY_ID,
+    TASKBAR_WINDOW_DISCOVERY_PROVIDER_ID,
 };

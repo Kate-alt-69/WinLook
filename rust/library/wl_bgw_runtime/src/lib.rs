@@ -22,6 +22,8 @@ pub use desktop_store::{
 #[cfg(windows)]
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
+use wl_traton::TranslationProvider;
+#[cfg(windows)]
 use wl_wlde::DesktopItemKind;
 #[cfg(windows)]
 use wl_wlde_win32::{
@@ -86,7 +88,7 @@ pub fn run() -> Result<(), BgwRuntimeError> {
 
 #[cfg(windows)]
 fn run_windows() -> Result<(), BgwRuntimeError> {
-    match wl_traton::WindowsTarget::detect() {
+    let windows_target = match wl_traton::WindowsTarget::detect() {
         Ok(target) => {
             let ubr = target
                 .update_build_revision()
@@ -103,11 +105,15 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 target.system_architecture(),
                 target.session_id()
             ));
+            Some(target)
         }
-        Err(error) => report_status(&format!(
-            "Traton target discovery unavailable; native integrations remain gated: {error}"
-        )),
-    }
+        Err(error) => {
+            report_status(&format!(
+                "Traton target discovery unavailable; native integrations remain gated: {error}"
+            ));
+            None
+        }
+    };
 
     let mut waiting_for_shell_logged = false;
     let desktop_state_store = match DesktopStateStore::for_current_user() {
@@ -154,6 +160,69 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             identity.creation_time_100ns(),
             identity.image_path().display()
         ));
+
+        if let Some(target) = windows_target.as_ref() {
+            if target.build_number() == 19_045 {
+                let provider = wl_traton::Win10_22H2TaskbarDiscoveryProvider::new(
+                    target.clone(),
+                    identity.process_id(),
+                );
+                let discovery_result: Result<i64, String> = (|| {
+                    let mut capabilities = wl_traton::CapabilitySet::new();
+                    capabilities
+                        .set(
+                            wl_traton::TASKBAR_WINDOW_DISCOVERY_CAPABILITY_ID,
+                            wl_traton::CapabilityRecord {
+                                status: provider.probe(target),
+                                provider_id: Some(provider.descriptor().id.clone()),
+                                reason: Some(
+                                    "read-only Shell window discovery; item-level taskbar data is not included"
+                                        .to_owned(),
+                                ),
+                            },
+                        )
+                        .map_err(|error| error.to_string())?;
+                    let path = wl_traton::NamespacePath::parse(
+                        "windows.10-22h2.shell.taskbar.windows.count",
+                    )
+                    .map_err(|error| error.to_string())?;
+                    let registry = wl_traton::ObjectRegistry::standard();
+                    let operation = registry
+                        .validate(
+                            &path,
+                            wl_traton::OperationAction::Read,
+                            None,
+                            target,
+                            &capabilities,
+                            false,
+                        )
+                        .map_err(|error| error.to_string())?;
+                    let catalog = wl_traton::ProviderCatalog::standard();
+                    let candidate_selected = catalog
+                        .candidates(&operation, target, false)
+                        .iter()
+                        .any(|candidate| candidate.id == provider.descriptor().id);
+                    if !candidate_selected {
+                        return Err("no compatible Traton taskbar provider was selected".to_owned());
+                    }
+                    match provider
+                        .read(&operation)
+                        .map_err(|error| error.to_string())?
+                    {
+                        wl_traton::PropertyValue::Integer(count) => Ok(count),
+                        _ => Err("Traton taskbar provider returned an unexpected value type".to_owned()),
+                    }
+                })();
+                match discovery_result {
+                    Ok(count) => report_status(&format!(
+                        "Traton read-only taskbar snapshot: {count} Explorer-owned window(s)"
+                    )),
+                    Err(error) => report_status(&format!(
+                        "Traton taskbar discovery unavailable; native taskbar remains unchanged: {error}"
+                    )),
+                }
+            }
+        }
 
         // Keep the read-only inventory alive only for this verified Explorer host.
         // The state store retains only opaque IDs; no filesystem path is persisted.

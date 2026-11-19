@@ -18,6 +18,10 @@ Shared runtime library for WinLook's BGW process and the current WLDE desktop-in
   installation type, process/native architecture and interactive session
   through Traton's read-only target probe. Unknown metadata is reported as
   unavailable, not guessed.
+- On exact Windows 10 22H2/build 19045, queries a read-only snapshot of the
+  primary and secondary Explorer taskbar windows after matching their owner
+  PID to BGW's verified desktop-host identity. It reports only the aggregate
+  count; native handles and item contents are not exposed.
 - Sends status output through `OutputDebugStringW` on Windows. This is a
   diagnostic channel, not a persistent application log; without a debugger or
   active system debugger, Windows may discard the messages.

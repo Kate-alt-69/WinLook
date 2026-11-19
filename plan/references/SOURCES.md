@@ -355,3 +355,16 @@ been implemented or that every event is available on every target.
 | WLDE-042 | [IExplorerBrowser::BrowseToIDList](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iexplorerbrowser-browsetoidlist) | SBSP_ABSOLUTE identifies an absolute PIDL relative to the Desktop | Used only to navigate the app-owned control to the virtual Desktop root; PIDLs remain temporary adapter-local values |
 | WLDE-043 | [IExplorerBrowser::GetCurrentView](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iexplorerbrowser-getcurrentview) | Returns the requested interface for the current browser view; IFolderView is one documented typical interface | The adapter reacquires the view on each snapshot and keeps returned COM interfaces local to the STA |
 | WLDE-044 | [IFolderView::ItemCount](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifolderview-itemcount), [IFolderView::Items](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifolderview-items), [IFolderView::GetItemPosition](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifolderview-getitemposition) | ItemCount reports the view's displayed item count; Items provides an enumerator; GetItemPosition returns an item's upper-left point in the folder view | Count/Items are read-only snapshot inputs. Position is view-relative; it is not a virtual-screen or monitor coordinate. Ordinal is transient and cannot be used as persistent item identity |
+
+
+## Traton — read-only Windows 10 22H2 taskbar window discovery (2026-11-19)
+
+| ID | Source | Claim supported | Scope / consequence |
+|---|---|---|---|
+| TRATON-006 | [FindWindowW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-findwindoww), [FindWindowExW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-findwindowexw) | Locates top-level windows by class/title and enumerates matching windows | Traton uses `Shell_TrayWnd` and `Shell_SecondaryTrayWnd` only in an explicitly build-scoped Windows 10 22H2 adapter; these class names are Shell implementation details, not a documented taskbar object model |
+| TRATON-007 | [GetWindowThreadProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowthreadprocessid), [GetWindowRect](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect), [IsWindowVisible](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-iswindowvisible) | Gets window owner PID, screen-space bounding rectangle, and WS_VISIBLE style state; GetWindowRect is DPI-virtualized and can include invisible resize borders; IsWindowVisible does not prove unobscured visibility | Every taskbar HWND is checked against BGW's already-verified Explorer PID and discarded after snapshot. The API returns only role/bounds/style state, not item identities or visibility guarantees for taskbar buttons |
+
+The Traton provider is read-only and exact-build scoped to 19045. It does not
+move, hide, subclass or otherwise mutate Explorer. The underlying class names
+are a compatibility observation, not a promise that the same names or
+semantics are supported on Windows 11 or later cumulative updates.
