@@ -30,13 +30,13 @@ mod platform {
     use std::sync::mpsc;
     use std::thread::{self, JoinHandle};
 
-    use wl_wlde_win32::{DesktopInventoryError, DesktopInventoryWakeSignal};
     use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, HWND};
     use windows_sys::Win32::System::Threading::{CreateEventW, SetEvent};
     use windows_sys::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         DispatchMessageW, MsgWaitForMultipleObjects, PeekMessageW, TranslateMessage, MSG,
     };
+    use wl_wlde_win32::{DesktopInventoryError, DesktopInventoryWakeSignal};
 
     const WINEVENT_OUTOFCONTEXT: u32 = 0x0000;
     const PM_REMOVE: u32 = 0x0001;
@@ -165,7 +165,9 @@ mod platform {
 
         /// Whether the native message-pump thread is still alive.
         pub(crate) fn is_running(&self) -> bool {
-            self.worker.as_ref().is_some_and(|worker| !worker.is_finished())
+            self.worker
+                .as_ref()
+                .is_some_and(|worker| !worker.is_finished())
         }
 
         /// Error or wait result recorded when the pump exits unexpectedly.

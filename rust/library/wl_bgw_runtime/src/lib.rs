@@ -506,18 +506,19 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
             } else {
                 DESKTOP_HOST_RECHECK_INTERVAL
             };
-            let watcher_result = inventory_watcher.as_ref().map(|watcher| {
-                match foreground_wake_signal.as_ref() {
-                    Some(signal) => watcher.wait_for_change_or_wake(wait_interval, signal),
-                    None => watcher.wait_for_change(wait_interval).map(|changed| {
-                        if changed {
-                            DesktopInventoryWaitResult::DirectoryChanged
-                        } else {
-                            DesktopInventoryWaitResult::TimedOut
-                        }
-                    }),
-                }
-            });
+            let watcher_result =
+                inventory_watcher
+                    .as_ref()
+                    .map(|watcher| match foreground_wake_signal.as_ref() {
+                        Some(signal) => watcher.wait_for_change_or_wake(wait_interval, signal),
+                        None => watcher.wait_for_change(wait_interval).map(|changed| {
+                            if changed {
+                                DesktopInventoryWaitResult::DirectoryChanged
+                            } else {
+                                DesktopInventoryWaitResult::TimedOut
+                            }
+                        }),
+                    });
             let inventory_changed = match watcher_result {
                 Some(Ok(DesktopInventoryWaitResult::DirectoryChanged)) => true,
                 Some(Ok(

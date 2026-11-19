@@ -298,7 +298,8 @@ impl DesktopInventoryWatcher {
     ) -> Result<DesktopInventoryWaitResult, DesktopInventoryError> {
         #[cfg(windows)]
         {
-            self.inner.wait_for_change_or_wake(timeout, &wake_signal.inner)
+            self.inner
+                .wait_for_change_or_wake(timeout, &wake_signal.inner)
         }
         #[cfg(not(windows))]
         {
@@ -383,9 +384,9 @@ mod desktop_inventory_platform {
     use std::collections::{HashMap, HashSet};
     use std::ffi::{c_void, OsString};
     use std::io::ErrorKind;
-    use std::sync::Arc;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::ptr;
+    use std::sync::Arc;
 
     #[repr(C)]
     #[derive(Clone, Copy)]
