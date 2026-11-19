@@ -295,7 +295,11 @@ mod tests {
             argument: None,
             capability_id: "test".to_owned(),
             ownership: ObjectOwnership::Windows,
-            provider_ids: vec!["surface".to_owned(), "verified".to_owned(), "documented".to_owned()],
+            provider_ids: vec![
+                "surface".to_owned(),
+                "verified".to_owned(),
+                "documented".to_owned(),
+            ],
             target_build: 19_045,
         };
         let ordered = catalog.candidates(&operation, &target(), false);

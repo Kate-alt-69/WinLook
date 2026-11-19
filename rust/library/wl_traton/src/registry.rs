@@ -56,9 +56,7 @@ impl ValueSchema {
             {
                 Ok(())
             }
-            (Self::Text { max_bytes }, PropertyValue::Text(value))
-                if value.len() <= *max_bytes =>
-            {
+            (Self::Text { max_bytes }, PropertyValue::Text(value)) if value.len() <= *max_bytes => {
                 Ok(())
             }
             (Self::Enumeration { values }, PropertyValue::Enumeration(value))
@@ -137,14 +135,19 @@ impl ObjectDefinition {
 
     pub fn register_member(&mut self, member: MemberDefinition) -> Result<(), RegistryError> {
         validate_member_path(&member.path)?;
-        validate_identifier(&member.capability_id).map_err(|_| RegistryError::InvalidCapabilityId)?;
+        validate_identifier(&member.capability_id)
+            .map_err(|_| RegistryError::InvalidCapabilityId)?;
         if member.provider_ids.is_empty() {
             return Err(RegistryError::MemberHasNoProviderCandidates);
         }
         for provider_id in &member.provider_ids {
             validate_identifier(provider_id).map_err(|_| RegistryError::InvalidProviderId)?;
         }
-        if member.minimum_build.zip(member.maximum_build).is_some_and(|(min, max)| min > max) {
+        if member
+            .minimum_build
+            .zip(member.maximum_build)
+            .is_some_and(|(min, max)| min > max)
+        {
             return Err(RegistryError::InvalidBuildRange);
         }
         if self.members.contains_key(&member.path) {
@@ -221,7 +224,10 @@ impl ObjectRegistry {
                     .into_iter()
                     .collect(),
                 value_schema: ValueSchema::Enumeration {
-                    values: ["visible", "hidden"].into_iter().map(str::to_owned).collect(),
+                    values: ["visible", "hidden"]
+                        .into_iter()
+                        .map(str::to_owned)
+                        .collect(),
                 },
                 argument_policy: ArgumentPolicy::Required,
                 argument_kinds: [
@@ -242,9 +248,8 @@ impl ObjectRegistry {
             .expect("static member");
         registry.register_object(taskbar).expect("static object");
 
-        let mut display =
-            ObjectDefinition::new("display", "monitor", ObjectKind::DisplayMonitor)
-                .expect("static object");
+        let mut display = ObjectDefinition::new("display", "monitor", ObjectKind::DisplayMonitor)
+            .expect("static object");
         display
             .register_member(MemberDefinition {
                 path: "topology".to_owned(),
@@ -402,8 +407,12 @@ pub enum RegistryError {
 impl fmt::Display for RegistryError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidObjectSegment => formatter.write_str("object identifiers must be lowercase ASCII segments"),
-            Self::InvalidMemberPath => formatter.write_str("member paths must contain lowercase ASCII segments"),
+            Self::InvalidObjectSegment => {
+                formatter.write_str("object identifiers must be lowercase ASCII segments")
+            }
+            Self::InvalidMemberPath => {
+                formatter.write_str("member paths must contain lowercase ASCII segments")
+            }
             Self::InvalidCapabilityId => formatter.write_str("capability identifier is invalid"),
             Self::InvalidProviderId => formatter.write_str("provider identifier is invalid"),
             Self::InvalidBuildRange => formatter.write_str("member build range is inverted"),
