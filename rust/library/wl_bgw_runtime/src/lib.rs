@@ -87,6 +87,29 @@ pub fn run() -> Result<(), BgwRuntimeError> {
 }
 
 #[cfg(windows)]
+fn verify_current_desktop_host(
+    monitor: &wl_wlde_win32::DesktopHostMonitor,
+    identity: &wl_wlde_win32::DesktopHostIdentity,
+) -> Result<(), String> {
+    if monitor
+        .wait_for_exit(Duration::ZERO)
+        .map_err(|error| format!("could not verify the Explorer process handle: {error}"))?
+    {
+        return Err("the Explorer desktop process exited during taskbar discovery".to_owned());
+    }
+
+    if !is_same_desktop_host(identity).map_err(|error| {
+        format!("the Explorer desktop host could not be revalidated: {error}")
+    })? {
+        return Err(
+            "the Explorer desktop host generation changed during taskbar discovery".to_owned(),
+        );
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
 fn run_windows() -> Result<(), BgwRuntimeError> {
     let windows_target = match wl_traton::WindowsTarget::detect() {
         Ok(target) => {
@@ -168,6 +191,8 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     identity.process_id(),
                 );
                 let discovery_result: Result<i64, String> = (|| {
+                    verify_current_desktop_host(&monitor, &identity)?;
+
                     let mut capabilities = wl_traton::CapabilitySet::new();
                     capabilities
                         .set(
@@ -205,16 +230,21 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                     if !candidate_selected {
                         return Err("no compatible Traton taskbar provider was selected".to_owned());
                     }
-                    match provider
+                    let count = match provider
                         .read(&operation)
                         .map_err(|error| error.to_string())?
                     {
-                        wl_traton::PropertyValue::Integer(count) => Ok(count),
+                        wl_traton::PropertyValue::Integer(count) => count,
                         _ => {
-                            Err("Traton taskbar provider returned an unexpected value type"
-                                .to_owned())
+                            return Err(
+                                "Traton taskbar provider returned an unexpected value type"
+                                    .to_owned(),
+                            );
                         }
-                    }
+                    };
+
+                    verify_current_desktop_host(&monitor, &identity)?;
+                    Ok(count)
                 })();
                 match discovery_result {
                     Ok(count) => report_status(&format!(

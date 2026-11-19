@@ -183,8 +183,11 @@ session, the provider finds the primary `Shell_TrayWnd` and secondary
 `Shell_SecondaryTrayWnd` windows, rechecks each owner PID, then captures only
 window role, `GetWindowRect` bounds and `IsWindowVisible` state. The snapshot
 contains no raw HWND and does not enumerate taskbar item content. Shell class
-names are implementation details, so this is an explicitly build-scoped,
-partial-coverage observation adapter—not a universal Windows API contract.
+names are implementation details, so this is an explicitly `10-22h2` /
+build-19045, partial-coverage observation adapter—not a universal Windows API
+contract. BGW checks the verified Explorer process handle and host generation
+immediately before and after discovery, and discards the snapshot if the host
+changed during the operation.
 
 ### 4.3 Shortcut icons versus running application buttons
 

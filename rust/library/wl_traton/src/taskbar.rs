@@ -90,18 +90,24 @@ impl TaskbarSnapshot {
                 build_number: target.build_number(),
             });
         }
+        if target.release_selector() != "10-22h2" {
+            return Err(TaskbarDiscoveryError::UnsupportedReleaseSelector);
+        }
         if expected_explorer_process_id == 0 {
             return Err(TaskbarDiscoveryError::InvalidExplorerProcessId);
         }
         Ok(())
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows, test))]
     pub(super) fn from_native(
         target: &WindowsTarget,
         explorer_process_id: u32,
         windows: Vec<TaskbarWindow>,
     ) -> Result<Self, TaskbarDiscoveryError> {
+        if explorer_process_id == 0 {
+            return Err(TaskbarDiscoveryError::InvalidExplorerProcessId);
+        }
         if windows.len() > MAX_TASKBAR_WINDOWS {
             return Err(TaskbarDiscoveryError::TooManyTaskbarWindows);
         }
@@ -148,6 +154,7 @@ pub enum TaskbarDiscoveryError {
     UnsupportedTarget {
         build_number: u32,
     },
+    UnsupportedReleaseSelector,
     InvalidExplorerProcessId,
     PrimaryTaskbarNotFound,
     TooManyTaskbarWindows,
@@ -172,6 +179,9 @@ impl fmt::Display for TaskbarDiscoveryError {
                 formatter,
                 "taskbar discovery is only verified for Windows 10 22H2 build {WINDOWS_10_22H2_BUILD}; detected build {build_number}"
             ),
+            Self::UnsupportedReleaseSelector => {
+                formatter.write_str("taskbar discovery requires the Windows 10 22H2 release selector")
+            }
             Self::InvalidExplorerProcessId => {
                 formatter.write_str("the verified Explorer process ID is invalid")
             }
@@ -246,6 +256,7 @@ impl TranslationProvider for Win10_22H2TaskbarDiscoveryProvider {
     fn probe(&self, target: &WindowsTarget) -> CapabilityStatus {
         if target.family() == WindowsFamily::Windows10
             && target.build_number() == WINDOWS_10_22H2_BUILD
+            && target.release_selector() == "10-22h2"
         {
             CapabilityStatus::Partial
         } else {
@@ -277,15 +288,23 @@ impl TranslationProvider for Win10_22H2TaskbarDiscoveryProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::{TaskbarDiscoveryError, TaskbarSnapshot, Win10_22H2TaskbarDiscoveryProvider};
-    use crate::provider::ProviderKind;
+    use super::{
+        TaskbarDiscoveryError, TaskbarRect, TaskbarSnapshot, TaskbarWindow, TaskbarWindowRole,
+        Win10_22H2TaskbarDiscoveryProvider, MAX_TASKBAR_WINDOWS,
+    };
+    use crate::capability::CapabilityStatus;
+    use crate::provider::{ProviderKind, TranslationProvider};
     use crate::registry::OperationAction;
     use crate::target::{Architecture, WindowsTarget, WindowsTargetInfo};
 
     fn target(build_number: u32) -> WindowsTarget {
+        target_with_release(build_number, "22H2")
+    }
+
+    fn target_with_release(build_number: u32, display_version: &str) -> WindowsTarget {
         WindowsTarget::from_info(WindowsTargetInfo {
             product_name: Some("Windows 10 Pro".to_owned()),
-            display_version: Some("22H2".to_owned()),
+            display_version: Some(display_version.to_owned()),
             edition: Some("Professional".to_owned()),
             installation_type: Some("Client".to_owned()),
             build_number,
@@ -317,6 +336,20 @@ mod tests {
     }
 
     #[test]
+    fn rejects_a_mismatched_release_selector_even_on_the_same_build() {
+        let mismatched = target_with_release(19_045, "21H2");
+        assert_eq!(
+            TaskbarSnapshot::validate_target(&mismatched, 200),
+            Err(TaskbarDiscoveryError::UnsupportedReleaseSelector)
+        );
+        assert_eq!(
+            Win10_22H2TaskbarDiscoveryProvider::new(mismatched.clone(), 200)
+                .probe(&mismatched),
+            CapabilityStatus::Unsupported
+        );
+    }
+
+    #[test]
     fn rejects_windows_11_for_the_windows_10_shell_adapter() {
         let windows_11 = WindowsTarget::from_info(WindowsTargetInfo {
             product_name: Some("Windows 11 Pro".to_owned()),
@@ -337,6 +370,78 @@ mod tests {
             Err(TaskbarDiscoveryError::UnsupportedTarget {
                 build_number: 26_100
             })
+        );
+    }
+
+    #[test]
+    fn constructs_a_handle_free_snapshot_from_validated_native_windows() {
+        let snapshot = TaskbarSnapshot::from_native(
+            &target(19_045),
+            200,
+            vec![TaskbarWindow {
+                role: TaskbarWindowRole::Primary,
+                bounds: TaskbarRect {
+                    left: 0,
+                    top: 1040,
+                    right: 1920,
+                    bottom: 1080,
+                },
+                style_visible: true,
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(snapshot.release_selector(), "10-22h2");
+        assert_eq!(snapshot.build_number(), 19_045);
+        assert_eq!(snapshot.session_id(), 1);
+        assert_eq!(snapshot.explorer_process_id(), 200);
+        assert_eq!(snapshot.windows().len(), 1);
+        assert!(snapshot.windows()[0].style_visible);
+    }
+
+    #[test]
+    fn rejects_invalid_native_snapshot_shapes() {
+        assert_eq!(
+            TaskbarSnapshot::from_native(&target(19_045), 200, Vec::new()),
+            Err(TaskbarDiscoveryError::PrimaryTaskbarNotFound)
+        );
+
+        let invalid_bounds = TaskbarWindow {
+            role: TaskbarWindowRole::Primary,
+            bounds: TaskbarRect {
+                left: 10,
+                top: 10,
+                right: 10,
+                bottom: 20,
+            },
+            style_visible: false,
+        };
+        assert_eq!(
+            TaskbarSnapshot::from_native(&target(19_045), 200, vec![invalid_bounds]),
+            Err(TaskbarDiscoveryError::InvalidBounds)
+        );
+
+        let primary = TaskbarWindow {
+            role: TaskbarWindowRole::Primary,
+            bounds: TaskbarRect {
+                left: 0,
+                top: 0,
+                right: 100,
+                bottom: 40,
+            },
+            style_visible: true,
+        };
+        assert_eq!(
+            TaskbarSnapshot::from_native(
+                &target(19_045),
+                200,
+                vec![primary; MAX_TASKBAR_WINDOWS + 1]
+            ),
+            Err(TaskbarDiscoveryError::TooManyTaskbarWindows)
+        );
+        assert_eq!(
+            TaskbarSnapshot::from_native(&target(19_045), 0, vec![primary]),
+            Err(TaskbarDiscoveryError::InvalidExplorerProcessId)
         );
     }
 

@@ -65,8 +65,10 @@ process/session. Traton rechecks each returned HWND's owner PID against that
 verified Explorer PID before taking a snapshot. The public result contains only
 role, screen-space bounds and `WS_VISIBLE` style state; HWNDs never leave the
 Win32 adapter. The class names are Shell implementation details, so the
-adapter is build-scoped and reports partial capability coverage. This does not
-enumerate pinned shortcuts, running-window buttons or notification-area icons.
+adapter requires the exact `10-22h2` selector and build 19045, and reports
+partial capability coverage. BGW revalidates the same Explorer process
+generation immediately before and after the snapshot. This does not enumerate
+pinned shortcuts, running-window buttons or notification-area icons.
 
 ## Safety and ownership
 

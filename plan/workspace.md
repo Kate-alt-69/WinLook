@@ -1,6 +1,6 @@
 # WinLook Workspace Memory
 
-> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-17. Current user instructions and repository source take precedence.
+> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-19. Current user instructions and repository source take precedence.
 
 ## Project identity
 WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
@@ -13,7 +13,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Explorer.exe must never be patched/replaced on disk. Deep Explorer customization is accepted scope: documented Shell extensions plus a separate opt-in, per-build presentation adapter for UI surfaces without public APIs. This is not general WLWM injection; Windows retains native Shell/filesystem operations. DWM and authentication/security-critical processes are excluded.
 - WLWM Settings are in WinLook Manager and can be included in WLT; no standalone WLWM config language required.
 - wl_animate is the reusable Rust animation crate/API for modern WinLook and third-party integrations. wl_Lanimate is its C counterpart. The current implementation baseline for both libraries is Windows 10; C89 is a source-language constraint, not evidence of pre-Windows-10 runtime support. The intended vector/SVG and alpha contract is specified in [vector-animation.md](architecture/vector-animation.md); it is not yet a complete public API.
-- `wl_translation` is the planned modern Rust Windows platform-translation layer. It owns versioned Windows Shell/Explorer/Taskbar/Win32/DWM object resolution, native event normalization, capability-selected providers, Quirks and reversible operation contracts; it is not human-language translation. See [wl-translation.md](architecture/wl-translation.md). The crate and parser are not implemented by this planning update.
+- `wl_traton` (Traton) is implemented as the modern Rust Windows platform-translation layer. It owns versioned Windows Shell/Explorer/Taskbar/Win32/DWM object resolution, target/capability records, provider contracts and bounded normalized events; it is not human-language translation. Its first native adapter is a read-only Windows 10 22H2/build-19045 taskbar-window snapshot, restricted to the exact `10-22h2` selector and the Explorer process generation verified by BGW. It does not expose HWNDs, enumerate taskbar items, mutate Explorer or install native event hooks. See [architecture/traton.md](architecture/traton.md) and [rust/library/wl_traton/README.md](../rust/library/wl_traton/README.md).
 - WLDE taskbar presentation distinguishes pinned shortcuts from running-window buttons, system controls and notification-area icons. A WLDE-owned taskbar can support independently positioned/offset surfaces; arbitrary free positioning of the stock Explorer taskbar is not promised by a documented Windows API. The Start affordance uses the Windows logo, not WinLook branding.
 - Versioned names such as `windows.10.22h2.shell.taskbar` and readiness/event paths are intended to be callable from code and a future declarative XML parser. XML compiles to a typed, allow-listed operation plan; it must never execute raw native calls, scripts or dynamic code.
 - CPUv/GPUv are planned as shared WinLook-owned resource governors: Rust wl_cpuv/wl_gpuv and C wl_Lcpuv/wl_Lgpuv. They coordinate only WinLook-managed CPU tasks and GPU allocations/submissions; Windows/driver remains authoritative for process scheduling and GPU memory. See [resource-governors.md](architecture/resource-governors.md).
@@ -46,7 +46,7 @@ WinLook is a Windows customization platform bringing deep desktop and appearance
 - Exact legacy compiler/linker/runtime and SDK combinations.
 - Shared settings schema/versioning.
 - wl_animate public API and wl_Lanimate C ABI.
-- `wl_translation` canonical namespace aliases, object catalogue, XML grammar, Quirks trust/update model and exact Windows 10 build/UBR support matrix.
+- Remaining `wl_traton` work: canonical aliases and broader object catalogue; native event-pump lifecycle; Shell item-level providers; XML grammar/compiler; Quirks trust/update model; and exact build/UBR compatibility evidence.
 - Stock Explorer taskbar operations that can be safely controlled versus properties that require a WLDE-owned surface.
 - Exact semantics and parser grammar for the proposed `windows.<version/name>.shell.isready(true[])` callable, distinct from Shell readiness events.
 - Injection target policy, compatibility scoring and cache invalidation.
@@ -614,3 +614,13 @@ notification before waiting again.
 - M1 advances only for the owned view's bounded count/enumeration/position snapshot. Stable Shell item identity, selection, ordering semantics and interactive behavior still need validation. M2 advances only for per-snapshot view reacquisition and identity/HWND generation tracking; event-driven invalidation and bounded recovery from a blocked STA call remain outstanding.
 - M3 remains partial: the portable journal codec exists, but the durable BGW writer, security descriptor/ACL validation, locking, append/FlushFileBuffers boundaries and startup recovery are not implemented. M4 adapter ownership proof and M6 fault-injection tests remain required before native Shell changes.
 - Microsoft API sources WLDE-040–044 are recorded in plan/references/SOURCES.md. Hosted CI and an interactive Windows ExplorerBrowser smoke test are pending for this implementation checkpoint.
+
+
+## Traton implementation checkpoint — 2026-11-19
+
+- Implemented the `wl_traton` Rust crate with canonical namespace parsing, read-only Windows target/build/UBR/edition/architecture/session detection, typed object/member registry, capability states, provider catalogue/contracts, and bounded normalized-event queue.
+- Added the read-only Windows 10 22H2/build-19045 taskbar-window snapshot. It discovers `Shell_TrayWnd` and `Shell_SecondaryTrayWnd`, checks each window owner PID against BGW's verified Explorer host, and returns only role, bounds and `WS_VISIBLE` state. HWNDs remain inside the Win32 adapter. The provider requires exact release selector `10-22h2`; it is partial coverage and is not an item-level taskbar API.
+- BGW resolves `windows.10-22h2.shell.taskbar.windows.count` through the typed registry/provider catalogue. It revalidates the Explorer process handle and host generation immediately before and after the snapshot. On failure, it logs an unavailable status and leaves the native taskbar unchanged.
+- Baseline commit `ec2ca8076feabe24abe3832a0c4ac80ec2b2150e` passed shared Rust/C library verification and Clippy; BGW worker build; Windows 10 and Windows 11 application builds; full build-order workflow; repeated build stress (including two Rust/C sanitizer passes and repeated native clean/incremental builds); and CodeQL/security analysis. A follow-up hardening commit adds exact release-selector gating, snapshot-construction tests and pre/post Explorer-generation checks; its own CI must pass before these results are attributed to the updated source. These are CI/build checks, not an interactive Explorer runtime smoke test.
+- Remaining: BGW-native message-pump lifecycle and WinEvent/Shell notifications; pinned/running/system/notification-area item discovery; AppBar provider for the WinLook-owned surface; Quirks execution; XML compiler; and runtime testing across serviced Windows 10 22H2 UBRs.
+- WLDE Plan B's WinLook-owned ExplorerBrowser adapter remains a separate owned-view path. It does not replace or authorize mutation of the stock Explorer taskbar or desktop.
