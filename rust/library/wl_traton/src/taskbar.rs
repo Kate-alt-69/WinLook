@@ -434,7 +434,7 @@ mod tests {
             TaskbarSnapshot::from_native(
                 &target(19_045),
                 200,
-                vec![primary; MAX_TASKBAR_WINDOWS + 1]
+                vec![primary.clone(); MAX_TASKBAR_WINDOWS + 1]
             ),
             Err(TaskbarDiscoveryError::TooManyTaskbarWindows)
         );
