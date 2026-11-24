@@ -6,11 +6,11 @@
 pub use wl_ui_core::{
     UiAlignContent, UiAlignItems, UiAnimation, UiAnimationDirection, UiAnimationFillMode,
     UiAnimationIterations, UiAnimationPlayState, UiApplication, UiBackground, UiBorderStyle,
-    UiBoxSizing, UiColor, UiColorScheme, UiComponent, UiCornerRadii, UiCursor, UiDisplay, UiEasing,
-    UiEdges, UiEffects, UiError, UiFlexDirection, UiFlexWrap, UiFontStyle, UiGradientStop,
-    UiGridTrack, UiJustifyContent, UiJustifyItems, UiKeyframe, UiKeyframes, UiLength,
-    UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage, UiPalette,
-    UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
+    UiBoxSizing, UiBranding, UiColor, UiColorScheme, UiComponent, UiCornerRadii, UiCursor,
+    UiDisplay, UiEasing, UiEdges, UiEffects, UiError, UiFlexDirection, UiFlexWrap, UiFontStyle,
+    UiGradientStop, UiGridTrack, UiJustifyContent, UiJustifyItems, UiKeyframe, UiKeyframes,
+    UiLength, UiLinearGradient, UiMediaCondition, UiMetrics, UiObjectFit, UiOverflow, UiPage,
+    UiPalette, UiPosition, UiSelector, UiShadow, UiStyle, UiStyleRule, UiStyleSheet, UiTextAlign,
     UiTextDecoration, UiTextOverflow, UiTextTransform, UiTheme, UiTransform, UiTransition,
     UiTransitionProperty, UiTypography, UiVisualState, UiWhiteSpace, UiWindowConfig,
 };
@@ -162,6 +162,7 @@ pub fn manager_app() -> UiApplication {
     }
     let theme = UiTheme::dark().name("WinLook Graphite");
     let palette = *theme.palette();
+    let typography = theme.typography_tokens();
     let styles = UiStyleSheet::new()
         .rule(
             UiSelector::new(UiComponent::Window),
@@ -195,9 +196,73 @@ pub fn manager_app() -> UiApplication {
             UiStyle::new()
                 .background(palette.accent)
                 .foreground(palette.accent_text)
-                .border_radius(8.0),
+                .border_radius(9.0)
+                .transition(UiTransition::new(
+                    UiTransitionProperty::Background,
+                    160,
+                    UiEasing::EaseOut,
+                ))
+                .transition(UiTransition::new(
+                    UiTransitionProperty::Border,
+                    160,
+                    UiEasing::EaseOut,
+                )),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Button).state(UiVisualState::Hover),
+            UiStyle::new()
+                .background(palette.accent_hover)
+                .border_color(palette.border_strong),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Button).state(UiVisualState::Pressed),
+            UiStyle::new().background(palette.accent_pressed),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Button).state(UiVisualState::Focused),
+            UiStyle::new().outline(2.0, 2.0, palette.focus),
+        )
+        .rule(
+            UiSelector::new(UiComponent::BrandMark),
+            UiStyle::new()
+                .background(palette.accent)
+                .foreground(palette.accent_text)
+                .font_size(typography.size_lg)
+                .font_weight(typography.weight_bold)
+                .text_align(UiTextAlign::Center)
+                .border_radius(12.0),
+        )
+        .rule(
+            UiSelector::new(UiComponent::PageHeader),
+            UiStyle::new()
+                .foreground(palette.text_primary)
+                .font_size(typography.size_xl)
+                .font_weight(typography.weight_semibold),
+        )
+        .rule(
+            UiSelector::new(UiComponent::PageDescription),
+            UiStyle::new()
+                .foreground(palette.text_secondary)
+                .font_size(typography.size_md)
+                .line_height(typography.line_height * typography.size_md),
+        )
+        .rule(
+            UiSelector::new(UiComponent::Tile),
+            UiStyle::new()
+                .background(palette.surface_elevated)
+                .foreground(palette.text_primary)
+                .padding(UiEdges::all(16.0))
+                .border_color(palette.border)
+                .border_radius(14.0),
         );
-    application = application.theme(theme).styles(styles);
+    application = application
+        .branding(
+            UiBranding::new("WinLook")
+                .mark("WL")
+                .tagline("Your desktop, your way."),
+        )
+        .theme(theme)
+        .styles(styles);
     application.initial_page("home")
 }
 
@@ -311,7 +376,14 @@ mod tests {
             .any(|item| item.id() == "game-mode"));
         assert_eq!(page("settings").title(), "Settings");
         assert_eq!(application.theme_ref().color_scheme(), UiColorScheme::Dark);
-        assert_eq!(application.styles_ref().rules().len(), 5);
+        let branding = application.branding_ref().unwrap();
+        assert_eq!(branding.mark_text(), "WL");
+        assert_eq!(branding.title(), "WinLook");
+        assert!(application.styles_ref().rules().len() > 10);
+        assert!(application.styles_ref().rules().iter().any(|rule| {
+            rule.selector().component() == &UiComponent::Button
+                && rule.selector().visual_state() == Some(UiVisualState::Hover)
+        }));
     }
 
     #[test]

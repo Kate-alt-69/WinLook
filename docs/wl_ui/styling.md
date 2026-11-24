@@ -89,13 +89,20 @@ use wl_ui::{UiComponent, UiSelector, UiVisualState};
 let primary_hover = UiSelector::new(UiComponent::Button)
     .class("primary")
     .state(UiVisualState::Hover);
+
+let hover_transition = UiStyle::new().transition(UiTransition::new(
+    UiTransitionProperty::Background,
+    160,
+    UiEasing::EaseOut,
+));
 ```
 
 Built-in component names are `Window`, `Surface`, `Card`, `Text`,
 `Heading`, `Button`, `TextInput`, `Select`, `Checkbox`, `Radio`,
 `Switch`, `Slider`, `Navigation`, `NavigationItem`, `Dialog`, `Menu`,
 `MenuItem`, `Tooltip`, `Badge`, `Progress`, `Divider`, `List`,
-`ListItem`, `Image` and `Icon`. Use
+`ListItem`, `Image`, `Icon`, `Brand`, `BrandMark`, `PageHeader`,
+`PageDescription` and `Tile`. Use
 `UiComponent::Custom("my-widget".into())` for an application-defined
 component. Custom names must be valid identifiers.
 
@@ -346,9 +353,10 @@ The data model is shared; rendering capability is not identical:
   Gradients, CSS selectors/states, flex/grid, blur and per-element animation
   are not rendered by the current Win32 shell.
 - **Windows 11 WinUI 3:** applies the theme palette, fonts, page surface,
-  border, radius and spacing to the native shell. The Windows Reactor controls
-  are re-exported from `wl_ui::windows11` on Windows so an app can build a
-  richer native component tree. CSS is not injected into WinUI.
+  border, radius and spacing to the native shell. It displays the shared brand
+  title/mark and page heading/description. The Windows Reactor controls are
+  re-exported from `wl_ui::windows11` on Windows so an app can build a richer
+  native component tree. CSS selector rules are not injected into WinUI.
 - **Tauri 2:** emits the complete supported CSS variable and selector model.
   The frontend must provide matching `data-wl-component` attributes and
   classes.

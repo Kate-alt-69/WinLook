@@ -2670,6 +2670,11 @@ pub enum UiComponent {
     ListItem,
     Image,
     Icon,
+    Brand,
+    BrandMark,
+    PageHeader,
+    PageDescription,
+    Tile,
     Custom(String),
 }
 
@@ -2701,6 +2706,11 @@ impl UiComponent {
             Self::ListItem => "list-item",
             Self::Image => "image",
             Self::Icon => "icon",
+            Self::Brand => "brand",
+            Self::BrandMark => "brand-mark",
+            Self::PageHeader => "page-header",
+            Self::PageDescription => "page-description",
+            Self::Tile => "tile",
             Self::Custom(value) => value,
         }
     }

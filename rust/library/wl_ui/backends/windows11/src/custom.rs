@@ -254,7 +254,20 @@ impl Component for CustomShell {
         let metrics = theme.metrics_tokens();
         let page = self.selected_page();
 
-        context.window_title(format!("{} — {}", window.title(), page.title()));
+        let branding = self.application.branding_ref();
+        let brand_title = branding.map_or(window.title(), |brand| brand.title());
+        let brand_pane_title = branding.map_or_else(
+            || window.title().to_string(),
+            |brand| {
+                if brand.mark_text().is_empty() {
+                    brand.title().to_string()
+                } else {
+                    format!("{}  {}", brand.mark_text(), brand.title())
+                }
+            },
+        );
+
+        context.window_title(format!("{} — {}", brand_title, page.title()));
         context.window_visuals(
             WindowVisuals::new()
                 .client_size(window.width() as f64, window.height() as f64)
@@ -495,19 +508,47 @@ impl Component for CustomShell {
                 .spacing(f64::from(metrics.spacing_unit * 2.0))
                 .children((
                     info_card(
-                        "Your offline wallpaper collection",
-                        "This destination is reserved for imported wallpapers, collections, source records and preview assets. Durable import and collection management are not implemented yet.",
-                        "EMPTY LIBRARY · IMPORT PENDING",
+                        "Your wallpaper collection",
+                        "A home for wallpapers you choose to keep offline. Local import, previews and collection persistence are not connected yet, so this page will not invent item counts or show placeholder files.",
+                        "LIBRARY FOUNDATION · STORAGE NOT CONNECTED",
+                        palette.accent,
+                        palette,
+                        metrics,
+                    ),
+                    info_card(
+                        "Collections",
+                        "Group wallpapers into named collections, keep source and license details with each item, and organize the library without changing original files.",
+                        "COLLECTION MANAGEMENT · PLANNED",
+                        palette.info,
+                        palette,
+                        metrics,
+                    ),
+                    info_card(
+                        "Recently added",
+                        "When the local index is implemented, this area will show newly imported wallpapers and their preview artwork.",
+                        "LOCAL INDEX · NOT CONNECTED",
                         palette.warning,
                         palette,
                         metrics,
                     ),
-                    Button::new()
-                        .on_click(context.message(Message::Navigate("wallpaper-store".to_string())))
-                        .content("Find Wallpapers in the Store"),
-                    Button::new()
-                        .on_click(context.message(Message::Navigate("wallpaper-store-wallpaper-engine".to_string())))
-                        .content("Browse Wallpaper Engine Files"),
+                    info_card(
+                        "Storage and backup",
+                        "The future library store will preserve original media and keep generated thumbnails/previews separate from source files.",
+                        "PERSISTENCE · PLANNED",
+                        palette.info,
+                        palette,
+                        metrics,
+                    ),
+                    StackPanel::new()
+                        .spacing(f64::from(metrics.spacing_unit))
+                        .children((
+                            Button::new()
+                                .on_click(context.message(Message::Navigate("wallpaper-store".to_string())))
+                                .content("Explore Wallpaper Store"),
+                            Button::new()
+                                .on_click(context.message(Message::Navigate("wallpaper-store-wallpaper-engine".to_string())))
+                                .content("Browse Wallpaper Engine Files"),
+                        )),
                 ))
                 .into(),
             "displays" => StackPanel::new()
@@ -708,7 +749,7 @@ impl Component for CustomShell {
             .is_back_button_visible(NavigationViewBackButtonVisible::Collapsed)
             .is_settings_visible(false)
             .always_show_header(false)
-            .pane_title(window.title())
+            .pane_title(brand_pane_title)
             .is_pane_open(self.pane_open)
             .on_is_pane_open_changed(context.callback(Message::PaneOpenChanged))
             .on_selected_tag_changed(context.callback(|tag: Option<Rc<str>>| {
@@ -751,7 +792,7 @@ impl Component for CustomShell {
 
         let title_bar = TitleBar::new()
             .preferred_height(WindowTitleBarHeight::Tall)
-            .title(window.title())
+            .title(brand_title)
             .subtitle(page.title())
             .is_pane_toggle_button_visible(true)
             .on_pane_toggle_requested(context.message(Message::TogglePane))

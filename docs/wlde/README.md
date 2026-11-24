@@ -83,9 +83,14 @@ presentation and wallpaper rendering remain unimplemented.
 The shared Manager navigation now includes a dedicated destination for each
 WLDE module: Wallpaper, Wallpaper Store, Wallpaper Engine, Free Catalogues,
 Wallpaper Library, Widgets, Resource & Performance, Desktop Groups, Rainmeter,
-Game Mode and Displays. The UI uses the WinLook Graphite dark design system,
-with bordered status cards and explicit readiness labels rather than empty
-white pages.
+Game Mode and Displays. Each destination has a full page title and description
+separate from its compact navigation label. Optional application branding
+supplies a short WinLook mark and tagline. The shared design system defines
+hover, pressed and focus selectors plus typed transitions for CSS-capable
+renderers. The Wallpaper Library now has distinct collection, recently-added,
+and storage/backup panels; local indexing, import, preview generation and
+persistence remain explicitly not connected. Native renderers retain platform
+interaction behavior rather than claiming that CSS animations run on them.
 
 The Windows 10 Win32 Manager reports a real monitor snapshot at startup and
 refreshes it on `WM_DISPLAYCHANGE` and

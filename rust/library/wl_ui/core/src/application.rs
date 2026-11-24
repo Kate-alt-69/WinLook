@@ -1,4 +1,4 @@
-use crate::{UiError, UiPage, UiStyleSheet, UiTheme, UiWindowConfig};
+use crate::{UiBranding, UiError, UiPage, UiStyleSheet, UiTheme, UiWindowConfig};
 
 /// A platform-independent description of an application's shell and visual system.
 #[derive(Clone, Debug, PartialEq)]
@@ -6,6 +6,7 @@ pub struct UiApplication {
     window: UiWindowConfig,
     pages: Vec<UiPage>,
     initial_page: Option<String>,
+    branding: Option<UiBranding>,
     theme: UiTheme,
     styles: UiStyleSheet,
 }
@@ -17,6 +18,7 @@ impl UiApplication {
             window: UiWindowConfig::new(title),
             pages: Vec::new(),
             initial_page: None,
+            branding: None,
             theme: UiTheme::default(),
             styles: UiStyleSheet::default(),
         }
@@ -42,6 +44,12 @@ impl UiApplication {
         self
     }
 
+    /// Sets optional application identity shown by compatible renderers.
+    pub fn branding(mut self, branding: UiBranding) -> Self {
+        self.branding = Some(branding);
+        self
+    }
+
     /// Replaces the shared design theme used by the selected renderer.
     pub fn theme(mut self, theme: UiTheme) -> Self {
         self.theme = theme;
@@ -62,6 +70,11 @@ impl UiApplication {
     /// Returns pages in their navigation order.
     pub fn pages(&self) -> &[UiPage] {
         &self.pages
+    }
+
+    /// Returns optional application branding.
+    pub fn branding_ref(&self) -> Option<&UiBranding> {
+        self.branding.as_ref()
     }
 
     /// Returns the shared design theme.
@@ -93,6 +106,9 @@ impl UiApplication {
         }
         if self.pages.is_empty() {
             return Err(UiError::NoPages);
+        }
+        if let Some(branding) = &self.branding {
+            branding.validate()?;
         }
         self.theme.validate()?;
         self.styles.validate()?;
