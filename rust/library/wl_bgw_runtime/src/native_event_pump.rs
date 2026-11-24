@@ -6,13 +6,14 @@
 
 #[cfg(windows)]
 mod platform {
-    use wl_traton::{classify_win_event, WIN_EVENT_HOOK_RANGES};
     use std::fmt;
     use std::mem::zeroed;
     use std::ptr::{null, null_mut};
     use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
     use std::sync::mpsc;
     use std::thread::{self, JoinHandle};
+
+    use wl_traton::{classify_win_event, WIN_EVENT_HOOK_RANGES};
 
     use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, HWND};
     use windows_sys::Win32::System::Threading::{CreateEventW, SetEvent};
@@ -322,4 +323,3 @@ mod platform {
 
 #[cfg(windows)]
 pub(super) use platform::NativeEventPump;
-
