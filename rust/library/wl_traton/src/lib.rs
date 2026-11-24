@@ -15,6 +15,7 @@ mod provider;
 mod registry;
 mod target;
 mod taskbar;
+mod win_event;
 
 #[cfg(windows)]
 mod windows;
@@ -42,3 +43,4 @@ pub use taskbar::{
     Win10_22H2TaskbarDiscoveryProvider, MAX_TASKBAR_WINDOWS, TASKBAR_WINDOW_COUNT_MEMBER,
     TASKBAR_WINDOW_DISCOVERY_CAPABILITY_ID, TASKBAR_WINDOW_DISCOVERY_PROVIDER_ID,
 };
+pub use win_event::{classify_win_event, WinEventCategory, WIN_EVENT_HOOK_RANGES};

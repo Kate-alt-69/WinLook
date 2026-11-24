@@ -52,13 +52,21 @@ process-architecture and session queries. The probe requires Windows 10 version
 the explicit 64-bit view only; the flag is ignored on 32-bit Windows. It never
 writes registry values.
 
-BGW now installs a narrow set of out-of-context `SetWinEventHook` subscriptions
-on its own dedicated message-pump thread. The observer covers foreground
-activation, top-level create/destroy/show, geometry-change and minimize/restore
-events. It filters to top-level window objects, excludes BGW's own process, and
-uses an atomic category mask; HWND/PID values are not retained or exported.
-The callback does not query window metadata, call COM, perform I/O or block.
-The installing thread removes every hook during shutdown.
+BGW installs a narrow set of out-of-context `SetWinEventHook` subscriptions
+on its own dedicated message-pump thread. Traton supplies the exact hook ranges
+and a pure classifier mapping selected native IDs into `WinEventCategory`
+and `TratonEventKind` values. The observer covers foreground activation,
+window-object create/destroy/show, geometry-change and minimize/restore.
+It excludes BGW's own process and uses an atomic category mask; HWND/PID
+values are not retained or exported.
+
+For foreground and object-level events, the classifier requires
+`OBJID_WINDOW` / `CHILDID_SELF`. This identifies the window object itself,
+not necessarily a root/top-level HWND. Explicitly resized child windows can
+also produce `EVENT_OBJECT_LOCATIONCHANGE`. Minimize/restore are classified
+by their system event ID and non-null HWND. The callback does not query window
+metadata, call COM, perform I/O or block. The installing thread removes every
+hook during shutdown.
 
 BGW converts coalesced event categories into handle-free Traton events through
 the bounded queue. The shared auto-reset wake interrupts BGW's maintenance

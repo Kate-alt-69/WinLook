@@ -23,13 +23,9 @@ pub use desktop_store::{
 #[cfg(windows)]
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
-use native_event_pump::{
-    NativeEventPump, EVENT_BIT_FOREGROUND_CHANGED, EVENT_BIT_WINDOW_CREATED,
-    EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED,
-    EVENT_BIT_WINDOW_MINIMIZED, EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN,
-};
+use native_event_pump::NativeEventPump;
 #[cfg(windows)]
-use wl_traton::TranslationProvider;
+use wl_traton::{TranslationProvider, WinEventCategory};
 #[cfg(windows)]
 use wl_wlde::DesktopItemKind;
 #[cfg(windows)]
@@ -129,19 +125,9 @@ fn poll_native_window_events(
 ) {
     if let (Some(pump), Some(target)) = (pump.as_ref(), target) {
         let pending = pump.take_pending_events();
-        let event_kinds = [
-            (EVENT_BIT_FOREGROUND_CHANGED, wl_traton::TratonEventKind::WindowActivated),
-            (EVENT_BIT_WINDOW_CREATED, wl_traton::TratonEventKind::WindowCreated),
-            (EVENT_BIT_WINDOW_DESTROYED, wl_traton::TratonEventKind::WindowDestroyed),
-            (EVENT_BIT_WINDOW_SHOWN, wl_traton::TratonEventKind::WindowShown),
-            (EVENT_BIT_WINDOW_GEOMETRY_CHANGED, wl_traton::TratonEventKind::WindowGeometryChanged),
-            (EVENT_BIT_WINDOW_MINIMIZED, wl_traton::TratonEventKind::WindowMinimized),
-            (EVENT_BIT_WINDOW_RESTORED, wl_traton::TratonEventKind::WindowRestored),
-        ];
-        for (event_bit, kind) in event_kinds {
-            if pending & event_bit == 0 {
-                continue;
-            }
+        for category in WinEventCategory::ALL {
+            if pending & category.bit()==0 {continue;}
+            let kind=category.event_kind();
             let event = wl_traton::TratonEvent {
                 kind,
                 target_selector: target.release_selector().to_owned(),

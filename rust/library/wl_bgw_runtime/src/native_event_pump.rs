@@ -1,64 +1,12 @@
 //! Dedicated BGW-owned out-of-context WinEvent message pump.
 //!
-//! The observer is limited to selected top-level window events. The callback
-//! validates each event shape and sets category bits atomically; it never retains
-//! or exports HWND/PID data. The installing thread owns the message loop and
-//! removes every hook before it exits.
-
-pub(super) const EVENT_BIT_FOREGROUND_CHANGED: u32 = 1 << 0;
-pub(super) const EVENT_BIT_WINDOW_CREATED: u32 = 1 << 1;
-pub(super) const EVENT_BIT_WINDOW_DESTROYED: u32 = 1 << 2;
-pub(super) const EVENT_BIT_WINDOW_SHOWN: u32 = 1 << 3;
-pub(super) const EVENT_BIT_WINDOW_GEOMETRY_CHANGED: u32 = 1 << 4;
-pub(super) const EVENT_BIT_WINDOW_MINIMIZED: u32 = 1 << 5;
-pub(super) const EVENT_BIT_WINDOW_RESTORED: u32 = 1 << 6;
-
-#[cfg(any(windows, test))]
-const EVENT_SYSTEM_FOREGROUND: u32 = 0x0003;
-#[cfg(any(windows, test))]
-const EVENT_SYSTEM_MINIMIZESTART: u32 = 0x0016;
-#[cfg(any(windows, test))]
-const EVENT_SYSTEM_MINIMIZEEND: u32 = 0x0017;
-#[cfg(any(windows, test))]
-const EVENT_OBJECT_CREATE: u32 = 0x8000;
-#[cfg(any(windows, test))]
-const EVENT_OBJECT_DESTROY: u32 = 0x8001;
-#[cfg(any(windows, test))]
-const EVENT_OBJECT_SHOW: u32 = 0x8002;
-#[cfg(any(windows, test))]
-const EVENT_OBJECT_LOCATIONCHANGE: u32 = 0x800B;
-#[cfg(any(windows, test))]
-const OBJID_WINDOW: i32 = 0;
-#[cfg(any(windows, test))]
-const CHILDID_SELF: i32 = 0;
-
-#[cfg(any(windows, test))]
-fn native_window_event_bit(event: u32, has_window: bool, object_id: i32, child_id: i32) -> u32 {
-    if !has_window || object_id != OBJID_WINDOW || child_id != CHILDID_SELF {
-        return 0;
-    }
-
-    match event {
-        EVENT_SYSTEM_FOREGROUND => EVENT_BIT_FOREGROUND_CHANGED,
-        EVENT_OBJECT_CREATE => EVENT_BIT_WINDOW_CREATED,
-        EVENT_OBJECT_DESTROY => EVENT_BIT_WINDOW_DESTROYED,
-        EVENT_OBJECT_SHOW => EVENT_BIT_WINDOW_SHOWN,
-        EVENT_OBJECT_LOCATIONCHANGE => EVENT_BIT_WINDOW_GEOMETRY_CHANGED,
-        EVENT_SYSTEM_MINIMIZESTART => EVENT_BIT_WINDOW_MINIMIZED,
-        EVENT_SYSTEM_MINIMIZEEND => EVENT_BIT_WINDOW_RESTORED,
-        _ => 0,
-    }
-}
+//! BGW owns hook-thread lifecycle, message dispatch, wake signaling and
+//! same-thread teardown. Traton owns the pure WinEvent category classifier;
+//! this callback only records categories in an atomic mask.
 
 #[cfg(windows)]
 mod platform {
-    use super::{
-        native_window_event_bit, EVENT_BIT_FOREGROUND_CHANGED, EVENT_BIT_WINDOW_CREATED,
-        EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED, EVENT_BIT_WINDOW_MINIMIZED,
-        EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN, EVENT_OBJECT_CREATE,
-        EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_SHOW, EVENT_SYSTEM_FOREGROUND,
-        EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART,
-    };
+    use wl_traton::{classify_win_event, WIN_EVENT_HOOK_RANGES};
     use std::fmt;
     use std::mem::zeroed;
     use std::ptr::{null, null_mut};
@@ -252,15 +200,9 @@ mod platform {
             PeekMessageW(&mut message, null_mut(), 0, 0, 0);
         }
 
-        // These ranges subscribe only to the selected system/window event IDs.
-        let event_ranges = [
-            (EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND),
-            (EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MINIMIZEEND),
-            (EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW),
-            (EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE),
-        ];
-        let mut hooks: Vec<HWINEVENTHOOK> = Vec::with_capacity(event_ranges.len());
-        for (event_min, event_max) in event_ranges {
+        // Traton is the single source of truth for the selected event ranges.
+        let mut hooks: Vec<HWINEVENTHOOK> = Vec::with_capacity(WIN_EVENT_HOOK_RANGES.len());
+        for &(event_min, event_max) in WIN_EVENT_HOOK_RANGES {
             let hook = unsafe {
                 SetWinEventHook(
                     event_min,
@@ -370,11 +312,10 @@ mod platform {
         _event_thread: u32,
         _event_time_ms: u32,
     ) {
-        let bit = native_window_event_bit(event, !hwnd.is_null(), object_id, child_id);
-        if bit != 0 {
+        if let Some(category)=classify_win_event(event,!hwnd.is_null(),object_id,child_id) {
             // No allocation, lock, COM call, HWND retention or cross-thread wait.
-            PENDING_EVENTS.fetch_or(bit, Ordering::AcqRel);
-            EVENT_WAKE_PENDING.store(true, Ordering::Release);
+            PENDING_EVENTS.fetch_or(category.bit(),Ordering::AcqRel);
+            EVENT_WAKE_PENDING.store(true,Ordering::Release);
         }
     }
 }
@@ -382,52 +323,3 @@ mod platform {
 #[cfg(windows)]
 pub(super) use platform::NativeEventPump;
 
-#[cfg(test)]
-mod tests {
-    use super::{
-        native_window_event_bit, EVENT_BIT_FOREGROUND_CHANGED, EVENT_BIT_WINDOW_CREATED,
-        EVENT_BIT_WINDOW_DESTROYED, EVENT_BIT_WINDOW_GEOMETRY_CHANGED, EVENT_BIT_WINDOW_MINIMIZED,
-        EVENT_BIT_WINDOW_RESTORED, EVENT_BIT_WINDOW_SHOWN,
-    };
-
-    #[test]
-    fn maps_only_supported_top_level_window_event_categories() {
-        assert_eq!(
-            native_window_event_bit(0x0003, true, 0, 0),
-            EVENT_BIT_FOREGROUND_CHANGED
-        );
-        assert_eq!(
-            native_window_event_bit(0x8000, true, 0, 0),
-            EVENT_BIT_WINDOW_CREATED
-        );
-        assert_eq!(
-            native_window_event_bit(0x8001, true, 0, 0),
-            EVENT_BIT_WINDOW_DESTROYED
-        );
-        assert_eq!(
-            native_window_event_bit(0x8002, true, 0, 0),
-            EVENT_BIT_WINDOW_SHOWN
-        );
-        assert_eq!(
-            native_window_event_bit(0x800B, true, 0, 0),
-            EVENT_BIT_WINDOW_GEOMETRY_CHANGED
-        );
-        assert_eq!(
-            native_window_event_bit(0x0016, true, 0, 0),
-            EVENT_BIT_WINDOW_MINIMIZED
-        );
-        assert_eq!(
-            native_window_event_bit(0x0017, true, 0, 0),
-            EVENT_BIT_WINDOW_RESTORED
-        );
-    }
-
-    #[test]
-    fn ignores_unknown_events_and_non_window_accessibility_objects() {
-        assert_eq!(native_window_event_bit(0x0002, true, 0, 0), 0);
-        assert_eq!(native_window_event_bit(0x8003, true, 0, 0), 0);
-        assert_eq!(native_window_event_bit(0x8000, false, 0, 0), 0);
-        assert_eq!(native_window_event_bit(0x8000, true, 1, 0), 0);
-        assert_eq!(native_window_event_bit(0x8000, true, 0, 1), 0);
-    }
-}
