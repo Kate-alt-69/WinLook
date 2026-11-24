@@ -312,10 +312,10 @@ mod platform {
         _event_thread: u32,
         _event_time_ms: u32,
     ) {
-        if let Some(category)=classify_win_event(event,!hwnd.is_null(),object_id,child_id) {
+        if let Some(category) = classify_win_event(event, !hwnd.is_null(), object_id, child_id) {
             // No allocation, lock, COM call, HWND retention or cross-thread wait.
-            PENDING_EVENTS.fetch_or(category.bit(),Ordering::AcqRel);
-            EVENT_WAKE_PENDING.store(true,Ordering::Release);
+            PENDING_EVENTS.fetch_or(category.bit(), Ordering::AcqRel);
+            EVENT_WAKE_PENDING.store(true, Ordering::Release);
         }
     }
 }

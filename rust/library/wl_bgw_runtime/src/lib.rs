@@ -126,8 +126,10 @@ fn poll_native_window_events(
     if let (Some(pump), Some(target)) = (pump.as_ref(), target) {
         let pending = pump.take_pending_events();
         for category in WinEventCategory::ALL {
-            if pending & category.bit()==0 {continue;}
-            let kind=category.event_kind();
+            if pending & category.bit() == 0 {
+                continue;
+            }
+            let kind = category.event_kind();
             let event = wl_traton::TratonEvent {
                 kind,
                 target_selector: target.release_selector().to_owned(),

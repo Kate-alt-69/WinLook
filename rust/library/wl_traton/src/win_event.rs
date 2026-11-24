@@ -74,9 +74,7 @@ pub fn classify_win_event(
         0x8000 if object_id == 0 && child_id == 0 => Some(WinEventCategory::WindowCreated),
         0x8001 if object_id == 0 && child_id == 0 => Some(WinEventCategory::WindowDestroyed),
         0x8002 if object_id == 0 && child_id == 0 => Some(WinEventCategory::WindowShown),
-        0x800B if object_id == 0 && child_id == 0 => {
-            Some(WinEventCategory::WindowGeometryChanged)
-        }
+        0x800B if object_id == 0 && child_id == 0 => Some(WinEventCategory::WindowGeometryChanged),
         _ => None,
     }
 }
