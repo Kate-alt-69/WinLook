@@ -52,10 +52,18 @@ impl fmt::Display for EventSubscriptionError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidSubscriberId => formatter.write_str("invalid event subscriber identifier"),
-            Self::DuplicateSubscriber => formatter.write_str("event subscriber is already registered"),
-            Self::InvalidMailboxCapacity => formatter.write_str("event mailbox capacity must be between 1 and 256"),
-            Self::EmptyFilter => formatter.write_str("event subscription must select at least one event kind"),
-            Self::TooManySubscribers => formatter.write_str("event router subscriber limit has been reached"),
+            Self::DuplicateSubscriber => {
+                formatter.write_str("event subscriber is already registered")
+            }
+            Self::InvalidMailboxCapacity => {
+                formatter.write_str("event mailbox capacity must be between 1 and 256")
+            }
+            Self::EmptyFilter => {
+                formatter.write_str("event subscription must select at least one event kind")
+            }
+            Self::TooManySubscribers => {
+                formatter.write_str("event router subscriber limit has been reached")
+            }
         }
     }
 }
