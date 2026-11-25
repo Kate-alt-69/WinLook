@@ -1,6 +1,6 @@
 # WinLook Workspace Memory
 
-> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-24. Current user instructions and repository source take precedence.
+> Durable project context for Research Companion sessions and other coding agents. Last verified: 2026-11-25. Current user instructions and repository source take precedence.
 
 ## Project identity
 WinLook is a Windows customization platform bringing deep desktop and appearance customization to Windows 95 and later. It draws inspiration from Linux desktop/window-manager communities but is its own Windows product, not a Hyprland port or Linux config importer. Repository: Kate-alt-69/WinLook. Living plan: [Plan.md](Plan.md). Final-Plan.md has not been created.
