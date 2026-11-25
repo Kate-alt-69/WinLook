@@ -58,8 +58,10 @@ After Traton normalization, BGW's host loop publishes envelopes through a
 bounded event router. Each subscriber selects explicit `TratonEventKind`
 values and receives an independent bounded mailbox. Delivery uses non-blocking
 `try_send`; a full mailbox is counted without stalling another consumer, and
-a disconnected receiver is removed on its next matching publication. The
-router invokes no callbacks: subscribers perform their work on their own
+a disconnected receiver is removed on its next matching publication. Each
+`EventMailbox` exposes `take_dropped_events()`; a non-zero count means the
+consumer missed an invalidation and must refresh its authoritative snapshot.
+The router invokes no callbacks: subscribers perform their work on their own
 owner-selected thread.
 
 The initial `bgw.diagnostics` subscriber verifies and counts delivery. WLDE
