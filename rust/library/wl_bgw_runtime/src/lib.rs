@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 #[allow(dead_code)]
 mod desktop_icon_pipeline;
 mod desktop_store;
+#[cfg(any(windows, test))]
 mod event_router;
 mod native_event_pump;
 pub use desktop_store::{
