@@ -638,7 +638,7 @@ notification before waiting again.
 ## BGW bounded feature-event routing — 2026-11-25
 
 - Added `rust/library/wl_bgw_runtime/src/event_router.rs`. BGW owns fan-out after Traton normalization; Traton remains independent of WLDE and animation feature policy.
-- Subscriptions select explicit `TratonEventKind` values and receive separate bounded synchronous mailboxes. Publication uses non-blocking `try_send`; one full mailbox does not stall another subscriber. Disconnected consumers are pruned on their next matching event.
+- Subscriptions select explicit `TratonEventKind` values and receive separate bounded synchronous mailboxes. Publication uses non-blocking `try_send`; one full mailbox does not stall another subscriber. Each `EventMailbox` exposes `take_dropped_events()` so its owner can detect lost invalidations and refresh a snapshot. Disconnected consumers are pruned on their next matching event.
 - The router invokes no callbacks. Receivers can be moved to their feature owner's selected thread/executor. The current `bgw.diagnostics` subscriber verifies the delivery path; WLDE scene-invalidation and `wl_animate` trigger consumers are not registered yet.
 - Mailbox overflow is reported and means that consumer has missed an invalidation; it must refresh from an authoritative snapshot rather than assume event replay. Per-window identity and metadata are still absent from the native observer.
 
