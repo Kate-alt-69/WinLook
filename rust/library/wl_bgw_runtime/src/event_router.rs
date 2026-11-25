@@ -11,8 +11,8 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use wl_traton::{EventQueueError, TratonEvent, TratonEventKind};
 
 pub(crate) const DEFAULT_EVENT_MAILBOX_CAPACITY: usize = 64;
-const MAX_EVENT_MAILBOX_CAPACITY: usize = 4096;
-const MAX_EVENT_SUBSCRIBERS: usize = 32;
+const MAX_EVENT_MAILBOX_CAPACITY: usize = 256;
+const MAX_EVENT_SUBSCRIBERS: usize = 16;
 const MAX_SUBSCRIBER_ID_BYTES: usize = 64;
 
 /// A subscriber's explicit interest set. Empty subscriptions are rejected so
@@ -52,7 +52,7 @@ impl fmt::Display for EventSubscriptionError {
         match self {
             Self::InvalidSubscriberId => formatter.write_str("invalid event subscriber identifier"),
             Self::DuplicateSubscriber => formatter.write_str("event subscriber is already registered"),
-            Self::InvalidMailboxCapacity => formatter.write_str("event mailbox capacity must be between 1 and 4096"),
+            Self::InvalidMailboxCapacity => formatter.write_str("event mailbox capacity must be between 1 and 256"),
             Self::EmptyFilter => formatter.write_str("event subscription must select at least one event kind"),
             Self::TooManySubscribers => formatter.write_str("event router subscriber limit has been reached"),
         }
@@ -169,6 +169,7 @@ fn valid_subscriber_id(value: &str) -> bool {
 mod tests {
     use super::{
         EventKindFilter, EventRouter, EventSubscriptionError, DEFAULT_EVENT_MAILBOX_CAPACITY,
+        MAX_EVENT_MAILBOX_CAPACITY, MAX_EVENT_SUBSCRIBERS,
     };
     use std::sync::mpsc::TryRecvError;
     use wl_traton::{EventQueueError, TratonEvent, TratonEventKind, TratonEventPayload};
@@ -303,6 +304,47 @@ mod tests {
             router.subscribe("wlde.desktop", filter([TratonEventKind::WindowShown]), 1).err(),
             Some(EventSubscriptionError::DuplicateSubscriber)
         );
+    }
+
+    #[test]
+    fn enforces_mailbox_and_subscriber_count_limits() {
+        let mut router = EventRouter::new();
+        assert_eq!(
+            router
+                .subscribe(
+                    "wlde.too-large",
+                    filter([TratonEventKind::WindowShown]),
+                    MAX_EVENT_MAILBOX_CAPACITY + 1,
+                )
+                .err(),
+            Some(EventSubscriptionError::InvalidMailboxCapacity)
+        );
+
+        let mut receivers = Vec::new();
+        for index in 0..MAX_EVENT_SUBSCRIBERS {
+            let subscriber_id = format!("test.{index}");
+            receivers.push(
+                router
+                    .subscribe(
+                        &subscriber_id,
+                        filter([TratonEventKind::WindowShown]),
+                        1,
+                    )
+                    .unwrap(),
+            );
+        }
+        assert_eq!(router.subscriber_count(), MAX_EVENT_SUBSCRIBERS);
+        assert_eq!(
+            router
+                .subscribe(
+                    "test.overflow",
+                    filter([TratonEventKind::WindowShown]),
+                    1,
+                )
+                .err(),
+            Some(EventSubscriptionError::TooManySubscribers)
+        );
+        assert_eq!(receivers.len(), MAX_EVENT_SUBSCRIBERS);
     }
 
     #[test]
