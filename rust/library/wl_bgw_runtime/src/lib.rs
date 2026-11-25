@@ -31,6 +31,8 @@ use native_event_pump::NativeEventPump;
 #[cfg(windows)]
 use std::sync::mpsc::Receiver;
 #[cfg(windows)]
+use std::sync::Arc;
+#[cfg(windows)]
 use wl_traton::{TranslationProvider, WinEventCategory};
 #[cfg(windows)]
 use wl_wlde::DesktopItemKind;
@@ -127,7 +129,7 @@ fn poll_native_window_events(
     event_clock: &Instant,
     queue: &mut wl_traton::BoundedEventQueue,
     event_router: &mut EventRouter,
-    diagnostic_receiver: &Receiver<wl_traton::TratonEvent>,
+    diagnostic_receiver: &Receiver<Arc<wl_traton::TratonEvent>>,
     pending_batches: &mut u64,
     pending_full_mailboxes: &mut u64,
     pending_disconnected_subscribers: &mut u64,
@@ -153,7 +155,7 @@ fn poll_native_window_events(
             match queue.push(event) {
                 Ok(wl_traton::EventQueuePushResult::Queued) => {
                     if let Some(queued) = queue.pop() {
-                        match event_router.publish(&queued) {
+                        match event_router.publish(queued) {
                             Ok(report) => {
                                 *pending_full_mailboxes = pending_full_mailboxes
                                     .saturating_add(report.full_mailboxes as u64);
