@@ -299,11 +299,13 @@ removed when a matching event is next published.
 
 The receiver can be moved to the owning feature's selected executor/thread.
 Consumers must still validate their own generation and decide whether an
-envelope means refresh, invalidation or an actionable transition. The current
-event contains no per-window identity, so it cannot be used to mutate a
-particular window or infer which child changed. Mailbox capacity is bounded
-and explicit; consumers must drain promptly and treat overflow as a lost
-invalidation that requires a fresh snapshot.
+envelope means refresh, invalidation or an actionable transition. Each
+`EventMailbox` exposes an atomic dropped-event counter through
+`take_dropped_events()`; a non-zero count is a mandatory full-snapshot refresh
+signal after the consumer drains queued messages. The current event contains
+no per-window identity, so it cannot be used to mutate a particular window or
+infer which child changed. Mailbox capacity is bounded and explicit; consumers
+must drain promptly and must not assume event replay after overflow.
 
 The current BGW integration registers only its diagnostics subscriber. WLDE
 and `wl_animate` feature consumers are not yet registered. WLDE should later
