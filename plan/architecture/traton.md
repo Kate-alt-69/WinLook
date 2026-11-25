@@ -282,11 +282,37 @@ The host thread requirements, message-loop ownership, callback reentrancy, event
 
 The callback requires a non-null HWND, asks Traton to classify the event, then performs atomic bitmask updates only. For foreground and object-level events, the classifier requires OBJID_WINDOW and CHILDID_SELF. This describes the window object itself; it does not prove that the HWND is root/top-level. Explicitly resized child windows can also generate EVENT_OBJECT_LOCATIONCHANGE. Minimize/restore events are classified by system event ID and non-null HWND. The callback does not retain/expose HWND or PID, query window metadata, call COM, perform I/O or block.
 
-The pump signals a shared auto-reset event after callback dispatch. BGW waits on that event alongside its User/Public Desktop change-notification handles, so supported events wake the host loop without a fixed polling interval. BGW normalizes pending categories into handle-free Traton events and currently records aggregate diagnostics only. Geometry-change notifications intentionally do not distinguish move from resize; hide events are not subscribed. Stable window identity, per-window snapshots, WLDE/`wl_animate` subscribers and Shell change notifications remain future work. Native callbacks must never render, decode media, parse XML, perform network/file-heavy work, block on BGW or run animation timelines inside Explorer.
+The pump signals a shared auto-reset event after callback dispatch. BGW waits on that event alongside its User/Public Desktop change-notification handles, so supported events wake the host loop without a fixed polling interval. BGW normalizes pending categories into handle-free Traton events. Geometry-change notifications intentionally do not distinguish move from resize; hide events are not subscribed. Stable window identity, per-window snapshots and Shell change notifications remain future work. Native callbacks must never render, decode media, parse XML, perform network/file-heavy work, block on BGW or run animation timelines inside Explorer.
 
 Use narrowly selected event ranges and process/thread filters when the intended producer is known. The current observer uses process/thread IDs of zero to receive selected events across the current interactive desktop, with `WINEVENT_SKIPOWNPROCESS` and `WINEVENT_OUTOFCONTEXT`. It exports no target identity. Do not install a global in-context hook by default. Any in-process Explorer adapter must follow the separate build-specific Explorer integration and recovery rules.
 
-### 6.4 wl_animate trigger contract
+### 6.4 Feature-owner delivery and bounded mailboxes
+
+Traton owns native event classification and the validated, handle-free event
+envelope. BGW owns delivery after normalization. Its host-loop `EventRouter`
+uses one bounded synchronous mailbox per subscriber; each subscriber declares
+an explicit set of `TratonEventKind` values. Publication uses non-blocking
+`try_send`, never invokes subscriber callbacks and never runs inside the
+WinEvent callback or pump thread. A full mailbox is counted independently and
+does not prevent delivery to other subscribers. Disconnected receivers are
+removed when a matching event is next published.
+
+The receiver can be moved to the owning feature's selected executor/thread.
+Consumers must still validate their own generation and decide whether an
+envelope means refresh, invalidation or an actionable transition. The current
+event contains no per-window identity, so it cannot be used to mutate a
+particular window or infer which child changed. Mailbox capacity is bounded
+and explicit; consumers must drain promptly and treat overflow as a lost
+invalidation that requires a fresh snapshot.
+
+The current BGW integration registers only its diagnostics subscriber. WLDE
+and `wl_animate` feature consumers are not yet registered. WLDE should later
+map relevant notifications to scene/visibility invalidations on its own
+execution context. `wl_animate` remains platform-neutral: a host adapter may
+convert semantic Traton notifications into generic timeline triggers, but
+Win32 event IDs and hooks must not enter the animation core.
+
+### 6.5 wl_animate trigger contract
 
 The generic trigger model belongs in `wl_animate`; Windows event production belongs in `wl_traton`. The adapter publishes normalized events, while BGW/WLDE forwards matching event envelopes to the animation controller.
 
