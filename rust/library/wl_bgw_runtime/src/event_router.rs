@@ -110,10 +110,8 @@ impl EventRouter {
         }
 
         let (sender, receiver) = mpsc::sync_channel(capacity);
-        self.subscribers.insert(
-            subscriber_id.to_owned(),
-            EventSubscriber { filter, sender },
-        );
+        self.subscribers
+            .insert(subscriber_id.to_owned(), EventSubscriber { filter, sender });
         Ok(receiver)
     }
 
@@ -161,9 +159,7 @@ fn valid_subscriber_id(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= MAX_SUBSCRIBER_ID_BYTES
         && value.bytes().all(|byte| {
-            byte.is_ascii_lowercase()
-                || byte.is_ascii_digit()
-                || matches!(byte, b'.' | b'-' | b'_')
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'-' | b'_')
         })
 }
 
@@ -213,18 +209,26 @@ mod tests {
             )
             .unwrap();
 
-        let report = router.publish(event(TratonEventKind::WindowActivated)).unwrap();
+        let report = router
+            .publish(event(TratonEventKind::WindowActivated))
+            .unwrap();
         assert_eq!(report.matched_subscribers, 1);
         assert_eq!(report.delivered, 1);
         assert_eq!(report.full_mailboxes, 0);
-        assert_eq!(animation.try_recv().unwrap().kind, TratonEventKind::WindowActivated);
+        assert_eq!(
+            animation.try_recv().unwrap().kind,
+            TratonEventKind::WindowActivated
+        );
         assert_eq!(desktop.try_recv(), Err(TryRecvError::Empty));
 
         let report = router
             .publish(event(TratonEventKind::WindowGeometryChanged))
             .unwrap();
         assert_eq!(report.matched_subscribers, 1);
-        assert_eq!(desktop.try_recv().unwrap().kind, TratonEventKind::WindowGeometryChanged);
+        assert_eq!(
+            desktop.try_recv().unwrap().kind,
+            TratonEventKind::WindowGeometryChanged
+        );
         assert_eq!(animation.try_recv(), Err(TryRecvError::Empty));
     }
 
@@ -232,11 +236,7 @@ mod tests {
     fn full_subscriber_mailbox_never_blocks_delivery_to_another_subscriber() {
         let mut router = EventRouter::new();
         let slow = router
-            .subscribe(
-                "wlde.desktop",
-                filter([TratonEventKind::WindowShown]),
-                1,
-            )
+            .subscribe("wlde.desktop", filter([TratonEventKind::WindowShown]), 1)
             .unwrap();
         let fast = router
             .subscribe(
@@ -334,22 +334,14 @@ mod tests {
             let subscriber_id = format!("test.{index}");
             receivers.push(
                 router
-                    .subscribe(
-                        &subscriber_id,
-                        filter([TratonEventKind::WindowShown]),
-                        1,
-                    )
+                    .subscribe(&subscriber_id, filter([TratonEventKind::WindowShown]), 1)
                     .unwrap(),
             );
         }
         assert_eq!(router.subscriber_count(), MAX_EVENT_SUBSCRIBERS);
         assert_eq!(
             router
-                .subscribe(
-                    "test.overflow",
-                    filter([TratonEventKind::WindowShown]),
-                    1,
-                )
+                .subscribe("test.overflow", filter([TratonEventKind::WindowShown]), 1,)
                 .err(),
             Some(EventSubscriptionError::TooManySubscribers)
         );
