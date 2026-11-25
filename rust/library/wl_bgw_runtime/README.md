@@ -47,12 +47,26 @@ perform I/O, or wait on BGW. Repeated events are coalesced until BGW polls the
 mask. A shared auto-reset wake event interrupts BGW's maintenance wait so it
 can normalize pending categories into handle-free Traton events.
 
-This is still an observation/invalidation layer, not a per-window event bus:
-there is no stable window identity, no window metadata snapshot, and no WLDE
-or wl_animate subscriber yet. Geometry notifications do not distinguish move
-from resize. Window-hide notifications are not included. Do not use these
-signals for latency-sensitive animation until feature-owner dispatch is
-implemented and measured.
+This remains a category-level observation/invalidation source, not a
+per-window event bus: there is no stable window identity or window metadata
+snapshot. Geometry notifications do not distinguish move from resize, and
+window-hide notifications are not included.
+
+## Feature-owner event routing
+
+After Traton normalization, BGW's host loop publishes envelopes through a
+bounded event router. Each subscriber selects explicit `TratonEventKind`
+values and receives an independent bounded mailbox. Delivery uses non-blocking
+`try_send`; a full mailbox is counted without stalling another consumer, and
+a disconnected receiver is removed on its next matching publication. The
+router invokes no callbacks: subscribers perform their work on their own
+owner-selected thread.
+
+The initial `bgw.diagnostics` subscriber verifies and counts delivery. WLDE
+and `wl_animate` do not yet register feature consumers. Native window events
+are not sent directly into the renderer or animation core; a future WLDE
+adapter must translate them into scene invalidations, and any animation
+trigger adapter must remain host-driven and platform-neutral.
 
 ## Deliberately not implemented yet
 
