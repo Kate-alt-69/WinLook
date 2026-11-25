@@ -259,11 +259,7 @@ mod tests {
     fn disconnected_subscribers_are_removed_without_affecting_others() {
         let mut router = EventRouter::new();
         let disconnected = router
-            .subscribe(
-                "wlde.desktop",
-                filter([TratonEventKind::WindowCreated]),
-                1,
-            )
+            .subscribe("wlde.desktop", filter([TratonEventKind::WindowCreated]), 1)
             .unwrap();
         let live = router
             .subscribe(
@@ -274,23 +270,32 @@ mod tests {
             .unwrap();
         drop(disconnected);
 
-        let report = router.publish(&event(TratonEventKind::WindowCreated)).unwrap();
+        let report = router
+            .publish(&event(TratonEventKind::WindowCreated))
+            .unwrap();
         assert_eq!(report.matched_subscribers, 2);
         assert_eq!(report.delivered, 1);
         assert_eq!(report.disconnected_subscribers, 1);
         assert_eq!(router.subscriber_count(), 1);
-        assert_eq!(live.try_recv().unwrap().kind, TratonEventKind::WindowCreated);
+        assert_eq!(
+            live.try_recv().unwrap().kind,
+            TratonEventKind::WindowCreated
+        );
     }
 
     #[test]
     fn rejects_invalid_subscription_ids_capacity_and_empty_filters() {
         let mut router = EventRouter::new();
         assert_eq!(
-            router.subscribe("Wlde", filter([TratonEventKind::WindowShown]), 1).err(),
+            router
+                .subscribe("Wlde", filter([TratonEventKind::WindowShown]), 1)
+                .err(),
             Some(EventSubscriptionError::InvalidSubscriberId)
         );
         assert_eq!(
-            router.subscribe("wlde.desktop", filter([TratonEventKind::WindowShown]), 0).err(),
+            router
+                .subscribe("wlde.desktop", filter([TratonEventKind::WindowShown]), 0)
+                .err(),
             Some(EventSubscriptionError::InvalidMailboxCapacity)
         );
         assert_eq!(
@@ -301,7 +306,9 @@ mod tests {
             .subscribe("wlde.desktop", filter([TratonEventKind::WindowShown]), 1)
             .unwrap();
         assert_eq!(
-            router.subscribe("wlde.desktop", filter([TratonEventKind::WindowShown]), 1).err(),
+            router
+                .subscribe("wlde.desktop", filter([TratonEventKind::WindowShown]), 1)
+                .err(),
             Some(EventSubscriptionError::DuplicateSubscriber)
         );
     }
