@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 #[allow(dead_code)]
 mod desktop_icon_pipeline;
 mod desktop_store;
+mod event_router;
 mod native_event_pump;
 pub use desktop_store::{
     DesktopItemIdentityRecord, DesktopStateSnapshot, DesktopStateStore, DesktopStateStoreError,
@@ -23,7 +24,11 @@ pub use desktop_store::{
 #[cfg(windows)]
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
+use event_router::{EventKindFilter, EventRouter, DEFAULT_EVENT_MAILBOX_CAPACITY};
+#[cfg(windows)]
 use native_event_pump::NativeEventPump;
+#[cfg(windows)]
+use std::sync::mpsc::Receiver;
 #[cfg(windows)]
 use wl_traton::{TranslationProvider, WinEventCategory};
 #[cfg(windows)]
@@ -120,7 +125,11 @@ fn poll_native_window_events(
     target: Option<&wl_traton::WindowsTarget>,
     event_clock: &Instant,
     queue: &mut wl_traton::BoundedEventQueue,
+    event_router: &mut EventRouter,
+    diagnostic_receiver: &Receiver<wl_traton::TratonEvent>,
     pending_batches: &mut u64,
+    pending_full_mailboxes: &mut u64,
+    pending_disconnected_subscribers: &mut u64,
     last_report: &mut Instant,
 ) {
     if let (Some(pump), Some(target)) = (pump.as_ref(), target) {
@@ -142,8 +151,18 @@ fn poll_native_window_events(
             };
             match queue.push(event) {
                 Ok(wl_traton::EventQueuePushResult::Queued) => {
-                    if matches!(queue.pop(), Some(event) if event.kind == kind) {
-                        *pending_batches = pending_batches.saturating_add(1);
+                    if let Some(queued) = queue.pop() {
+                        match event_router.publish(&queued) {
+                            Ok(report) => {
+                                *pending_full_mailboxes = pending_full_mailboxes
+                                    .saturating_add(report.full_mailboxes as u64);
+                                *pending_disconnected_subscribers = pending_disconnected_subscribers
+                                    .saturating_add(report.disconnected_subscribers as u64);
+                            }
+                            Err(error) => report_status(&format!(
+                                "Traton event router rejected an invalid envelope: {error}"
+                            )),
+                        }
                     }
                 }
                 Ok(result) => report_status(&format!(
@@ -154,6 +173,10 @@ fn poll_native_window_events(
                 )),
             }
         }
+    }
+
+    while diagnostic_receiver.try_recv().is_ok() {
+        *pending_batches = pending_batches.saturating_add(1);
     }
 
     if pump.as_ref().is_some_and(|pump| !pump.is_running()) {
@@ -180,10 +203,24 @@ fn poll_native_window_events(
     if last_report.elapsed() >= Duration::from_secs(30) {
         if *pending_batches != 0 {
             report_status(&format!(
-                "Traton native window-event category signals: {} coalesced signal(s); window identity is not exposed by this observer",
+                "Traton native window-event category signals delivered to BGW diagnostics: {}; window identity is not exposed by this observer",
                 *pending_batches
             ));
             *pending_batches = 0;
+        }
+        if *pending_full_mailboxes != 0 {
+            report_status(&format!(
+                "Traton event router encountered {} full subscriber mailbox delivery/deliveries",
+                *pending_full_mailboxes
+            ));
+            *pending_full_mailboxes = 0;
+        }
+        if *pending_disconnected_subscribers != 0 {
+            report_status(&format!(
+                "Traton event router removed {} disconnected subscriber(s)",
+                *pending_disconnected_subscribers
+            ));
+            *pending_disconnected_subscribers = 0;
         }
         *last_report = Instant::now();
     }
@@ -253,8 +290,26 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
         None
     };
     let mut traton_events = wl_traton::BoundedEventQueue::standard(1);
+    let mut event_router = EventRouter::new();
+    let diagnostic_filter = EventKindFilter::only(
+        WinEventCategory::ALL.into_iter().map(|category| category.event_kind()),
+    )
+    .expect("the native WinEvent observer has at least one category");
+    let diagnostic_receiver = event_router
+        .subscribe(
+            "bgw.diagnostics",
+            diagnostic_filter,
+            DEFAULT_EVENT_MAILBOX_CAPACITY,
+        )
+        .expect("the built-in BGW diagnostics subscription is valid");
+    report_status(&format!(
+        "Traton event router initialized with {} bounded subscriber mailbox",
+        event_router.subscriber_count()
+    ));
     let event_clock = Instant::now();
     let mut native_window_event_batches = 0_u64;
+    let mut native_event_full_mailboxes = 0_u64;
+    let mut native_event_disconnected_subscribers = 0_u64;
     let mut last_native_event_report = Instant::now();
 
     let mut waiting_for_shell_logged = false;
@@ -478,7 +533,11 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 windows_target.as_ref(),
                 &event_clock,
                 &mut traton_events,
+                &mut event_router,
+                &diagnostic_receiver,
                 &mut native_window_event_batches,
+                &mut native_event_full_mailboxes,
+                &mut native_event_disconnected_subscribers,
                 &mut last_native_event_report,
             );
             if let Some(pipeline) = desktop_icon_pipeline.as_mut() {
@@ -568,7 +627,11 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
                 windows_target.as_ref(),
                 &event_clock,
                 &mut traton_events,
+                &mut event_router,
+                &diagnostic_receiver,
                 &mut native_window_event_batches,
+                &mut native_event_full_mailboxes,
+                &mut native_event_disconnected_subscribers,
                 &mut last_native_event_report,
             );
 
