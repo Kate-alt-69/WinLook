@@ -25,13 +25,11 @@ pub use desktop_store::{
 #[cfg(windows)]
 use desktop_icon_pipeline::{DesktopIconContext, DesktopIconPipeline};
 #[cfg(windows)]
-use event_router::{EventKindFilter, EventRouter, DEFAULT_EVENT_MAILBOX_CAPACITY};
+use event_router::{
+    EventKindFilter, EventMailbox, EventRouter, DEFAULT_EVENT_MAILBOX_CAPACITY,
+};
 #[cfg(windows)]
 use native_event_pump::NativeEventPump;
-#[cfg(windows)]
-use std::sync::mpsc::Receiver;
-#[cfg(windows)]
-use std::sync::Arc;
 #[cfg(windows)]
 use wl_traton::{TranslationProvider, WinEventCategory};
 #[cfg(windows)]
@@ -129,7 +127,7 @@ fn poll_native_window_events(
     event_clock: &Instant,
     queue: &mut wl_traton::BoundedEventQueue,
     event_router: &mut EventRouter,
-    diagnostic_receiver: &Receiver<Arc<wl_traton::TratonEvent>>,
+    diagnostic_receiver: &EventMailbox,
     pending_batches: &mut u64,
     pending_full_mailboxes: &mut u64,
     pending_disconnected_subscribers: &mut u64,
@@ -182,6 +180,9 @@ fn poll_native_window_events(
     while diagnostic_receiver.try_recv().is_ok() {
         *pending_batches = pending_batches.saturating_add(1);
     }
+    // The diagnostics consumer has no state to resynchronize. Feature-owner
+    // mailboxes must inspect this counter and refresh their snapshot on loss.
+    let _ = diagnostic_receiver.take_dropped_events();
 
     if pump.as_ref().is_some_and(|pump| !pump.is_running()) {
         let failure_code = pump.as_ref().and_then(NativeEventPump::failure_code);
