@@ -116,8 +116,8 @@ impl EventRouter {
         Self::default()
     }
 
-    /// Registers a bounded receiver for the selected normalized event kinds.
-    /// The returned receiver may be moved to the owning feature thread.
+    /// Registers a bounded mailbox for the selected normalized event kinds.
+    /// The returned mailbox may be moved to the owning feature thread.
     pub(crate) fn subscribe(
         &mut self,
         subscriber_id: &str,
@@ -174,7 +174,7 @@ impl EventRouter {
             match subscriber.sender.try_send(Arc::clone(&event)) {
                 Ok(()) => report.delivered += 1,
                 Err(TrySendError::Full(_)) => {
-                    let _ = subscriber.dropped_events.fetch_update(
+                    let _previous_count = subscriber.dropped_events.fetch_update(
                         Ordering::Relaxed,
                         Ordering::Relaxed,
                         |count| Some(count.saturating_add(1)),
