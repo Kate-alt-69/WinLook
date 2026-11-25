@@ -157,8 +157,9 @@ fn poll_native_window_events(
                             Ok(report) => {
                                 *pending_full_mailboxes = pending_full_mailboxes
                                     .saturating_add(report.full_mailboxes as u64);
-                                *pending_disconnected_subscribers = pending_disconnected_subscribers
-                                    .saturating_add(report.disconnected_subscribers as u64);
+                                *pending_disconnected_subscribers =
+                                    pending_disconnected_subscribers
+                                        .saturating_add(report.disconnected_subscribers as u64);
                             }
                             Err(error) => report_status(&format!(
                                 "Traton event router rejected an invalid envelope: {error}"
@@ -293,7 +294,9 @@ fn run_windows() -> Result<(), BgwRuntimeError> {
     let mut traton_events = wl_traton::BoundedEventQueue::standard(1);
     let mut event_router = EventRouter::new();
     let diagnostic_filter = EventKindFilter::only(
-        WinEventCategory::ALL.into_iter().map(|category| category.event_kind()),
+        WinEventCategory::ALL
+            .into_iter()
+            .map(|category| category.event_kind()),
     )
     .expect("the native WinEvent observer has at least one category");
     let diagnostic_receiver = event_router
