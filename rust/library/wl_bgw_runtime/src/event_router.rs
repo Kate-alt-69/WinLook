@@ -7,6 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
+use std::sync::Arc;
 
 use wl_traton::{EventQueueError, TratonEvent, TratonEventKind};
 
@@ -72,7 +73,7 @@ pub(crate) struct EventDispatchReport {
 
 struct EventSubscriber {
     filter: EventKindFilter,
-    sender: SyncSender<TratonEvent>,
+    sender: SyncSender<Arc<TratonEvent>>,
 }
 
 /// BGW-owned fan-out. The router invokes no consumer callbacks and never waits
@@ -94,7 +95,7 @@ impl EventRouter {
         subscriber_id: &str,
         filter: EventKindFilter,
         capacity: usize,
-    ) -> Result<Receiver<TratonEvent>, EventSubscriptionError> {
+    ) -> Result<Receiver<Arc<TratonEvent>>, EventSubscriptionError> {
         if !valid_subscriber_id(subscriber_id) {
             return Err(EventSubscriptionError::InvalidSubscriberId);
         }
@@ -122,9 +123,10 @@ impl EventRouter {
     /// or delaying another subscriber. Disconnected receivers are removed.
     pub(crate) fn publish(
         &mut self,
-        event: &TratonEvent,
+        event: TratonEvent,
     ) -> Result<EventDispatchReport, EventQueueError> {
         event.validate()?;
+        let event = Arc::new(event);
         let mut report = EventDispatchReport::default();
         let mut disconnected = Vec::new();
 
@@ -133,7 +135,7 @@ impl EventRouter {
                 continue;
             }
             report.matched_subscribers += 1;
-            match subscriber.sender.try_send(event.clone()) {
+            match subscriber.sender.try_send(Arc::clone(&event)) {
                 Ok(()) => report.delivered += 1,
                 Err(TrySendError::Full(_)) => report.full_mailboxes += 1,
                 Err(TrySendError::Disconnected(_)) => {
@@ -211,7 +213,7 @@ mod tests {
             )
             .unwrap();
 
-        let report = router.publish(&event(TratonEventKind::WindowActivated)).unwrap();
+        let report = router.publish(event(TratonEventKind::WindowActivated)).unwrap();
         assert_eq!(report.matched_subscribers, 1);
         assert_eq!(report.delivered, 1);
         assert_eq!(report.full_mailboxes, 0);
@@ -219,7 +221,7 @@ mod tests {
         assert_eq!(desktop.try_recv(), Err(TryRecvError::Empty));
 
         let report = router
-            .publish(&event(TratonEventKind::WindowGeometryChanged))
+            .publish(event(TratonEventKind::WindowGeometryChanged))
             .unwrap();
         assert_eq!(report.matched_subscribers, 1);
         assert_eq!(desktop.try_recv().unwrap().kind, TratonEventKind::WindowGeometryChanged);
@@ -244,8 +246,8 @@ mod tests {
             )
             .unwrap();
 
-        router.publish(&event(TratonEventKind::WindowShown)).unwrap();
-        let report = router.publish(&event(TratonEventKind::WindowShown)).unwrap();
+        router.publish(event(TratonEventKind::WindowShown)).unwrap();
+        let report = router.publish(event(TratonEventKind::WindowShown)).unwrap();
         assert_eq!(report.matched_subscribers, 2);
         assert_eq!(report.delivered, 1);
         assert_eq!(report.full_mailboxes, 1);
@@ -271,7 +273,7 @@ mod tests {
         drop(disconnected);
 
         let report = router
-            .publish(&event(TratonEventKind::WindowCreated))
+            .publish(event(TratonEventKind::WindowCreated))
             .unwrap();
         assert_eq!(report.matched_subscribers, 2);
         assert_eq!(report.delivered, 1);
@@ -363,7 +365,7 @@ mod tests {
         let mut invalid = event(TratonEventKind::WindowShown);
         invalid.provider_id = "Traton.Invalid".to_owned();
         assert_eq!(
-            router.publish(&invalid),
+            router.publish(invalid),
             Err(EventQueueError::InvalidIdentifier)
         );
     }
