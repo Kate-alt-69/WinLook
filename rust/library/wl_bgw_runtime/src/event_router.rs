@@ -6,7 +6,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::sync::Arc;
 
 use wl_traton::{EventQueueError, TratonEvent, TratonEventKind};
@@ -82,6 +83,25 @@ pub(crate) struct EventDispatchReport {
 struct EventSubscriber {
     filter: EventKindFilter,
     sender: SyncSender<Arc<TratonEvent>>,
+    dropped_events: Arc<AtomicU64>,
+}
+
+/// A consumer-owned mailbox. Call take_dropped_events after draining pending
+/// messages; a non-zero result means the consumer must refresh its snapshot.
+pub(crate) struct EventMailbox {
+    receiver: Receiver<Arc<TratonEvent>>,
+    dropped_events: Arc<AtomicU64>,
+}
+
+impl EventMailbox {
+    pub(crate) fn try_recv(&self) -> Result<Arc<TratonEvent>, TryRecvError> {
+        self.receiver.try_recv()
+    }
+
+    /// Returns and clears the number of events lost to mailbox backpressure.
+    pub(crate) fn take_dropped_events(&self) -> u64 {
+        self.dropped_events.swap(0, Ordering::AcqRel)
+    }
 }
 
 /// BGW-owned fan-out. The router invokes no consumer callbacks and never waits
@@ -103,7 +123,7 @@ impl EventRouter {
         subscriber_id: &str,
         filter: EventKindFilter,
         capacity: usize,
-    ) -> Result<Receiver<Arc<TratonEvent>>, EventSubscriptionError> {
+    ) -> Result<EventMailbox, EventSubscriptionError> {
         if !valid_subscriber_id(subscriber_id) {
             return Err(EventSubscriptionError::InvalidSubscriberId);
         }
@@ -118,9 +138,19 @@ impl EventRouter {
         }
 
         let (sender, receiver) = mpsc::sync_channel(capacity);
-        self.subscribers
-            .insert(subscriber_id.to_owned(), EventSubscriber { filter, sender });
-        Ok(receiver)
+        let dropped_events = Arc::new(AtomicU64::new(0));
+        self.subscribers.insert(
+            subscriber_id.to_owned(),
+            EventSubscriber {
+                filter,
+                sender,
+                dropped_events: Arc::clone(&dropped_events),
+            },
+        );
+        Ok(EventMailbox {
+            receiver,
+            dropped_events,
+        })
     }
 
     /// Publishes one already-normalized event to matching subscribers.
@@ -143,7 +173,14 @@ impl EventRouter {
             report.matched_subscribers += 1;
             match subscriber.sender.try_send(Arc::clone(&event)) {
                 Ok(()) => report.delivered += 1,
-                Err(TrySendError::Full(_)) => report.full_mailboxes += 1,
+                Err(TrySendError::Full(_)) => {
+                    let _ = subscriber.dropped_events.fetch_update(
+                        Ordering::Relaxed,
+                        Ordering::Relaxed,
+                        |count| Some(count.saturating_add(1)),
+                    );
+                    report.full_mailboxes += 1;
+                }
                 Err(TrySendError::Disconnected(_)) => {
                     report.disconnected_subscribers += 1;
                     disconnected.push(subscriber_id.clone());
@@ -260,6 +297,8 @@ mod tests {
         assert_eq!(report.delivered, 1);
         assert_eq!(report.full_mailboxes, 1);
         assert_eq!(report.disconnected_subscribers, 0);
+        assert_eq!(slow.take_dropped_events(), 1);
+        assert_eq!(slow.take_dropped_events(), 0);
         assert_eq!(slow.try_recv().unwrap().kind, TratonEventKind::WindowShown);
         assert_eq!(fast.try_recv().unwrap().kind, TratonEventKind::WindowShown);
         assert_eq!(fast.try_recv().unwrap().kind, TratonEventKind::WindowShown);
